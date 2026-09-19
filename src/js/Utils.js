@@ -27,8 +27,17 @@ class Utils {
             return;
         }
 
-        // copy value to clipboard
-        await navigator.clipboard.writeText(text);
+        // copy value to clipboard.
+        // the browser refuses this when the page is not focused, or when clipboard
+        // permission was denied. without a catch that failure is completely silent,
+        // which is worse than useless: you believe you have the text and do not.
+        try {
+            await navigator.clipboard.writeText(text);
+        } catch(e) {
+            console.log("failed to copy to clipboard", e);
+            alert("Could not copy to clipboard. The browser blocked it, which usually means the page lost focus or clipboard permission was denied.");
+            return;
+        }
 
         // tell user we copied it
         alert("Copied to clipboard!");

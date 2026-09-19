@@ -176,15 +176,31 @@
 
                 </div>
 
-                <button
-                    v-else
-                    @click="onSendClick"
-                    :disabled="!canSend"
-                    type="button"
-                    class="w-full text-white text-sm font-medium rounded-lg px-5 py-2.5"
-                    :class="[ canSend ? 'bg-blue-500 hover:bg-blue-600 cursor-pointer' : 'bg-gray-300 cursor-not-allowed' ]">
-                    {{ sendButtonLabel }}
-                </button>
+                <div class="flex space-x-2">
+
+                    <button
+                        v-if="!isConfirming"
+                        @click="onSendClick"
+                        :disabled="!canSend"
+                        type="button"
+                        class="w-full text-white text-sm font-medium rounded-lg px-5 py-2.5"
+                        :class="[ canSend ? 'bg-blue-500 hover:bg-blue-600 cursor-pointer' : 'bg-gray-300 cursor-not-allowed' ]">
+                        {{ sendButtonLabel }}
+                    </button>
+
+                    <button
+                        @click="copyReport"
+                        :disabled="!canCopy"
+                        type="button"
+                        class="shrink-0 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg px-5 py-2.5"
+                        :class="[
+                            canCopy ? 'hover:bg-gray-50 cursor-pointer' : 'opacity-50 cursor-not-allowed',
+                            isConfirming ? 'w-full' : '',
+                        ]">
+                        Copy
+                    </button>
+
+                </div>
 
                 <button
                     @click="resetForm"
@@ -303,6 +319,18 @@ export default {
             }
 
             this.values = values;
+
+        },
+
+        // copies the report as one block, without the [n/m] markers, since this is
+        // for use off the air: pasting into a log, an email, or another app
+        async copyReport() {
+
+            if(!this.canCopy){
+                return;
+            }
+
+            await Utils.copyToClipboard(this.prepared.text);
 
         },
 
@@ -553,6 +581,10 @@ export default {
 
             return null;
 
+        },
+
+        canCopy() {
+            return (this.prepared?.text ?? "") !== "";
         },
 
         canSend() {
