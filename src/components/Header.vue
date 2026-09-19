@@ -4,7 +4,7 @@
             <img src="/icon.png" class="size-12 rounded"/>
         </div>
         <div class="my-auto mr-auto overflow-hidden">
-            <div class="font-bold">MeshCore Client</div>
+            <div class="font-bold">MeshCore-Emcomm</div>
             <div class="text-sm truncate">
 
                 <!-- connected or configured -->
@@ -17,9 +17,7 @@
                 </span>
 
                 <!-- disconnected -->
-                <span v-else>
-                    Built by <a href="https://liamcottle.com" target="_blank" class="text-blue-600 hover:underline">Liam Cottle</a>
-                </span>
+                <span v-else>Not connected</span>
 
             </div>
         </div>
