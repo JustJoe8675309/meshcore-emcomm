@@ -26,12 +26,16 @@
                 :key="option.value"
                 @mousedown.prevent="select(option)"
                 @mouseenter="highlightedIndex = index"
-                class="px-3 py-2 text-sm cursor-pointer"
+                class="flex items-center justify-between space-x-2 px-3 py-2 text-sm cursor-pointer"
                 :class="[
                     index === highlightedIndex ? 'bg-blue-500 text-white' : 'text-gray-900 hover:bg-gray-100',
                     option.value === modelValue ? 'font-semibold' : '',
                 ]">
-                {{ option.label }}
+                <span class="truncate">{{ option.label }}</span>
+                <span
+                    v-if="option.hint"
+                    class="shrink-0 text-xs font-normal"
+                    :class="[ index === highlightedIndex ? 'text-blue-100' : 'text-gray-500' ]">{{ option.hint }}</span>
             </div>
 
         </div>
@@ -46,7 +50,7 @@ export default {
         modelValue: {
             default: null,
         },
-        // [{ value, label }]
+        // [{ value, label, hint }] where hint is shown but not searched
         options: {
             type: Array,
             default: () => [],
@@ -125,7 +129,9 @@ export default {
         },
 
         // plain "contains" match, case insensitive, so typing "213" finds both
-        // ICS-213 forms and typing "check" finds the check in
+        // ICS-213 forms and typing "check" finds the check in.
+        // only the label is searched: a hint like "2 minutes ago" is context for
+        // the operator, and matching on it would produce baffling results
         filteredOptions() {
 
             const query = this.query.trim().toLowerCase();

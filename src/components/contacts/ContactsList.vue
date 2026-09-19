@@ -4,7 +4,7 @@
         <!-- search -->
         <div v-if="contacts.length > 0" class="flex bg-white border-b border-gray-300 divide-x">
             <div class="flex p-1 w-full">
-                <input v-model="contactsSearchTerm" type="text" :placeholder="`Search ${contacts.length} ${contacts.length === 1 ? 'Contact' : 'Contacts'}...`" class="h-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                <input v-model="contactsSearchTerm" type="text" :placeholder="`Search ${contacts.length} ${contacts.length === 1 ? 'Contact' : 'Contacts'} by name or key...`" class="h-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
             </div>
             <div class="flex text-gray-500">
                 <DropDownMenu class="mx-auto my-auto">
@@ -67,6 +67,7 @@
 <script>
 import { Constants } from "@liamcottle/meshcore.js";
 import GlobalState from "../../js/GlobalState.js";
+import Utils from "../../js/Utils.js";
 import IconButton from "../IconButton.vue";
 import DropDownMenu from "../DropDownMenu.vue";
 import DropDownMenuItem from "../DropDownMenuItem.vue";
@@ -102,8 +103,8 @@ export default {
         getContactsOrderedByName(contacts) {
             // sort contacts by name asc (using a shallow copy to ensure it updates automatically)
             return contacts.sort((contactA, contactB) => {
-                const contactAName = contactA.advName;
-                const contactBName = contactB.advName;
+                const contactAName = contactA.advName ?? "";
+                const contactBName = contactB.advName ?? "";
                 return contactAName.localeCompare(contactBName);
             });
         },
@@ -166,11 +167,22 @@ export default {
             contacts = this.getOrderedContacts(contacts);
             contacts = contacts.filter((contact) => contact != null);
 
-            // search contacts
+            // search contacts by name or public key
             contacts = contacts.filter((contact) => {
-                const search = this.contactsSearchTerm.toLowerCase();
-                const matchesName = contact.advName.toLowerCase().includes(search);
-                return matchesName;
+
+                const search = this.contactsSearchTerm.trim().toLowerCase();
+                if(search === ""){
+                    return true;
+                }
+
+                const matchesName = (contact.advName ?? "").toLowerCase().includes(search);
+
+                // names can be ambiguous or duplicated on a busy mesh, so a public key
+                // prefix pasted from elsewhere identifies a station unambiguously
+                const matchesPublicKey = Utils.bytesToHex(contact.publicKey).includes(search);
+
+                return matchesName || matchesPublicKey;
+
             });
 
             return contacts;

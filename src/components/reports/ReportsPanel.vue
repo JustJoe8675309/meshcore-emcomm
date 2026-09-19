@@ -208,6 +208,7 @@ import Utils from "../../js/Utils.js";
 import ReportForms from "../../js/reports/ReportForms.js";
 import ReportEncoder from "../../js/reports/ReportEncoder.js";
 import Airtime from "../../js/reports/Airtime.js";
+import TimeUtils from "../../js/TimeUtils.js";
 import SearchableSelect from "./SearchableSelect.vue";
 
 export default {
@@ -404,6 +405,8 @@ export default {
                 return {
                     value: contact.publicKeyHex,
                     label: contact.name,
+                    // shown beside the name, not searched
+                    hint: TimeUtils.formatUnixSecondsAgo(contact.lastAdvert),
                 };
             });
         },
@@ -436,9 +439,13 @@ export default {
                         name: contact.advName?.trim() || `(unnamed ${Utils.bytesToHex(contact.publicKey).slice(0, 8)})`,
                         publicKey: contact.publicKey,
                         publicKeyHex: Utils.bytesToHex(contact.publicKey),
+                        lastAdvert: contact.lastAdvert,
                     };
                 })
-                .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
+                // most recently heard first. a station that adverted minutes ago is far
+                // more likely to still be reachable than one last heard weeks back, and
+                // the picker is searchable now so alphabetical order buys little
+                .sort((a, b) => (b.lastAdvert ?? 0) - (a.lastAdvert ?? 0));
         },
 
         selectedContact() {
