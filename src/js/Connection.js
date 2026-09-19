@@ -69,6 +69,38 @@ class Connection {
         GlobalState.connection.on("connected", () => this.onConnected());
         GlobalState.connection.on("disconnected", () => this.onDisconnected());
 
+        // meshcore.js waits forever for a device that never answers, both in its own
+        // onConnected handshake and in getSelfInfo, so the ui would sit on "connecting"
+        // with no way back. fail loudly instead.
+        this.startConnectionWatchdog();
+
+    }
+
+    // how long to wait for the device to identify itself before giving up
+    static CONNECTION_TIMEOUT_MILLIS = 15000;
+
+    static startConnectionWatchdog() {
+
+        this.clearConnectionWatchdog();
+
+        GlobalState.connectionWatchdog = setTimeout(async () => {
+
+            // the device identified itself in time, nothing to do
+            if(GlobalState.selfInfo){
+                return;
+            }
+
+            await this.disconnect();
+
+            alert("The device did not respond. Check that it is running MeshCore Companion Radio firmware, and that no other program is using the serial port.");
+
+        }, this.CONNECTION_TIMEOUT_MILLIS);
+
+    }
+
+    static clearConnectionWatchdog() {
+        clearTimeout(GlobalState.connectionWatchdog);
+        GlobalState.connectionWatchdog = null;
     }
 
     static async disconnect() {
@@ -82,6 +114,7 @@ class Connection {
         // clear previous connection timers
         clearInterval(GlobalState.batteryPercentageInterval);
         GlobalState.batteryPercentageInterval = null;
+        this.clearConnectionWatchdog();
 
     }
 
@@ -173,7 +206,12 @@ class Connection {
     }
 
     static async loadSelfInfo() {
-        GlobalState.selfInfo = await GlobalState.connection.getSelfInfo();
+
+        GlobalState.selfInfo = await GlobalState.connection.getSelfInfo(this.CONNECTION_TIMEOUT_MILLIS);
+
+        // device answered, so the watchdog no longer needs to fire
+        this.clearConnectionWatchdog();
+
     }
 
     static async loadContacts() {

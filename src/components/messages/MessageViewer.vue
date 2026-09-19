@@ -22,7 +22,7 @@
                                 <div class="w-full space-y-0.5 px-2.5" :class="[ isMessageInbound(message) && type === 'channel' ? 'pb-1' : 'py-1']">
 
                                     <!-- content -->
-                                    <div v-if="message.text" style="word-break:break-word;font-family:inherit;">
+                                    <div v-if="message.text" style="white-space:pre-wrap;word-break:break-word;font-family:inherit;">
 
                                         <!-- message text to/from contact -->
                                         <div v-if="type === 'contact'">{{ message.text }}</div>
