@@ -365,7 +365,7 @@ const ReportForms = [
         description: "Severe weather observation for the NWS.",
         header: "SKYWARN",
         fields: [
-            { id: "spotter", tag: "SPTR", label: "Spotter callsign", type: "text", placeholder: "e.g: K7ABC", required: true, prefillFromCallsign: true },
+            { id: "spotter", tag: "SPTR", label: "Spotter ID", type: "text", placeholder: "e.g: K7ABC or K7ABC/1234", required: true, prefillFromSpotterId: true },
             { id: "datetime", tag: "DTG", label: "Time observed", type: "dtg", required: true },
             { id: "location", tag: "LOC", label: "Location of observation", type: "text", placeholder: "e.g: 3 mi NW of Anthony", required: true },
             { id: "event", tag: "EVNT", label: "Event", type: "select", required: true, options: ["TORNADO", "FUNNEL CLOUD", "WALL CLOUD", "HAIL", "WIND DAMAGE", "HIGH WIND", "FLASH FLOOD", "HEAVY RAIN", "SNOW", "DUST STORM"] },

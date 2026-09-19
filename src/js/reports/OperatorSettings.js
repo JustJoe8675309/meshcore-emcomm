@@ -34,6 +34,11 @@ const state = reactive({
     // the times do not line up.
     dtgZone: stored.dtgZone === "zulu" ? "zulu" : "local",
 
+    // NWS SKYWARN spotter number, if the operator has one. Optional: plenty of
+    // spotters report by callsign alone, and an invented number would be worse
+    // than none at all to whoever relays the report to the weather service.
+    skywarnNumber: typeof stored.skywarnNumber === "string" ? stored.skywarnNumber : "",
+
 });
 
 class OperatorSettings {
@@ -51,6 +56,32 @@ class OperatorSettings {
         this.persist();
     }
 
+    static get skywarnNumber() {
+        return state.skywarnNumber.trim();
+    }
+
+    /**
+     * How this station identifies itself on a SKYWARN report: callsign and spotter
+     * number together when a number is set, callsign alone when it is not.
+     */
+    static get spotterId() {
+
+        const callsign = this.callsign;
+        const number = this.skywarnNumber;
+
+        if(callsign !== "" && number !== ""){
+            return `${callsign}/${number}`;
+        }
+
+        return callsign !== "" ? callsign : number;
+
+    }
+
+    static setSkywarnNumber(number) {
+        state.skywarnNumber = number ?? "";
+        this.persist();
+    }
+
     static setDtgZone(zone) {
         state.dtgZone = zone === "zulu" ? "zulu" : "local";
         this.persist();
@@ -61,6 +92,7 @@ class OperatorSettings {
             window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
                 callsign: state.callsign,
                 dtgZone: state.dtgZone,
+                skywarnNumber: state.skywarnNumber,
             }));
         } catch(e) {
             // private browsing, or storage full. not worth interrupting the operator over.

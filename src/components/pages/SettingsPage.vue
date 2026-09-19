@@ -54,6 +54,20 @@
                         </div>
 
                         <div class="w-full p-2">
+                            <div class="block mb-2 text-sm font-medium text-gray-900">SKYWARN spotter number</div>
+                            <input
+                                :value="operatorSkywarnNumber"
+                                @input="onOperatorSkywarnNumberInput"
+                                type="text"
+                                placeholder="Optional"
+                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                            <div class="mt-1 text-xs text-gray-500">
+                                If set, SKYWARN reports identify you as callsign/number. Left blank, they
+                                use your callsign alone.
+                            </div>
+                        </div>
+
+                        <div class="w-full p-2">
                             <div class="block mb-2 text-sm font-medium text-gray-900">Date time group</div>
                             <select
                                 :value="operatorDtgZone"
@@ -240,6 +254,10 @@ export default {
             OperatorSettings.setCallsign(event.target.value);
         },
 
+        onOperatorSkywarnNumberInput(event) {
+            OperatorSettings.setSkywarnNumber(event.target.value);
+        },
+
         onOperatorDtgZoneChange(event) {
             OperatorSettings.setDtgZone(event.target.value);
         },
@@ -395,6 +413,10 @@ export default {
 
         operatorDtgZone() {
             return OperatorSettings.state.dtgZone;
+        },
+
+        operatorSkywarnNumber() {
+            return OperatorSettings.state.skywarnNumber;
         },
 
         GlobalState() {

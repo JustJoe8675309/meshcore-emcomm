@@ -246,11 +246,12 @@ export default {
         selectedContactPublicKey() {
             this.isConfirming = false;
         },
-        operatorCallsign(callsign) {
+        operatorIdentity() {
             // only fill fields the operator has not already typed into
             for(const field of this.selectedForm?.fields ?? []){
-                if(field.prefillFromCallsign && (this.values[field.id] ?? "") === ""){
-                    this.values[field.id] = callsign;
+                const prefill = this.prefillValueFor(field);
+                if(prefill !== null && prefill !== "" && (this.values[field.id] ?? "") === ""){
+                    this.values[field.id] = prefill;
                 }
             }
         },
@@ -285,6 +286,21 @@ export default {
             return OperatorSettings.formatDtg();
         },
 
+        // what a field should be prefilled with, or null if it is not a prefilled field
+        prefillValueFor(field) {
+
+            if(field.prefillFromSpotterId){
+                return OperatorSettings.spotterId;
+            }
+
+            if(field.prefillFromCallsign){
+                return OperatorSettings.callsign;
+            }
+
+            return null;
+
+        },
+
         resetForm() {
 
             this.isConfirming = false;
@@ -300,12 +316,13 @@ export default {
                     continue;
                 }
 
-                // prefill callsign fields from the operator's callsign, never from the
+                // prefill identity fields from the operator settings, never from the
                 // device advert name. that names the radio, not the operator, and putting
                 // something like "Joe-KJ5HBN-HTv3" in a formal CALL field is wrong. left
-                // blank when no callsign is set, since blank is better than wrong.
-                if(field.prefillFromCallsign){
-                    values[field.id] = OperatorSettings.callsign;
+                // blank when nothing is set, since blank is better than wrong.
+                const prefill = this.prefillValueFor(field);
+                if(prefill !== null){
+                    values[field.id] = prefill;
                     continue;
                 }
 
@@ -541,8 +558,10 @@ export default {
             return this.forms.find((form) => form.id === this.selectedFormId) ?? null;
         },
 
-        operatorCallsign() {
-            return OperatorSettings.state.callsign.trim();
+        // one value so a change to either the callsign or the spotter number
+        // re-runs the prefill
+        operatorIdentity() {
+            return `${OperatorSettings.state.callsign}|${OperatorSettings.state.skywarnNumber}`;
         },
 
         // the device advert name, which the firmware prepends to every channel message
