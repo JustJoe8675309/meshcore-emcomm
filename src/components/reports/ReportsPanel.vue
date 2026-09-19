@@ -6,8 +6,8 @@
             <fieldset :disabled="isSending" class="bg-white border border-gray-300 rounded-lg p-3 space-y-3 disabled:opacity-60">
 
                 <div class="space-y-1">
-                    <label class="block text-sm font-medium text-gray-900">Send to</label>
-                    <select v-model="destinationType" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                    <label for="report-destination-type" class="block text-sm font-medium text-gray-900">Send to</label>
+                    <select id="report-destination-type" v-model="destinationType" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
                         <option value="channel">Channel</option>
                         <option value="contact">Contact</option>
                     </select>
@@ -15,8 +15,9 @@
 
                 <!-- broadcast to everyone holding the channel secret -->
                 <div v-if="destinationType === 'channel'" class="space-y-1">
-                    <label class="block text-sm font-medium text-gray-900">Channel</label>
+                    <label for="report-channel" class="block text-sm font-medium text-gray-900">Channel</label>
                     <SearchableSelect
+                        input-id="report-channel"
                         v-model="selectedChannelIdx"
                         :options="channelOptions"
                         placeholder="Select a channel, or type to filter..."/>
@@ -27,8 +28,9 @@
 
                 <!-- direct to a single station -->
                 <div v-else class="space-y-1">
-                    <label class="block text-sm font-medium text-gray-900">Contact</label>
+                    <label for="report-contact" class="block text-sm font-medium text-gray-900">Contact</label>
                     <SearchableSelect
+                        input-id="report-contact"
                         v-model="selectedContactPublicKey"
                         :options="contactOptions"
                         placeholder="Select a contact, or type to filter..."/>
@@ -44,8 +46,9 @@
 
             <!-- report type -->
             <fieldset :disabled="isSending" class="bg-white border border-gray-300 rounded-lg p-3 space-y-1 disabled:opacity-60">
-                <label class="block text-sm font-medium text-gray-900">Report form</label>
+                <label for="report-form" class="block text-sm font-medium text-gray-900">Report form</label>
                 <SearchableSelect
+                    input-id="report-form"
                     v-model="selectedFormId"
                     :options="formOptions"
                     placeholder="Select a report, or type to filter..."/>
@@ -57,14 +60,17 @@
 
                 <div v-for="field of selectedForm.fields" :key="field.id" class="space-y-1">
 
-                    <label class="block text-sm font-medium text-gray-900">
+                    <label :for="fieldId(field)" class="block text-sm font-medium text-gray-900">
                         {{ field.label }}
-                        <span v-if="field.required" class="text-red-600">*</span>
+                        <span v-if="field.required" class="text-red-600" aria-hidden="true">*</span>
+                        <span v-if="field.required" class="sr-only">required</span>
                     </label>
 
                     <!-- dropdown field -->
                     <select
                         v-if="field.type === 'select'"
+                        :id="fieldId(field)"
+                        :required="field.required"
                         v-model="values[field.id]"
                         class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
                         <option value="" disabled>Select...</option>
@@ -74,6 +80,8 @@
                     <!-- multi line field -->
                     <textarea
                         v-else-if="field.type === 'textarea'"
+                        :id="fieldId(field)"
+                        :required="field.required"
                         v-model="values[field.id]"
                         rows="3"
                         :placeholder="field.placeholder"
@@ -82,6 +90,8 @@
                     <!-- date time group field, with a shortcut to fill in the current time -->
                     <div v-else-if="field.type === 'dtg'" class="flex space-x-2">
                         <input
+                            :id="fieldId(field)"
+                            :required="field.required"
                             v-model="values[field.id]"
                             type="text"
                             :placeholder="field.placeholder"
@@ -89,12 +99,15 @@
                         <button
                             @click="values[field.id] = formatDtg()"
                             type="button"
+                            :aria-label="`Set ${field.label} to now`"
                             class="shrink-0 bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-900 text-sm rounded-lg px-3">Now</button>
                     </div>
 
                     <!-- single line field -->
                     <input
                         v-else
+                        :id="fieldId(field)"
+                        :required="field.required"
                         v-model="values[field.id]"
                         type="text"
                         :placeholder="field.placeholder"
@@ -138,13 +151,13 @@
             <!-- send -->
             <div v-if="selectedForm" class="space-y-2 pb-3">
 
-                <div v-if="validationMessage" class="text-xs text-red-600">{{ validationMessage }}</div>
+                <div v-if="validationMessage" role="status" class="text-xs text-red-600">{{ validationMessage }}</div>
 
                 <!-- a long report can hold the channel for minutes, so it takes a second
                      deliberate press. cancel returns to the form with everything intact. -->
-                <div v-if="isConfirming && prepared && prepared.parts" class="bg-amber-50 border border-amber-300 rounded-lg p-3 space-y-2">
+                <div v-if="isConfirming && prepared && prepared.parts" role="alertdialog" aria-labelledby="report-confirm-heading" class="bg-amber-50 border border-amber-300 rounded-lg p-3 space-y-2">
 
-                    <div class="text-sm font-semibold text-gray-900">Confirm transmission</div>
+                    <div id="report-confirm-heading" class="text-sm font-semibold text-gray-900">Confirm transmission</div>
 
                     <div class="text-sm text-gray-800 space-y-0.5">
                         <div>To <span class="font-semibold">{{ destinationName }}</span></div>
@@ -293,6 +306,10 @@ export default {
                 this.selectedChannelIdx = null;
             }
 
+        },
+
+        fieldId(field) {
+            return `report-field-${field.id}`;
         },
 
         // current date time group in the operator's chosen zone

@@ -3,7 +3,14 @@
 
         <input
             ref="input"
+            :id="inputId"
             type="text"
+            role="combobox"
+            autocomplete="off"
+            aria-autocomplete="list"
+            :aria-expanded="isOpen"
+            :aria-controls="listboxId"
+            :aria-activedescendant="isOpen ? optionId(highlightedIndex) : null"
             :value="isOpen ? query : selectedLabel"
             :placeholder="isOpen ? (selectedLabel || placeholder) : placeholder"
             @focus="open"
@@ -15,16 +22,23 @@
             class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
 
         <!-- filtered options -->
-        <div v-if="isOpen" class="absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+        <div
+            v-if="isOpen"
+            :id="listboxId"
+            role="listbox"
+            class="absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto">
 
-            <div v-if="filteredOptions.length === 0" class="px-3 py-2 text-sm text-gray-500">
+            <div v-if="filteredOptions.length === 0" role="status" class="px-3 py-2 text-sm text-gray-500">
                 Nothing matches "{{ query }}"
             </div>
 
             <div
                 v-for="(option, index) of filteredOptions"
                 :key="option.value"
+                :id="optionId(index)"
                 :data-option-index="index"
+                role="option"
+                :aria-selected="option.value === modelValue"
                 @mousedown.prevent="select(option)"
                 @mouseenter="highlightedIndex = index"
                 class="flex items-center justify-between space-x-2 px-3 py-2 text-sm cursor-pointer"
@@ -45,6 +59,9 @@
 </template>
 
 <script>
+// only needs to be unique within the page
+let instanceCounter = 0;
+
 export default {
     name: 'SearchableSelect',
     props: {
@@ -60,6 +77,11 @@ export default {
             type: String,
             default: "Select...",
         },
+        // lets a <label for="..."> outside this component point at the real input
+        inputId: {
+            type: String,
+            default: null,
+        },
     },
     emits: [
         "update:modelValue",
@@ -69,6 +91,9 @@ export default {
             isOpen: false,
             query: "",
             highlightedIndex: 0,
+            // ids have to be stable for aria-controls and aria-activedescendant to
+            // keep pointing at the same elements across re-renders
+            instanceId: `searchable-select-${++instanceCounter}`,
         };
     },
     watch: {
@@ -77,6 +102,10 @@ export default {
         },
     },
     methods: {
+
+        optionId(index) {
+            return `${this.instanceId}-option-${index}`;
+        },
 
         scrollHighlightedIntoView() {
             this.$nextTick(() => {
@@ -139,6 +168,10 @@ export default {
 
     },
     computed: {
+
+        listboxId() {
+            return `${this.instanceId}-listbox`;
+        },
 
         selectedLabel() {
             return this.options.find((option) => option.value === this.modelValue)?.label ?? "";
