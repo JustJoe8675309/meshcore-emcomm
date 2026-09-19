@@ -11,7 +11,7 @@ class Connection {
 
     static async connectViaBluetooth() {
         try {
-            await this.connect(await WebBleConnection.open());
+            await this.connect(await WebBleConnection.open(), "bluetooth");
             return true;
         } catch(e) {
 
@@ -32,7 +32,7 @@ class Connection {
 
     static async connectViaSerial() {
         try {
-            await this.connect(await WebSerialConnection.open());
+            await this.connect(await WebSerialConnection.open(), "serial");
             return true;
         } catch(e) {
 
@@ -51,7 +51,7 @@ class Connection {
         }
     }
 
-    static async connect(connection) {
+    static async connect(connection, transport = null) {
 
         // do nothing if connection not provided
         if(!connection){
@@ -66,6 +66,7 @@ class Connection {
 
         // update connection and listen for events
         GlobalState.connection = connection;
+        GlobalState.connectionTransport = transport;
         GlobalState.connection.on("connected", () => this.onConnected());
         GlobalState.connection.on("disconnected", () => this.onDisconnected());
 
@@ -92,9 +93,27 @@ class Connection {
 
             await this.disconnect();
 
-            alert("The device did not respond. Check that it is running MeshCore Companion Radio firmware, and that no other program is using the serial port.");
+            alert(this.getNoResponseMessage());
 
         }, this.CONNECTION_TIMEOUT_MILLIS);
+
+    }
+
+    // the advice differs by transport, and giving serial advice for a bluetooth
+    // failure sends people looking in entirely the wrong place
+    static getNoResponseMessage() {
+
+        const base = "The device did not respond. Check that it is running MeshCore Companion Radio firmware";
+
+        if(GlobalState.connectionTransport === "bluetooth"){
+            return `${base}, built with Bluetooth support. If the device is paired but not responding, reset it. A Bluetooth link that dropped uncleanly can leave the device unable to accept a new connection until it restarts.`;
+        }
+
+        if(GlobalState.connectionTransport === "serial"){
+            return `${base}, built with USB support. The Bluetooth only builds do not answer over serial. Also check that no other program is using the serial port.`;
+        }
+
+        return `${base}, and that it is not already connected to another app.`;
 
     }
 
@@ -115,6 +134,7 @@ class Connection {
         clearInterval(GlobalState.batteryPercentageInterval);
         GlobalState.batteryPercentageInterval = null;
         this.clearConnectionWatchdog();
+        GlobalState.connectionTransport = null;
 
     }
 

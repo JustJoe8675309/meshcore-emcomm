@@ -8,6 +8,7 @@ const globalState = reactive({
     batteryPercentage: null,
     batteryPercentageInterval: null,
     connectionWatchdog: null,
+    connectionTransport: null,
     contacts: [],
     channels: [],
 });
