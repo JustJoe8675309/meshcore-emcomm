@@ -43,6 +43,20 @@ MSG: Shelter 3 at capacity 40 of 40.
 BY: K7ABC
 ```
 
+### Channel or contact
+
+A report can go to a channel, which everyone holding that channel secret receives, or
+direct to a single station. Only chat contacts are offered, since repeaters and rooms
+cannot receive a message, and no contact is selected by default so a report cannot be
+sent to the wrong station by a stray click.
+
+Both pickers filter as you type, which matters more for contacts than forms: a busy mesh
+gives you hundreds, and typing `kj5` to narrow to your own stations beats scrolling.
+
+Direct messages are acknowledged, so the app shows **Delivered** once the recipient
+confirms receipt. Channel messages are broadcast and have no acknowledgement, so there is
+no way to know who heard them. For traffic that must be confirmed, send it direct.
+
 ### Confirm before transmitting
 
 Pressing Send does not key the radio. It shows a confirmation with the destination, the

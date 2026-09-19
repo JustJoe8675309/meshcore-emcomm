@@ -27,10 +27,10 @@
                 <!-- direct to a single station -->
                 <div v-else class="space-y-1">
                     <label class="block text-sm font-medium text-gray-900">Contact</label>
-                    <select v-model="selectedContactPublicKey" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                        <option :value="null" disabled>Select a contact...</option>
-                        <option v-for="contact of chatContacts" :key="contact.publicKeyHex" :value="contact.publicKeyHex">{{ contact.name }}</option>
-                    </select>
+                    <SearchableSelect
+                        v-model="selectedContactPublicKey"
+                        :options="contactOptions"
+                        placeholder="Select a contact, or type to filter..."/>
                     <div v-if="chatContacts.length === 0" class="text-xs text-red-600">
                         No messageable contacts. Only chat contacts can receive a report.
                     </div>
@@ -398,6 +398,15 @@ export default {
             });
         },
 
+        contactOptions() {
+            return this.chatContacts.map((contact) => {
+                return {
+                    value: contact.publicKeyHex,
+                    label: contact.name,
+                };
+            });
+        },
+
         channels() {
             return GlobalState.channels;
         },
@@ -412,7 +421,7 @@ export default {
                 .filter((contact) => contact.type === Constants.AdvType.Chat)
                 .map((contact) => {
                     return {
-                        name: contact.advName,
+                        name: contact.advName?.trim() || `(unnamed ${Utils.bytesToHex(contact.publicKey).slice(0, 8)})`,
                         publicKey: contact.publicKey,
                         publicKeyHex: Utils.bytesToHex(contact.publicKey),
                     };
