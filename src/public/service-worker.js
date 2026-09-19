@@ -9,7 +9,8 @@
 // One online load is required first, to populate the cache. After that the app
 // starts with no network at all.
 
-const CACHE_NAME = "meshcore-emcomm-v1";
+// bumped to v2 to discard caches written by the earlier, too permissive version
+const CACHE_NAME = "meshcore-emcomm-v2";
 
 // the minimum needed to boot. hashed assets are picked up as they are requested,
 // since their names change every build and cannot be listed ahead of time.
@@ -20,19 +21,23 @@ const APP_SHELL = [
     "/icon.png",
 ];
 
-// vite's dev server serves modules individually and rewrites them constantly.
-// caching any of that would break hot reload and serve stale code while developing.
-function isDevRequest(url) {
-    return url.pathname.startsWith("/@")
-        || url.pathname.startsWith("/node_modules/")
-        || url.pathname.startsWith("/src/")
-        || url.searchParams.has("t")
-        || url.searchParams.has("import");
-}
+// Only build output is cached, named explicitly.
+//
+// This started as a list of things to exclude, which was the wrong way round. Vite's
+// root is src/, so during development modules are served from paths like /js/... and
+// /components/..., which an exclusion list does not cover unless it happens to name
+// them. The result was the service worker caching dev modules and serving stale code
+// back to the browser. A whitelist cannot make that mistake: anything not recognised
+// here goes straight to the network and is never stored.
+// (the shell paths are APP_SHELL above)
 
 // content hashed build output, safe to serve from cache indefinitely
 function isImmutableAsset(url) {
     return url.pathname.startsWith("/assets/");
+}
+
+function isCacheableShell(url) {
+    return APP_SHELL.includes(url.pathname);
 }
 
 async function putInCache(request, response) {
@@ -54,7 +59,7 @@ self.addEventListener("fetch", (event) => {
     }
 
     const url = new URL(request.url);
-    if(url.origin !== self.location.origin || isDevRequest(url)){
+    if(url.origin !== self.location.origin){
         return;
     }
 
@@ -93,8 +98,14 @@ self.addEventListener("fetch", (event) => {
         return;
     }
 
-    // everything else same origin: serve from cache when present, and refresh it in
-    // the background so the next start is current
+    // anything not recognised as build output is left entirely alone, which is what
+    // keeps development working and stops unknown responses accumulating in the cache
+    if(!isCacheableShell(url)){
+        return;
+    }
+
+    // the remaining shell files: serve from cache when present, and refresh in the
+    // background so the next start is current
     event.respondWith((async () => {
 
         const cached = await caches.match(request);
