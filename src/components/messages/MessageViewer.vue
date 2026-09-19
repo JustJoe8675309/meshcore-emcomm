@@ -152,22 +152,46 @@ export default {
         };
     },
     mounted() {
-
-        // init database subscription for messages
-        if(this.type === "contact"){
-            this.messagesSubscription = Database.Message.getContactMessages(this.contact.publicKey).$.subscribe(this.onMessagesUpdated);
-        } else if(this.type === "channel") {
-            this.messagesSubscription = Database.ChannelMessage.getChannelMessages(this.channel.idx).$.subscribe(this.onMessagesUpdated);
-        }
-
-        // update read state
-        this.updateMessagesLastReadAt();
-
+        this.subscribeToMessages();
     },
     unmounted() {
         this.messagesSubscription?.unsubscribe();
     },
+    watch: {
+        // vue router reuses this component when only the route param changes, so
+        // mounted() does not fire again when switching between two channels or two
+        // contacts. without re-subscribing here, the viewer keeps showing messages
+        // from the previously opened conversation, under the new one's header.
+        channel() {
+            this.subscribeToMessages();
+        },
+        contact() {
+            this.subscribeToMessages();
+        },
+    },
     methods: {
+
+        subscribeToMessages() {
+
+            // drop any previous subscription before replacing it
+            this.messagesSubscription?.unsubscribe();
+            this.messagesSubscription = null;
+
+            // clear messages so the previous conversation isn't shown while loading
+            this.messages = [];
+
+            // init database subscription for messages
+            if(this.type === "contact"){
+                this.messagesSubscription = Database.Message.getContactMessages(this.contact.publicKey).$.subscribe(this.onMessagesUpdated);
+            } else if(this.type === "channel") {
+                this.messagesSubscription = Database.ChannelMessage.getChannelMessages(this.channel.idx).$.subscribe(this.onMessagesUpdated);
+            }
+
+            // update read state
+            this.updateMessagesLastReadAt();
+
+        },
+
         async sendMessage(text) {
 
             // can't send if not connected
