@@ -17,10 +17,18 @@ fill it in, and send. Four forms are included:
 
 | Form | Purpose |
 | ---- | ------- |
+| ICS-209 SITREP / Status Report | Situation report from the field |
+| ICS-211 ARES/RACES Check-In | Register your station with net control |
 | ICS-213 General Message | General message traffic between stations |
-| ARES/RACES Check-In | Register your station with net control |
-| SITREP / Status Report | Situation report from the field |
 | ICS-213RR Resource Request | Request personnel, equipment or supplies |
+
+Form names lead with the form number, and the picker sorts by it. Type into the picker to
+filter: `213` narrows to both ICS-213 forms, `check` finds the check-in. Matching is a
+plain case insensitive substring against the whole name. Arrow keys move, Enter selects,
+Escape closes without changing the selection.
+
+These are compact radio versions rather than the full official forms. They carry the same
+traffic in the fields that matter over the air, but do not reproduce the printed layout.
 
 Reports are sent as plain text so any stock MeshCore client can read them. A report renders as a
 short tagged block, and fields left blank are dropped rather than sent as empty tags:

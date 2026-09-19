@@ -71,7 +71,7 @@ const ReportForms = [
     },
     {
         id: "checkin",
-        name: "ARES/RACES Check-In",
+        name: "ICS-211 ARES/RACES Check-In",
         description: "Register your station with net control.",
         header: "CHECK-IN",
         fields: [
@@ -149,7 +149,7 @@ const ReportForms = [
     },
     {
         id: "sitrep",
-        name: "SITREP / Status Report",
+        name: "ICS-209 SITREP / Status Report",
         description: "Situation report from the field.",
         header: "SITREP",
         fields: [

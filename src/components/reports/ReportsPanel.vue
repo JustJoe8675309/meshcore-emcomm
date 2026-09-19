@@ -44,10 +44,10 @@
             <!-- report type -->
             <div class="bg-white border border-gray-300 rounded-lg p-3 space-y-1">
                 <label class="block text-sm font-medium text-gray-900">Report form</label>
-                <select v-model="selectedFormId" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                    <option :value="null" disabled>Select a report...</option>
-                    <option v-for="form of forms" :key="form.id" :value="form.id">{{ form.name }}</option>
-                </select>
+                <SearchableSelect
+                    v-model="selectedFormId"
+                    :options="formOptions"
+                    placeholder="Select a report, or type to filter..."/>
                 <div v-if="selectedForm" class="text-xs text-gray-500">{{ selectedForm.description }}</div>
             </div>
 
@@ -207,9 +207,13 @@ import Utils from "../../js/Utils.js";
 import ReportForms from "../../js/reports/ReportForms.js";
 import ReportEncoder from "../../js/reports/ReportEncoder.js";
 import Airtime from "../../js/reports/Airtime.js";
+import SearchableSelect from "./SearchableSelect.vue";
 
 export default {
     name: 'ReportsPanel',
+    components: {
+        SearchableSelect,
+    },
     data() {
         return {
             destinationType: "channel",
@@ -380,8 +384,18 @@ export default {
     },
     computed: {
 
+        // names start with the form number, so this orders 209, 211, 213, 213RR
         forms() {
-            return ReportForms;
+            return [...ReportForms].sort((a, b) => a.name.localeCompare(b.name));
+        },
+
+        formOptions() {
+            return this.forms.map((form) => {
+                return {
+                    value: form.id,
+                    label: form.name,
+                };
+            });
         },
 
         channels() {
