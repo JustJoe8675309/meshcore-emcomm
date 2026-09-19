@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite"
+    "dev": "vite",
+    "test": "node test/report_encoder.test.mjs && node test/serial_framing.test.mjs"
   },
   "author": "Liam Cottle <liam@liamcottle.com>",
   "license": "MIT",

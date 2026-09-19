@@ -73,6 +73,33 @@ To build for production:
 npm run build
 ```
 
+## Tests
+
+```bash
+npm test
+```
+
+Two suites, no hardware required:
+
+- `test/report_encoder.test.mjs` covers rendering and packet splitting, including a
+  simulation of the firmware's own truncation rule to confirm no part can ever exceed
+  160 bytes on the air. Also covers multi byte characters, surrogate pairs, the exact
+  byte boundary, and part counts that push the `[n/m]` marker into two digits.
+- `test/serial_framing.test.mjs` feeds synthetic device frames through the serial
+  decoder to cover the USB path: frames split byte by byte, split mid header, several
+  frames coalesced into one chunk, and resync after boot noise.
+
+### Known issue: serial resync
+
+The frame parser in `meshcore.js` treats any `0x3e` (`>`) as a frame start and accepts
+whatever two bytes follow as a length, without sanity checking it. Serial noise
+containing a stray `>` can therefore desync the parser indefinitely, swallowing every
+real frame behind it. The last case in `serial_framing.test.mjs` demonstrates this.
+
+This is upstream library behaviour rather than something this fork can fix cleanly. The
+connection watchdog limits the damage: instead of hanging forever you get a "device did
+not respond" message after 15 seconds and can reconnect.
+
 ## Adding your own forms
 
 Forms are data, not code. Add an entry to [`src/js/reports/ReportForms.js`](src/js/reports/ReportForms.js)
