@@ -1,17 +1,145 @@
-self.addEventListener('fetch',function() {
-    // todo implement asset caching to allow using pwa without internet
-    // this is required to meet the requirements for an installable pwa
-    // it allows the browser to ask the user if they want to install to their homescreen
+// Offline support.
+//
+// An emergency communications client that only works while the network is up is
+// not much use during an emergency. Everything this app needs at runtime is local:
+// the radio is on USB or Bluetooth, and messages live in IndexedDB. The only thing
+// standing between it and working with no infrastructure is fetching its own files,
+// which is what this caches.
+//
+// One online load is required first, to populate the cache. After that the app
+// starts with no network at all.
+
+const CACHE_NAME = "meshcore-emcomm-v1";
+
+// the minimum needed to boot. hashed assets are picked up as they are requested,
+// since their names change every build and cannot be listed ahead of time.
+const APP_SHELL = [
+    "/",
+    "/index.html",
+    "/manifest.json",
+    "/icon.png",
+];
+
+// vite's dev server serves modules individually and rewrites them constantly.
+// caching any of that would break hot reload and serve stale code while developing.
+function isDevRequest(url) {
+    return url.pathname.startsWith("/@")
+        || url.pathname.startsWith("/node_modules/")
+        || url.pathname.startsWith("/src/")
+        || url.searchParams.has("t")
+        || url.searchParams.has("import");
+}
+
+// content hashed build output, safe to serve from cache indefinitely
+function isImmutableAsset(url) {
+    return url.pathname.startsWith("/assets/");
+}
+
+async function putInCache(request, response) {
+    // opaque and error responses would poison the cache
+    if(!response || !response.ok || response.type === "opaque"){
+        return;
+    }
+    const cache = await caches.open(CACHE_NAME);
+    await cache.put(request, response.clone());
+}
+
+self.addEventListener("fetch", (event) => {
+
+    const request = event.request;
+
+    // only ever cache plain GETs of our own files
+    if(request.method !== "GET"){
+        return;
+    }
+
+    const url = new URL(request.url);
+    if(url.origin !== self.location.origin || isDevRequest(url)){
+        return;
+    }
+
+    // the page itself: prefer the network so a new deploy is picked up, but fall
+    // back to the cached shell when there is nothing to reach. the app uses hash
+    // routing, so every route is served by the same document.
+    if(request.mode === "navigate"){
+        event.respondWith((async () => {
+            try {
+                const response = await fetch(request);
+                await putInCache(request, response);
+                return response;
+            } catch(e) {
+                const cached = await caches.match(request) || await caches.match("/index.html") || await caches.match("/");
+                if(cached){
+                    return cached;
+                }
+                throw e;
+            }
+        })());
+        return;
+    }
+
+    // hashed assets never change under the same name, so cache first and skip the
+    // network entirely once they are held
+    if(isImmutableAsset(url)){
+        event.respondWith((async () => {
+            const cached = await caches.match(request);
+            if(cached){
+                return cached;
+            }
+            const response = await fetch(request);
+            await putInCache(request, response);
+            return response;
+        })());
+        return;
+    }
+
+    // everything else same origin: serve from cache when present, and refresh it in
+    // the background so the next start is current
+    event.respondWith((async () => {
+
+        const cached = await caches.match(request);
+
+        const networkFetch = fetch(request).then(async (response) => {
+            await putInCache(request, response);
+            return response;
+        });
+
+        if(cached){
+            // do not let a failed background refresh surface as an error
+            event.waitUntil(networkFetch.catch(() => {}));
+            return cached;
+        }
+
+        return networkFetch;
+
+    })());
+
 });
 
 // allow service worker to install updates without waiting force existing tabs to be closed
-self.addEventListener('install', (event) => {
-    event.waitUntil(self.skipWaiting());
+self.addEventListener("install", (event) => {
+    event.waitUntil((async () => {
+        // best effort: a missing shell file should not block installation
+        try {
+            const cache = await caches.open(CACHE_NAME);
+            await cache.addAll(APP_SHELL);
+        } catch(e) {
+            console.log("service worker: failed to precache app shell", e);
+        }
+        await self.skipWaiting();
+    })());
 });
 
 // ensure we claim clients so the service worker can interact with them
-self.addEventListener('activate', (event) => {
-    event.waitUntil(self.clients.claim());
+self.addEventListener("activate", (event) => {
+    event.waitUntil((async () => {
+        // drop caches from previous versions so old builds are not kept forever
+        const names = await caches.keys();
+        await Promise.all(names
+            .filter((name) => name !== CACHE_NAME)
+            .map((name) => caches.delete(name)));
+        await self.clients.claim();
+    })());
 });
 
 // handle push notification click

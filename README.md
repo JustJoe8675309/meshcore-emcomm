@@ -93,7 +93,32 @@ Upstream hardcoded a single "Public Channel". This fork upgrades `@liamcottle/me
 1.2.0 to 1.15.0 and enumerates the channels actually configured on the device via `getChannels()`,
 falling back to the public channel if the firmware does not support the command.
 
+### Works offline
+
+An emergency client that only runs while the network is up is not much use in an
+emergency. Everything needed at runtime is already local: the radio is on USB or
+Bluetooth, and messages are stored in IndexedDB. The service worker caches the app's
+own files so it starts with no network at all.
+
+One online load is needed first to populate the cache. After that, pull the plug on
+the network and the app still opens, routes and talks to the radio. This was verified
+by stopping the web server entirely and reloading.
+
+Installing it (Chrome's "Install app") is worth doing for field use: it opens in its
+own window with no browser chrome, and the cache is what makes that work when
+disconnected.
+
+Hashed build assets are cached as they are requested, since their names change every
+build. The page itself is fetched network first so a new deployment is picked up when
+online, and served from cache when not.
+
 ## Running it
+
+This is a web app, not a native application. It runs in Chromium based browsers and
+can be installed as a PWA on Windows and Android, which is what makes it feel like an
+app. Connecting to a device needs Web Serial or Web Bluetooth, so Chrome or Edge:
+Safari and Firefox support neither. On Android, Web Bluetooth has worked for years and
+Web Serial arrived in Chrome 148.
 
 Requires Node.js 18 or newer.
 
