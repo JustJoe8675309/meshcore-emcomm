@@ -3,7 +3,7 @@
         <div class="p-3 space-y-3">
 
             <!-- where the report is sent -->
-            <div class="bg-white border border-gray-300 rounded-lg p-3 space-y-3">
+            <fieldset :disabled="isSending" class="bg-white border border-gray-300 rounded-lg p-3 space-y-3 disabled:opacity-60">
 
                 <div class="space-y-1">
                     <label class="block text-sm font-medium text-gray-900">Send to</label>
@@ -40,20 +40,20 @@
                     </div>
                 </div>
 
-            </div>
+            </fieldset>
 
             <!-- report type -->
-            <div class="bg-white border border-gray-300 rounded-lg p-3 space-y-1">
+            <fieldset :disabled="isSending" class="bg-white border border-gray-300 rounded-lg p-3 space-y-1 disabled:opacity-60">
                 <label class="block text-sm font-medium text-gray-900">Report form</label>
                 <SearchableSelect
                     v-model="selectedFormId"
                     :options="formOptions"
                     placeholder="Select a report, or type to filter..."/>
                 <div v-if="selectedForm" class="text-xs text-gray-500">{{ selectedForm.description }}</div>
-            </div>
+            </fieldset>
 
             <!-- form fields -->
-            <div v-if="selectedForm" class="bg-white border border-gray-300 rounded-lg p-3 space-y-3">
+            <fieldset v-if="selectedForm" :disabled="isSending" class="bg-white border border-gray-300 rounded-lg p-3 space-y-3 disabled:opacity-60">
 
                 <div v-for="field of selectedForm.fields" :key="field.id" class="space-y-1">
 
@@ -102,7 +102,7 @@
 
                 </div>
 
-            </div>
+            </fieldset>
 
             <!-- what will actually be transmitted -->
             <div v-if="selectedForm && prepared" class="bg-white border border-gray-300 rounded-lg p-3 space-y-2">
@@ -142,7 +142,7 @@
 
                 <!-- a long report can hold the channel for minutes, so it takes a second
                      deliberate press. cancel returns to the form with everything intact. -->
-                <div v-if="isConfirming" class="bg-amber-50 border border-amber-300 rounded-lg p-3 space-y-2">
+                <div v-if="isConfirming && prepared && prepared.parts" class="bg-amber-50 border border-amber-300 rounded-lg p-3 space-y-2">
 
                     <div class="text-sm font-semibold text-gray-900">Confirm transmission</div>
 
@@ -365,6 +365,8 @@ export default {
             this.isConfirming = false;
             this.isSending = true;
 
+            var sentEverything = false;
+
             try {
 
                 for(let i = 0; i < parts.length; i++){
@@ -384,7 +386,20 @@ export default {
 
                 }
 
-                // show the operator the report landing in the conversation
+                sentEverything = true;
+
+            } catch(e) {
+                console.log(e);
+                alert(`Failed to send report. ${parts.length > 1 ? `Part ${this.sendingPartIndex + 1} of ${parts.length} did not send.` : ""}`);
+            }
+
+            this.isSending = false;
+            this.sendingPartIndex = 0;
+
+            // show the operator the report landing in the conversation.
+            // deliberately outside the try: navigating is not part of transmitting, and
+            // a routing failure must never be reported as a failed send.
+            if(sentEverything){
                 if(isContact){
                     await this.$router.push({
                         name: "contact.messages",
@@ -400,14 +415,7 @@ export default {
                         },
                     });
                 }
-
-            } catch(e) {
-                console.log(e);
-                alert(`Failed to send report. ${parts.length > 1 ? `Part ${this.sendingPartIndex + 1} of ${parts.length} did not send.` : ""}`);
             }
-
-            this.isSending = false;
-            this.sendingPartIndex = 0;
 
         },
 
@@ -583,8 +591,13 @@ export default {
 
         },
 
+        // deliberately not gated on being connected or having a destination: copying
+        // is an offline action. it is gated on the report being complete, so an
+        // incomplete form cannot hand over a stub that reads like a finished report.
         canCopy() {
-            return (this.prepared?.text ?? "") !== "";
+            return this.prepared != null
+                && this.prepared.text !== ""
+                && this.prepared.missingRequiredFields.length === 0;
         },
 
         canSend() {

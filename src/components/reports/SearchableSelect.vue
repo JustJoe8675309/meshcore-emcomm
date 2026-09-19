@@ -24,6 +24,7 @@
             <div
                 v-for="(option, index) of filteredOptions"
                 :key="option.value"
+                :data-option-index="index"
                 @mousedown.prevent="select(option)"
                 @mouseenter="highlightedIndex = index"
                 class="flex items-center justify-between space-x-2 px-3 py-2 text-sm cursor-pointer"
@@ -70,7 +71,21 @@ export default {
             highlightedIndex: 0,
         };
     },
+    watch: {
+        highlightedIndex() {
+            this.scrollHighlightedIntoView();
+        },
+    },
     methods: {
+
+        scrollHighlightedIntoView() {
+            this.$nextTick(() => {
+                const row = this.$el?.querySelector(`[data-option-index="${this.highlightedIndex}"]`);
+                // "nearest" scrolls only far enough to reveal the row, so the list
+                // does not jump around while stepping through it
+                row?.scrollIntoView({ block: "nearest" });
+            });
+        },
 
         open() {
             this.isOpen = true;
@@ -78,6 +93,7 @@ export default {
             // current selection shown as the placeholder
             this.query = "";
             this.highlightedIndex = Math.max(this.filteredOptions.findIndex((option) => option.value === this.modelValue), 0);
+            this.scrollHighlightedIntoView();
         },
 
         close() {
