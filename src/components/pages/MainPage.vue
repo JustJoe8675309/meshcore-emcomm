@@ -9,6 +9,7 @@
             <div class="-mb-px flex">
                 <div @click="tab = 'contacts'" class="w-full border-b-2 py-3 px-1 text-center text-sm font-medium cursor-pointer" :class="[ tab === 'contacts' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700']">Contacts</div>
                 <div @click="tab = 'channels'" class="w-full border-b-2 py-3 px-1 text-center text-sm font-medium cursor-pointer" :class="[ tab === 'channels' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700']">Channels</div>
+                <div @click="tab = 'reports'" class="w-full border-b-2 py-3 px-1 text-center text-sm font-medium cursor-pointer" :class="[ tab === 'reports' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700']">Reports</div>
             </div>
         </div>
 
@@ -16,6 +17,7 @@
         <div v-if="GlobalState.connection || (contacts.length > 0 || channels.length > 0)" class="flex h-full w-full overflow-hidden">
             <ContactsList v-if="tab === 'contacts'" :contacts="contacts" @contact-click="onContactClick"/>
             <ChannelsList v-if="tab === 'channels'" :channels="channels" @channel-click="onChannelClick"/>
+            <ReportsPanel v-if="tab === 'reports'"/>
         </div>
 
         <!-- not connected and no content -->
@@ -35,10 +37,12 @@ import ConnectButtons from "../connect/ConnectButtons.vue";
 import ContactsList from "../contacts/ContactsList.vue";
 import Utils from "../../js/Utils.js";
 import ChannelsList from "../channels/ChannelsList.vue";
+import ReportsPanel from "../reports/ReportsPanel.vue";
 
 export default {
     name: 'MainPage',
     components: {
+        ReportsPanel,
         ChannelsList,
         ContactsList,
         ConnectButtons,

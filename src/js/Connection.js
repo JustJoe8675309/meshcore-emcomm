@@ -1,5 +1,5 @@
 import GlobalState from "./GlobalState.js";
-import {BleConnection, Constants, SerialConnection} from "@liamcottle/meshcore.js";
+import {Constants, WebBleConnection, WebSerialConnection} from "@liamcottle/meshcore.js";
 import Database from "./Database.js";
 import Utils from "./Utils.js";
 import NotificationUtils from "./NotificationUtils.js";
@@ -11,7 +11,7 @@ class Connection {
 
     static async connectViaBluetooth() {
         try {
-            await this.connect(await BleConnection.open());
+            await this.connect(await WebBleConnection.open());
             return true;
         } catch(e) {
 
@@ -32,7 +32,7 @@ class Connection {
 
     static async connectViaSerial() {
         try {
-            await this.connect(await SerialConnection.open());
+            await this.connect(await WebSerialConnection.open());
             return true;
         } catch(e) {
 
@@ -180,15 +180,49 @@ class Connection {
         GlobalState.contacts = await GlobalState.connection.getContacts();
     }
 
-    static async loadChannels() {
-        // todo fetch from device when implemented in firmware
-        GlobalState.channels = [
+    // used when the device can't tell us which channels it has configured
+    static get defaultChannels() {
+        return [
             {
                 idx: 0,
                 name: "Public Channel",
                 description: "This is the default public channel.",
             },
         ];
+    }
+
+    static async loadChannels() {
+
+        // ask the device which channels it has configured.
+        // older firmware doesn't support this command and may never reply,
+        // so this is guarded by a timeout and falls back to the public channel.
+        try {
+
+            const channels = await Utils.withTimeout(GlobalState.connection.getChannels(), 10000);
+
+            // unused channel slots come back with an empty name, so skip those.
+            // the rest of the app identifies a channel by "idx", so normalise "channelIdx" here.
+            const configuredChannels = channels
+                .filter((channel) => channel.name != null && channel.name.trim() !== "")
+                .map((channel) => {
+                    return {
+                        idx: channel.channelIdx,
+                        name: channel.name,
+                        secret: channel.secret,
+                    };
+                });
+
+            if(configuredChannels.length > 0){
+                GlobalState.channels = configuredChannels;
+                return;
+            }
+
+        } catch(e) {
+            console.log("failed to load channels from device, falling back to default channels", e);
+        }
+
+        GlobalState.channels = this.defaultChannels;
+
     }
 
     static async updateBatteryPercentage() {

@@ -4,6 +4,17 @@ class Utils {
         return await new Promise((resolve, reject) => setTimeout(resolve, millis));
     }
 
+    // rejects if the provided promise doesn't settle in time
+    // used to guard against firmware that never replies to a command
+    static async withTimeout(promise, millis) {
+        return await Promise.race([
+            promise,
+            new Promise((resolve, reject) => {
+                setTimeout(() => reject(new Error("timed out")), millis);
+            }),
+        ]);
+    }
+
     static bytesToHex(uint8Array) {
         return Array.from(uint8Array).map(byte => byte.toString(16).padStart(2, '0')).join('');
     }

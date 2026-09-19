@@ -89,6 +89,10 @@ if(navigator.serviceWorker){
 // this allows typing "Connection.log = true" in Chrome dev tools
 window.Connection = Connection;
 
+// access GlobalState from window
+// this allows inspecting app state, and demoing the ui without a device attached
+window.GlobalState = GlobalState;
+
 createApp(App)
     .use(router)
     .use(vClickOutside)
