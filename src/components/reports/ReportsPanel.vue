@@ -153,6 +153,42 @@
 
                 <div v-if="validationMessage" role="status" class="text-xs text-red-600">{{ validationMessage }}</div>
 
+                <!-- a failure part way through a multi part report leaves the earlier
+                     messages already transmitted, so offer to finish rather than repeat -->
+                <div v-if="sendFailure" role="alert" class="bg-red-50 border border-red-300 rounded-lg p-3 space-y-2">
+
+                    <div class="text-sm font-semibold text-red-800">Transmission failed</div>
+
+                    <div class="text-sm text-red-900">
+                        <template v-if="sendFailure.totalParts > 1">
+                            {{ sendFailure.sentCount }} of {{ sendFailure.totalParts }} messages were sent to
+                            <span class="font-semibold">{{ sendFailure.destination.name }}</span>.
+                            Message {{ sendFailure.sentCount + 1 }} did not go out.
+                        </template>
+                        <template v-else>
+                            Nothing was sent to <span class="font-semibold">{{ sendFailure.destination.name }}</span>.
+                        </template>
+                    </div>
+
+                    <div class="flex space-x-2 pt-1">
+                        <button
+                            @click="dismissFailure"
+                            :disabled="isSending"
+                            type="button"
+                            class="w-full bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg px-5 py-2.5">
+                            Dismiss
+                        </button>
+                        <button
+                            @click="resumeSend"
+                            :disabled="isSending"
+                            type="button"
+                            class="w-full bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg px-5 py-2.5">
+                            {{ resumeButtonLabel }}
+                        </button>
+                    </div>
+
+                </div>
+
                 <!-- a long report can hold the channel for minutes, so it takes a second
                      deliberate press. cancel returns to the form with everything intact. -->
                 <div v-if="isConfirming && prepared && prepared.parts" role="alertdialog" aria-labelledby="report-confirm-heading" class="bg-amber-50 border border-amber-300 rounded-lg p-3 space-y-2">
@@ -255,6 +291,7 @@ export default {
             values: {},
             isConfirming: false,
             isSending: false,
+            sendFailure: null,
             sendingPartIndex: 0,
         };
     },
@@ -320,6 +357,7 @@ export default {
         resetForm() {
 
             this.isConfirming = false;
+            this.sendFailure = null;
 
             const values = {};
 
@@ -383,27 +421,61 @@ export default {
                 return;
             }
 
-            const parts = this.prepared.parts;
-            const isContact = this.destinationType === "contact";
-            const contact = this.selectedContact;
-            const channel = this.selectedChannel;
+            // the destination is captured with the parts. a resume must go to the same
+            // place as the messages that already went out, whatever the panel shows by then.
+            const destination = {
+                isContact: this.destinationType === "contact",
+                contact: this.selectedContact,
+                channel: this.selectedChannel,
+                name: this.destinationName,
+            };
 
             this.isConfirming = false;
+
+            await this.transmit(this.prepared.parts, destination, 0);
+
+        },
+
+        // picks up where a partial send stopped, retransmitting only what never went out
+        async resumeSend() {
+
+            const failure = this.sendFailure;
+            if(!failure){
+                return;
+            }
+
+            await this.transmit(failure.allParts, failure.destination, failure.sentCount);
+
+        },
+
+        dismissFailure() {
+            this.sendFailure = null;
+        },
+
+        // sends parts from startIndex onwards, recording exactly how many made it so a
+        // failure half way through a multi part report can be finished rather than
+        // repeated. resending parts that already arrived is not harmless: the receiving
+        // operator sees the same numbered fragment twice.
+        async transmit(parts, destination, startIndex) {
+
+            this.sendFailure = null;
             this.isSending = true;
 
-            var sentEverything = false;
+            var sentCount = startIndex;
 
             try {
 
-                for(let i = 0; i < parts.length; i++){
+                for(let i = startIndex; i < parts.length; i++){
 
                     this.sendingPartIndex = i;
 
-                    if(isContact){
-                        await Connection.sendMessage(contact.publicKey, parts[i]);
+                    if(destination.isContact){
+                        await Connection.sendMessage(destination.contact.publicKey, parts[i]);
                     } else {
-                        await Connection.sendChannelMessage(channel.idx, parts[i]);
+                        await Connection.sendChannelMessage(destination.channel.idx, parts[i]);
                     }
+
+                    sentCount = i + 1;
 
                     // space the parts out so we don't flood the channel
                     if(i < parts.length - 1){
@@ -412,35 +484,40 @@ export default {
 
                 }
 
-                sentEverything = true;
-
             } catch(e) {
                 console.log(e);
-                alert(`Failed to send report. ${parts.length > 1 ? `Part ${this.sendingPartIndex + 1} of ${parts.length} did not send.` : ""}`);
+                this.sendFailure = {
+                    allParts: parts,
+                    destination: destination,
+                    sentCount: sentCount,
+                    totalParts: parts.length,
+                };
             }
 
             this.isSending = false;
             this.sendingPartIndex = 0;
 
+            if(this.sendFailure){
+                return;
+            }
+
             // show the operator the report landing in the conversation.
             // deliberately outside the try: navigating is not part of transmitting, and
             // a routing failure must never be reported as a failed send.
-            if(sentEverything){
-                if(isContact){
-                    await this.$router.push({
-                        name: "contact.messages",
-                        params: {
-                            publicKey: contact.publicKeyHex,
-                        },
-                    });
-                } else {
-                    await this.$router.push({
-                        name: "channel.messages",
-                        params: {
-                            channelIdx: channel.idx.toString(),
-                        },
-                    });
-                }
+            if(destination.isContact){
+                await this.$router.push({
+                    name: "contact.messages",
+                    params: {
+                        publicKey: destination.contact.publicKeyHex,
+                    },
+                });
+            } else {
+                await this.$router.push({
+                    name: "channel.messages",
+                    params: {
+                        channelIdx: destination.channel.idx.toString(),
+                    },
+                });
             }
 
         },
@@ -634,6 +711,21 @@ export default {
             return !this.isSending
                 && this.validationMessage === null
                 && this.prepared?.parts?.length > 0;
+        },
+
+        resumeButtonLabel() {
+
+            if(!this.sendFailure){
+                return "";
+            }
+
+            const remaining = this.sendFailure.totalParts - this.sendFailure.sentCount;
+            if(this.sendFailure.sentCount > 0){
+                return `Send remaining ${remaining}`;
+            }
+
+            return "Try again";
+
         },
 
         sendButtonLabel() {
