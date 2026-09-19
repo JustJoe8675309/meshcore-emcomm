@@ -124,5 +124,80 @@ check("empty text returns no parts", ReportEncoder.splitIntoParts("", budget).le
 // a budget too small to hold even a part marker is unsendable, the UI reports this
 check("unsendably small budget returns null rather than hanging", ReportEncoder.splitIntoParts("hello world", 1) === null);
 
+console.log("\n=== 4. destination budgets ===");
+{
+    // channel messages carry a "<sender name>: " prefix inside the 160 byte limit
+    const channelBudget = ReportEncoder.getTextBudget("channel", "Joe-KJ5HBN-HTv3");
+    check("channel budget is 143 for a 15 char node name", channelBudget === 143, `got ${channelBudget}`);
+
+    // direct messages carry no prefix, so the whole limit is available
+    const contactBudget = ReportEncoder.getTextBudget("contact", "Joe-KJ5HBN-HTv3");
+    check("contact budget is the full 160, independent of node name", contactBudget === 160, `got ${contactBudget}`);
+    check("contact budget ignores a very long node name",
+        ReportEncoder.getTextBudget("contact", "A".repeat(60)) === 160);
+}
+
+console.log("\n=== 5. a large body splits into as many parts as needed ===");
+{
+    const node = "Joe-KJ5HBN-HTv3";
+
+    for (const destination of ["channel", "contact"]) {
+
+        const budget = ReportEncoder.getTextBudget(destination, node);
+        const overhead = destination === "channel" ? enc(`${node}: `) : 0;
+        let previousPartCount = 0;
+        const observed = [];
+
+        for (const bodyLength of [100, 500, 1000, 2000, 5000, 10000]) {
+
+            // a realistic body of words, so it splits on whitespace like real traffic
+            const body = "situation ".repeat(Math.ceil(bodyLength / 10)).slice(0, bodyLength).trim();
+            const values = { ...sampleValues.ics213, message: body };
+            const result = ReportEncoder.prepare(ics213, values, node, destination);
+            const parts = result.parts;
+
+            const allFit = parts !== null && parts.every((p) => enc(p) <= budget);
+            const onAirOk = parts !== null && parts.every((p) => enc(p) + overhead <= MAX_TEXT_LEN);
+            const grew = parts !== null && parts.length >= previousPartCount;
+            const numbered = parts !== null && (parts.length === 1 || parts.every((p, i) => p.startsWith(`[${i + 1}/${parts.length}] `)));
+
+            // strip markers and rejoin, whitespace normalised, to confirm nothing was dropped
+            const rejoined = parts === null ? "" : parts.map((p) => p.replace(/^\[\d+\/\d+\] /, "")).join(" ");
+            const norm = (x) => x.replace(/\s+/g, " ").trim();
+            const intact = norm(rejoined) === norm(result.text);
+
+            const maxOnAir = parts === null ? -1 : Math.max(...parts.map((p) => enc(p) + overhead));
+            check(`${destination}: ${String(bodyLength).padStart(5)} char body -> ${String(parts?.length).padStart(3)} part(s), max ${maxOnAir}b on air`,
+                allFit && onAirOk && grew && numbered && intact,
+                `fit=${allFit} onAir=${onAirOk} grew=${grew} numbered=${numbered} intact=${intact}`);
+
+            observed.push(parts === null ? 0 : parts.length);
+            previousPartCount = parts === null ? 0 : parts.length;
+
+        }
+
+        check(`${destination}: part count scales with body size (${observed.join(" -> ")})`,
+            observed[observed.length - 1] > observed[0] * 10);
+
+    }
+}
+
+console.log("\n=== 6. very large bodies ===");
+{
+    const budget = ReportEncoder.getTextBudget("contact", "n");
+
+    const big = "word ".repeat(2000);
+    const parts = ReportEncoder.splitIntoParts(big, budget);
+    check(`10000 byte body splits into ${parts?.length} parts, all within budget`,
+        parts !== null && parts.every((p) => enc(p) <= budget),
+        parts === null ? "returned null" : `max ${Math.max(...parts.map(enc))}`);
+
+    // splitIntoParts tries part counts up to 99, beyond that it reports failure
+    const enormous = "word ".repeat(20000);
+    const tooBig = ReportEncoder.splitIntoParts(enormous, budget);
+    check("a body too large for 99 parts returns null rather than dropping content",
+        tooBig === null, tooBig === null ? "" : `got ${tooBig.length} parts`);
+}
+
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : failures + " CHECK(S) FAILED"}`);
 process.exit(failures === 0 ? 0 : 1);

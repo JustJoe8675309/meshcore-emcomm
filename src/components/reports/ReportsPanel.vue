@@ -2,15 +2,43 @@
     <div class="w-full overflow-y-auto bg-gray-50">
         <div class="p-3 space-y-3">
 
-            <!-- channel to transmit on -->
-            <div class="bg-white border border-gray-300 rounded-lg p-3 space-y-1">
-                <label class="block text-sm font-medium text-gray-900">Send on channel</label>
-                <select v-model="selectedChannelIdx" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                    <option v-for="channel of channels" :key="channel.idx" :value="channel.idx">{{ channel.name }}</option>
-                </select>
-                <div v-if="channels.length === 0" class="text-xs text-red-600">
-                    No channels available. Connect to your device first.
+            <!-- where the report is sent -->
+            <div class="bg-white border border-gray-300 rounded-lg p-3 space-y-3">
+
+                <div class="space-y-1">
+                    <label class="block text-sm font-medium text-gray-900">Send to</label>
+                    <select v-model="destinationType" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                        <option value="channel">Channel</option>
+                        <option value="contact">Contact</option>
+                    </select>
                 </div>
+
+                <!-- broadcast to everyone holding the channel secret -->
+                <div v-if="destinationType === 'channel'" class="space-y-1">
+                    <label class="block text-sm font-medium text-gray-900">Channel</label>
+                    <select v-model="selectedChannelIdx" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                        <option v-for="channel of channels" :key="channel.idx" :value="channel.idx">{{ channel.name }}</option>
+                    </select>
+                    <div v-if="channels.length === 0" class="text-xs text-red-600">
+                        No channels available. Connect to your device first.
+                    </div>
+                </div>
+
+                <!-- direct to a single station -->
+                <div v-else class="space-y-1">
+                    <label class="block text-sm font-medium text-gray-900">Contact</label>
+                    <select v-model="selectedContactPublicKey" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                        <option :value="null" disabled>Select a contact...</option>
+                        <option v-for="contact of chatContacts" :key="contact.publicKeyHex" :value="contact.publicKeyHex">{{ contact.name }}</option>
+                    </select>
+                    <div v-if="chatContacts.length === 0" class="text-xs text-red-600">
+                        No messageable contacts. Only chat contacts can receive a report.
+                    </div>
+                    <div v-else class="text-xs text-gray-500">
+                        Sent directly to one station, with delivery confirmation.
+                    </div>
+                </div>
+
             </div>
 
             <!-- report type -->
@@ -135,6 +163,7 @@
 </template>
 
 <script>
+import { Constants } from "@liamcottle/meshcore.js";
 import GlobalState from "../../js/GlobalState.js";
 import Connection from "../../js/Connection.js";
 import Utils from "../../js/Utils.js";
@@ -145,7 +174,9 @@ export default {
     name: 'ReportsPanel',
     data() {
         return {
+            destinationType: "channel",
             selectedChannelIdx: null,
+            selectedContactPublicKey: null,
             selectedFormId: null,
             values: {},
             isSending: false,
@@ -221,11 +252,13 @@ export default {
             }
 
             const parts = this.prepared.parts;
+            const isContact = this.destinationType === "contact";
+            const contact = this.selectedContact;
             const channel = this.selectedChannel;
 
             // sending several messages costs real airtime, so make the operator confirm
             if(parts.length > 1){
-                const confirmed = confirm(`This report will be sent as ${parts.length} separate messages on "${channel.name}". Send it?`);
+                const confirmed = confirm(`This report will be sent as ${parts.length} separate messages to "${this.destinationName}". Send it?`);
                 if(!confirmed){
                     return;
                 }
@@ -239,7 +272,11 @@ export default {
 
                     this.sendingPartIndex = i;
 
-                    await Connection.sendChannelMessage(channel.idx, parts[i]);
+                    if(isContact){
+                        await Connection.sendMessage(contact.publicKey, parts[i]);
+                    } else {
+                        await Connection.sendChannelMessage(channel.idx, parts[i]);
+                    }
 
                     // space the parts out so we don't flood the channel
                     if(i < parts.length - 1){
@@ -248,13 +285,22 @@ export default {
 
                 }
 
-                // show the operator the report landing on the channel
-                await this.$router.push({
-                    name: "channel.messages",
-                    params: {
-                        channelIdx: channel.idx.toString(),
-                    },
-                });
+                // show the operator the report landing in the conversation
+                if(isContact){
+                    await this.$router.push({
+                        name: "contact.messages",
+                        params: {
+                            publicKey: contact.publicKeyHex,
+                        },
+                    });
+                } else {
+                    await this.$router.push({
+                        name: "channel.messages",
+                        params: {
+                            channelIdx: channel.idx.toString(),
+                        },
+                    });
+                }
 
             } catch(e) {
                 console.log(e);
@@ -281,6 +327,31 @@ export default {
             return this.channels.find((channel) => channel.idx === this.selectedChannelIdx) ?? null;
         },
 
+        // only chat contacts can receive a message, repeaters and rooms cannot
+        chatContacts() {
+            return GlobalState.contacts
+                .filter((contact) => contact.type === Constants.AdvType.Chat)
+                .map((contact) => {
+                    return {
+                        name: contact.advName,
+                        publicKey: contact.publicKey,
+                        publicKeyHex: Utils.bytesToHex(contact.publicKey),
+                    };
+                })
+                .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
+        },
+
+        selectedContact() {
+            return this.chatContacts.find((contact) => contact.publicKeyHex === this.selectedContactPublicKey) ?? null;
+        },
+
+        // name of whichever destination is currently selected
+        destinationName() {
+            return this.destinationType === "contact"
+                ? this.selectedContact?.name ?? null
+                : this.selectedChannel?.name ?? null;
+        },
+
         selectedForm() {
             return this.forms.find((form) => form.id === this.selectedFormId) ?? null;
         },
@@ -296,7 +367,7 @@ export default {
                 return null;
             }
 
-            return ReportEncoder.prepare(this.selectedForm, this.values, this.nodeName);
+            return ReportEncoder.prepare(this.selectedForm, this.values, this.nodeName, this.destinationType);
 
         },
 
@@ -326,7 +397,11 @@ export default {
                 return "Not connected to a device.";
             }
 
-            if(!this.selectedChannel){
+            if(this.destinationType === "contact" && !this.selectedContact){
+                return "Select a contact to send to.";
+            }
+
+            if(this.destinationType === "channel" && !this.selectedChannel){
                 return "Select a channel to send on.";
             }
 

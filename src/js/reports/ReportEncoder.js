@@ -25,10 +25,33 @@ class ReportEncoder {
     /**
      * How many bytes of message text we can send on a channel.
      * The firmware prepends "<sender name>: " and that eats into the same budget.
+     * Anything over the limit is silently truncated by sendGroupMessage().
      */
     static getChannelTextBudget(nodeName) {
         const prefix = `${nodeName ?? ""}: `;
         return this.MAX_TEXT_LEN - this.byteLength(prefix);
+    }
+
+    /**
+     * How many bytes of message text we can send directly to a contact.
+     *
+     * Direct messages carry no sender name prefix, because the recipient knows who
+     * sent it from the public key, so the whole budget is available. Note that
+     * composeMsgPacket() rejects an over length message outright rather than
+     * truncating it, so exceeding this fails the send instead of silently
+     * shortening it.
+     */
+    static getContactTextBudget() {
+        return this.MAX_TEXT_LEN;
+    }
+
+    /**
+     * Budget for whichever destination the operator picked.
+     */
+    static getTextBudget(destinationType, nodeName) {
+        return destinationType === "contact"
+            ? this.getContactTextBudget()
+            : this.getChannelTextBudget(nodeName);
     }
 
     /**
@@ -194,10 +217,10 @@ class ReportEncoder {
      * Used both for the live preview and for sending, so what the operator sees
      * on screen is byte for byte what goes out over the air.
      */
-    static prepare(form, values, nodeName) {
+    static prepare(form, values, nodeName, destinationType = "channel") {
 
         const text = this.renderReport(form, values);
-        const budgetBytes = this.getChannelTextBudget(nodeName);
+        const budgetBytes = this.getTextBudget(destinationType, nodeName);
         const parts = this.splitIntoParts(text, budgetBytes);
 
         return {
