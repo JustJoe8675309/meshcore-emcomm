@@ -50,8 +50,10 @@ direct to a single station. Only chat contacts are offered, since repeaters and 
 cannot receive a message, and no contact is selected by default so a report cannot be
 sent to the wrong station by a stray click.
 
-Both pickers filter as you type, which matters more for contacts than forms: a busy mesh
-gives you hundreds, and typing `kj5` to narrow to your own stations beats scrolling.
+Every picker, form, channel and contact, filters as you type on a case insensitive
+substring. It matters most for contacts, where a busy mesh gives you hundreds and typing
+`kj5` to reach your own stations beats scrolling, but it is useful on channels too:
+`#` lists only the hashtag channels, `dac` goes straight to `#dac-ares`.
 
 Direct messages are acknowledged, so the app shows **Delivered** once the recipient
 confirms receipt. Channel messages are broadcast and have no acknowledgement, so there is

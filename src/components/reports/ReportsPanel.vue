@@ -16,9 +16,10 @@
                 <!-- broadcast to everyone holding the channel secret -->
                 <div v-if="destinationType === 'channel'" class="space-y-1">
                     <label class="block text-sm font-medium text-gray-900">Channel</label>
-                    <select v-model="selectedChannelIdx" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                        <option v-for="channel of channels" :key="channel.idx" :value="channel.idx">{{ channel.name }}</option>
-                    </select>
+                    <SearchableSelect
+                        v-model="selectedChannelIdx"
+                        :options="channelOptions"
+                        placeholder="Select a channel, or type to filter..."/>
                     <div v-if="channels.length === 0" class="text-xs text-red-600">
                         No channels available. Connect to your device first.
                     </div>
@@ -403,6 +404,17 @@ export default {
                 return {
                     value: contact.publicKeyHex,
                     label: contact.name,
+                };
+            });
+        },
+
+        // the value stays a number here, unlike the string ids elsewhere, because
+        // selectedChannel matches on idx with strict equality
+        channelOptions() {
+            return this.channels.map((channel) => {
+                return {
+                    value: channel.idx,
+                    label: channel.name,
                 };
             });
         },
