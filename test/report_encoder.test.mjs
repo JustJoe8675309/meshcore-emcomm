@@ -41,6 +41,42 @@ const sampleValues = {
         item: "Portable generator 5kW", qty: "2", needed_by: "1200L 20 SEP",
         deliver_to: "Staging Area B", priority: "IMMEDIATE", requested_by: "K7ABC",
     },
+    checkout: {
+        callsign: "K7ABC", datetime: "191830L SEP", location: "Station 12",
+        comments: "Returning to service 0600",
+    },
+    netsummary: {
+        net: "DAC ARES Evening Net", datetime: "191830L SEP", control: "K7ABC",
+        checkins: "14", traffic: "3", next_net: "1900L tomorrow",
+    },
+    welfare: {
+        type: "REPLY", name: "J. Smith", address: "42 Main St, Las Cruces",
+        status: "SAFE", contact: "sister, M. Smith",
+        message: "Sheltering with family, no injuries, phone out.",
+    },
+    shelter: {
+        name: "Lincoln Middle School", datetime: "191830L SEP", status: "OPEN",
+        population: "40", capacity: "120", needs: "Cots x20, infant formula",
+    },
+    damage: {
+        datetime: "191830L SEP", location: "1400 blk Alameda", type: "STRUCTURE",
+        severity: "MAJOR", casualties: "NONE",
+        description: "Roof partially collapsed, building evacuated.",
+    },
+    route: {
+        datetime: "191830L SEP", route: "US-70", segment: "MM 12 to MM 18",
+        status: "CLOSED", cause: "Debris flow", detour: "North via Ridge St",
+    },
+    skywarn: {
+        spotter: "K7ABC", datetime: "191830L SEP", location: "3 mi NW of Anthony",
+        event: "HAIL", measurement: "1.00 in", direction: "NE",
+        description: "Quarter sized hail, brief, no wind damage observed.",
+    },
+    salute: {
+        size: "6 people, 2 vehicles", activity: "Clearing debris from roadway",
+        location: "1400 blk Alameda", unit: "County road crew",
+        datetime: "191830L SEP", equipment: "1 backhoe, 1 dump truck",
+    },
 };
 
 const nodeName = "K7ABC";

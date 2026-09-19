@@ -61,6 +61,10 @@ class ReportEncoder {
      */
     static renderReport(form, values) {
 
+        // callers should pass a values object, but a form with nothing filled in yet
+        // is a normal state and must not throw
+        values = values ?? {};
+
         const lines = [
             form.header,
         ];
@@ -89,6 +93,7 @@ class ReportEncoder {
      * Returns the ids of required fields the operator has not filled in.
      */
     static getMissingRequiredFields(form, values) {
+        values = values ?? {};
         return form.fields
             .filter((field) => field.required)
             .filter((field) => (values[field.id] ?? "").toString().trim() === "")

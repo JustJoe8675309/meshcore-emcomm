@@ -456,9 +456,17 @@ export default {
     },
     computed: {
 
-        // names start with the form number, so this orders 209, 211, 213, 213RR
+        // ICS forms first in number order, then everything else alphabetically.
+        // Sorting purely by name would bury ICS-209 between Damage Assessment and
+        // Net Check-Out, which reads as though the numbering means nothing.
         forms() {
-            return [...ReportForms].sort((a, b) => a.name.localeCompare(b.name));
+            const isIcs = (form) => form.name.startsWith("ICS-");
+            return [...ReportForms].sort((a, b) => {
+                if(isIcs(a) !== isIcs(b)){
+                    return isIcs(a) ? -1 : 1;
+                }
+                return a.name.localeCompare(b.name);
+            });
         },
 
         formOptions() {

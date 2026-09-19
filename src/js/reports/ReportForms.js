@@ -263,6 +263,133 @@ const ReportForms = [
             },
         ],
     },
+    // ---- Net operations ----
+
+    {
+        id: "checkout",
+        name: "Net Check-Out",
+        description: "Leave the net and release your station.",
+        header: "CHECK-OUT",
+        fields: [
+            { id: "callsign", tag: "CALL", label: "Callsign", type: "text", placeholder: "e.g: K7ABC", required: true, prefillFromCallsign: true },
+            { id: "datetime", tag: "DTG", label: "Date / time", type: "dtg", required: true },
+            { id: "location", tag: "LOC", label: "Location", type: "text", placeholder: "Optional", required: false },
+            { id: "comments", tag: "CMT", label: "Comments", type: "text", placeholder: "e.g: Returning to service 0600", required: false },
+        ],
+    },
+
+    {
+        id: "netsummary",
+        name: "Net Traffic Summary",
+        description: "Net control summary of a session.",
+        header: "NET-SUM",
+        fields: [
+            { id: "net", tag: "NET", label: "Net name", type: "text", placeholder: "e.g: DAC ARES Evening Net", required: true },
+            { id: "datetime", tag: "DTG", label: "Date / time", type: "dtg", required: true },
+            { id: "control", tag: "NCS", label: "Net control", type: "text", placeholder: "e.g: K7ABC", required: true, prefillFromCallsign: true },
+            { id: "checkins", tag: "CHK", label: "Stations checked in", type: "text", placeholder: "e.g: 14", required: true },
+            { id: "traffic", tag: "TFC", label: "Traffic handled", type: "text", placeholder: "e.g: 3", required: true },
+            { id: "next_net", tag: "NEXT", label: "Next session", type: "text", placeholder: "e.g: 1900L tomorrow", required: false },
+        ],
+    },
+
+    // ---- Welfare and shelter ----
+
+    {
+        id: "welfare",
+        name: "Health & Welfare",
+        description: "Pass an enquiry or reply about an individual.",
+        header: "WELFARE",
+        fields: [
+            { id: "type", tag: "TYPE", label: "Enquiry or reply", type: "select", required: true, options: ["INQUIRY", "REPLY"] },
+            { id: "name", tag: "NAME", label: "Person", type: "text", placeholder: "e.g: J. Smith", required: true },
+            { id: "address", tag: "ADDR", label: "Address or last known location", type: "text", placeholder: "e.g: 42 Main St, Las Cruces", required: true },
+            { id: "status", tag: "STAT", label: "Status", type: "select", required: false, options: ["SAFE", "INJURED", "EVACUATED", "NOT FOUND", "UNKNOWN"] },
+            { id: "contact", tag: "FROM", label: "Requested by / contact", type: "text", placeholder: "e.g: sister, M. Smith", required: false },
+            { id: "message", tag: "MSG", label: "Message", type: "textarea", placeholder: "Plain language. Status only, no medical detail.", required: false },
+        ],
+    },
+
+    {
+        id: "shelter",
+        name: "Shelter Status",
+        description: "Report shelter population, capacity and needs.",
+        header: "SHELTER",
+        fields: [
+            { id: "name", tag: "SHLT", label: "Shelter name", type: "text", placeholder: "e.g: Lincoln Middle School", required: true },
+            { id: "datetime", tag: "DTG", label: "Date / time", type: "dtg", required: true },
+            { id: "status", tag: "STAT", label: "Status", type: "select", required: true, options: ["OPEN", "FULL", "STANDBY", "CLOSED"] },
+            { id: "population", tag: "POP", label: "Current population", type: "text", placeholder: "e.g: 40", required: true },
+            { id: "capacity", tag: "CAP", label: "Capacity", type: "text", placeholder: "e.g: 120", required: false },
+            { id: "needs", tag: "NEEDS", label: "Needs", type: "textarea", placeholder: "e.g: Cots x20, infant formula", required: false },
+        ],
+    },
+
+    // ---- Damage and infrastructure ----
+
+    {
+        id: "damage",
+        name: "Damage Assessment",
+        description: "Report observed damage at a location.",
+        header: "DAMAGE",
+        fields: [
+            { id: "datetime", tag: "DTG", label: "Date / time", type: "dtg", required: true },
+            { id: "location", tag: "LOC", label: "Location", type: "text", placeholder: "e.g: 1400 blk Alameda", required: true },
+            { id: "type", tag: "TYPE", label: "Type", type: "select", required: true, options: ["STRUCTURE", "UTILITY", "ROAD", "FLOOD", "FIRE", "OTHER"] },
+            { id: "severity", tag: "SEV", label: "Severity", type: "select", required: true, options: ["MINOR", "MODERATE", "MAJOR", "DESTROYED"] },
+            { id: "casualties", tag: "CAS", label: "Casualties", type: "text", placeholder: "e.g: NONE", required: false },
+            { id: "description", tag: "DESC", label: "Description", type: "textarea", placeholder: "What you can see, not what you infer.", required: false },
+        ],
+    },
+
+    {
+        id: "route",
+        name: "Road / Route Status",
+        description: "Report whether a route is passable.",
+        header: "ROUTE",
+        fields: [
+            { id: "datetime", tag: "DTG", label: "Date / time", type: "dtg", required: true },
+            { id: "route", tag: "RTE", label: "Road or route", type: "text", placeholder: "e.g: US-70", required: true },
+            { id: "segment", tag: "SEG", label: "Segment", type: "text", placeholder: "e.g: MM 12 to MM 18", required: true },
+            { id: "status", tag: "STAT", label: "Status", type: "select", required: true, options: ["OPEN", "RESTRICTED", "CLOSED"] },
+            { id: "cause", tag: "CAUSE", label: "Cause", type: "text", placeholder: "e.g: Debris flow", required: false },
+            { id: "detour", tag: "DTOUR", label: "Detour", type: "text", placeholder: "e.g: North via Ridge St", required: false },
+        ],
+    },
+
+    // ---- Weather and observation ----
+
+    {
+        id: "skywarn",
+        name: "SKYWARN Spotter Report",
+        description: "Severe weather observation for the NWS.",
+        header: "SKYWARN",
+        fields: [
+            { id: "spotter", tag: "SPTR", label: "Spotter callsign", type: "text", placeholder: "e.g: K7ABC", required: true, prefillFromCallsign: true },
+            { id: "datetime", tag: "DTG", label: "Time observed", type: "dtg", required: true },
+            { id: "location", tag: "LOC", label: "Location of observation", type: "text", placeholder: "e.g: 3 mi NW of Anthony", required: true },
+            { id: "event", tag: "EVNT", label: "Event", type: "select", required: true, options: ["TORNADO", "FUNNEL CLOUD", "WALL CLOUD", "HAIL", "WIND DAMAGE", "HIGH WIND", "FLASH FLOOD", "HEAVY RAIN", "SNOW", "DUST STORM"] },
+            { id: "measurement", tag: "MEAS", label: "Measurement", type: "text", placeholder: "e.g: 1.00 in hail, or 60 mph", required: false },
+            { id: "direction", tag: "MOVG", label: "Moving toward", type: "text", placeholder: "e.g: NE", required: false },
+            { id: "description", tag: "DESC", label: "Description", type: "textarea", placeholder: "Report what you observed, not what you interpreted.", required: false },
+        ],
+    },
+
+    {
+        id: "salute",
+        name: "SALUTE Spot Report",
+        description: "Structured report of observed activity.",
+        header: "SALUTE",
+        fields: [
+            { id: "size", tag: "S", label: "Size", type: "text", placeholder: "e.g: 6 people, 2 vehicles", required: true },
+            { id: "activity", tag: "A", label: "Activity", type: "text", placeholder: "e.g: Clearing debris from roadway", required: true },
+            { id: "location", tag: "L", label: "Location", type: "text", placeholder: "e.g: DM62, or 1400 blk Alameda", required: true },
+            { id: "unit", tag: "U", label: "Unit or identity", type: "text", placeholder: "e.g: County road crew", required: false },
+            { id: "datetime", tag: "T", label: "Time observed", type: "dtg", required: true },
+            { id: "equipment", tag: "E", label: "Equipment", type: "text", placeholder: "e.g: 1 backhoe, 1 dump truck", required: false },
+        ],
+    },
+
 ];
 
 export default ReportForms;

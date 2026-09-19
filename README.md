@@ -21,6 +21,19 @@ fill it in, and send. Four forms are included:
 | ICS-211 ARES/RACES Check-In | Register your station with net control |
 | ICS-213 General Message | General message traffic between stations |
 | ICS-213RR Resource Request | Request personnel, equipment or supplies |
+| Damage Assessment | Observed damage at a location, with severity |
+| Health & Welfare | Enquiry or reply about an individual |
+| Net Check-Out | Leave the net and release your station |
+| Net Traffic Summary | Net control summary of a session |
+| Road / Route Status | Whether a route is passable, and any detour |
+| SALUTE Spot Report | Size, activity, location, unit, time, equipment |
+| Shelter Status | Population, capacity and needs |
+| SKYWARN Spotter Report | Severe weather observation for the NWS |
+
+The four ICS forms carry their real form numbers and sort first. The rest have no ICS
+number, and none has been invented for them: a made up number on a form an incident
+management system does not recognise is worse than no number. SKYWARN and SALUTE are
+named after the formats they follow.
 
 Form names lead with the form number, and the picker sorts by it. Type into the picker to
 filter: `213` narrows to both ICS-213 forms, `check` finds the check-in. Matching is a
