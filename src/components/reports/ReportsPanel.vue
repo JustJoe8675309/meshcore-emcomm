@@ -225,6 +225,7 @@ import ReportForms from "../../js/reports/ReportForms.js";
 import ReportEncoder from "../../js/reports/ReportEncoder.js";
 import Airtime from "../../js/reports/Airtime.js";
 import TimeUtils from "../../js/TimeUtils.js";
+import OperatorSettings from "../../js/reports/OperatorSettings.js";
 import SearchableSelect from "./SearchableSelect.vue";
 
 export default {
@@ -245,14 +246,14 @@ export default {
         };
     },
     mounted() {
-        this.selectDefaultChannel();
+        this.clearChannelIfMissing();
     },
     watch: {
         selectedFormId() {
             this.resetForm();
         },
         channels() {
-            this.selectDefaultChannel();
+            this.clearChannelIfMissing();
         },
         // any change to the report or its destination invalidates a pending
         // confirmation, so what was approved on screen is always what gets sent
@@ -268,30 +269,35 @@ export default {
         selectedContactPublicKey() {
             this.isConfirming = false;
         },
+        operatorCallsign(callsign) {
+            // only fill fields the operator has not already typed into
+            for(const field of this.selectedForm?.fields ?? []){
+                if(field.prefillFromCallsign && (this.values[field.id] ?? "") === ""){
+                    this.values[field.id] = callsign;
+                }
+            }
+        },
     },
     methods: {
 
-        selectDefaultChannel() {
+        // a channel that disappeared, for example after connecting to a different
+        // device, must not stay selected. nothing is auto selected in its place.
+        clearChannelIfMissing() {
 
-            // keep the operator selection if it still exists
-            const isSelectionStillValid = this.channels.some((channel) => channel.idx === this.selectedChannelIdx);
-            if(isSelectionStillValid){
+            if(this.selectedChannelIdx === null){
                 return;
             }
 
-            this.selectedChannelIdx = this.channels.length > 0 ? this.channels[0].idx : null;
+            const isSelectionStillValid = this.channels.some((channel) => channel.idx === this.selectedChannelIdx);
+            if(!isSelectionStillValid){
+                this.selectedChannelIdx = null;
+            }
 
         },
 
-        // current date time group, e.g "191830L SEP"
+        // current date time group in the operator's chosen zone
         formatDtg() {
-
-            const now = new Date();
-            const pad = (value) => value.toString().padStart(2, "0");
-            const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-
-            return `${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}L ${months[now.getMonth()]}`;
-
+            return OperatorSettings.formatDtg();
         },
 
         resetForm() {
@@ -308,9 +314,12 @@ export default {
                     continue;
                 }
 
-                // prefill callsign style fields from the device advert name
-                if(field.prefillFromNodeName){
-                    values[field.id] = GlobalState.selfInfo?.name ?? "";
+                // prefill callsign fields from the operator's callsign, never from the
+                // device advert name. that names the radio, not the operator, and putting
+                // something like "Joe-KJ5HBN-HTv3" in a formal CALL field is wrong. left
+                // blank when no callsign is set, since blank is better than wrong.
+                if(field.prefillFromCallsign){
+                    values[field.id] = OperatorSettings.callsign;
                     continue;
                 }
 
@@ -497,6 +506,10 @@ export default {
 
         selectedForm() {
             return this.forms.find((form) => form.id === this.selectedFormId) ?? null;
+        },
+
+        operatorCallsign() {
+            return OperatorSettings.state.callsign.trim();
         },
 
         // the device advert name, which the firmware prepends to every channel message

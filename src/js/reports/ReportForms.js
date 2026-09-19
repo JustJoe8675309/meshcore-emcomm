@@ -82,8 +82,8 @@ const ReportForms = [
                 type: "text",
                 placeholder: "e.g: K7ABC",
                 required: true,
-                // prefilled from the device advert name, which is usually the operator callsign
-                prefillFromNodeName: true,
+                // prefilled from the operator callsign set in Settings
+                prefillFromCallsign: true,
             },
             {
                 id: "name",
@@ -259,7 +259,7 @@ const ReportForms = [
                 type: "text",
                 placeholder: "e.g: K7ABC",
                 required: true,
-                prefillFromNodeName: true,
+                prefillFromCallsign: true,
             },
         ],
     },

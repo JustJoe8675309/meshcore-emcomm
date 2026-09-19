@@ -34,6 +34,41 @@
                 <!-- setting groups -->
                 <div class="space-y-4">
 
+                    <!-- emcomm, stored in this browser rather than on the device -->
+                    <div class="bg-white divide-y">
+
+                        <div class="bg-white p-2 font-semibold">Emcomm</div>
+
+                        <div class="w-full p-2">
+                            <div class="block mb-2 text-sm font-medium text-gray-900">Operator callsign</div>
+                            <input
+                                :value="operatorCallsign"
+                                @input="onOperatorCallsignInput"
+                                type="text"
+                                placeholder="e.g: KJ5HBN"
+                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                            <div class="mt-1 text-xs text-gray-500">
+                                Used to prefill callsign fields on report forms. Separate from the device
+                                name above, which names the radio.
+                            </div>
+                        </div>
+
+                        <div class="w-full p-2">
+                            <div class="block mb-2 text-sm font-medium text-gray-900">Date time group</div>
+                            <select
+                                :value="operatorDtgZone"
+                                @change="onOperatorDtgZoneChange"
+                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                <option value="local">Local time (191830L SEP)</option>
+                                <option value="zulu">Zulu / UTC (190030Z SEP)</option>
+                            </select>
+                            <div class="mt-1 text-xs text-gray-500">
+                                Applies to the DTG fields on report forms. Match whatever your net runs on.
+                            </div>
+                        </div>
+
+                    </div>
+
                     <!-- public info -->
                     <div class="bg-white divide-y">
 
@@ -177,6 +212,7 @@ import AppBar from "../AppBar.vue";
 import SaveButton from "../SaveButton.vue";
 import Page from "./Page.vue";
 import Utils from "../../js/Utils.js";
+import OperatorSettings from "../../js/reports/OperatorSettings.js";
 
 export default {
     name: 'SettingsPage',
@@ -199,6 +235,15 @@ export default {
         this.load();
     },
     methods: {
+
+        onOperatorCallsignInput(event) {
+            OperatorSettings.setCallsign(event.target.value);
+        },
+
+        onOperatorDtgZoneChange(event) {
+            OperatorSettings.setDtgZone(event.target.value);
+        },
+
         async load() {
 
             await Connection.loadSelfInfo();
@@ -343,6 +388,15 @@ export default {
         },
     },
     computed: {
+
+        operatorCallsign() {
+            return OperatorSettings.state.callsign;
+        },
+
+        operatorDtgZone() {
+            return OperatorSettings.state.dtgZone;
+        },
+
         GlobalState() {
             return GlobalState;
         },
