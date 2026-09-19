@@ -35,6 +35,20 @@ MSG: Shelter 3 at capacity 40 of 40.
 BY: K7ABC
 ```
 
+### Confirm before transmitting
+
+Pressing Send does not key the radio. It shows a confirmation with the destination, the
+number of transmissions and the estimated time on the air, and only the second press
+transmits. Cancel returns to the form with everything still filled in, so a report can be
+shortened and sent again. Editing anything after confirming drops the confirmation, so
+what was approved on screen is always what goes out.
+
+The estimate uses the radio settings the device reports, the firmware's datagram layout
+and the standard LoRa time on air calculation, including the 32 symbol preamble MeshCore
+uses at SF8 and below. It is a floor: repeater retransmission and contention with other
+stations are not included. Reports longer than 30 seconds of airtime carry an extra
+warning, since holding a shared emergency channel that long is an operational decision.
+
 ### Packet size handling
 
 The companion firmware caps a channel message at `MAX_TEXT_LEN` (160 bytes), and that budget
@@ -79,7 +93,7 @@ npm run build
 npm test
 ```
 
-Two suites, no hardware required:
+Three suites, no hardware required:
 
 - `test/report_encoder.test.mjs` covers rendering and packet splitting, including a
   simulation of the firmware's own truncation rule to confirm no part can ever exceed
@@ -88,6 +102,9 @@ Two suites, no hardware required:
 - `test/serial_framing.test.mjs` feeds synthetic device frames through the serial
   decoder to cover the USB path: frames split byte by byte, split mid header, several
   frames coalesced into one chunk, and resync after boot noise.
+- `test/airtime.test.mjs` checks the airtime estimate on the confirmation step: packet
+  sizes against the firmware's datagram layout, time on air against the LoRa
+  calculation, and the totals an operator sees before transmitting.
 
 ### Known issue: serial resync
 

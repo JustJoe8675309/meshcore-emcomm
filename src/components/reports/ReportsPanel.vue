@@ -139,7 +139,44 @@
 
                 <div v-if="validationMessage" class="text-xs text-red-600">{{ validationMessage }}</div>
 
+                <!-- a long report can hold the channel for minutes, so it takes a second
+                     deliberate press. cancel returns to the form with everything intact. -->
+                <div v-if="isConfirming" class="bg-amber-50 border border-amber-300 rounded-lg p-3 space-y-2">
+
+                    <div class="text-sm font-semibold text-gray-900">Confirm transmission</div>
+
+                    <div class="text-sm text-gray-800 space-y-0.5">
+                        <div>To <span class="font-semibold">{{ destinationName }}</span></div>
+                        <div>
+                            <span class="font-semibold">{{ prepared.parts.length }}</span>
+                            {{ prepared.parts.length === 1 ? "transmission" : "transmissions" }}<span v-if="airtimeLabel">, about <span class="font-semibold">{{ airtimeLabel }}</span> on the air</span>
+                        </div>
+                    </div>
+
+                    <div v-if="isLongTransmission" class="text-xs text-amber-900">
+                        This will occupy the channel for a while. On a busy net, consider shortening the
+                        report or sending it to a single station instead.
+                    </div>
+
+                    <div class="flex space-x-2 pt-1">
+                        <button
+                            @click="cancelSend"
+                            type="button"
+                            class="w-full bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg px-5 py-2.5">
+                            Cancel
+                        </button>
+                        <button
+                            @click="confirmSend"
+                            type="button"
+                            class="w-full bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg px-5 py-2.5">
+                            Send now
+                        </button>
+                    </div>
+
+                </div>
+
                 <button
+                    v-else
                     @click="onSendClick"
                     :disabled="!canSend"
                     type="button"
@@ -169,6 +206,7 @@ import Connection from "../../js/Connection.js";
 import Utils from "../../js/Utils.js";
 import ReportForms from "../../js/reports/ReportForms.js";
 import ReportEncoder from "../../js/reports/ReportEncoder.js";
+import Airtime from "../../js/reports/Airtime.js";
 
 export default {
     name: 'ReportsPanel',
@@ -179,6 +217,7 @@ export default {
             selectedContactPublicKey: null,
             selectedFormId: null,
             values: {},
+            isConfirming: false,
             isSending: false,
             sendingPartIndex: 0,
         };
@@ -192,6 +231,20 @@ export default {
         },
         channels() {
             this.selectDefaultChannel();
+        },
+        // any change to the report or its destination invalidates a pending
+        // confirmation, so what was approved on screen is always what gets sent
+        "prepared.text"() {
+            this.isConfirming = false;
+        },
+        destinationType() {
+            this.isConfirming = false;
+        },
+        selectedChannelIdx() {
+            this.isConfirming = false;
+        },
+        selectedContactPublicKey() {
+            this.isConfirming = false;
         },
     },
     methods: {
@@ -221,6 +274,8 @@ export default {
 
         resetForm() {
 
+            this.isConfirming = false;
+
             const values = {};
 
             for(const field of this.selectedForm?.fields ?? []){
@@ -245,9 +300,26 @@ export default {
 
         },
 
-        async onSendClick() {
+        // first press only opens the confirmation, nothing is transmitted yet
+        onSendClick() {
 
             if(!this.canSend){
+                return;
+            }
+
+            this.isConfirming = true;
+
+        },
+
+        // operator changed their mind, back to the form with everything still filled in
+        cancelSend() {
+            this.isConfirming = false;
+        },
+
+        async confirmSend() {
+
+            if(!this.canSend){
+                this.isConfirming = false;
                 return;
             }
 
@@ -256,14 +328,7 @@ export default {
             const contact = this.selectedContact;
             const channel = this.selectedChannel;
 
-            // sending several messages costs real airtime, so make the operator confirm
-            if(parts.length > 1){
-                const confirmed = confirm(`This report will be sent as ${parts.length} separate messages to "${this.destinationName}". Send it?`);
-                if(!confirmed){
-                    return;
-                }
-            }
-
+            this.isConfirming = false;
             this.isSending = true;
 
             try {
@@ -382,13 +447,41 @@ export default {
             }
 
             const packetLabel = this.prepared.parts.length === 1 ? "packet" : "packets";
+            const size = `${this.prepared.textBytes} bytes, ${this.prepared.parts.length} ${packetLabel}`;
 
-            return `${this.prepared.textBytes} bytes, ${this.prepared.parts.length} ${packetLabel}`;
+            return this.airtimeLabel ? `${size}, ~${this.airtimeLabel} on air` : size;
 
         },
 
         partDelaySeconds() {
             return Math.round(ReportEncoder.PART_SEND_DELAY_MILLIS / 1000);
+        },
+
+        // estimated time this report will occupy the channel, using the radio
+        // settings the device reported. null if those are not known yet.
+        airtime() {
+
+            if(!this.prepared || !this.prepared.parts || this.prepared.parts.length === 0){
+                return null;
+            }
+
+            return Airtime.estimate(
+                this.prepared.parts,
+                this.destinationType,
+                this.nodeName,
+                GlobalState.selfInfo,
+                ReportEncoder.PART_SEND_DELAY_MILLIS,
+            );
+
+        },
+
+        airtimeLabel() {
+            return this.airtime ? Airtime.formatDuration(this.airtime.totalMillis) : null;
+        },
+
+        // worth calling out before the operator ties up a shared channel
+        isLongTransmission() {
+            return this.airtime != null && this.airtime.totalMillis > 30000;
         },
 
         validationMessage() {

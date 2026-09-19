@@ -7,7 +7,7 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "test": "node test/report_encoder.test.mjs && node test/serial_framing.test.mjs"
+    "test": "node test/report_encoder.test.mjs && node test/serial_framing.test.mjs && node test/airtime.test.mjs"
   },
   "author": "Liam Cottle <liam@liamcottle.com>",
   "license": "MIT",
