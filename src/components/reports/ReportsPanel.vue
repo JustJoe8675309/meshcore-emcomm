@@ -56,97 +56,20 @@
             </fieldset>
 
             <!-- form fields -->
-            <fieldset v-if="selectedForm" :disabled="isSending" class="bg-white border border-gray-300 rounded-lg p-3 space-y-3 disabled:opacity-60">
-
-                <div v-for="field of selectedForm.fields" :key="field.id" class="space-y-1">
-
-                    <label :for="fieldId(field)" class="block text-sm font-medium text-gray-900">
-                        {{ field.label }}
-                        <span v-if="field.required" class="text-red-600" aria-hidden="true">*</span>
-                        <span v-if="field.required" class="sr-only">required</span>
-                    </label>
-
-                    <!-- dropdown field -->
-                    <select
-                        v-if="field.type === 'select'"
-                        :id="fieldId(field)"
-                        :required="field.required"
-                        v-model="values[field.id]"
-                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                        <option value="" disabled>Select...</option>
-                        <option v-for="option of field.options" :key="option" :value="option">{{ option }}</option>
-                    </select>
-
-                    <!-- multi line field -->
-                    <textarea
-                        v-else-if="field.type === 'textarea'"
-                        :id="fieldId(field)"
-                        :required="field.required"
-                        v-model="values[field.id]"
-                        rows="3"
-                        :placeholder="field.placeholder"
-                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"></textarea>
-
-                    <!-- date time group field, with a shortcut to fill in the current time -->
-                    <div v-else-if="field.type === 'dtg'" class="flex space-x-2">
-                        <input
-                            :id="fieldId(field)"
-                            :required="field.required"
-                            v-model="values[field.id]"
-                            type="text"
-                            :placeholder="field.placeholder"
-                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                        <button
-                            @click="values[field.id] = formatDtg()"
-                            type="button"
-                            :aria-label="`Set ${field.label} to now`"
-                            class="shrink-0 bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-900 text-sm rounded-lg px-3">Now</button>
-                    </div>
-
-                    <!-- single line field -->
-                    <input
-                        v-else
-                        :id="fieldId(field)"
-                        :required="field.required"
-                        v-model="values[field.id]"
-                        type="text"
-                        :placeholder="field.placeholder"
-                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-
-                </div>
-
-            </fieldset>
+            <ReportFormFields
+                v-if="selectedForm"
+                :fields="selectedForm.fields"
+                :values="values"
+                :disabled="isSending"
+                @input="onFieldInput"
+                @set-now="onSetFieldToNow"/>
 
             <!-- what will actually be transmitted -->
-            <div v-if="selectedForm && prepared" class="bg-white border border-gray-300 rounded-lg p-3 space-y-2">
-
-                <div class="flex items-center justify-between">
-                    <label class="block text-sm font-medium text-gray-900">Transmission preview</label>
-                    <div class="text-xs" :class="[ prepared.parts === null ? 'text-red-600' : 'text-gray-500' ]">
-                        {{ sizeSummary }}
-                    </div>
-                </div>
-
-                <div v-if="prepared.parts === null" class="text-xs text-red-600">
-                    This report cannot be split into sendable packets. Shorten it, or set a shorter device name in Settings.
-                </div>
-
-                <div v-else-if="prepared.parts.length === 0" class="text-xs text-gray-500">
-                    Fill in the form to see what will be sent.
-                </div>
-
-                <div v-else class="space-y-1">
-                    <div
-                        v-for="(part, index) of prepared.parts"
-                        :key="index"
-                        class="bg-gray-50 border border-gray-200 rounded p-2 text-xs text-gray-800"
-                        style="white-space:pre-wrap;word-break:break-word;">{{ part }}</div>
-                    <div v-if="prepared.parts.length > 1" class="text-xs text-gray-500">
-                        Sent as {{ prepared.parts.length }} separate messages, about {{ partDelaySeconds }} seconds apart.
-                    </div>
-                </div>
-
-            </div>
+            <TransmissionPreview
+                v-if="selectedForm && prepared"
+                :parts="prepared.parts"
+                :summary="sizeSummary"
+                :part-delay-seconds="partDelaySeconds"/>
 
             <!-- send -->
             <div v-if="selectedForm" class="space-y-2 pb-3">
@@ -276,11 +199,15 @@ import Airtime from "../../js/reports/Airtime.js";
 import TimeUtils from "../../js/TimeUtils.js";
 import OperatorSettings from "../../js/reports/OperatorSettings.js";
 import SearchableSelect from "./SearchableSelect.vue";
+import ReportFormFields from "./ReportFormFields.vue";
+import TransmissionPreview from "./TransmissionPreview.vue";
 
 export default {
     name: 'ReportsPanel',
     components: {
         SearchableSelect,
+        ReportFormFields,
+        TransmissionPreview,
     },
     data() {
         return {
@@ -345,8 +272,12 @@ export default {
 
         },
 
-        fieldId(field) {
-            return `report-field-${field.id}`;
+        onFieldInput(fieldId, value) {
+            this.values[fieldId] = value;
+        },
+
+        onSetFieldToNow(fieldId) {
+            this.values[fieldId] = this.formatDtg();
         },
 
         // current date time group in the operator's chosen zone
