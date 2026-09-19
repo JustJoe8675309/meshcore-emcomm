@@ -350,16 +350,25 @@ export default {
         },
         parseChannelMessageText(message) {
 
-            // split message text by colon
-            const parts = message.text.split(":");
+            // the firmware prefixes channel messages with "<sender name>: "
+            // see sprintf(&temp[5], "%s: ", sender_name) in BaseChatMesh::sendGroupMessage
+            // so split on the first ": " only. splitting on every colon and rejoining
+            // left the separator's space on the front of the message, which indented
+            // the first line of every report received.
+            const separator = ": ";
+            const separatorIndex = message.text.indexOf(separator);
 
-            // left side is sender name, right side is message text
-            // e.g: "Liam Cottle: Hello Mesh!"
-            const name = parts.shift();
-            const text = parts.join(":");
+            // no sender prefix found, treat the whole thing as the message
+            if(separatorIndex === -1){
+                return {
+                    name: "",
+                    text: message.text,
+                };
+            }
+
             return {
-                name: name,
-                text: text,
+                name: message.text.slice(0, separatorIndex),
+                text: message.text.slice(separatorIndex + separator.length),
             };
 
         },
