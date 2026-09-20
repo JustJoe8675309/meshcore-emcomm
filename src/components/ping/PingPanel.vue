@@ -48,12 +48,26 @@
                             :class="[ found.isNew ? 'cursor-default' : 'hover:bg-gray-100 cursor-pointer',
                                       selectedContactKey === found.publicKeyHex ? 'bg-blue-50' : '' ]">
                             <span class="font-medium text-gray-900">{{ found.name }}</span>
-                            <span v-if="found.isNew" class="ml-1 text-blue-700">new, not in contacts</span>
+                            <span v-if="found.isNew" class="ml-1 text-blue-700">new</span>
                             <span v-else-if="selectedContactKey === found.publicKeyHex" class="ml-1 text-blue-700">selected below</span>
                             <div class="font-mono text-gray-700">
                                 snr_there={{ found.snrThere.toFixed(2) }}dB snr_back={{ found.snrBack.toFixed(2) }}dB rssi={{ found.rssi }}
                             </div>
                         </button>
+
+                        <!-- a repeater that answered but is not a contact cannot be pinged
+                             until it is one, and discovery carries no name to save it under -->
+                        <div v-for="found of newlyDiscovered" :key="`add-${found.publicKeyHex}`" class="pl-1">
+                            <button
+                                @click="addAsContact(found)"
+                                :disabled="addingKey !== null"
+                                type="button"
+                                class="text-xs text-blue-700 hover:underline disabled:opacity-60">
+                                {{ addingKey === found.publicKeyHex ? "Adding..." : `Add ${found.name} as a contact` }}
+                            </button>
+                        </div>
+
+                        <div v-if="addMessage" role="status" class="text-xs text-gray-600">{{ addMessage }}</div>
 
                     </div>
                 </div>
@@ -201,6 +215,8 @@ export default {
             discoverResults: null,
             discoverError: null,
             discoverSecondsLeft: 0,
+            addingKey: null,
+            addMessage: null,
             requestCount: 5,
             delayMillis: 1000,
             results: [],
@@ -247,6 +263,11 @@ export default {
                     hint: TimeUtils.formatUnixSecondsAgo(contact.lastAdvert),
                 };
             });
+        },
+
+        // the ones that answered but have nowhere to be saved yet
+        newlyDiscovered() {
+            return (this.discoverResults ?? []).filter((found) => found.isNew);
         },
 
         selectedContact() {
@@ -393,6 +414,39 @@ export default {
          * but is not a contact yet, so there is nothing in the picker to select, and
          * offering a dead click would be worse than showing it cannot be chosen.
          */
+        /**
+         * Saves a newly discovered repeater so it can be pinged.
+         *
+         * The name is invented from the public key, because discovery does not carry
+         * one, and the device replaces it when the repeater first adverts. Saying so
+         * matters: a contact appearing under a name nobody recognises looks like a
+         * bug rather than a placeholder.
+         */
+        async addAsContact(found) {
+
+            this.addingKey = found.publicKeyHex;
+            this.addMessage = null;
+
+            try {
+
+                const name = await Connection.addDiscoveredRepeater(found);
+
+                // it is a contact now, so the row above becomes selectable
+                this.discoverResults = this.discoverResults.map((r) => r.publicKeyHex === found.publicKeyHex
+                    ? { ...r, name: name, isNew: false }
+                    : r);
+
+                this.addMessage = `Saved as "${name}". The repeater's real name will replace that when it next adverts.`;
+
+            } catch(e) {
+                console.log("could not add contact", e);
+                this.addMessage = "Could not save the contact. The device may be out of contact storage.";
+            } finally {
+                this.addingKey = null;
+            }
+
+        },
+
         selectDiscovered(found) {
 
             if(found.isNew){

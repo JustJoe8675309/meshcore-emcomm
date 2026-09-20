@@ -588,6 +588,45 @@ class Connection {
 
     }
 
+    /**
+     * Saves a repeater found by discovery as a contact.
+     *
+     * Discovery gives us the public key and the node type but no name, because
+     * DISCOVER_RESP does not carry one. So the contact is created with a name built
+     * from the key, which the device replaces with the real one the first time the
+     * repeater adverts. Better a placeholder that can be pinged now than nothing
+     * until the repeater happens to announce itself.
+     *
+     * The path is recorded as zero hop, which is not a guess: it answered a zero hop
+     * discovery, so that is exactly how far away it is.
+     */
+    static async addDiscoveredRepeater(discovered) {
+
+        const connection = GlobalState.connection;
+        if(connection == null){
+            throw new Error("not connected");
+        }
+
+        const name = `Repeater ${discovered.publicKeyHex.slice(0, 6)}`;
+
+        await connection.addOrUpdateContact(
+            discovered.publicKey,
+            discovered.nodeType,
+            0,                              // flags
+            0,                              // outPathLen: reached directly
+            new Uint8Array(64),             // outPath: empty, nothing to relay through
+            name,
+            Math.floor(Date.now() / 1000),  // heard just now, which is why we are here
+            0,                              // advLat, unknown until it adverts
+            0,                              // advLon
+        );
+
+        await this.loadContacts();
+
+        return name;
+
+    }
+
     static async sendMessage(publicKey, text) {
 
         // send message
