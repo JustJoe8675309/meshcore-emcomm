@@ -28,7 +28,7 @@ the hand written frames should be deleted rather than maintained.
 | ----- | ------ |
 | Tests and build | six node suites, the component suites, a production build |
 | meshcore.js | installed version, a newer release, `AdvType.Repeater`, whether control data is still unimplemented |
-| Firmware | `CMD_SEND_CONTROL_DATA`, `PUSH_CODE_CONTROL_DATA`, `DISCOVER_REQ`, `DISCOVER_RESP`, `MAX_TEXT_LEN` |
+| Firmware | `CMD_SEND_CONTROL_DATA`, `PUSH_CODE_CONTROL_DATA`, `DISCOVER_REQ`, `DISCOVER_RESP`, `MAX_TEXT_LEN`, the path length packing, `OUT_PATH_UNKNOWN`, `MAX_PATH_SIZE` |
 | Upstream | commits in `liamcottle/meshcore-web` not in this fork |
 | Deployment | the live build matches the local one, the worker is stamped and precaches this build, the tree is clean, everything is pushed |
 
@@ -153,6 +153,12 @@ form fields appeared. Reaching into the component state instead is not available
 production build strips `__vueParentComponent`.
 
 ## When something drifts
+
+**The path length packing changed.** Distances start reading wrong rather than
+failing. A path length is two fields in one byte — hop count in the low six bits,
+hash size minus one in the top two — and both `src/js/PathInfo.js` and the rx log
+unpack it with those exact shifts. Reading it as a plain number is what once
+reported a directly reachable station as 128 hops away.
 
 **A firmware constant changed.** Discovery is the thing that breaks. Read the firmware
 source, update `Connection.discoverRepeaters`, and update the frame assertions in

@@ -135,6 +135,36 @@ section("Assumptions about the MeshCore firmware");
                 why: "replies are matched on the top four bits of this",
             },
             {
+                // out_path_len and a packet's path_len are not counts: the top two
+                // bits hold the path hash size and the bottom six the hop count.
+                // Reading the byte as a number reported a directly reachable
+                // station as 128 hops away, and the rx log as three times its real
+                // hop count. If this packing changes the app misreports distances
+                // rather than failing, which is why it is checked here.
+                name: "path length packs hash size and hop count",
+                path: "src/Packet.cpp",
+                pattern: /hash_count\s*=\s*path_len\s*&\s*63[\s\S]{0,120}hash_size\s*=\s*\(path_len\s*>>\s*6\)\s*\+\s*1/,
+                why: "PathInfo and the rx log unpack the byte with these exact shifts",
+            },
+            {
+                name: "path hash size 4 is still reserved",
+                path: "src/Packet.cpp",
+                pattern: /hash_size\s*==\s*4\s*\)\s*return\s+false/,
+                why: "this is what keeps OUT_PATH_UNKNOWN (0xFF) from colliding with a real route",
+            },
+            {
+                name: "OUT_PATH_UNKNOWN is 0xFF",
+                path: "src/helpers/ContactInfo.h",
+                pattern: /#define\s+OUT_PATH_UNKNOWN\s+0xFF\b/i,
+                why: "the no path sentinel the contact list renders as flood routed",
+            },
+            {
+                name: "MAX_PATH_SIZE is 64",
+                path: "src/MeshCore.h",
+                pattern: /#define\s+MAX_PATH_SIZE\s+64\b/,
+                why: "the bound PathInfo uses to reject a path that could not fit",
+            },
+            {
                 name: "MAX_TEXT_LEN is 160",
                 path: "src/helpers/BaseChatMesh.h",
                 pattern: /MAX_TEXT_LEN\s*\(?\s*(?:160|10\s*\*\s*CIPHER_BLOCK_SIZE)/,
