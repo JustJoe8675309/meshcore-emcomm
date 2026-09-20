@@ -360,6 +360,10 @@ class Connection {
      * Returns null when the device has no usable position, so the caller can say
      * so rather than writing a plausible looking wrong one into a report.
      */
+    // thrown when an operation cannot run because the radio is gone. callers check for
+    // it so they can say the link dropped rather than inventing a result
+    static DISCONNECTED = "disconnected";
+
     static async getPosition(timeoutMillis = 5000) {
 
         const selfInfo = await Utils.withTimeout(GlobalState.connection.getSelfInfo(), timeoutMillis);
@@ -461,10 +465,18 @@ class Connection {
      */
     static async pingContact(publicKey, extraTimeoutMillis = 0) {
 
+        // a missing link is not a missing reply. without this the caller cannot tell
+        // the two apart and records a disconnected radio as packet loss, which is a
+        // measurement of the mesh that never happened
+        const connection = GlobalState.connection;
+        if(connection == null){
+            throw new Error(this.DISCONNECTED);
+        }
+
         const startedAt = performance.now();
 
         // the first byte of their public key is the whole path for a single hop
-        const reply = await GlobalState.connection.tracePath([publicKey[0]], extraTimeoutMillis);
+        const reply = await connection.tracePath([publicKey[0]], extraTimeoutMillis);
 
         const timeMillis = Math.round(performance.now() - startedAt);
 
@@ -506,7 +518,7 @@ class Connection {
 
         const connection = GlobalState.connection;
         if(connection == null){
-            throw new Error("not connected");
+            throw new Error(this.DISCONNECTED);
         }
 
         // repeaters answer only if the filter names their type

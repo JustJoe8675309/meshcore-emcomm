@@ -222,7 +222,18 @@ export default {
             sendingPartIndex: 0,
             // which retry of the current part is in flight, 0 while on the first attempt
             sendingAttempt: 0,
+            // cleared when the panel goes away, so a send in progress stops rather
+            // than transmitting the rest of the report with nothing on screen
+            sendAborted: false,
         };
+    },
+    /**
+     * Switching tabs unmounts this panel. A multi part send left running would keep
+     * transmitting with no display and no way to stop it, which is the last thing an
+     * app this careful about airtime should do.
+     */
+    beforeUnmount() {
+        this.sendAborted = true;
     },
     mounted() {
         this.clearChannelIfMissing();
@@ -413,6 +424,12 @@ export default {
 
                 for(let i = startIndex; i < parts.length; i++){
 
+                    // the panel went away mid send. stop quietly: the parts already
+                    // transmitted are recorded, and resuming is the operator's call
+                    if(this.sendAborted){
+                        return;
+                    }
+
                     this.sendingPartIndex = i;
 
                     const isLastPart = i === parts.length - 1;
@@ -423,7 +440,7 @@ export default {
                         // next part before this one is acknowledged loses it. wait for the
                         // acknowledgement rather than guessing at a delay, and retransmit a
                         // part that does not arrive rather than building on top of it
-                        var status = null;
+                        let status = null;
 
                         for(let attempt = 0; attempt <= Connection.MAX_PART_RETRIES; attempt++){
 

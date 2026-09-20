@@ -216,6 +216,7 @@ export default {
             discoverError: null,
             discoverSecondsLeft: 0,
             addingKey: null,
+            discoverTicker: null,
             addMessage: null,
             requestCount: 5,
             delayMillis: 1000,
@@ -281,6 +282,8 @@ export default {
         canStart() {
             return this.selectedContact !== null
                 && GlobalState.connection != null
+                // both transmit, and discovery is still listening on the rx stream
+                && !this.isDiscovering
                 && this.requestCount >= 1
                 && this.delayMillis >= 0;
         },
@@ -301,6 +304,17 @@ export default {
             return seconds < 60 ? `${seconds} s` : `${Math.round(seconds / 6) / 10} min`;
         },
 
+    },
+    /**
+     * Switching tabs unmounts this panel, and an unmounted component's ping loop
+     * carries on transmitting: no display, no cancel button, and an operator with no
+     * idea the radio is still talking. Clearing the token ends the loop at its next
+     * check, which is the same mechanism the cancel button uses.
+     */
+    beforeUnmount() {
+        this.runToken = null;
+        clearInterval(this.discoverTicker);
+        this.discoverTicker = null;
     },
     watch: {
         // a new station means the previous station's numbers are not about this one
@@ -339,11 +353,24 @@ export default {
                     this.results.push({ seq: i + 1, success: true, ...reply });
 
                 } catch(e) {
+
                     if(this.runToken !== token){
                         return;
                     }
+
+                    // the radio going away is not the far station failing to answer.
+                    // recording it as loss would invent a measurement of the mesh, so
+                    // the run stops and says what happened instead
+                    if(String(e.message) === Connection.DISCONNECTED || GlobalState.connection == null){
+                        this.errorMessage = "The radio disconnected, so the run stopped. The replies already collected are real; the remaining requests were never sent.";
+                        this.runToken = null;
+                        this.computeStats();
+                        return;
+                    }
+
                     // a timeout is a result, not an error: it is the packet loss being measured
                     this.results.push({ seq: i + 1, success: false });
+
                 }
 
                 await this.$nextTick();
@@ -377,7 +404,7 @@ export default {
             this.discoverResults = null;
             this.discoverSecondsLeft = Math.round(DISCOVER_LISTEN_MILLIS / 1000);
 
-            const ticker = setInterval(() => {
+            this.discoverTicker = setInterval(() => {
                 this.discoverSecondsLeft = Math.max(0, this.discoverSecondsLeft - 1);
             }, 1000);
 
@@ -399,7 +426,8 @@ export default {
                 console.log("discovery failed", e);
                 this.discoverError = "Discovery failed. The radio may be disconnected, or its firmware may predate this feature.";
             } finally {
-                clearInterval(ticker);
+                clearInterval(this.discoverTicker);
+                this.discoverTicker = null;
                 this.discoverSecondsLeft = 0;
                 this.isDiscovering = false;
             }
