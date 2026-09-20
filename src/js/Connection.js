@@ -343,6 +343,13 @@ class Connection {
      * time: a station that has moved since it connected would otherwise report
      * where it used to be, which is the one thing a position must never do.
      *
+     * This does return a live fix, which was worth confirming rather than assuming,
+     * since the same field holds a manually set position on a node without GPS.
+     * Polling a stationary Heltec V4 gave 31.926964, 31.926963, 31.926962, 31.926960,
+     * 31.926959 over 24 seconds: half a metre of receiver wander. A stored constant
+     * would have repeated exactly. At the four decimal places a report carries, all
+     * five round to the same value, so the jitter costs nothing.
+     *
      * Returns null when the device has no usable position, so the caller can say
      * so rather than writing a plausible looking wrong one into a report.
      */

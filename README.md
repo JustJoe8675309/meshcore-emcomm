@@ -133,6 +133,32 @@ still transmits rather than being refused or rearranged.
 The zone letter follows the operator setting above. The composing and reading back live in
 `src/js/reports/Dtg.js` and are covered by `test/dtg.test.mjs`.
 
+### Position from the radio
+
+The location fields carry a **Position** button that fills them from the radio, so a grid
+reference does not have to be typed at the moment typing is least affordable.
+
+MeshCore exposes one position for the local device, the advert lat and lon in `selfInfo`.
+On a node with GPS the firmware serves it from the live fix; on a node without, it is
+whatever was set in Settings. That it really is live was measured rather than assumed:
+polling a stationary Heltec V4 gave five different values over 24 seconds, drifting about
+half a metre, which is receiver wander. A stored value would have repeated exactly.
+
+The button re-queries the device each press rather than reusing the `selfInfo` fetched at
+connect time, so a station that has moved reports where it is rather than where it started.
+
+Positions are written as decimal degrees to four places, `31.9270, -106.4001`, about eleven
+metres in eighteen bytes. A six character grid square would save twelve bytes but covers
+roughly eight kilometres by five at these latitudes: fine for a net check in, useless for a
+pickup point or a damage location. Degrees also read correctly to someone at an emergency
+operations centre who has never heard of Maidenhead. Four places is coarse enough that the
+GPS jitter above does not change the value, so pressing the button twice gives the same
+answer while the position stays current.
+
+A device with no position set reports exactly `0, 0`. That formats perfectly well and points
+at the Gulf of Guinea, so it is refused and the operator told, rather than written into a
+report. A position genuinely on the equator or the prime meridian still works.
+
 ### Packet size handling
 
 The companion firmware caps a channel message at `MAX_TEXT_LEN` (160 bytes), and that budget

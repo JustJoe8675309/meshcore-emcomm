@@ -7,6 +7,7 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
+    "preview": "vite preview",
     "test": "node test/report_encoder.test.mjs && node test/serial_framing.test.mjs && node test/airtime.test.mjs && node test/dtg.test.mjs && node test/forms.test.mjs && node test/position.test.mjs"
   },
   "author": "Liam Cottle <liam@liamcottle.com>",

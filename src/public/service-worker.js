@@ -10,7 +10,7 @@
 // starts with no network at all.
 
 // bumped to v2 to discard caches written by the earlier, too permissive version
-const CACHE_NAME = "meshcore-emcomm-v2";
+const CACHE_NAME = "meshcore-emcomm-v3";
 
 // the minimum needed to boot. hashed assets are picked up as they are requested,
 // since their names change every build and cannot be listed ahead of time.
