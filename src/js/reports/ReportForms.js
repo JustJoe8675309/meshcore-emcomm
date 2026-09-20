@@ -100,6 +100,8 @@ const ReportForms = [
                 type: "text",
                 placeholder: "e.g: DM43 or Station 12",
                 required: true,
+                // offers a button that fills this in from the radio's own position
+                offersPosition: true,
             },
             {
                 id: "station_type",
@@ -167,6 +169,7 @@ const ReportForms = [
                 type: "text",
                 placeholder: "e.g: Shelter 3, Main St",
                 required: true,
+                offersPosition: true,
             },
             {
                 id: "conditions",
@@ -273,7 +276,7 @@ const ReportForms = [
         fields: [
             { id: "callsign", tag: "CALL", label: "Callsign", type: "text", placeholder: "e.g: K7ABC", required: true, prefillFromCallsign: true },
             { id: "datetime", tag: "DTG", label: "Date / time", type: "dtg", required: true },
-            { id: "location", tag: "LOC", label: "Location", type: "text", placeholder: "Optional", required: false },
+            { id: "location", tag: "LOC", label: "Location", type: "text", placeholder: "Optional", required: false, offersPosition: true },
             { id: "comments", tag: "CMT", label: "Comments", type: "text", placeholder: "e.g: Returning to service 0600", required: false },
         ],
     },
@@ -349,7 +352,7 @@ const ReportForms = [
         header: "DAMAGE",
         fields: [
             { id: "datetime", tag: "DTG", label: "Date / time", type: "dtg", required: true },
-            { id: "location", tag: "LOC", label: "Location", type: "text", placeholder: "e.g: 1400 blk Alameda", required: true },
+            { id: "location", tag: "LOC", label: "Location", type: "text", placeholder: "e.g: 1400 blk Alameda", required: true, offersPosition: true },
             { id: "type", tag: "TYPE", label: "Type", type: "select", required: true, options: ["STRUCTURE", "UTILITY", "ROAD", "FLOOD", "FIRE", "OTHER"] },
             { id: "severity", tag: "SEV", label: "Severity", type: "select", required: true, options: ["MINOR", "MODERATE", "MAJOR", "DESTROYED"] },
             { id: "casualties", tag: "CAS", label: "Casualties", type: "text", placeholder: "e.g: NONE", required: false },
@@ -382,7 +385,7 @@ const ReportForms = [
             { id: "system", tag: "SYS", label: "System or asset", type: "text", placeholder: "e.g: W5XYZ 146.940", required: true },
             { id: "type", tag: "TYPE", label: "Type", type: "select", required: true, options: ["REPEATER", "MESH NODE", "SIMPLEX", "INTERNET", "PHONE", "POWER"] },
             { id: "status", tag: "STAT", label: "Status", type: "select", required: true, options: ["UP", "DEGRADED", "INTERMITTENT", "DOWN"] },
-            { id: "location", tag: "LOC", label: "Location", type: "text", placeholder: "e.g: Tortugas Mtn", required: false },
+            { id: "location", tag: "LOC", label: "Location", type: "text", placeholder: "e.g: Tortugas Mtn", required: false, offersPosition: true },
             { id: "restore", tag: "ETR", label: "Estimated restoration", type: "text", placeholder: "e.g: Unknown, or 0600L", required: false },
             { id: "comments", tag: "CMT", label: "Comments", type: "text", placeholder: "e.g: Mains lost, no generator", required: false },
         ],
@@ -398,7 +401,7 @@ const ReportForms = [
         fields: [
             { id: "callsign", tag: "CALL", label: "Callsign", type: "text", placeholder: "e.g: K7ABC", required: true, prefillFromCallsign: true },
             { id: "datetime", tag: "DTG", label: "Date / time", type: "dtg", required: true },
-            { id: "location", tag: "LOC", label: "Location / grid square", type: "text", placeholder: "e.g: DM62nr, or 1400 blk Alameda", required: true },
+            { id: "location", tag: "LOC", label: "Location / grid square", type: "text", placeholder: "e.g: DM62nr, or 1400 blk Alameda", required: true, offersPosition: true },
             { id: "station_type", tag: "STA", label: "Station type", type: "select", required: true, options: ["FIXED", "MOBILE", "PORTABLE", "IN TRANSIT"] },
             { id: "status", tag: "STAT", label: "Operational status", type: "select", required: true, options: ["OPERATIONAL", "LIMITED", "STANDBY", "OFF AIR"] },
             { id: "power", tag: "PWR", label: "Power source", type: "select", required: false, options: ["MAINS", "GENERATOR", "BATTERY", "SOLAR"] },
@@ -416,7 +419,7 @@ const ReportForms = [
         fields: [
             { id: "spotter", tag: "SPTR", label: "Spotter ID", type: "text", placeholder: "e.g: K7ABC or K7ABC/1234", required: true, prefillFromSpotterId: true },
             { id: "datetime", tag: "DTG", label: "Time observed", type: "dtg", required: true },
-            { id: "location", tag: "LOC", label: "Location of observation", type: "text", placeholder: "e.g: 3 mi NW of Anthony", required: true },
+            { id: "location", tag: "LOC", label: "Location of observation", type: "text", placeholder: "e.g: 3 mi NW of Anthony", required: true, offersPosition: true },
             { id: "event", tag: "EVNT", label: "Event", type: "select", required: true, options: ["TORNADO", "FUNNEL CLOUD", "WALL CLOUD", "HAIL", "WIND DAMAGE", "HIGH WIND", "FLASH FLOOD", "HEAVY RAIN", "SNOW", "DUST STORM"] },
             { id: "measurement", tag: "MEAS", label: "Measurement", type: "text", placeholder: "e.g: 1.00 in hail, or 60 mph", required: false },
             { id: "direction", tag: "MOVG", label: "Moving toward", type: "text", placeholder: "e.g: NE", required: false },
@@ -432,7 +435,7 @@ const ReportForms = [
         fields: [
             { id: "size", tag: "S", label: "Size", type: "text", placeholder: "e.g: 6 people, 2 vehicles", required: true },
             { id: "activity", tag: "A", label: "Activity", type: "text", placeholder: "e.g: Clearing debris from roadway", required: true },
-            { id: "location", tag: "L", label: "Location", type: "text", placeholder: "e.g: DM62, or 1400 blk Alameda", required: true },
+            { id: "location", tag: "L", label: "Location", type: "text", placeholder: "e.g: DM62, or 1400 blk Alameda", required: true, offersPosition: true },
             { id: "unit", tag: "U", label: "Unit or identity", type: "text", placeholder: "e.g: County road crew", required: false },
             { id: "datetime", tag: "T", label: "Time observed", type: "dtg", required: true },
             { id: "equipment", tag: "E", label: "Equipment", type: "text", placeholder: "e.g: 1 backhoe, 1 dump truck", required: false },
@@ -470,7 +473,7 @@ const ReportForms = [
         header: "9-LINE",
         // the lines are numbered rather than tagged, because that is the format
         fields: [
-            { id: "line1", tag: "1", label: "1. Pickup location", type: "text", placeholder: "e.g: DM62nr, soccer field E of Lincoln MS", required: true },
+            { id: "line1", tag: "1", label: "1. Pickup location", type: "text", placeholder: "e.g: DM62nr, soccer field E of Lincoln MS", required: true, offersPosition: true },
             { id: "line2", tag: "2", label: "2. Frequency and callsign at site", type: "text", placeholder: "e.g: 146.520 K7ABC", required: true },
             { id: "line3", tag: "3", label: "3. Patients by precedence", type: "text", placeholder: "e.g: 1 URGENT, 2 PRIORITY", required: true },
             { id: "line4", tag: "4", label: "4. Special equipment", type: "select", required: true, options: ["NONE", "HOIST", "EXTRACTION", "VENTILATOR"] },

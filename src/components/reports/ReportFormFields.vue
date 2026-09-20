@@ -79,16 +79,32 @@
 
             </div>
 
-            <!-- single line field -->
-            <input
-                v-else
-                :id="fieldId(field)"
-                :required="field.required"
-                :value="values[field.id]"
-                @input="onInput(field, $event.target.value)"
-                type="text"
-                :placeholder="field.placeholder"
-                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+            <!-- single line field, with a position button on the location fields -->
+            <div v-else class="space-y-1">
+
+                <div class="flex space-x-2">
+                    <input
+                        :id="fieldId(field)"
+                        :required="field.required"
+                        :value="values[field.id]"
+                        @input="onInput(field, $event.target.value)"
+                        type="text"
+                        :placeholder="field.placeholder"
+                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                    <button
+                        v-if="field.offersPosition"
+                        @click="onUsePosition(field)"
+                        type="button"
+                        :disabled="positionBusyField === field.id"
+                        :aria-label="`Fill ${field.label} from the radio's position`"
+                        class="shrink-0 bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 disabled:opacity-60">{{ positionBusyField === field.id ? "..." : "Position" }}</button>
+                </div>
+
+                <!-- only ever shown after the operator pressed the button, so it explains
+                     a specific failure rather than warning about one that may not happen -->
+                <p v-if="positionErrors[field.id]" class="text-xs text-red-600">{{ positionErrors[field.id] }}</p>
+
+            </div>
 
         </div>
 
@@ -98,6 +114,8 @@
 <script>
 import Dtg from "../../js/reports/Dtg.js";
 import OperatorSettings from "../../js/reports/OperatorSettings.js";
+import Position from "../../js/reports/Position.js";
+import Connection from "../../js/Connection.js";
 
 export default {
     name: 'ReportFormFields',
@@ -127,11 +145,16 @@ export default {
             // which would snap the selector back to exact while they were still filling
             // it in. Cleared when the form changes, since the fields are then different.
             chosenModes: {},
+            // which field is currently waiting on the radio, so its button can say so
+            positionBusyField: null,
+            // why the position could not be used, per field id
+            positionErrors: {},
         };
     },
     watch: {
         fields() {
             this.chosenModes = {};
+            this.positionErrors = {};
         },
     },
     methods: {
@@ -158,6 +181,49 @@ export default {
 
         onDtgNow(field, part) {
             this.onDtgPartInput(field, part, OperatorSettings.formatDtg());
+        },
+
+        /**
+         * Fills a location field from the radio's own position.
+         *
+         * Asks the device fresh rather than using the position it reported when it
+         * connected, because a mobile station that has moved since would otherwise
+         * put where it used to be into a report.
+         *
+         * A radio with no GPS reports whatever position was set in Settings, and one
+         * that has neither reports nothing. That last case is told plainly rather than
+         * filled with zeros: a position of 0, 0 is a real place in the Gulf of Guinea
+         * and would be far worse than an empty field.
+         */
+        async onUsePosition(field) {
+
+            this.positionBusyField = field.id;
+            this.positionErrors = { ...this.positionErrors, [field.id]: null };
+
+            try {
+
+                const position = await Connection.getPosition();
+
+                if(position === null){
+                    this.positionErrors = {
+                        ...this.positionErrors,
+                        [field.id]: "The radio has no position set. Set one in Settings, or type the location.",
+                    };
+                    return;
+                }
+
+                this.onInput(field, Position.format(position.latitude, position.longitude));
+
+            } catch(e) {
+                console.log("failed to read position from device", e);
+                this.positionErrors = {
+                    ...this.positionErrors,
+                    [field.id]: "The radio did not answer. Check it is still connected.",
+                };
+            } finally {
+                this.positionBusyField = null;
+            }
+
         },
 
 

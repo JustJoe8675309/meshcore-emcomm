@@ -3,6 +3,7 @@ import {Constants, WebBleConnection, WebSerialConnection} from "@liamcottle/mesh
 import Database from "./Database.js";
 import Utils from "./Utils.js";
 import NotificationUtils from "./NotificationUtils.js";
+import Position from "./reports/Position.js";
 
 class Connection {
 
@@ -333,6 +334,24 @@ class Connection {
 
     static async exportContact(publicKey) {
         return await GlobalState.connection.exportContact(publicKey);
+    }
+
+    /**
+     * The device's own position, freshly queried.
+     *
+     * Deliberately re-queries rather than reading the selfInfo cached at connect
+     * time: a station that has moved since it connected would otherwise report
+     * where it used to be, which is the one thing a position must never do.
+     *
+     * Returns null when the device has no usable position, so the caller can say
+     * so rather than writing a plausible looking wrong one into a report.
+     */
+    static async getPosition(timeoutMillis = 5000) {
+
+        const selfInfo = await Utils.withTimeout(GlobalState.connection.getSelfInfo(), timeoutMillis);
+
+        return Position.fromDevice(selfInfo.advLat, selfInfo.advLon);
+
     }
 
     static async sendMessage(publicKey, text) {

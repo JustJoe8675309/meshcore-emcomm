@@ -8,6 +8,10 @@ import ReportEncoder from "../src/js/reports/ReportEncoder.js";
 
 const FIELD_TYPES = ["text", "textarea", "select", "dtg"];
 const PREFILL_FLAGS = ["prefillFromCallsign", "prefillFromSpotterId"];
+// every key a field is allowed to carry. a flag nothing reads does nothing, silently,
+// so an unknown key is treated as a mistake rather than ignored
+const FIELD_KEYS = ["id", "tag", "label", "type", "placeholder", "required", "options",
+    "offersPosition", ...PREFILL_FLAGS];
 
 let failures = 0;
 function check(name, condition, detail = "") {
@@ -46,9 +50,9 @@ for (const form of ReportForms) {
         if (!FIELD_TYPES.includes(field.type)) problems.push(`${field.id}: unknown type ${field.type}`);
         if (field.type === "select" && !(field.options ?? []).length) problems.push(`${field.id}: select with no options`);
         if (field.type !== "select" && field.options) problems.push(`${field.id}: options on a non select`);
-        // a prefill flag the panel does not know about would silently do nothing
+        // a flag the panel does not know about would silently do nothing
         for (const key of Object.keys(field)) {
-            if (key.startsWith("prefill") && !PREFILL_FLAGS.includes(key)) problems.push(`${field.id}: unknown flag ${key}`);
+            if (!FIELD_KEYS.includes(key)) problems.push(`${field.id}: unknown key ${key}`);
         }
     }
 
