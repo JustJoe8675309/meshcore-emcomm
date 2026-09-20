@@ -34,13 +34,27 @@
                         No repeater answered. Nothing is in direct range, which is a real answer rather than a fault.
                     </div>
                     <div v-else class="space-y-1">
-                        <div v-for="found of discoverResults" :key="found.publicKeyHex" class="text-xs">
+
+                        <!-- a repeater already in contacts can be picked straight from here,
+                             which saves finding it again in the list below -->
+                        <button
+                            v-for="found of discoverResults"
+                            :key="found.publicKeyHex"
+                            @click="selectDiscovered(found)"
+                            :disabled="found.isNew"
+                            type="button"
+                            :aria-label="found.isNew ? `${found.name}, not in contacts` : `Select ${found.name} to ping`"
+                            class="block w-full text-left text-xs rounded p-1 -m-1"
+                            :class="[ found.isNew ? 'cursor-default' : 'hover:bg-gray-100 cursor-pointer',
+                                      selectedContactKey === found.publicKeyHex ? 'bg-blue-50' : '' ]">
                             <span class="font-medium text-gray-900">{{ found.name }}</span>
-                            <span v-if="found.isNew" class="ml-1 text-blue-700">new</span>
+                            <span v-if="found.isNew" class="ml-1 text-blue-700">new, not in contacts</span>
+                            <span v-else-if="selectedContactKey === found.publicKeyHex" class="ml-1 text-blue-700">selected below</span>
                             <div class="font-mono text-gray-700">
                                 snr_there={{ found.snrThere.toFixed(2) }}dB snr_back={{ found.snrBack.toFixed(2) }}dB rssi={{ found.rssi }}
                             </div>
-                        </div>
+                        </button>
+
                     </div>
                 </div>
 
@@ -366,6 +380,30 @@ export default {
                 this.discoverSecondsLeft = 0;
                 this.isDiscovering = false;
             }
+
+        },
+
+        /**
+         * Picks a discovered repeater in the list below, as if it had been searched for
+         * and clicked there.
+         *
+         * Only for one already in contacts. A newly discovered repeater has answered us
+         * but is not a contact yet, so there is nothing in the picker to select, and
+         * offering a dead click would be worse than showing it cannot be chosen.
+         */
+        selectDiscovered(found) {
+
+            if(found.isNew){
+                return;
+            }
+
+            this.selectedContactKey = found.publicKeyHex;
+
+            // the picker is below the fold on a phone, so move to it rather than
+            // silently changing something off screen
+            this.$nextTick(() => {
+                document.querySelector("#ping-contact")?.scrollIntoView({ block: "center", behavior: "smooth" });
+            });
 
         },
 
