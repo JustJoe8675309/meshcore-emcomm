@@ -10,6 +10,44 @@
                 link is as good in both directions.
             </div>
 
+            <!-- find repeaters in direct range, including ones not in contacts -->
+            <div class="bg-white border border-gray-300 rounded-lg p-3 space-y-2">
+
+                <div class="flex items-center justify-between">
+                    <div class="text-sm font-medium text-gray-900">Discover repeaters</div>
+                    <div v-if="discoverSecondsLeft > 0" class="text-xs text-gray-500">listening, {{ discoverSecondsLeft }}s</div>
+                </div>
+
+                <div class="text-xs text-gray-500">
+                    Asks every repeater in direct range to identify itself. Finds repeaters that have not
+                    adverted since you came into range, so are not in your contacts at all.
+                </div>
+
+                <button
+                    @click="discover"
+                    :disabled="isRunning || isDiscovering"
+                    type="button"
+                    class="w-full text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 disabled:opacity-60 font-medium rounded-lg text-sm px-5 py-2.5">{{ isDiscovering ? "Listening..." : "Discover repeaters" }}</button>
+
+                <div v-if="discoverResults !== null" class="space-y-1">
+                    <div v-if="discoverResults.length === 0" class="text-xs text-gray-600">
+                        No repeater answered. Nothing is in direct range, which is a real answer rather than a fault.
+                    </div>
+                    <div v-else class="space-y-1">
+                        <div v-for="found of discoverResults" :key="found.publicKeyHex" class="text-xs">
+                            <span class="font-medium text-gray-900">{{ found.name }}</span>
+                            <span v-if="found.isNew" class="ml-1 text-blue-700">new</span>
+                            <div class="font-mono text-gray-700">
+                                snr_there={{ found.snrThere.toFixed(2) }}dB snr_back={{ found.snrBack.toFixed(2) }}dB rssi={{ found.rssi }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="discoverError" role="status" class="text-xs text-red-600">{{ discoverError }}</div>
+
+            </div>
+
             <!-- who to ping -->
             <fieldset :disabled="isRunning" class="bg-white border border-gray-300 rounded-lg p-3 space-y-3 disabled:opacity-60">
 
@@ -131,6 +169,10 @@ import Utils from "../../js/Utils.js";
 import TimeUtils from "../../js/TimeUtils.js";
 import SearchableSelect from "../reports/SearchableSelect.vue";
 
+// repeaters answer with a randomised widened delay, since many may reply at once,
+// so this listens for a while rather than waiting on a single response
+const DISCOVER_LISTEN_MILLIS = 30000;
+
 export default {
     name: 'PingPanel',
     components: {
@@ -139,6 +181,10 @@ export default {
     data() {
         return {
             selectedContactKey: null,
+            isDiscovering: false,
+            discoverResults: null,
+            discoverError: null,
+            discoverSecondsLeft: 0,
             requestCount: 5,
             delayMillis: 1000,
             results: [],
@@ -277,6 +323,49 @@ export default {
 
             this.runToken = null;
             this.computeStats();
+
+        },
+
+        /**
+         * One zero hop control packet out, replies collected for the listening window.
+         *
+         * Names are resolved against the contact list where possible, and anything not
+         * in it is marked new, which is the whole point: a repeater that has not
+         * adverted since we arrived is reachable but invisible until it answers this.
+         */
+        async discover() {
+
+            this.isDiscovering = true;
+            this.discoverError = null;
+            this.discoverResults = null;
+            this.discoverSecondsLeft = Math.round(DISCOVER_LISTEN_MILLIS / 1000);
+
+            const ticker = setInterval(() => {
+                this.discoverSecondsLeft = Math.max(0, this.discoverSecondsLeft - 1);
+            }, 1000);
+
+            try {
+
+                const found = await Connection.discoverRepeaters(DISCOVER_LISTEN_MILLIS);
+
+                const known = new Map(GlobalState.contacts.map((c) => [Utils.bytesToHex(c.publicKey), c.advName]));
+
+                this.discoverResults = found
+                    .map((f) => ({
+                        ...f,
+                        name: known.get(f.publicKeyHex) || `(unknown ${f.publicKeyHex.slice(0, 8)})`,
+                        isNew: !known.has(f.publicKeyHex),
+                    }))
+                    .sort((a, b) => b.snrBack - a.snrBack);
+
+            } catch(e) {
+                console.log("discovery failed", e);
+                this.discoverError = "Discovery failed. The radio may be disconnected, or its firmware may predate this feature.";
+            } finally {
+                clearInterval(ticker);
+                this.discoverSecondsLeft = 0;
+                this.isDiscovering = false;
+            }
 
         },
 

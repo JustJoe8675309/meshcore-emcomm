@@ -481,6 +481,112 @@ class Connection {
 
     }
 
+    /**
+     * Asks every repeater in direct range to identify itself.
+     *
+     * This is the discovery the official app performs, and it is not an advert.
+     * Adverts announce us and draw no reply; discovery is a separate control packet
+     * with its own request and response, and repeaters answer it specifically.
+     *
+     * meshcore.js 1.15.0 implements neither side, so both are assembled by hand
+     * here: the command byte 55 is missing from its command list, which jumps 54 to
+     * 56, and the 0x8E push code arrives as an unhandled frame it only logs. Both
+     * are marked v8+ in the firmware, so an older device will answer with an error
+     * rather than a response.
+     *
+     * Sent zero hop, which is the point: it finds the repeaters this station can
+     * actually work directly, including ones that have not adverted since we came
+     * into range and are therefore invisible to the contact list.
+     *
+     * Each reply carries two signal readings, which is what makes it worth more
+     * than a ping: the responder reports how well it heard us, and our own radio
+     * reports how well we heard the reply.
+     */
+    static async discoverRepeaters(listenMillis = 30000) {
+
+        const connection = GlobalState.connection;
+        if(connection == null){
+            throw new Error("not connected");
+        }
+
+        // repeaters answer only if the filter names their type
+        const ADV_TYPE_REPEATER = 2;
+        const CTL_DISCOVER_REQ = 0x80;
+        const CTL_DISCOVER_RESP = 0x90;
+        const PUSH_CONTROL_DATA = 0x8E;
+        const CMD_SEND_CONTROL_DATA = 55;
+
+        // the tag comes back in every reply, so responses to an earlier run, or to
+        // somebody else's run, are not counted as ours
+        const tag = new Uint8Array(4);
+        crypto.getRandomValues(tag);
+
+        const request = new Uint8Array([
+            CTL_DISCOVER_REQ,               // prefix_only left clear, so replies carry the full key
+            1 << ADV_TYPE_REPEATER,
+            ...tag,
+            0, 0, 0, 0,                     // since: no cutoff, answer regardless of age
+        ]);
+
+        const found = new Map();
+
+        const onFrame = (frame) => {
+
+            const bytes = new Uint8Array(frame);
+
+            // [push code, our snr, rssi, path len, ...control payload]
+            if(bytes.length < 11 || bytes[0] !== PUSH_CONTROL_DATA){
+                return;
+            }
+
+            const payload = bytes.subarray(4);
+            if((payload[0] & 0xF0) !== CTL_DISCOVER_RESP){
+                return;
+            }
+
+            // not our request
+            for(let i = 0; i < 4; i++){
+                if(payload[2 + i] !== tag[i]){
+                    return;
+                }
+            }
+
+            const publicKey = payload.subarray(6);
+            const publicKeyHex = Utils.bytesToHex(publicKey);
+
+            // a repeater can answer more than once; keep the first
+            if(found.has(publicKeyHex)){
+                return;
+            }
+
+            found.set(publicKeyHex, {
+                publicKey: publicKey,
+                publicKeyHex: publicKeyHex,
+                nodeType: payload[0] & 0x0F,
+                // both readings are signed bytes in quarter dB steps
+                snrThere: new Int8Array([payload[1]])[0] / 4,
+                snrBack: new Int8Array([bytes[1]])[0] / 4,
+                rssi: new Int8Array([bytes[2]])[0],
+                pathLen: bytes[3],
+            });
+
+        };
+
+        connection.on("rx", onFrame);
+
+        try {
+            await connection.sendToRadioFrame(request);
+            // replies are spread over a random widened delay, since many nodes may
+            // answer at once, so this listens rather than waiting for one response
+            await Utils.sleep(listenMillis);
+        } finally {
+            connection.off("rx", onFrame);
+        }
+
+        return [...found.values()];
+
+    }
+
     static async sendMessage(publicKey, text) {
 
         // send message
