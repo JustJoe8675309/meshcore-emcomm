@@ -17,34 +17,39 @@ fill it in, and send. Seventeen forms are included:
 
 | Form | Purpose | On the air |
 | ---- | ------- | ---------- |
-| ICS-209 SITREP / Status Report | Situation report from the field | 99 b, 1 packet |
-| ICS-211 ARES/RACES Check-In | Register your station with net control | 104 b, 1 packet |
-| ICS-213 General Message | General message traffic between stations | 154 b, 2 packets |
-| ICS-213RR Resource Request | Request personnel, equipment or supplies | 132 b, 1 packet |
-| Damage Assessment | Observed damage at a location, with severity | 157 b, 1 packet |
-| Health & Welfare | Enquiry or reply about an individual | 167 b, 2 packets |
-| Net Check-Out | Leave the net and release your station | 114 b, 1 packet |
-| Net Traffic Summary | Net control summary of a session | 113 b, 1 packet |
-| Road / Route Status | Whether a route is passable, and any detour | 134 b, 1 packet |
-| SALUTE Spot Report | Size, activity, location, unit, time, equipment | 144 b, 2 packets |
-| Shelter Status | Population, capacity and needs | 135 b, 1 packet |
-| SKYWARN Spotter Report | Severe weather observation for the NWS | 170 b, 2 packets |
+| ICS-209 SITREP / Status Report | Situation report from the field | 159 b, 1 packet |
+| ICS-211 ARES/RACES Check-In | Register your station with net control | 115 b, 1 packet |
+| ICS-213 General Message | General message traffic between stations | 192 b, 2 packets |
+| ICS-213RR Resource Request | Request personnel, equipment or supplies | 133 b, 1 packet |
 | 9-Line MEDEVAC Request | Medical evacuation request, standard nine lines | 214 b, 2 packets |
 | ARRL Radiogram (NTS) | Formal traffic in National Traffic System format | 218 b, 2 packets |
 | Communications Status | A repeater, mesh node or link up or down | 151 b, 1 packet |
+| Damage Assessment | Observed damage at a location, with severity | 157 b, 1 packet |
+| Health & Welfare | Enquiry or reply about an individual | 184 b, 2 packets |
 | Net Activation | Announce a net is open and how to check in | 167 b, 2 packets |
+| Net Check-Out | Leave the net and release your station | 114 b, 1 packet |
+| Net Traffic Summary | Net control summary of a session | 113 b, 1 packet |
 | Position / Station Report | Where a station is and whether it is operational | 141 b, 1 packet |
+| Road / Route Status | Whether a route is passable, and any detour | 134 b, 1 packet |
+| SALUTE Spot Report | Size, activity, location, unit, time, equipment | 161 b, 2 packets |
+| Shelter Status | Population, capacity and needs | 135 b, 1 packet |
+| SKYWARN Spotter Report | Severe weather observation for the NWS | 166 b, 2 packets |
 
-All seventeen have been transmitted and received between two nodes. The byte figures are
-measured, not estimated: they are what went to the radio, including the sender name prefix
-the firmware prepends, using realistic content for each form.
+The table is in the order the picker shows. All seventeen have been transmitted between two
+nodes and received whole, the multi part ones in every part.
 
-Those figures depend on the sending node's name. The prefix is charged against the same
-160 bytes as the content, so a long device name costs every channel report. The measurements
-above use a 15 character name, which spends 17 bytes before any content. Most of the forms
-that exceed one packet would fit in one with a short name; the radiogram and the 9-line
-carry enough content that they will usually split whatever the node is called. Direct messages carry no
-prefix at all and always have the full budget.
+Every figure is the **total on the air**: the rendered report plus the `<sender name>: ` prefix the
+firmware prepends, which is charged against the same 160 bytes. It is the number the confirm step
+shows before you transmit, plus that prefix. Each one was produced by filling the form with
+realistic content for that report, so they show what a form of that shape actually costs rather
+than a best or worst case.
+
+The figures therefore depend on the sending node's name, which is the single biggest influence on
+them. They were measured from a node called `Joe-KJ5HBN-HTv3`, a 15 character name that spends 17
+bytes before a word of the report is written. Several of the forms that split here would fit in one
+packet from a node with a short name; the radiogram and the 9-line carry enough content that they
+will usually split whatever the node is called. Direct messages carry no prefix at all and always
+have the full 160 bytes.
 
 The four ICS forms carry their real form numbers and sort first. The rest have no ICS
 number, and none has been invented for them: a made up number on a form an incident
@@ -131,8 +136,16 @@ Anything over the cap is **silently truncated by the firmware**, so this fork en
 before transmitting.
 
 Reports that do not fit are split into numbered parts (`[1/3]`, `[2/3]`, ...) sent 2 seconds apart.
-Splitting is byte aware rather than character aware, so multi byte characters are never cut in half,
-and it breaks on word boundaries where possible.
+
+A report is one field per line, so parts break **between fields**: whole lines are packed into each
+part, and a part begins with a field or the form header. An operator copying part 2 onto a paper
+form sees whole fields rather than the tail of one.
+
+A single field too long to fit a part on its own has to break mid line, which in practice means a
+long free text field. That case breaks on word boundaries where possible and splits into as many
+parts as it takes, however large the field is. Splitting is byte aware rather than character aware,
+so a multi byte character is never cut in half. Nothing is dropped: the only hard limit is 99 parts,
+and a report past that is refused outright rather than silently shortened.
 
 The Reports tab shows the exact bytes and the exact packets before you transmit, so what you see on
 screen is what goes over the air.
@@ -197,7 +210,11 @@ Five suites, no hardware required:
 - `test/report_encoder.test.mjs` covers rendering and packet splitting, including a
   simulation of the firmware's own truncation rule to confirm no part can ever exceed
   160 bytes on the air. Also covers multi byte characters, surrogate pairs, the exact
-  byte boundary, and part counts that push the `[n/m]` marker into two digits.
+  byte boundary, and part counts that push the `[n/m]` marker into two digits. Two
+  sections cover splitting behaviour specifically: that every part of a split report
+  starts on a field boundary, and that a single field too large for one message still
+  splits into as many parts as it takes with nothing lost, whether or not it contains
+  any whitespace to break on.
 - `test/serial_framing.test.mjs` feeds synthetic device frames through the serial
   decoder to cover the USB path: frames split byte by byte, split mid header, several
   frames coalesced into one chunk, and resync after boot noise.

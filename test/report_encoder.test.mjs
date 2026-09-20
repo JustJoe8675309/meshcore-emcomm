@@ -305,5 +305,57 @@ console.log("\n=== 7. parts break between fields, not mid field ===");
         rejoined === long.text.replace(/\s+/g, " ").trim());
 }
 
+console.log("\n=== 8. a single field too large for one message still splits ===");
+{
+    // packing whole lines is only the preference. a field bigger than a part has to
+    // break mid line however long it is, and must still reach the air complete
+    const node = "Joe-KJ5HBN-HTv3";
+    const budget = ReportEncoder.getTextBudget("channel", node);
+    const ics213 = ReportForms.find((f) => f.id === "ics213");
+
+    // the sequence of non whitespace characters is the invariant. comparing whitespace
+    // normalised would fail wherever a break fell mid word, since rejoining the parts
+    // inserts a space that was never in the original
+    const strip = (x) => Array.from(x).filter((c) => !/\s/.test(c)).join("");
+
+    const cases = [
+        ["ordinary words, 400 chars", "word ".repeat(80).trim()],
+        ["ordinary words, 2000 chars", "situation report detail ".repeat(84).slice(0, 2000).trim()],
+        ["no whitespace at all, 600 chars", "A".repeat(600)],
+        ["one 500 char word among normal text", "start " + "B".repeat(500) + " end"],
+        ["300 emoji, 4 bytes each", "\u{1F525}".repeat(300)],
+        ["800 accented characters", "\u00e9".repeat(800)],
+    ];
+
+    for (const [name, message] of cases) {
+        const result = ReportEncoder.prepare(ics213, {
+            to: "Ops", from: "KJ5HBN", subject: "Test", datetime: "191930L SEP", message,
+        }, node, "channel");
+        const parts = result.parts;
+
+        const problems = [];
+        if (parts === null) problems.push("refused to split");
+        else {
+            if (parts.length < 2) problems.push("did not split at all");
+            const tooBig = parts.filter((part) => enc(part) > budget);
+            if (tooBig.length) problems.push(`${tooBig.length} part(s) over the ${budget} byte budget`);
+            if (!parts.every((p, i) => p.startsWith(`[${i + 1}/${parts.length}] `))) problems.push("parts not numbered");
+            const rejoined = parts.map((part) => part.replace(/^\[\d+\/\d+\] /, "")).join("");
+            if (strip(rejoined) !== strip(result.text)) problems.push("content lost or reordered");
+        }
+
+        check(`${name}: ${result.textBytes} b -> ${parts === null ? "null" : parts.length + " parts"}, nothing lost`,
+            problems.length === 0, problems.join(" | "));
+    }
+
+    // and it refuses rather than silently dropping content once 99 parts is not enough
+    const enormous = ReportEncoder.prepare(ics213, {
+        to: "Ops", from: "KJ5HBN", subject: "Test", datetime: "191930L SEP",
+        message: "detail ".repeat(3000),
+    }, node, "channel");
+    check("a field too large even for 99 parts is refused, not truncated", enormous.parts === null,
+        enormous.parts === null ? "" : `got ${enormous.parts.length} parts`);
+}
+
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : failures + " CHECK(S) FAILED"}`);
 process.exit(failures === 0 ? 0 : 1);
