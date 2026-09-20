@@ -12,7 +12,7 @@ messaging, settings and the RX log.
 
 ### Reports tab
 
-A third tab alongside Contacts and Channels. Pick the channel to transmit on, choose a report form,
+A tab alongside Contacts and Channels. Pick the channel to transmit on, choose a report form,
 fill it in, and send. Seventeen forms are included:
 
 | Form | Purpose | On the air |
@@ -81,6 +81,60 @@ DTG: 191830L SEP
 MSG: Shelter 3 at capacity 40 of 40.
 BY: K7ABC
 ```
+
+### Ping tab
+
+A fourth tab, for the question the contact list cannot answer: which repeaters can this
+station actually work, right now, without anything relaying for it.
+
+Everything here is **zero hop** on purpose. A repeater reachable only through another
+repeater is useful traffic-wise but tells you nothing about your own coverage, and a
+contact marked "No Path (Flood)" describes how it was *learned*, not whether it can be
+*reached*. On one node here, 106 repeaters were known and two were reachable directly.
+
+**Ping** sends trace requests to one repeater and reports both signal readings:
+
+    1. snr_there=11.75dB snr_back=12.25dB time=435ms
+    2. timeout
+    3 sent, 33.33% lost
+    avg snr_there=11.75dB, snr_back=11.92dB, time=571ms
+
+The two numbers are the point. `snr_there` is measured at the far end and `snr_back` here,
+and they are frequently different: one repeater on this bench consistently hears us 8 to
+10 dB worse than we hear it. A link that works in one direction only is exactly the
+failure worth finding before an incident rather than during one.
+
+A timeout is recorded as a result rather than an error, because packet loss is what is
+being measured. Cancelling keeps the replies already collected and reports on those.
+Averages are hidden when nothing came back, since `avg snr 0dB` would read as a
+measurement of a dead link rather than the absence of one.
+
+**Discover repeaters** asks every repeater in direct range to identify itself, which finds
+ones that have not adverted since you came into range and so are not in the contact list at
+all. Each answer carries both signal readings and the responder's public key. A repeater
+already known can be clicked to select it for pinging; one that is new can be saved as a
+contact, under a name built from its key, because the discovery reply does not carry one.
+The device replaces that name when the repeater next adverts.
+
+Discovery and ping do not always agree, and both are right when they disagree. Discovery
+proves a repeater is in range and hears you, because it answered. Ping additionally
+requires it to answer trace requests, and not every repeater does: one here replies to
+discovery at 11 dB and times out on every ping, including with three times the timeout.
+
+The protocol for this is worth recording, because `meshcore.js` 1.15.0 implements neither
+half and both are assembled by hand in `Connection.js`. Discovery is **not** an advert;
+adverting draws no replies, tested zero hop and flood. It is a control packet:
+
+| Direction | Frame |
+| --------- | ----- |
+| Request | `[55, 0x80, 1<<ADV_TYPE_REPEATER, tag x4, since x4]` |
+| Reply | `[0x8E, our_snr, rssi, path_len, 0x9X, their_snr, tag x4, pubkey]` |
+
+Command 55 is `CMD_SEND_CONTROL_DATA` and `0x8E` is `PUSH_CODE_CONTROL_DATA`; the library's
+command list skips 55 and its push codes stop at `0x8C`, so the frame is written directly
+and the reply is read off its `rx` event. Both are firmware v8 and above. The tag is not
+decoration: replies are broadcast rather than addressed, so without matching it a run
+collects answers to somebody else's discovery.
 
 ### Channel or contact
 
