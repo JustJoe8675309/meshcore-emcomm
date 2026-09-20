@@ -2,32 +2,30 @@
     <div class="w-full overflow-y-auto">
         <div class="p-3 space-y-3">
 
+            <div class="text-xs text-gray-600 bg-white border border-gray-300 rounded-lg p-3">
+                <div class="text-sm font-medium text-gray-900 mb-1">Repeater zero hop ping test</div>
+                Sends trace requests directly to a repeater, with no relaying in between, and reports how
+                well each end heard the other. A reply proves you can work that repeater yourself rather
+                than only reaching it through another one, and the two signal readings show whether the
+                link is as good in both directions.
+            </div>
+
             <!-- who to ping -->
             <fieldset :disabled="isRunning" class="bg-white border border-gray-300 rounded-lg p-3 space-y-3 disabled:opacity-60">
 
                 <div class="space-y-1">
-                    <label for="ping-type" class="block text-sm font-medium text-gray-900">Station type</label>
-                    <select
-                        id="ping-type"
-                        v-model="contactType"
-                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                        <option value="companion">Companion</option>
-                        <option value="repeater">Repeater</option>
-                    </select>
-                </div>
-
-                <div class="space-y-1">
-                    <label for="ping-contact" class="block text-sm font-medium text-gray-900">Station</label>
+                    <label for="ping-contact" class="block text-sm font-medium text-gray-900">Repeater</label>
                     <SearchableSelect
                         input-id="ping-contact"
                         v-model="selectedContactKey"
                         :options="contactOptions"
-                        placeholder="Select a station, or type to filter..."/>
+                        placeholder="Select a repeater, or type to filter..."/>
                     <div v-if="pingableContacts.length === 0" class="text-xs text-red-600">
-                        No {{ contactType }}s known yet.
+                        No repeaters known yet.
                     </div>
                     <div v-else class="text-xs text-gray-500">
-                        Most recently heard first. Tests the direct path to this station, not whatever route the mesh would find.
+                        Most recently heard first. A repeater listed as flood routed or several hops away is
+                        known to the mesh but may not be reachable directly, and will simply time out.
                     </div>
                 </div>
 
@@ -141,7 +139,6 @@ export default {
     data() {
         return {
             selectedContactKey: null,
-            contactType: "companion",
             requestCount: 5,
             delayMillis: 1000,
             results: [],
@@ -155,20 +152,17 @@ export default {
     computed: {
 
         /**
-         * The stations worth offering, newest first.
+         * The repeaters worth offering, most recently heard first.
          *
-         * Repeaters are included, unlike the reports tab. That restriction is about
-         * text messages, which a repeater cannot receive; a trace is answered by any
-         * node, and the link to a repeater is often the one an operator most needs to
-         * check, since it is the infrastructure everything else depends on.
-         *
-         * Ordered by when each was last heard, because that is the best available
-         * guess at which are worth pinging at all.
+         * Repeaters only. The link to a repeater is the one worth testing, because it
+         * is the infrastructure everything else leans on, and unlike a companion it is
+         * somewhere fixed whose coverage is worth knowing. Ordering by when each was
+         * last heard puts the plausible ones first: a repeater silent for weeks is
+         * unlikely to answer.
          */
         pingableContacts() {
-            const wanted = this.contactType === "repeater" ? Constants.AdvType.Repeater : Constants.AdvType.Chat;
             return GlobalState.contacts
-                .filter((contact) => contact.type === wanted)
+                .filter((contact) => contact.type === Constants.AdvType.Repeater)
                 .slice()
                 .sort((a, b) => (b.lastAdvert ?? 0) - (a.lastAdvert ?? 0))
                 .map((contact) => {
@@ -226,10 +220,6 @@ export default {
 
     },
     watch: {
-        // the previously selected station is not in the new list
-        contactType() {
-            this.selectedContactKey = null;
-        },
         // a new station means the previous station's numbers are not about this one
         selectedContactKey() {
             this.results = [];
