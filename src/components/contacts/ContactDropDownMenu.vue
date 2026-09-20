@@ -30,6 +30,18 @@
                 <span>Copy Public Key</span>
             </DropDownMenuItem>
 
+            <!-- favourite toggle. bit 0 of the contact's flags is the firmware's own
+                 favourite mark, so this is the same star the official app shows -->
+            <DropDownMenuItem @click="toggleFavourite(contact)">
+                <svg v-if="isFavourite" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-5 text-amber-500">
+                    <path d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401Z" />
+                </svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="size-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006Z" />
+                </svg>
+                <span>{{ isFavourite ? "Remove Favourite" : "Add Favourite" }}</span>
+            </DropDownMenuItem>
+
             <!-- share contact button -->
             <DropDownMenuItem @click="shareContact(contact)">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-5">
@@ -82,6 +94,7 @@ import Connection from "../../js/Connection.js";
 import Database from "../../js/Database.js";
 import Utils from "../../js/Utils.js";
 import PathInfo from "../../js/PathInfo.js";
+import ContactFlags from "../../js/ContactFlags.js";
 
 export default {
     name: 'ContactDropDownMenu',
@@ -98,6 +111,9 @@ export default {
         "contact-deleted",
     ],
     computed: {
+        isFavourite() {
+            return ContactFlags.isFavourite(this.contact);
+        },
         pathDescription() {
             return PathInfo.describe(this.contact.outPathLen);
         },
@@ -106,6 +122,14 @@ export default {
         },
     },
     methods: {
+        async toggleFavourite(contact) {
+            try {
+                await Connection.setContactFavourite(contact.publicKey, !this.isFavourite);
+            } catch(e) {
+                console.log("failed to change favourite", e);
+                alert("The radio did not accept that change.");
+            }
+        },
         copyPublicKey(contact) {
             Utils.copyToClipboard(Utils.bytesToHex(contact.publicKey));
         },

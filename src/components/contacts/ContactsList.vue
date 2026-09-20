@@ -62,6 +62,7 @@
 <script>
 import { Constants } from "@liamcottle/meshcore.js";
 import GlobalState from "../../js/GlobalState.js";
+import ContactFlags from "../../js/ContactFlags.js";
 import Utils from "../../js/Utils.js";
 import IconButton from "../IconButton.vue";
 import DropDownMenu from "../DropDownMenu.vue";
@@ -145,6 +146,9 @@ export default {
             // sort, then search
             var contacts = [...this.userContacts];
             contacts = this.getOrderedContacts(contacts);
+            // favourites first, keeping the chosen order within each group. sort is
+            // stable, so this lifts them without disturbing anything else
+            contacts = contacts.sort((a, b) => ContactFlags.compare(a, b));
             contacts = contacts.filter((contact) => contact != null);
 
             // search contacts by name or public key

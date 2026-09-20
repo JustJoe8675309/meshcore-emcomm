@@ -195,6 +195,7 @@ import { Constants } from "@liamcottle/meshcore.js";
 import GlobalState from "../../js/GlobalState.js";
 import Connection from "../../js/Connection.js";
 import Utils from "../../js/Utils.js";
+import ContactFlags from "../../js/ContactFlags.js";
 import ReportForms from "../../js/reports/ReportForms.js";
 import ReportEncoder from "../../js/reports/ReportEncoder.js";
 import Airtime from "../../js/reports/Airtime.js";
@@ -576,6 +577,7 @@ export default {
                 return {
                     value: contact.publicKeyHex,
                     label: contact.name,
+                    favorite: contact.favorite,
                     // shown beside the name, not searched
                     hint: TimeUtils.formatUnixSecondsAgo(contact.lastAdvert),
                 };
@@ -611,6 +613,7 @@ export default {
                         publicKey: contact.publicKey,
                         publicKeyHex: Utils.bytesToHex(contact.publicKey),
                         lastAdvert: contact.lastAdvert,
+                        favorite: ContactFlags.isFavourite(contact),
                     };
                 })
                 // most recently heard first. a station that adverted minutes ago is far

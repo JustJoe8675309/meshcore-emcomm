@@ -4,6 +4,7 @@ import Database from "./Database.js";
 import Utils from "./Utils.js";
 import NotificationUtils from "./NotificationUtils.js";
 import Position from "./reports/Position.js";
+import ContactFlags from "./ContactFlags.js";
 
 class Connection {
 
@@ -694,6 +695,45 @@ class Connection {
         await this.loadContacts();
 
         return name;
+
+    }
+
+    /**
+     * Marks a contact as a favourite on the radio, or clears the mark.
+     *
+     * Bit 0 of the contact's flags is the firmware's own favourite bit, so this
+     * is the same mark the official app shows rather than a note kept in this
+     * browser. The rest of the byte is contact permissions and is preserved: the
+     * device command replaces the whole contact record, so every other field has
+     * to be sent back exactly as it came.
+     */
+    static async setContactFavourite(publicKey, favourite) {
+
+        const connection = GlobalState.connection;
+        if(connection == null){
+            throw new Error(this.DISCONNECTED);
+        }
+
+        const contact = GlobalState.contacts.find((c) => Utils.isUint8ArrayEqual(c.publicKey, publicKey));
+        if(contact == null){
+            throw new Error("no such contact");
+        }
+
+        await connection.addOrUpdateContact(
+            contact.publicKey,
+            contact.type,
+            ContactFlags.withFavourite(contact.flags, favourite),
+            contact.outPathLen,
+            contact.outPath,
+            contact.advName,
+            contact.lastAdvert,
+            contact.advLat,
+            contact.advLon,
+        );
+
+        // read back rather than assume: the device owns this record now, and a
+        // write it rejected or altered should not leave the list saying otherwise
+        await this.loadContacts();
 
     }
 

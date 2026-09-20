@@ -68,8 +68,16 @@
                 :class="[
                     index === highlightedIndex ? 'bg-blue-500 text-white' : 'text-gray-900 hover:bg-gray-100',
                     option.value === modelValue ? 'font-semibold' : '',
+                    index === firstNonFavouriteIndex ? 'border-t border-gray-200' : '',
                 ]">
-                <span class="truncate">{{ option.label }}</span>
+                <span class="flex min-w-0 items-center space-x-1.5">
+                    <svg v-if="option.favorite" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                         class="size-4 shrink-0" :class="[ index === highlightedIndex ? 'text-amber-200' : 'text-amber-500' ]"
+                         role="img" aria-label="Favourite">
+                        <path d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401Z" />
+                    </svg>
+                    <span class="truncate">{{ option.label }}</span>
+                </span>
                 <span
                     v-if="option.hint"
                     class="shrink-0 text-xs font-normal"
@@ -252,12 +260,24 @@ export default {
         filteredOptions() {
 
             const query = this.query.trim().toLowerCase();
-            if(query === ""){
-                return this.options;
-            }
+            const matching = query === ""
+                ? [...this.options]
+                : this.options.filter((option) => option.label.toLowerCase().includes(query));
 
-            return this.options.filter((option) => option.label.toLowerCase().includes(query));
+            // favourites first, and only here: doing it in the component means
+            // every picker in the app gets it, rather than each caller sorting its
+            // own list and one of them being forgotten. sort is stable, so the
+            // caller's order survives within each group
+            return matching.sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0));
 
+        },
+
+        // where the favourites stop, so a divider can be drawn there. null when
+        // the list is all one or all the other and a rule would be noise
+        firstNonFavouriteIndex() {
+            const options = this.filteredOptions;
+            const index = options.findIndex((option) => !option.favorite);
+            return index > 0 ? index : null;
         },
 
     },

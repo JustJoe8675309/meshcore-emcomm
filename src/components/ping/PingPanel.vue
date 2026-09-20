@@ -210,6 +210,7 @@ import { Constants } from "@liamcottle/meshcore.js";
 import GlobalState from "../../js/GlobalState.js";
 import Connection from "../../js/Connection.js";
 import Utils from "../../js/Utils.js";
+import ContactFlags from "../../js/ContactFlags.js";
 import TimeUtils from "../../js/TimeUtils.js";
 import SearchableSelect from "../reports/SearchableSelect.vue";
 
@@ -266,6 +267,7 @@ export default {
                         publicKey: contact.publicKey,
                         publicKeyHex: Utils.bytesToHex(contact.publicKey),
                         lastAdvert: contact.lastAdvert,
+                        favorite: ContactFlags.isFavourite(contact),
                     };
                 });
         },
@@ -275,6 +277,7 @@ export default {
                 return {
                     value: contact.publicKeyHex,
                     label: contact.name,
+                    favorite: contact.favorite,
                     // when they were last heard, which is the best hint at whether a
                     // ping is worth sending at all
                     hint: TimeUtils.formatUnixSecondsAgo(contact.lastAdvert),
