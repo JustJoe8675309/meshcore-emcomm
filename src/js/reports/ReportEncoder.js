@@ -103,10 +103,66 @@ class ReportEncoder {
     /**
      * Splits text into chunks that each fit within maxBytes.
      *
+     * A report is one field per line, so breaking between lines is what keeps each
+     * part readable on its own: an operator copying part 2 onto a paper form sees
+     * whole fields rather than the tail of one. Lines are therefore packed whole
+     * wherever they fit.
+     *
+     * A single line too long for a part still has to be broken mid line, which in
+     * practice means a long free text field. That falls back to chunkLineByBytes(),
+     * which breaks on whitespace so at least words stay intact.
+     */
+    static chunkByBytes(text, maxBytes) {
+
+        const chunks = [];
+        var current = "";
+
+        const flush = () => {
+            if(current !== ""){
+                chunks.push(current);
+                current = "";
+            }
+        };
+
+        for(const line of text.split("\n")){
+
+            // the line fits on the end of the part being built
+            const joined = current === "" ? line : `${current}\n${line}`;
+            if(this.byteLength(joined) <= maxBytes){
+                current = joined;
+                continue;
+            }
+
+            // it does not fit here, so this part is finished
+            flush();
+
+            // a line that fits in a part of its own goes there whole
+            if(this.byteLength(line) <= maxBytes){
+                current = line;
+                continue;
+            }
+
+            // too long for any part, so it has to be broken mid line. the last piece
+            // stays open so following lines can still pack onto it
+            const pieces = this.chunkLineByBytes(line, maxBytes);
+            chunks.push(...pieces.slice(0, -1));
+            current = pieces[pieces.length - 1];
+
+        }
+
+        flush();
+
+        return chunks.filter((chunk) => chunk !== "");
+
+    }
+
+    /**
+     * Splits a single line into chunks that each fit within maxBytes.
+     *
      * Splits on whitespace where possible so words stay intact, and always splits
      * on whole code points so a multi byte character is never cut in half.
      */
-    static chunkByBytes(text, maxBytes) {
+    static chunkLineByBytes(text, maxBytes) {
 
         // work in code points, not UTF-16 units, so surrogate pairs stay together
         const characters = Array.from(text);

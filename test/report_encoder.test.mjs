@@ -263,5 +263,47 @@ console.log("\n=== 6. very large bodies ===");
         tooBig === null, tooBig === null ? "" : `got ${tooBig.length} parts`);
 }
 
+console.log("\n=== 7. parts break between fields, not mid field ===");
+{
+    // a receiving operator copying part 2 onto a paper form should see whole fields,
+    // so a part may only start mid line when a single field is too long to fit alone
+    const budget = ReportEncoder.getTextBudget("channel", "Joe-KJ5HBN-HTv3");
+
+    for (const id of ["radiogram", "medevac", "netopen", "welfare", "salute", "skywarn"]) {
+        const form = ReportForms.find((f) => f.id === id);
+        const result = ReportEncoder.prepare(form, sampleValues[id], "Joe-KJ5HBN-HTv3");
+        const parts = result.parts.map((part) => part.replace(/^\[\d+\/\d+\] /, ""));
+        if (parts.length === 1) continue;
+
+        // every line of every part, except where a long field forced a mid line break,
+        // should be a whole "TAG: value" line or the form header
+        const startsCleanly = parts.every((part, i) => {
+            if (i === 0) return part.startsWith(form.header);
+            const firstLine = part.split("\n")[0];
+            return form.fields.some((f) => firstLine.startsWith(`${f.tag}: `));
+        });
+        check(`${id}: every part starts on a field boundary`, startsCleanly,
+            JSON.stringify(parts.map((p) => p.split("\n")[0])));
+    }
+
+    // a field too long for one part still has to break mid line, and must stay word safe
+    const ics213 = ReportForms.find((f) => f.id === "ics213");
+    const long = ReportEncoder.prepare(ics213, {
+        ...sampleValues.ics213,
+        message: "All stations be advised the primary route via Canyon Road is now impassable due to debris flow at mile marker 14. Use the northern bypass through Ridge Street. Estimated additional transit time is 25 minutes.",
+    }, "Joe-KJ5HBN-HTv3");
+    const longParts = long.parts.map((part) => part.replace(/^\[\d+\/\d+\] /, ""));
+    check("a field too long for one part still breaks mid line", longParts.length >= 3);
+    check("the preamble fields are not broken up", longParts[0].split("\n").length === 5,
+        JSON.stringify(longParts[0]));
+    check("the long field starts its own part", longParts[1].startsWith("MSG: "),
+        JSON.stringify(longParts[1].slice(0, 30)));
+    check("no part exceeds the budget", longParts.every((_, i) => enc(long.parts[i]) <= budget));
+    // nothing lost and no word cut in half
+    const rejoined = longParts.join(" ").replace(/\s+/g, " ").trim();
+    check("mid line break keeps every word intact",
+        rejoined === long.text.replace(/\s+/g, " ").trim());
+}
+
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : failures + " CHECK(S) FAILED"}`);
 process.exit(failures === 0 ? 0 : 1);
