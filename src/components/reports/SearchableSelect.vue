@@ -13,6 +13,8 @@
             :aria-activedescendant="isOpen ? optionId(highlightedIndex) : null"
             :value="isOpen ? query : selectedLabel"
             :placeholder="isOpen ? (selectedLabel || placeholder) : placeholder"
+            :inputmode="suppressKeyboard ? 'none' : 'text'"
+            @pointerdown="onInputPointerDown"
             @focus="open"
             @input="onInput"
             @keydown.down.prevent="moveHighlight(1)"
@@ -22,15 +24,25 @@
             class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 pr-10">
 
         <!-- the chevron a native select draws for itself, so this reads as a dropdown
-             rather than a text box. not focusable and not clickable: the input behind it
-             already opens the list, and a second tab stop for decoration would be worse
-             than none -->
-        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+             rather than a text box.
+             it used to be pointer-events-none, which meant a tap on it fell through to
+             the input underneath and focused it. on a phone that raises the keyboard
+             over the list you were trying to read. it is now a real button that opens
+             the list without asking for text entry.
+             tabindex -1 keeps it out of the tab order: the input beside it does the
+             same job for a keyboard user, and a second stop for the same control is
+             just an extra press -->
+        <button
+            type="button"
+            tabindex="-1"
+            :aria-label="isOpen ? 'Close the list' : 'Show the list'"
+            @mousedown.prevent="onChevronPress"
+            class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
-                 class="h-5 w-5 text-gray-500 transition-transform" :class="{ 'rotate-180': isOpen }">
+                 class="h-5 w-5 transition-transform" :class="{ 'rotate-180': isOpen }">
                 <path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
             </svg>
-        </div>
+        </button>
 
         <!-- filtered options -->
         <div
@@ -102,6 +114,12 @@ export default {
             isOpen: false,
             query: "",
             highlightedIndex: 0,
+            // when the list was opened by the chevron rather than by tapping the
+            // text, the operator is picking from a list and not typing, so the
+            // input carries inputmode="none" and no on screen keyboard appears.
+            // the input is still focused, which is what keeps arrow keys and the
+            // screen reader's combobox behaviour working
+            suppressKeyboard: false,
             // ids have to be stable for aria-controls and aria-activedescendant to
             // keep pointing at the same elements across re-renders
             instanceId: `searchable-select-${++instanceCounter}`,
@@ -127,6 +145,43 @@ export default {
             });
         },
 
+        onChevronPress() {
+
+            if(this.isOpen){
+                this.close();
+                this.$refs.input?.blur();
+                return;
+            }
+
+            // set before focusing: inputmode is read when the field takes focus,
+            // so deciding afterwards is too late to keep the keyboard down
+            this.suppressKeyboard = true;
+            this.open();
+            this.$refs.input?.focus();
+
+        },
+
+        onInputPointerDown() {
+
+            // a tap on the text itself is a request to type
+            if(!this.suppressKeyboard){
+                return;
+            }
+
+            this.suppressKeyboard = false;
+
+            // inputmode only takes effect as the field takes focus. if the chevron
+            // already focused it, the field has to give up focus and take it again
+            // for the keyboard to come up, and that has to happen inside this same
+            // gesture or the browser treats it as unrequested and ignores it
+            const input = this.$refs.input;
+            if(document.activeElement === input){
+                input.blur();
+                input.focus();
+            }
+
+        },
+
         open() {
             this.isOpen = true;
             // start from an empty filter so every option is reachable, with the
@@ -139,6 +194,8 @@ export default {
         close() {
             this.isOpen = false;
             this.query = "";
+            // the next opening decides for itself whether typing is wanted
+            this.suppressKeyboard = false;
         },
 
         onInput(event) {
