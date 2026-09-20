@@ -34,34 +34,65 @@ function mountList(contacts) {
 
 describe("PathInfo", () => {
 
-    it("describes the lengths the firmware can actually produce", () => {
+    // out_path_len is not a hop count. The firmware packs the hop count into the
+    // low six bits and the path hash size into the top two (src/Packet.h), so
+    // reading it as a number reports a direct contact as being far away.
+
+    it("describes a single byte hash path, the common case", () => {
         expect(PathInfo.describe(-1)).toBe("No Path (Flood)");
         expect(PathInfo.describe(0)).toBe("Direct");
         expect(PathInfo.describe(1)).toBe("1 Hop");
         expect(PathInfo.describe(2)).toBe("2 Hops");
     });
 
-    it("accepts the longest path the firmware allows", () => {
-        // MAX_PATH_SIZE is 64, and out_path is a 64 byte array
-        expect(PathInfo.describe(64)).toBe("64 Hops");
-        expect(PathInfo.isKnownPath(64)).toBe(true);
+    it("reads a direct contact using wider path hashes as direct", () => {
+        // 0x80 is zero hops with three byte hashes, and was reported as 128 hops
+        // away. meshcore.js reads the byte signed, so it arrives as -128.
+        expect(PathInfo.describe(-128)).toBe("Direct");
+        expect(PathInfo.decode(-128)).toMatchObject({ flood: false, hops: 0, hashSize: 3 });
+
+        // and 0x40, the two byte hash equivalent
+        expect(PathInfo.describe(64)).toBe("Direct");
+        expect(PathInfo.decode(64)).toMatchObject({ hops: 0, hashSize: 2 });
     });
 
-    it("refuses to call an impossible value a distance", () => {
-        // a 128 hop station is not far away, it is not understood
-        for(const value of [65, 128, -128, 255]){
-            expect(PathInfo.isUnknown(value)).toBe(true);
-            expect(PathInfo.describe(value)).toMatch(/^Unknown path/);
-            expect(PathInfo.describe(value)).not.toMatch(/Hop/);
+    it("counts hops the same whatever the hash size", () => {
+        for(const [value, hashSize] of [[1, 1], [65, 2], [-127, 3]]){
+            expect(PathInfo.describe(value)).toBe("1 Hop");
+            expect(PathInfo.decode(value).hashSize).toBe(hashSize);
         }
     });
 
-    it("keeps the raw value visible, so it can be reported", () => {
-        expect(PathInfo.describe(128)).toContain("128");
+    it("accepts the most hops the field can hold", () => {
+        // six bits, so 63 with single byte hashes, which is 63 of the 64 bytes
+        expect(PathInfo.describe(63)).toBe("63 Hops");
+        expect(PathInfo.hops(63)).toBe(63);
+    });
+
+    it("rejects a path that would not fit in MAX_PATH_SIZE", () => {
+        // 0x7F is 63 hops of two byte hashes, which needs 126 bytes
+        expect(PathInfo.isUnknown(127)).toBe(true);
+    });
+
+    it("rejects the reserved hash size", () => {
+        // hash size 4 is reserved, which is also what keeps 0xFF unambiguous
+        expect(PathInfo.isUnknown(192)).toBe(true);
+    });
+
+    it("keeps the no path sentinel distinct from any real path", () => {
+        // 0xFF would decode to 63 hops of 4 byte hashes, which is reserved, so it
+        // can never collide with a route
+        expect(PathInfo.isFlood(-1)).toBe(true);
+        expect(PathInfo.isFlood(255)).toBe(true);
+        expect(PathInfo.hops(-1)).toBe(null);
+    });
+
+    it("keeps the raw value visible when it cannot be read", () => {
+        expect(PathInfo.describe(192)).toBe("Unknown path (192)");
     });
 
     it("treats a missing or fractional length as unknown rather than assuming", () => {
-        for(const value of [null, undefined, 1.5, NaN]){
+        for(const value of [null, undefined, 1.5, NaN, "3"]){
             expect(PathInfo.isUnknown(value)).toBe(true);
         }
     });
