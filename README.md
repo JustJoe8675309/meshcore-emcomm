@@ -370,10 +370,21 @@ Then confirm what is actually being served, which is the only check that matters
 and compare it with `dist/assets/` from a local build of the same commit. Matching hashes
 mean the deployed bundle is the one you built.
 
-The service worker cache name does not need bumping for an ordinary change. Asset filenames
-carry a content hash, so a new build cannot be served from an old cache entry, and the page
-itself is fetched network first. Bump `CACHE_NAME` only when changing what the service
-worker caches or how, which is a change to the caching rules rather than to the app.
+The service worker cache name looks after itself. `npm run build` stamps it with the main
+bundle's content hash, so every build that changes code gets its own cache and the previous
+one is deleted when the new worker activates, while a build that changes no code keeps the
+same cache and costs returning operators nothing.
+
+That replaces a fixed name, which had two faults worth knowing about because neither showed
+up as an error. Nothing evicted superseded builds, so the cache grew for ever: twelve
+deploys in one day left twelve complete copies of the app on the device, 197 entries and
+6.75 MB. And the worker's own bytes never changed, so browsers never installed a new one,
+meaning any future change to the caching rules would never have reached anyone already
+running the app.
+
+Pruning by what `index.html` references would have been the wrong fix. The app code splits,
+so lazily loaded chunks are named in JavaScript rather than in the document, and deleting
+them would leave routes that work online and fail offline.
 
 To roll back, revert the commit and push. Deployments are per commit and Cloudflare keeps
 the previous ones, so an older deployment can also be promoted from the dashboard, but

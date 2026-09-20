@@ -5,7 +5,7 @@
   "main": "src/main.js",
   "type": "module",
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && node scripts/stamp-service-worker.mjs",
     "dev": "vite",
     "preview": "vite preview",
     "test:components": "vitest run --config vitest.config.js",

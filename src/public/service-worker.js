@@ -9,8 +9,23 @@
 // One online load is required first, to populate the cache. After that the app
 // starts with no network at all.
 
-// bumped to v2 to discard caches written by the earlier, too permissive version
-const CACHE_NAME = "meshcore-emcomm-v3";
+// Stamped with the build's own bundle hash by scripts/stamp-service-worker.mjs,
+// so every build gets its own cache and activate() drops the previous one.
+//
+// This was a fixed string, and the cache grew without bound: /assets/ is cache
+// first and nothing evicted superseded builds, so twelve deploys in a day left
+// twelve complete copies of the app, 197 entries and 6.75 MB, on the device.
+//
+// Pruning by what index.html references would have been wrong. The app code
+// splits, so lazily loaded chunks are named in JavaScript rather than in the
+// document, and deleting them would leave routes that work online and fail
+// offline, which is the worst possible outcome for this app.
+//
+// The hash comes from the main bundle, so a build that changes no code keeps the
+// same cache and costs returning operators nothing. A build that does change code
+// re-downloads, which is affordable because a new service worker only ever
+// arrives over the network in the first place.
+const CACHE_NAME = "meshcore-emcomm-__BUILD_ID__";
 
 // the minimum needed to boot. hashed assets are picked up as they are requested,
 // since their names change every build and cannot be listed ahead of time.

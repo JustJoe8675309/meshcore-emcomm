@@ -53,7 +53,9 @@ section("Tests and build");
         tests.ok ? "" : "npm test failed, run it directly for the output");
     record("app", `component tests (${components?.[1] ?? "?"})`, components && tests.ok ? PASS : FAIL);
 
-    const build = tryRun("npx vite build --logLevel error");
+    // npm run build, not vite directly: the real build also stamps the service
+    // worker, and auditing a build nobody ships is worse than not auditing one
+    const build = tryRun("npm run build");
     record("app", "production build", build.ok ? PASS : FAIL);
 }
 
@@ -209,6 +211,20 @@ section("Deployment");
         const remote = served.out.match(/assets\/(index-[A-Za-z0-9_-]+\.js)/)?.[1];
         record("deploy", "live build matches local", remote === local ? PASS : WARN,
             remote === local ? remote : `live ${remote}, local ${local}; push or rebuild`);
+    }
+
+    // a fixed cache name is how the cache grew without bound before, and it fails
+    // silently, so check the stamp actually landed
+    if(existsSync("dist/service-worker.js")){
+        const worker = readFileSync("dist/service-worker.js", "utf8");
+        const stamped = worker.match(/meshcore-emcomm-([A-Za-z0-9_-]+)/)?.[1];
+        const bundle = existsSync("dist/index.html")
+            ? readFileSync("dist/index.html", "utf8").match(/assets\/index-([A-Za-z0-9_-]+)\.js/)?.[1]
+            : null;
+        record("deploy", "service worker stamped with the build",
+            stamped && stamped === bundle ? PASS : FAIL,
+            stamped === "__BUILD_ID__" ? "placeholder left in place, the cache would grow for ever"
+                : (stamped === bundle ? `meshcore-emcomm-${stamped}` : `worker says ${stamped}, bundle is ${bundle}`));
     }
 
     const dirty = tryRun("git status --porcelain");
