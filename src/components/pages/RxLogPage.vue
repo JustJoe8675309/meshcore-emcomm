@@ -28,12 +28,12 @@
                         <div v-if="formatPacketPayload(log.packet)" class="text-sm text-gray-500">
                             <div v-for="line of formatPacketPayload(log.packet)">{{ line }}</div>
                         </div>
-                        <div @click="showPath(log.packet.path)" class="text-sm text-gray-500 cursor-pointer">
-                            <span v-if="log.packet.path.length > 0">Path: {{ formatPath(log.packet.path) }}</span>
+                        <div @click="showPath(log.packet)" class="text-sm text-gray-500 cursor-pointer">
+                            <span v-if="hopCount(log.packet) > 0">Path: {{ formatPath(log.packet) }}</span>
                             <span v-else>Path: (direct)</span>
                         </div>
                         <div class="text-sm text-gray-500 space-x-1">
-                            <span>Hops: {{ log.packet.path.length }}</span>
+                            <span>Hops: {{ hopCount(log.packet) }}</span>
                             <span>•</span>
                             <span>SNR: {{ log.snr }}</span>
                         </div>
@@ -54,6 +54,7 @@ import GlobalState from "../../js/GlobalState.js";
 import {Advert, Constants, Packet, BufferUtils} from "@liamcottle/meshcore.js";
 import ChannelDropDownMenu from "../channels/ChannelDropDownMenu.vue";
 import IconButton from "../IconButton.vue";
+import { MeshCorePath } from "@liamcottle/meshcore.js";
 
 export default {
     name: 'RxLogPage',
@@ -82,20 +83,43 @@ export default {
         byteToHex(byte) {
             return ('0' + (byte & 0xFF).toString(16)).slice(-2);
         },
-        formatPath(path) {
-            return Array.from(path, (byte) => {
-                return this.byteToHex(byte);
-            }).join(',');
+        /**
+         * The hops in a packet's path, each one a hash of one, two or three bytes.
+         *
+         * A packet's pathLen is not a length in bytes and not a hop count: the top
+         * two bits are the hash size and the bottom six the number of hops. This
+         * page used to read path.length, the byte count, which is the same number
+         * only while hashes are one byte wide. Against a station using three byte
+         * hashes it reported three times the real hops and split every hop into
+         * three, naming each third after whichever contact happened to start with
+         * that byte.
+         *
+         * meshcore.js already unpacks this, so use its decoder rather than a
+         * second copy of the rules here.
+         */
+        pathItems(packet) {
+            return MeshCorePath.fromPathAndLength(packet.path, packet.pathLen)?.pathItems ?? [];
         },
-        showPath(path) {
+        hopCount(packet) {
+            return this.pathItems(packet).length;
+        },
+        formatHash(hash) {
+            return Array.from(hash, (byte) => this.byteToHex(byte)).join('');
+        },
+        formatPath(packet) {
+            // hops separated by commas, the bytes within a hop kept together
+            return this.pathItems(packet).map((hash) => this.formatHash(hash)).join(',');
+        },
+        showPath(packet) {
 
-            const pathList = [`${path.length} Hops`];
-            const pathArray = Array.from(path);
-            for(var i = 0; i < pathArray.length; i++){
-                const pathByte = pathArray[i];
-                const contact = this.findContactByPublicKeyPrefix([pathByte]);
+            const items = this.pathItems(packet);
+            const pathList = [`${items.length} ${items.length === 1 ? "Hop" : "Hops"}`];
+            for(var i = 0; i < items.length; i++){
+                // match on the whole hash: a one byte prefix of a three byte hash
+                // picks whichever contact happens to share that first byte
+                const contact = this.findContactByPublicKeyPrefix(items[i]);
                 const contactName = contact?.advName ?? "?";
-                pathList.push(`[${i + 1}]: ${contactName}`);
+                pathList.push(`[${i + 1}] ${this.formatHash(items[i])}: ${contactName}`);
             }
 
             alert(pathList.join("\n"));
