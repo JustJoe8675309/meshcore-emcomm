@@ -9,7 +9,10 @@
 # without this file fails with "the assets property is missing the required
 # directory property" even though the build itself succeeded.
 
-name = "meshcore-emcomm"
+# the account subdomain is already meshcore-emcomm, and the worker name is
+# prepended to it, so naming this worker meshcore-emcomm too would serve the app
+# from meshcore-emcomm.meshcore-emcomm.workers.dev
+name = "app"
 compatibility_date = "2026-09-20"
 
 [assets]
