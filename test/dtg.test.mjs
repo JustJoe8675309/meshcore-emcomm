@@ -132,5 +132,23 @@ console.log("\n=== byte cost against an exact dtg ===");
     check("same day range costs 5 more", enc(rows[2][1]) - enc(exact) === 5);
 }
 
+console.log("\n=== local unless zulu is explicitly chosen ===");
+{
+    // a date time group labelled Z when the net runs on local time, or the other way
+    // round, is wrong in a way nobody notices until the times fail to line up. so
+    // anything that is not exactly "zulu" has to fall back to local rather than
+    // guessing, and there must be no way to end up with a third state
+    const d = new Date(2026, 8, 19, 17, 45);
+
+    check("the default with no zone given is local", Dtg.format(d).endsWith("L SEP"), Dtg.format(d));
+    check('only the exact string "zulu" selects zulu', Dtg.format(d, "zulu").includes("Z "), Dtg.format(d, "zulu"));
+
+    // every one of these is a plausible way for a stored or passed value to go wrong
+    for (const zone of ["local", "Zulu", "ZULU", "utc", "UTC", "z", "Z", "", " zulu", "zulu ", null, undefined, 0, 1, true, false, {}, []]) {
+        const formatted = Dtg.format(d, zone);
+        check(`zone ${JSON.stringify(zone)} formats as local`, formatted.endsWith("L SEP"), formatted);
+    }
+}
+
 console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : failures + " CHECK(S) FAILED"}`);
 process.exit(failures === 0 ? 0 : 1);
