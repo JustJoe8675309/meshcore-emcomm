@@ -39,7 +39,9 @@
 
                 <!-- every request is a transmission, and this app is careful about that elsewhere -->
                 <div class="text-xs text-gray-500">
-                    {{ requestCount }} transmissions on the air, about {{ estimatedDurationLabel }} in total.
+                    {{ requestCount }} transmissions on the air, about {{ estimatedDurationLabel }} if the station answers.
+                    A station that does not answer takes several seconds per request to give up, so a run that times
+                    out takes considerably longer.
                 </div>
 
             </fieldset>
@@ -180,9 +182,17 @@ export default {
                 && this.delayMillis >= 0;
         },
 
+        /**
+         * Roughly how long a run takes when every request is answered.
+         *
+         * Deliberately the best case. A reply comes back in a few hundred
+         * milliseconds, but an unanswered request waits on the device's own timeout,
+         * measured at around four seconds, so a run that times out throughout takes
+         * several times longer than this. Rather than present one number that is
+         * wrong for half the cases, the label beside it says so.
+         */
         estimatedDurationLabel() {
-            // the delay sits between requests, not after the last one, and each request
-            // itself takes a moment on the air
+            // the delay sits between requests, not after the last one
             const gaps = Math.max(0, this.requestCount - 1) * this.delayMillis;
             const seconds = Math.round((gaps + this.requestCount * 500) / 100) / 10;
             return seconds < 60 ? `${seconds} s` : `${Math.round(seconds / 6) / 10} min`;
