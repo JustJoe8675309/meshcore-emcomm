@@ -36,7 +36,12 @@ fill it in, and send. Seventeen forms are included:
 | SKYWARN Spotter Report | Severe weather observation for the NWS | 166 b, 2 packets |
 
 The table is in the order the picker shows. All seventeen have been transmitted between two
-nodes and received whole, the multi part ones in every part.
+nodes and received whole, the multi part ones in every part, over USB serial and over Bluetooth.
+
+Bluetooth is worth calling out because it frames differently. `MAX_FRAME_SIZE` is 176 bytes, so a
+report larger than that is chunked by the transport as well as split into parts by this client, and
+the two have nothing to do with each other. A 216 byte radiogram was sent over Bluetooth and
+received whole, splitting at the same field boundary it splits at over serial.
 
 Every figure is the **total on the air**: the rendered report plus the `<sender name>: ` prefix the
 firmware prepends, which is charged against the same 160 bytes. It is the number the confirm step
