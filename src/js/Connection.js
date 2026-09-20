@@ -273,7 +273,14 @@ class Connection {
         // Which is what makes re-reading worth it. This is a query to the attached
         // device, not a transmission, so it costs no airtime and nothing on the
         // mesh hears it. Merging passes by public key converges on the full list,
-        // and a link that loses nothing pays for one pass.
+        // and a link that loses nothing pays for one pass. Measured on that node:
+        // first passes of 240, 248, 250, 254 and 256 out of 265, every one of them
+        // complete after two or three.
+        //
+        // The merged list can briefly run one over the announced count, because a
+        // contact can advert, or be evicted, between passes. Harmless: the
+        // shortfall below floors at zero, and the next load agrees with the device
+        // again.
         let announced = null;
         const onContactsStart = (start) => {
             announced = start?.count ?? null;
