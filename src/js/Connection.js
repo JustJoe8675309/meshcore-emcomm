@@ -377,6 +377,26 @@ class Connection {
     static DELIVERY_GRACE_MILLIS = 2000;
 
     /**
+     * How many times to retransmit a part that was not acknowledged, before stopping
+     * and asking the operator.
+     *
+     * Bounded on purpose. A transient collision clears in an attempt or two, but past
+     * that the other station is off, out of range, or the channel is congested, and
+     * transmitting into that helps nobody while occupying air everyone shares. The
+     * device does its own retries underneath each of these, within the timeout it
+     * reports back, so the real number of transmissions is higher than this.
+     */
+    static MAX_PART_RETRIES = 3;
+
+    /**
+     * Gap before the nth retry, growing so a congested channel is given room to clear
+     * rather than being hit again immediately.
+     */
+    static retryBackoffMillis(attempt) {
+        return 2000 * Math.pow(2, attempt - 1);
+    }
+
+    /**
      * Waits for a direct message to be acknowledged, and returns its final status.
      *
      * Direct messages are acknowledged one at a time. The device tracks a single

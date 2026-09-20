@@ -220,6 +220,8 @@ export default {
             isSending: false,
             sendFailure: null,
             sendingPartIndex: 0,
+            // which retry of the current part is in flight, 0 while on the first attempt
+            sendingAttempt: 0,
         };
     },
     mounted() {
@@ -417,26 +419,47 @@ export default {
 
                     if(destination.isContact){
 
-                        const sent = await Connection.sendMessage(destination.contact.publicKey, parts[i]);
-
                         // the device tracks one outstanding direct message, so sending the
                         // next part before this one is acknowledged loses it. wait for the
-                        // acknowledgement rather than guessing at a delay. nothing follows
-                        // the last part, so there is nothing to protect it from
-                        if(!isLastPart){
+                        // acknowledgement rather than guessing at a delay, and retransmit a
+                        // part that does not arrive rather than building on top of it
+                        var status = null;
 
-                            const status = await Connection.waitForDelivery(
+                        for(let attempt = 0; attempt <= Connection.MAX_PART_RETRIES; attempt++){
+
+                            if(attempt > 0){
+                                this.sendingAttempt = attempt;
+                                await Utils.sleep(Connection.retryBackoffMillis(attempt));
+                            }
+
+                            const sent = await Connection.sendMessage(destination.contact.publicKey, parts[i]);
+
+                            // nothing follows the last part, so there is nothing for it to
+                            // collide with and no reason to hold the operator through a
+                            // round trip. it reports its own delivery in the conversation
+                            if(isLastPart){
+                                status = "delivered";
+                                break;
+                            }
+
+                            status = await Connection.waitForDelivery(
                                 sent.id,
                                 sent.estTimeout + Connection.DELIVERY_GRACE_MILLIS,
                             );
 
-                            // stop here rather than transmitting on top of it. sentCount is
-                            // still i, so resuming retransmits this part, which is right:
-                            // it went out but never arrived
-                            if(status !== "delivered"){
-                                throw new Error(`part ${i + 1} of ${parts.length} was not acknowledged (${status})`);
+                            if(status === "delivered"){
+                                break;
                             }
 
+                        }
+
+                        this.sendingAttempt = 0;
+
+                        // out of attempts. stop rather than transmitting on top of it, and
+                        // leave sentCount at i so resuming retransmits this part, which is
+                        // right: it went out but never arrived
+                        if(status !== "delivered"){
+                            throw new Error(`part ${i + 1} of ${parts.length} was not acknowledged after ${Connection.MAX_PART_RETRIES + 1} attempts (${status})`);
                         }
 
                     } else {
@@ -466,6 +489,7 @@ export default {
 
             this.isSending = false;
             this.sendingPartIndex = 0;
+            this.sendingAttempt = 0;
 
             if(this.sendFailure){
                 return;
@@ -711,11 +735,21 @@ export default {
         sendButtonLabel() {
 
             if(this.isSending){
+
                 const parts = this.prepared?.parts ?? [];
+
+                // say so when a part is being retransmitted, so a send that looks stalled
+                // is visibly still working rather than apparently hung
+                if(this.sendingAttempt > 0){
+                    return `Retrying ${this.sendingPartIndex + 1} of ${parts.length}, attempt ${this.sendingAttempt + 1}...`;
+                }
+
                 if(parts.length > 1){
                     return `Sending ${this.sendingPartIndex + 1} of ${parts.length}...`;
                 }
+
                 return "Sending...";
+
             }
 
             const partCount = this.prepared?.parts?.length ?? 0;
