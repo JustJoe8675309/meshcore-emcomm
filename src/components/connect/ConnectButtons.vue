@@ -17,6 +17,11 @@
             <div>Connect a MeshCore device to continue</div>
         </div>
 
+        <!-- why the last attempt failed, if it did -->
+        <div v-if="GlobalState.connectionError" role="status" class="text-sm text-red-600 text-center px-2">
+            {{ GlobalState.connectionError }}
+        </div>
+
         <!-- bluetooth -->
         <button @click="connectViaBluetooth" type="button" class="w-full flex cursor-pointer bg-white rounded shadow px-3 py-2 text-black space-x-2 font-semibold hover:bg-gray-100">
             <span>
@@ -51,9 +56,15 @@
 
 <script>
 import Connection from "../../js/Connection.js";
+import GlobalState from "../../js/GlobalState.js";
 
 export default {
     name: 'ConnectButtons',
+    computed: {
+        GlobalState() {
+            return GlobalState;
+        },
+    },
     methods: {
         async connectViaBluetooth() {
             if(await Connection.connectViaBluetooth()){

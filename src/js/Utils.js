@@ -19,12 +19,19 @@ class Utils {
         return Array.from(uint8Array).map(byte => byte.toString(16).padStart(2, '0')).join('');
     }
 
+    /**
+     * Copies text, and returns what happened rather than announcing it.
+     *
+     * A modal for a routine confirmation is a poor trade anywhere, and a bad one in
+     * an app used one handed on a phone during a net: it blocks the whole page until
+     * dismissed. Callers show the outcome inline where the operator is already
+     * looking.
+     */
     static async copyToClipboard(text) {
 
         // make sure copy to clipboard is supported
         if(!navigator.clipboard || !navigator.clipboard.writeText){
-            alert("Clipboard not supported. Site must be served via https on iOS.");
-            return;
+            return { ok: false, message: "Clipboard not available. The page must be served over https." };
         }
 
         // copy value to clipboard.
@@ -35,12 +42,10 @@ class Utils {
             await navigator.clipboard.writeText(text);
         } catch(e) {
             console.log("failed to copy to clipboard", e);
-            alert("Could not copy to clipboard. The browser blocked it, which usually means the page lost focus or clipboard permission was denied.");
-            return;
+            return { ok: false, message: "Could not copy. The browser blocked it, usually because the page lost focus." };
         }
 
-        // tell user we copied it
-        alert("Copied to clipboard!");
+        return { ok: true, message: "Copied to clipboard." };
 
     }
 

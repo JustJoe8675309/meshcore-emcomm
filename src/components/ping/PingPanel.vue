@@ -165,6 +165,8 @@
 
                 <div v-if="errorMessage" role="status" class="text-xs text-red-600">{{ errorMessage }}</div>
 
+                <div v-if="copyMessage" role="status" class="text-xs text-gray-600">{{ copyMessage }}</div>
+
                 <button
                     v-if="!isRunning"
                     @click="start"
@@ -217,6 +219,8 @@ export default {
             discoverSecondsLeft: 0,
             addingKey: null,
             discoverTicker: null,
+            copyMessage: null,
+            copyMessageTimeout: null,
             addMessage: null,
             requestCount: 5,
             delayMillis: 1000,
@@ -315,6 +319,7 @@ export default {
         this.runToken = null;
         clearInterval(this.discoverTicker);
         this.discoverTicker = null;
+        clearTimeout(this.copyMessageTimeout);
     },
     watch: {
         // a new station means the previous station's numbers are not about this one
@@ -550,7 +555,16 @@ export default {
                 }
             }
 
-            await Utils.copyToClipboard(lines.join("\n"));
+            const result = await Utils.copyToClipboard(lines.join("\n"));
+
+            this.copyMessage = result.message;
+
+            // clears itself, since a stale "copied" next to results replaced since
+            // would claim something no longer true
+            clearTimeout(this.copyMessageTimeout);
+            this.copyMessageTimeout = setTimeout(() => {
+                this.copyMessage = null;
+            }, 4000);
 
         },
 

@@ -83,6 +83,9 @@ class Connection {
 
     static startConnectionWatchdog() {
 
+        // a new attempt is underway, so the previous failure is no longer the news
+        GlobalState.connectionError = null;
+
         this.clearConnectionWatchdog();
 
         GlobalState.connectionWatchdog = setTimeout(async () => {
@@ -94,7 +97,9 @@ class Connection {
 
             await this.disconnect();
 
-            alert(this.getNoResponseMessage());
+            // shown on the connect screen the disconnect above returns us to, rather
+            // than in a modal that blocks the page until it is dismissed
+            GlobalState.connectionError = this.getNoResponseMessage();
 
         }, this.CONNECTION_TIMEOUT_MILLIS);
 

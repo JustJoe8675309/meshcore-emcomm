@@ -76,6 +76,8 @@
 
                 <div v-if="validationMessage" role="status" class="text-xs text-red-600">{{ validationMessage }}</div>
 
+                <div v-if="copyMessage" role="status" class="text-xs text-gray-600">{{ copyMessage }}</div>
+
                 <!-- a failure part way through a multi part report leaves the earlier
                      messages already transmitted, so offer to finish rather than repeat -->
                 <div v-if="sendFailure" role="alert" class="bg-red-50 border border-red-300 rounded-lg p-3 space-y-2">
@@ -225,6 +227,8 @@ export default {
             // cleared when the panel goes away, so a send in progress stops rather
             // than transmitting the rest of the report with nothing on screen
             sendAborted: false,
+            copyMessage: null,
+            copyMessageTimeout: null,
         };
     },
     /**
@@ -234,6 +238,7 @@ export default {
      */
     beforeUnmount() {
         this.sendAborted = true;
+        clearTimeout(this.copyMessageTimeout);
     },
     mounted() {
         this.clearChannelIfMissing();
@@ -351,7 +356,15 @@ export default {
                 return;
             }
 
-            await Utils.copyToClipboard(this.prepared.text);
+            const result = await Utils.copyToClipboard(this.prepared.text);
+            this.copyMessage = result.message;
+
+            // clears itself, since a stale "copied" beside a form edited since would
+            // claim something no longer true
+            clearTimeout(this.copyMessageTimeout);
+            this.copyMessageTimeout = setTimeout(() => {
+                this.copyMessage = null;
+            }, 4000);
 
         },
 
