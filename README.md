@@ -392,6 +392,21 @@ and one who cannot still starts. Both halves were tested by killing the server a
 They will each need the channel secret to exchange traffic with you, and that does not belong
 in this repository or anywhere else public. Pass it out of band.
 
+## Auditing it
+
+    npm run audit
+
+Runs the tests and the build, then checks the things that can rot quietly: whether the
+firmware still numbers the commands this app hard codes, whether `meshcore.js` has
+started implementing what is currently written by hand, whether upstream has moved, and
+whether what is deployed matches what is built. Network checks are skipped rather than
+failed when offline.
+
+`docs/AUDIT.md` has the other half, a hardware checklist for two radios. That half has
+found every real fault so far. None of them failed a test or a build at the time: a
+request frame missing its command byte, a run still transmitting after its tab closed, a
+disconnected radio reported as packet loss.
+
 ## Tests
 
 ```bash
