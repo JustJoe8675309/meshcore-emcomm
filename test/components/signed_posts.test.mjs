@@ -16,9 +16,12 @@ import SignedPosts from "../../src/js/SignedPosts.js";
 
 const ROOM_PREFIX = [0xd2, 0x0f, 0xaa, 0x5c, 0xbb, 0x4b];
 
-// TXT_TYPE_SIGNED_PLAIN is 2, packed as (type << 2) | retry counter
-const SIGNED = (2 << 2) | 1;
-const PLAIN = (0 << 2) | 0;
+// The room packs the type into the mesh packet as (type << 2) | retry counter,
+// but the companion radio unpacks it before a client sees it. Taken from a real
+// frame off the bench: [16, 49, 0, 0, ...key..., 255, 2, ...] where 2 is the
+// whole txt_type. Testing the shifted form matched nothing at all.
+const SIGNED = 2;
+const PLAIN = 0;
 
 function frame({ code = 7, keyPrefix = ROOM_PREFIX, txtType = SIGNED, timestamp = 1789900000, author = [0x54, 0x61, 0x16, 0x47], text = "Test" } = {}) {
     const bytes = [code];
@@ -45,13 +48,38 @@ describe("SignedPosts", () => {
 
     beforeEach(() => SignedPosts.forget());
 
-    it("recognises a signed post by its packed text type", () => {
-        // the low two bits are a retry counter the room varies, so the type is
-        // the upper bits and a plain comparison against 2 would miss it
-        expect(SignedPosts.isSignedPlain((2 << 2) | 0)).toBe(true);
-        expect(SignedPosts.isSignedPlain((2 << 2) | 3)).toBe(true);
-        expect(SignedPosts.isSignedPlain(PLAIN)).toBe(false);
-        expect(SignedPosts.isSignedPlain((1 << 2) | 0)).toBe(false);
+    it("recognises a signed post by the type the companion reports", () => {
+        // 2 as it arrives, not 8 as the room packs it for the mesh: reading the
+        // shifted form matched nothing and every author stayed mojibake
+        expect(SignedPosts.isSignedPlain(2)).toBe(true);
+        expect(SignedPosts.isSignedPlain(0)).toBe(false);   // plain
+        expect(SignedPosts.isSignedPlain(1)).toBe(false);   // cli data
+        expect(SignedPosts.isSignedPlain(8)).toBe(false);   // the packed form
+    });
+
+    it("reads the frame captured off the bench", () => {
+        // [code, snr, reserved x2, key prefix x6, path len, txt type, timestamp x4,
+        //  author x4, text...] exactly as the radio delivered it
+        const bytes = new Uint8Array([
+            16, 49, 0, 0,
+            0x87, 0x07, 0x6f, 0xd6, 0x0c, 0xd7,
+            255,
+            2,
+            0xaf, 0x69, 0xb0, 0x6a,
+            0x39, 0x9c, 0x52, 0x18,
+            ...new TextEncoder().encode("Reply test"),
+        ]);
+        SignedPosts.observe(bytes);
+
+        const found = SignedPosts.take({
+            pubKeyPrefix: new Uint8Array([0x87, 0x07, 0x6f, 0xd6, 0x0c, 0xd7]),
+            txtType: 2,
+            senderTimestamp: 0x6ab069af,
+            text: "mangled",
+        });
+
+        expect(found.text).toBe("Reply test");
+        expect(Array.from(found.authorPrefix)).toEqual([0x39, 0x9c, 0x52, 0x18]);
     });
 
     it("recovers the author and the text an operator should see", () => {

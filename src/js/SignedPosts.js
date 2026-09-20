@@ -23,8 +23,12 @@
 
 import Utils from "./Utils.js";
 
-// txt_type is packed: the type is the upper six bits, the low two are a retry
-// counter the room varies so retransmissions hash differently
+// The room packs this for the mesh packet as (TXT_TYPE_SIGNED_PLAIN << 2) with a
+// retry counter in the low two bits, so that retransmissions hash differently.
+// The companion radio unpacks it before handing the message to a client, so what
+// arrives here is the plain type. Checked against a real frame: txt_type was 2,
+// not 8, and testing the shifted form skipped every signed post, which is why the
+// author prefix kept arriving as mojibake after this was supposedly fixed.
 const TXT_TYPE_SIGNED_PLAIN = 2;
 
 // ResponseCodes, and the fixed part of each frame before the sender key prefix
@@ -42,7 +46,7 @@ class SignedPosts {
     static held = new Map();
 
     static isSignedPlain(txtType) {
-        return (txtType >> 2) === TXT_TYPE_SIGNED_PLAIN;
+        return txtType === TXT_TYPE_SIGNED_PLAIN;
     }
 
     static key(publicKeyPrefix, senderTimestamp) {
