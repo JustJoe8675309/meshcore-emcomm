@@ -3,7 +3,7 @@
 
         <!-- channels -->
         <div v-if="channels.length > 0" class="h-full overflow-y-auto">
-            <ChannelListItem :key="channel.idx" v-for="channel of channels" :channel="channel" @click="onChannelClick(channel)"/>
+            <ChannelListItem :key="channel.idx" v-for="channel of sortedChannels" :channel="channel" @click="onChannelClick(channel)"/>
         </div>
 
         <!-- empty state -->
@@ -40,6 +40,37 @@ export default {
     methods: {
         onChannelClick(channel) {
             this.$emit("channel-click", channel);
+        },
+    },
+    computed: {
+        /**
+         * Named channels first, then the hashtag ones, each group sorted by name.
+         *
+         * The device hands these over in slot order, which is the order they were
+         * configured in and means nothing to anyone reading the list. The named
+         * channels are the ones an operator set up deliberately, so they come
+         * first; `#` channels are the shared public ones and are the long tail.
+         *
+         * Sorted numerically aware, so a channel named "net 2" sorts before
+         * "net 10" rather than after it, which plain string order gets wrong.
+         */
+        sortedChannels() {
+
+            const isHashtag = (channel) => (channel.name ?? "").trimStart().startsWith("#");
+
+            // sort a copy: the prop belongs to the caller
+            return [...this.channels].sort((a, b) => {
+
+                const aHash = isHashtag(a);
+                const bHash = isHashtag(b);
+                if(aHash !== bHash){
+                    return aHash ? 1 : -1;
+                }
+
+                return (a.name ?? "").localeCompare(b.name ?? "", undefined, { numeric: true, sensitivity: "base" });
+
+            });
+
         },
     },
 }
