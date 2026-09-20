@@ -111,8 +111,46 @@ all offline.
       fails to boot.
 - [ ] Only one cache is present. Earlier builds are deleted on activate, so a device
       that has seen a dozen deploys holds one copy of the app, not a dozen.
-- [ ] Load the app, then stop the server and reload. It still starts from cache.
-- [ ] Start the server again and reload. It picks up the current build.
+- [ ] Take the tab offline and reload. The app still starts, routes, and talks to the
+      radio. The app is deployed to Cloudflare rather than run locally, so there is no
+      server to stop; see below for how to cut the network and how to prove it was cut.
+- [ ] Put the tab back online and reload. It picks up the current build.
+
+## Two traps when testing this
+
+Both of these cost a round trip the first time. Neither is a fault in the app.
+
+**Checking whether a tab is offline is what puts it back online.** Chrome's DevTools
+offline throttle is owned by whichever debugger attached last, and running any script in
+the tab attaches one, so a probe to confirm the tab is cut off silently restores its
+network. Set the throttle, reload **without probing first**, and read the evidence
+afterwards from the page's own timings:
+
+```js
+const nav = performance.getEntriesByType("navigation")[0];
+const js  = performance.getEntriesByType("resource").find((r) => /assets\/index-.*\.js$/.test(r.name));
+// transferSize 0 on both, and workerStart above zero, is the proof
+({ transferred: nav.transferSize + js.transferSize, navWorker: nav.workerStart, jsWorker: js.workerStart });
+```
+
+`transferSize` of zero says nothing came over the wire. `workerStart` above zero says the
+service worker handled the request, and since the navigation is network first and only
+falls back to cache in its `catch`, a zero transfer size there means the network genuinely
+failed rather than quietly succeeded. Both readings are needed: either alone is consistent
+with an ordinary HTTP cache hit while online.
+
+Cutting the machine's wifi instead is a true test but blinds anything driving the browser
+remotely, so the evidence has to be read after the network returns. The loaded page keeps
+it, because the timings above survive until that page is navigated away.
+
+**Driving the searchable select needs `mousedown`, not `click`.** Every picker in the app
+is a text input pretending to be a select. The options are `div[role="option"]` and the
+handler fires on `mousedown`, so that it wins against the input's blur. A plain `.click()`
+selects nothing, and the filter text clears on blur, which looks exactly like a successful
+pick until the dependent fields fail to render. Dispatch `mousedown`, `mouseup` and
+`click`, then confirm the selection took by checking the input's value **and** that the
+form fields appeared. Reaching into the component state instead is not available: the
+production build strips `__vueParentComponent`.
 
 ## When something drifts
 
