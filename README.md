@@ -282,6 +282,88 @@ from one packet to two, in the SITREP case spending a whole second transmission 
 Paying a packet on the common forms to improve two uncommon ones is the wrong trade on shared air.
 Both were sent on the air and compared on a stock client before deciding.
 
+### Contacts tab
+
+Lists the contacts you can send text to: people and room servers. Repeaters belong to the
+Ping tab, which discovers them and shows both signal readings, and the empty state says so
+rather than implying none were heard.
+
+**Favourites live on the radio.** Bit 0 of a contact's flags is the firmware's own favourite
+mark, so these are the same favourites the official app shows: they survive clearing site
+data and travel with the node. The upper bits of that byte are contact permissions, which
+the firmware consults before answering a telemetry or location request, and the device
+command replaces the whole contact record. So the fault worth guarding is not a star that
+fails to stick, it is silently changing who may query your node. Setting a favourite reads
+the record, changes bit 0, and sends every other field back untouched. Favourites rise to
+the top of the contacts tab and of every picker, with the lifting done inside
+`SearchableSelect` so no picker can be forgotten.
+
+**Contacts can be added from a `meshcore://` link.** This is the only way to add a room
+server: the room firmware does not implement the discovery control packet at all, so a room
+is invisible until it adverts within earshot, however close it is. The link is parsed before
+anything is transmitted, so an empty box, text that is not hex, an odd number of digits and
+something too short to hold a key, timestamp and signature are each named rather than handed
+to the radio to refuse with a bare error code.
+
+**The contact list is re-read until it is complete.** The device announces how many contacts
+it will send and `meshcore.js` discards that number, resolving with whatever arrived. On a
+node holding 265 contacts over Bluetooth the first pass delivered 240, 248, 250, 254 and 256
+across five runs — up to 9% silently missing on every connect, and a short list looks exactly
+like a short list. Reading the contact store is a query to the attached device rather than a
+transmission, so it costs no airtime, and merging passes by public key converged every time
+in two or three. A link that loses nothing still pays for exactly one pass, and a shortfall
+that cannot be made up is reported rather than quietly settled for.
+
+**A contact's path length is not a hop count.** The firmware packs the hop count into the low
+six bits and the path hash size into the top two, so reading the byte as a number reported a
+directly reachable station as 128 hops away. `src/js/PathInfo.js` unpacks it, applies the
+firmware's own validity test, and shows anything it cannot read as an unknown path with the
+raw value kept, rather than inventing a distance.
+
+### Room servers
+
+Rooms appear in the contacts tab beside people, with their own icon, and open the same
+conversation view: a room's posts arrive addressed from the room's own public key. Upstream
+called them an unsupported contact type.
+
+A room holds its posts until you log in. **No password is stored anywhere** — not in this
+app, not in browser storage, and not on the node, which has no field for one. The companion
+command carries it in the frame every time, so it is typed per login and dropped as soon as
+the call returns. The firmware ships with `hello` as the room password, which the login bar
+names in its text rather than filling into the box: prefilling it meant typing a different
+password without clearing first silently sent the two joined together. An empty box sends no
+password at all, which the firmware handles deliberately by checking its ACL, and is how a
+room with no password is joined.
+
+The room grants a role, and this app reads it. Posting is refused outright when a room
+granted read access only, and when no login has been made at all, because a room drops a
+post it will not accept rather than refusing it: the send would time out and read as a range
+problem. Posts show who wrote them, resolved against the contact list.
+
+#### What this cost to get right
+
+Eight faults, seven of which failed silently, and most only visible against a real room:
+
+| Fault | What the operator saw |
+| ----- | --------------------- |
+| `meshcore.js` gives a login the device's transmit estimate plus one second, about 8.8s three hops out | "No answer" while already logged in; the success push arrived at 12s |
+| An empty box substituted the default password | A room with no password could not be joined at all |
+| Posting was allowed before logging in | The post looked sent and never arrived |
+| The role was read from the legacy `is_admin` byte rather than the ACL byte at index 12 | A room granting admin reported as read only, and posting was blocked |
+| The password box was prefilled | Typing over it sent the default joined to what was typed |
+| `txt_type` was tested in the form the room packs for the mesh | Every author stayed mojibake; the companion unpacks it first, so it arrives as 2, not 8 |
+| A room post's author prefix is UTF-8 decoded with the text by `meshcore.js` | Four bytes of mojibake in front of every post, unrecoverable afterwards |
+| `Database.Message.insert` copies fields one by one and never copied the author | Text came through clean and the author vanished on the way to storage |
+
+Three of those were declared fixed on the strength of reading the firmware source and were
+still wrong. What worked was capturing the actual frames and writing the tests against those
+bytes: `test/components/signed_posts.test.mjs` contains a frame exactly as the radio sent it.
+
+The last one cannot be caught by a round trip through the database, because the document
+stored is the one the insert built and it is consistent with itself. So
+`test/components/message_insert.test.mjs` reads the source and checks that every field a
+schema declares is copied by its insert.
+
 ### Real channel selection
 
 Upstream hardcoded a single "Public Channel". This fork upgrades `@liamcottle/meshcore.js` from
@@ -454,13 +536,23 @@ They share a shape. None is a crash; each is a confident answer where the honest
 that the radio went away or the file was never cached. That is the class of fault a test
 suite is worst at noticing and an operator is worst placed to second guess.
 
+The room server work added eight more, seven of them silent, and is worth reading as a
+worked example: see the table under [Room servers](#room-servers). Three were declared
+fixed on the strength of reading the firmware source and were still wrong, because the
+companion radio does not hand a client what the mesh packet carried — it unpacks the text
+type, and it reports permissions in a different byte than the legacy flag. Tests written
+from a reading of the protocol passed while the feature did nothing.
+
+What worked, and is worth repeating: capture the frame the radio actually sent, put those
+bytes in the test, and reason from them.
+
 ## Tests
 
 ```bash
 npm test
 ```
 
-Six plain node suites and five component suites, 81 component tests in all, no hardware
+Six plain node suites and fourteen component suites, 222 tests in all, no hardware
 required:
 
 - `test/report_encoder.test.mjs` covers rendering and packet splitting, including a
