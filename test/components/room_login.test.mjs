@@ -210,12 +210,20 @@ describe("RoomLoginBar", () => {
         expect(login).toHaveBeenCalledWith(ROOM_KEY, "hello");
     });
 
-    it("sends the default when the box has been cleared", async () => {
+    it("sends no password at all when the box is cleared", async () => {
+        // A blank password is not the absence of one. The firmware reads it as
+        // "check whether this sender is in the ACL", which is how a room with no
+        // password is joined, so substituting the default would make such a room
+        // impossible to reach from here.
         const login = vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ reserved: 0 });
         const wrapper = mountBar();
         wrapper.vm.password = "";
         await wrapper.vm.logIn();
-        expect(login).toHaveBeenCalledWith(ROOM_KEY, "hello");
+        expect(login).toHaveBeenCalledWith(ROOM_KEY, "");
+    });
+
+    it("says how to join a room that has no password", () => {
+        expect(mountBar().text()).toMatch(/Clear the box to send no password/);
     });
 
     it("prefers a typed password over the default", async () => {

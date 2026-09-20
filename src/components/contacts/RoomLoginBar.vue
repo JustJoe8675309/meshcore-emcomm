@@ -14,6 +14,7 @@
             <span class="font-mono">hello</span>, the stock room password the MeshCore firmware
             ships with, which is a published default rather than a secret. A room does not reply
             to a wrong password, so a failed login looks the same as one that never arrived.
+            Clear the box to send no password at all, which is how a room with none is joined.
         </div>
 
         <form v-if="!loggedIn" @submit.prevent="logIn" class="flex space-x-2">
@@ -101,9 +102,12 @@ export default {
 
             try {
 
-                // an empty box means the default rather than a blank password
-                const password = this.password === "" ? DEFAULT_ROOM_PASSWORD : this.password;
-                const response = await Connection.loginToRoom(this.contact.publicKey, password);
+                // Sent exactly as it stands, including empty. A blank password is
+                // not the absence of one: the firmware reads it as "check whether
+                // this sender is in the ACL", which is how a room with no password
+                // is joined. Substituting the default here would make that room
+                // impossible to log in to from this app.
+                const response = await Connection.loginToRoom(this.contact.publicKey, this.password);
                 this.loggedIn = true;
                 this.isAdmin = (response?.reserved ?? 0) !== 0;
                 // the composer reads this, so it can refuse to post into a room
