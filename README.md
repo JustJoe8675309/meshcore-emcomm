@@ -38,6 +38,13 @@ fill it in, and send. Seventeen forms are included:
 The table is in the order the picker shows. All seventeen have been transmitted between two
 nodes and received whole, the multi part ones in every part, over USB serial and over Bluetooth.
 
+The whole app was run against both radios again after the reliability audit, since that work
+changed the send path itself. A multi part report reached the far node on a channel and, sent
+direct, had every part acknowledged. Both positions behaved: the node without a receiver
+refused and left the field empty, the node with one filled it. Date time groups came out exact,
+approximate and as a range crossing a month. Discovery found two repeaters, one of them
+clicked through to the picker and pinged.
+
 Bluetooth is worth calling out because it frames differently. `MAX_FRAME_SIZE` is 176 bytes, so a
 report larger than that is chunked by the transport as well as split into parts by this client, and
 the two have nothing to do with each other. A 216 byte radiogram was sent over Bluetooth and
@@ -108,6 +115,14 @@ A timeout is recorded as a result rather than an error, because packet loss is w
 being measured. Cancelling keeps the replies already collected and reports on those.
 Averages are hidden when nothing came back, since `avg snr 0dB` would read as a
 measurement of a dead link rather than the absence of one.
+
+A dropped link is not packet loss and is not recorded as any. Pulling the cable mid run
+stops the run and says so, keeping the replies already collected, rather than filling the
+remainder with timeouts and reporting a loss figure for requests that were never sent.
+
+All of that has happened on the air rather than only in tests, including the awkward middle
+case of a run that partly succeeds: three sent, one lost, 33.33%, with the averages taken
+over the two real replies.
 
 **Discover repeaters** asks every repeater in direct range to identify itself, which finds
 ones that have not adverted since you came into range and so are not in the contact list at
