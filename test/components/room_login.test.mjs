@@ -41,9 +41,18 @@ function fakeRadio() {
     };
 }
 
-// PUSH_CODE_LOGIN_SUCCESS: [0x85, permissions, ...public key prefix, ...]
-function loginSuccessFrame(publicKey, permissions = 0) {
-    return new Uint8Array([0x85, permissions, ...publicKey.subarray(0, 6), 0, 0]);
+// PUSH_CODE_LOGIN_SUCCESS, as firmware v7 and later send it:
+//   [0x85, is_admin, key prefix x6, tag x4, acl permissions, firmware level]
+// The byte after the push code is a legacy is_admin flag. The ACL role is at 12.
+function loginSuccessFrame(publicKey, aclPermissions = 0, isAdminFlag = 0) {
+    return new Uint8Array([
+        0x85, isAdminFlag, ...publicKey.subarray(0, 6), 1, 2, 3, 4, aclPermissions, 1,
+    ]);
+}
+
+// the shorter frame an older repeater answers with, carrying no ACL role
+function legacyLoginSuccessFrame(publicKey, isAdminFlag = 0) {
+    return new Uint8Array([0x85, isAdminFlag, ...publicKey.subarray(0, 6)]);
 }
 
 // PUSH_CODE_LOGIN_FAIL: [0x86, reserved, ...public key prefix]
@@ -111,6 +120,33 @@ describe("Connection.loginToRoom", () => {
     // PERM_ACL_ROLE_MASK is the low two bits: guest 0, read only 1, read write 2,
     // admin 3. Reading the byte as "nonzero means admin" called a read only login
     // an admin one, and let the operator post into a room that drops it.
+    // Read from the wrong byte, this reported a room that granted admin as read
+    // only, and the app then refused to post into a room that had given it full
+    // rights. On the bench the frame was [133, 1, ...] with the ACL byte at index
+    // 12 holding 3: the legacy is_admin flag was 1, which masked to "role 1".
+    it("reads the role from the ACL byte, not the legacy admin flag", async () => {
+        const login = Connection.loginToRoom(ROOM_KEY, "");
+        await Promise.resolve();
+        radio.emit("rx", loginSuccessFrame(ROOM_KEY, 3, 1));
+        await expect(login).resolves.toMatchObject({ role: 3, isAdmin: true, canPost: true });
+    });
+
+    it("lets a room grant posting even when the legacy flag is zero", async () => {
+        const login = Connection.loginToRoom(ROOM_KEY, "pw");
+        await Promise.resolve();
+        radio.emit("rx", loginSuccessFrame(ROOM_KEY, 2, 0));
+        await expect(login).resolves.toMatchObject({ role: 2, isAdmin: false, canPost: true });
+    });
+
+    it("allows posting when the frame is too old to carry a role", async () => {
+        // refusing on a guess is the same fault in the other direction, and the
+        // station will say no for itself by dropping the post
+        const login = Connection.loginToRoom(ROOM_KEY, "pw");
+        await Promise.resolve();
+        radio.emit("rx", legacyLoginSuccessFrame(ROOM_KEY, 0));
+        await expect(login).resolves.toMatchObject({ role: null, canPost: true });
+    });
+
     it("reads the role from the low two bits", async () => {
         const cases = [
             [0, { role: 0, isAdmin: false, canPost: false }],   // guest

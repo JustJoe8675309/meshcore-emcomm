@@ -857,6 +857,41 @@ class Connection {
      * timeout" for a wrong password — but repeaters do, and it is the only way to
      * tell a refusal from silence.
      */
+    /**
+     * What a room granted, read from its login success frame.
+     *
+     *   [0x85, is_admin, key prefix x6, tag x4, acl permissions, firmware level]
+     *
+     * The byte right after the push code is a legacy `is_admin` flag, zero or one.
+     * The ACL role lives at index 12 and only exists from firmware v7. Reading the
+     * legacy byte as though it were the role, which this did, turns an admin login
+     * into "role 1, read only", and the app then refuses to post into a room that
+     * had granted full rights. That is exactly backwards from the fault it was
+     * written to prevent.
+     *
+     * An older frame carries no role at all. It reports posting as allowed rather
+     * than blocked: refusing on a guess is the same mistake in the other
+     * direction, and the room will say no for itself by dropping the post.
+     */
+    static readLoginSuccess(bytes) {
+
+        const isAdmin = bytes[1] !== 0;
+
+        // no ACL byte before v7
+        if(bytes.length < 13){
+            return { role: null, isAdmin: isAdmin, canPost: true, permissions: null };
+        }
+
+        const role = bytes[12] & 3;
+        return {
+            role: role,
+            isAdmin: role === 3,
+            canPost: role >= 2,
+            permissions: bytes[12],
+        };
+
+    }
+
     static async loginToRoom(publicKey, password) {
 
         const connection = GlobalState.connection;
@@ -890,19 +925,7 @@ class Connection {
                 }
 
                 if(bytes[0] === PUSH_LOGIN_SUCCESS){
-                    // The second byte is what the room granted. The role is the low
-                    // two bits (PERM_ACL_ROLE_MASK): guest 0, read only 1, read
-                    // write 2, admin 3. Reading it as "nonzero means admin" would
-                    // call a read only login an admin one, and letting an operator
-                    // believe they can post when the room will drop it is the fault
-                    // this whole method exists to avoid.
-                    const role = bytes[1] & 3;
-                    resolve({
-                        role: role,
-                        isAdmin: role === 3,
-                        canPost: role >= 2,
-                        permissions: bytes[1],
-                    });
+                    resolve(this.readLoginSuccess(bytes));
                 } else if(bytes[0] === PUSH_LOGIN_FAIL){
                     reject(new Error(this.LOGIN_FAILED));
                 }
