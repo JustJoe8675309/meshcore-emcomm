@@ -10,11 +10,8 @@
 
         <div v-if="!loggedIn" class="text-xs text-gray-500">
             A room holds its posts until you log in. The password is sent straight to the radio
-            and kept nowhere, so it is typed each time. This starts at
-            <span class="font-mono">hello</span>, the stock room password the MeshCore firmware
-            ships with, which is a published default rather than a secret. A room does not reply
-            to a wrong password, so a failed login looks the same as one that never arrived.
-            Clear the box to send no password at all, which is how a room with none is joined.
+            and kept nowhere, so it is typed each time. A room does not reply to a wrong password,
+            so a failed login looks the same as one that never arrived.
         </div>
 
         <form v-if="!loggedIn" @submit.prevent="logIn" class="flex space-x-2">
@@ -33,6 +30,17 @@
                 :disabled="isLoggingIn || notConnected"
                 class="shrink-0 text-white bg-blue-700 hover:bg-blue-800 disabled:bg-gray-400 font-medium rounded-lg text-sm px-4">{{ isLoggingIn ? "..." : "Log in" }}</button>
         </form>
+
+        <!-- said here rather than filled in above. a prefilled box is a trap: type
+             into it without clearing first and the default is silently prepended to
+             what you typed, and the room answers a wrong password with silence, so
+             there is nothing to tell you that is what happened -->
+        <div v-if="!loggedIn" class="text-xs text-gray-500">
+            The MeshCore firmware ships with <span class="font-mono">hello</span> as the room
+            password, a published default rather than a secret, so try that if you do not know it.
+            Leave the box empty to send no password at all, which is how a room with none is
+            joined.
+        </div>
 
         <div v-if="notConnected" role="status" class="text-xs text-red-600">
             No radio connected, so nothing can be sent.
@@ -59,11 +67,14 @@ import GlobalState from "../../js/GlobalState.js";
 import Connection from "../../js/Connection.js";
 import Utils from "../../js/Utils.js";
 
-// The stock room password the firmware ships with, set as a build flag in the
-// MeshCore variants: -D ROOM_PASSWORD='"hello"'. A published default, not a
-// secret, so starting here saves typing on most rooms and is shown rather than
-// applied invisibly: an operator should be able to see what is being sent.
-const DEFAULT_ROOM_PASSWORD = "hello";
+// The firmware's stock room password, -D ROOM_PASSWORD='"hello"' in the MeshCore
+// variants, is named in the text under the field rather than filled into it.
+//
+// It was prefilled, and that turned out to be a trap on the bench: typing an
+// admin password into the box without clearing it first sends the default joined
+// to what was typed, and a room answers a wrong password with silence, so nothing
+// says that is what happened. An empty box sends no password, which is a case the
+// firmware handles deliberately, so it is a safe and meaningful default.
 
 export default {
     name: 'RoomLoginBar',
@@ -72,7 +83,7 @@ export default {
     },
     data() {
         return {
-            password: DEFAULT_ROOM_PASSWORD,
+            password: "",
             isLoggingIn: false,
             errorMessage: null,
             // a login lasts as long as the radio holds the session, so this is not
@@ -85,7 +96,7 @@ export default {
     watch: {
         // a different room is a different login
         contactKey(key) {
-            this.password = DEFAULT_ROOM_PASSWORD;
+            this.password = "";
             this.errorMessage = null;
             // a login already made this session still stands
             const existing = key == null ? null : GlobalState.roomLogins[key];
@@ -147,8 +158,8 @@ export default {
                 }
 
             } finally {
-                // held only for the call, then back to the default
-                this.password = DEFAULT_ROOM_PASSWORD;
+                // held only for the call, and never left sitting in the box
+                this.password = "";
                 this.isLoggingIn = false;
             }
 

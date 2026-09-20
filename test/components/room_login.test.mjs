@@ -230,8 +230,7 @@ describe("RoomLoginBar", () => {
         const wrapper = mountBar();
         wrapper.vm.password = "hunter2";
         await wrapper.vm.logIn();
-        // not retained, and not left blank either
-        expect(wrapper.vm.password).toBe("hello");
+        expect(wrapper.vm.password).toBe("");
     });
 
     it("forgets it after a failure as well", async () => {
@@ -239,29 +238,33 @@ describe("RoomLoginBar", () => {
         const wrapper = mountBar();
         wrapper.vm.password = "hunter2";
         await wrapper.vm.logIn();
-        // not retained, and not left blank either
-        expect(wrapper.vm.password).toBe("hello");
+        expect(wrapper.vm.password).toBe("");
     });
 
-    it("starts at the stock room password", () => {
-        // -D ROOM_PASSWORD='"hello"' in the MeshCore variants, so most rooms take
-        // it and it is published rather than secret
-        expect(mountBar().vm.password).toBe("hello");
+    it("puts nothing in the password box", () => {
+        // it used to prefill "hello", and typing an admin password in without
+        // clearing first sent the two joined together. A room answers a wrong
+        // password with silence, so nothing said that was what had happened.
+        expect(mountBar().vm.password).toBe("");
+        expect(mountBar().find('input[type="password"]').element.value).toBe("");
     });
 
-    it("says which default it is using rather than applying it invisibly", () => {
-        expect(mountBar().text()).toMatch(/hello/);
-        expect(mountBar().text()).toMatch(/stock room password/);
+    it("names the default in the text instead", () => {
+        const text = mountBar().text();
+        expect(text).toMatch(/hello/);
+        expect(text).toMatch(/ships with/);
     });
 
-    it("sends the default when the box is left alone", async () => {
+    it("sends nothing when the box is left alone", async () => {
+        // an empty box is a case the firmware handles deliberately: it checks the
+        // ACL, which is how a room with no password is joined
         const login = vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ isAdmin: false, canPost: true });
         const wrapper = mountBar();
         await wrapper.vm.logIn();
-        expect(login).toHaveBeenCalledWith(ROOM_KEY, "hello");
+        expect(login).toHaveBeenCalledWith(ROOM_KEY, "");
     });
 
-    it("sends no password at all when the box is cleared", async () => {
+    it("still sends no password when the box is explicitly cleared", async () => {
         // A blank password is not the absence of one. The firmware reads it as
         // "check whether this sender is in the ACL", which is how a room with no
         // password is joined, so substituting the default would make such a room
@@ -274,7 +277,7 @@ describe("RoomLoginBar", () => {
     });
 
     it("says how to join a room that has no password", () => {
-        expect(mountBar().text()).toMatch(/Clear the box to send no password/);
+        expect(mountBar().text()).toMatch(/Leave the box empty to send no password/);
     });
 
     it("prefers a typed password over the default", async () => {
@@ -285,13 +288,12 @@ describe("RoomLoginBar", () => {
         expect(login).toHaveBeenCalledWith(ROOM_KEY, "something-else");
     });
 
-    it("goes back to the default after an attempt, not to empty", async () => {
+    it("empties the box after an attempt, leaving nothing to type over", async () => {
         vi.spyOn(Connection, "loginToRoom").mockRejectedValue(new Error(Connection.LOGIN_FAILED));
         const wrapper = mountBar();
         wrapper.vm.password = "typed-one";
         await wrapper.vm.logIn();
-        // the typed one is gone, and the box is usable again without retyping
-        expect(wrapper.vm.password).toBe("hello");
+        expect(wrapper.vm.password).toBe("");
     });
 
     it("says a read only login is read only, not just logged in", async () => {
