@@ -430,6 +430,15 @@ fail is only decoration.
   unacknowledged part must be retried and then stop rather than be transmitted over; and a
   resume must continue from the part that failed, to the destination the earlier parts
   went to, rather than repeating what already arrived.
+- `test/components/searchable_select.test.mjs` covers the combobox behind every picker.
+  It is a text input pretending to be a select, so filtering, keyboard movement, what
+  Enter and Escape do, and everything assistive technology is told are all hand written
+  and can all break silently.
+- `test/components/report_form_fields.test.mjs` covers the two parts of the field
+  renderer that are more than markup: the date time group, which builds one string from a
+  mode and two inputs and must keep the chosen mode while a range is half typed, and the
+  position button, which must refuse to write a plausible looking wrong answer into a
+  report.
 
 ### Known issue: serial resync
 
