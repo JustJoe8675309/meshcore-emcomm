@@ -151,6 +151,10 @@
                 <!-- only once the run has finished, so a partial average is not mistaken for the result -->
                 <div v-if="stats" class="border-t border-gray-200 pt-2 space-y-1 text-xs text-gray-700">
                     <div>{{ stats.total }} sent, {{ stats.lossPercent }}% lost</div>
+                    <div v-if="answeredDiscoveryButNotPing" class="text-gray-600">
+                        This repeater answered discovery, so it is in range and hears you. It does not
+                        answer trace requests, which is what ping needs. Not every repeater does.
+                    </div>
                     <template v-if="stats.received > 0">
                         <div>avg snr_there={{ stats.avgSnrThere }}dB, snr_back={{ stats.avgSnrBack }}dB, time={{ stats.avgTime }}ms</div>
                         <div>min snr_there={{ stats.minSnrThere }}dB, snr_back={{ stats.minSnrBack }}dB</div>
@@ -273,6 +277,21 @@ export default {
         // the ones that answered but have nowhere to be saved yet
         newlyDiscovered() {
             return (this.discoverResults ?? []).filter((found) => found.isNew);
+        },
+
+        /**
+         * True when the selected station answered discovery in this session and then
+         * failed every ping.
+         *
+         * Both results are correct and the combination is confusing, so it is worth
+         * naming: discovery proves the repeater heard us, ping additionally needs it
+         * to answer trace requests, and not every repeater does. Without this the
+         * only reading available is that the ping is broken.
+         */
+        answeredDiscoveryButNotPing() {
+            return this.stats !== null
+                && this.stats.received === 0
+                && (this.discoverResults ?? []).some((f) => f.publicKeyHex === this.selectedContactKey);
         },
 
         selectedContact() {
@@ -463,6 +482,14 @@ export default {
             try {
 
                 const name = await Connection.addDiscoveredRepeater(found);
+
+                // the device accepted the command, which is not the same as having
+                // stored it. contact storage is finite and fills silently
+                const stored = GlobalState.contacts.some((c) => Utils.bytesToHex(c.publicKey) === found.publicKeyHex);
+                if(!stored){
+                    this.addMessage = "The device accepted the contact but it is not in the list, which usually means contact storage is full.";
+                    return;
+                }
 
                 // it is a contact now, so the row above becomes selectable
                 this.discoverResults = this.discoverResults.map((r) => r.publicKeyHex === found.publicKeyHex
