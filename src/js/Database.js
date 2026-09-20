@@ -185,6 +185,11 @@ class Message {
             send_type: data.send_type,
             rtt: null,
             error: null,
+            // who wrote a room post. This list is written out field by field, so a
+            // new one has to be added here as well as to the schema: anything not
+            // named is dropped without complaint, which is how the author survived
+            // being recovered from the frame and then vanished before it was saved.
+            author_prefix: data.author_prefix ?? null,
         });
     }
 
