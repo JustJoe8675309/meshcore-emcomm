@@ -6,16 +6,29 @@
             <fieldset :disabled="isRunning" class="bg-white border border-gray-300 rounded-lg p-3 space-y-3 disabled:opacity-60">
 
                 <div class="space-y-1">
+                    <label for="ping-type" class="block text-sm font-medium text-gray-900">Station type</label>
+                    <select
+                        id="ping-type"
+                        v-model="contactType"
+                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                        <option value="companion">Companion</option>
+                        <option value="repeater">Repeater</option>
+                    </select>
+                </div>
+
+                <div class="space-y-1">
                     <label for="ping-contact" class="block text-sm font-medium text-gray-900">Station</label>
                     <SearchableSelect
                         input-id="ping-contact"
                         v-model="selectedContactKey"
                         :options="contactOptions"
                         placeholder="Select a station, or type to filter..."/>
-                    <div v-if="chatContacts.length === 0" class="text-xs text-red-600">
-                        No chat contacts. Only chat contacts answer a trace.
+                    <div v-if="pingableContacts.length === 0" class="text-xs text-red-600">
+                        No {{ contactType }}s known yet. Try Discover, or wait for one to advert.
                     </div>
-                    <div v-else class="text-xs text-gray-500">Tests the direct path to this station, not whatever route the mesh would find.</div>
+                    <div v-else class="text-xs text-gray-500">
+                        Most recently heard first. Tests the direct path to this station, not whatever route the mesh would find.
+                    </div>
                 </div>
 
                 <div class="flex space-x-3">
@@ -99,6 +112,16 @@
                     type="button"
                     class="w-full text-white bg-red-700 hover:bg-red-800 font-medium rounded-lg text-sm px-5 py-2.5">Cancel ({{ results.length }} of {{ requestCount }})</button>
 
+                <!-- one transmission announcing ourselves. it cannot make another station
+                     advert on demand, because the protocol has no such request -->
+                <button
+                    @click="discover"
+                    :disabled="isRunning || isDiscovering"
+                    type="button"
+                    class="w-full text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 disabled:opacity-60 font-medium rounded-lg text-sm px-5 py-2.5">{{ isDiscovering ? "Discovering..." : "Discover stations" }}</button>
+
+                <div v-if="discoveryMessage" role="status" class="text-xs text-gray-600">{{ discoveryMessage }}</div>
+
                 <button
                     v-if="stats"
                     @click="copyResults"
@@ -120,6 +143,10 @@ import Utils from "../../js/Utils.js";
 import TimeUtils from "../../js/TimeUtils.js";
 import SearchableSelect from "../reports/SearchableSelect.vue";
 
+// how long to listen for answers after adverting, before counting what changed.
+// a custom component option would not reach `this` in vue 3, so it lives here
+const DISCOVERY_LISTEN_MILLIS = 8000;
+
 export default {
     name: 'PingPanel',
     components: {
@@ -128,6 +155,9 @@ export default {
     data() {
         return {
             selectedContactKey: null,
+            contactType: "companion",
+            isDiscovering: false,
+            discoveryMessage: null,
             requestCount: 5,
             delayMillis: 1000,
             results: [],
@@ -140,11 +170,23 @@ export default {
     },
     computed: {
 
-        // repeaters and rooms do not answer a trace, the same restriction the reports
-        // tab applies for the same reason
-        chatContacts() {
+        /**
+         * The stations worth offering, newest first.
+         *
+         * Repeaters are included, unlike the reports tab. That restriction is about
+         * text messages, which a repeater cannot receive; a trace is answered by any
+         * node, and the link to a repeater is often the one an operator most needs to
+         * check, since it is the infrastructure everything else depends on.
+         *
+         * Ordered by when each was last heard, because that is the best available
+         * guess at which are worth pinging at all.
+         */
+        pingableContacts() {
+            const wanted = this.contactType === "repeater" ? Constants.AdvType.Repeater : Constants.AdvType.Chat;
             return GlobalState.contacts
-                .filter((contact) => contact.type === Constants.AdvType.Chat)
+                .filter((contact) => contact.type === wanted)
+                .slice()
+                .sort((a, b) => (b.lastAdvert ?? 0) - (a.lastAdvert ?? 0))
                 .map((contact) => {
                     return {
                         name: contact.advName?.trim() || `(unnamed ${Utils.bytesToHex(contact.publicKey).slice(0, 8)})`,
@@ -156,7 +198,7 @@ export default {
         },
 
         contactOptions() {
-            return this.chatContacts.map((contact) => {
+            return this.pingableContacts.map((contact) => {
                 return {
                     value: contact.publicKeyHex,
                     label: contact.name,
@@ -168,7 +210,7 @@ export default {
         },
 
         selectedContact() {
-            return this.chatContacts.find((contact) => contact.publicKeyHex === this.selectedContactKey) ?? null;
+            return this.pingableContacts.find((contact) => contact.publicKeyHex === this.selectedContactKey) ?? null;
         },
 
         isRunning() {
@@ -200,6 +242,10 @@ export default {
 
     },
     watch: {
+        // the previously selected station is not in the new list
+        contactType() {
+            this.selectedContactKey = null;
+        },
         // a new station means the previous station's numbers are not about this one
         selectedContactKey() {
             this.results = [];
@@ -257,6 +303,59 @@ export default {
 
             this.runToken = null;
             this.computeStats();
+
+        },
+
+        /**
+         * Announces this station and reloads the contact list.
+         *
+         * Not a discovery request, because the protocol has no such thing: there is a
+         * command to advertise ourselves and none to ask anyone else to. What this
+         * relies on is that a station hearing our advert may advert back, which would
+         * refresh when it was last heard. That behaviour was observed once and is not
+         * guaranteed, so the result reports what actually changed rather than claiming
+         * to have found anything.
+         *
+         * Zero hop rather than flood: it asks the neighbours we could actually reach
+         * directly, which is what the ping tab is about, and does not push an advert
+         * across the whole region.
+         */
+        async discover() {
+
+            this.isDiscovering = true;
+            this.discoveryMessage = null;
+
+            const before = new Map(GlobalState.contacts.map((c) => [Utils.bytesToHex(c.publicKey), c.lastAdvert ?? 0]));
+
+            try {
+
+                await GlobalState.connection.sendZeroHopAdvert();
+
+                // give neighbours a moment to answer before looking
+                await Utils.sleep(DISCOVERY_LISTEN_MILLIS);
+                await Connection.loadContacts();
+
+                var added = 0;
+                var refreshed = 0;
+                for(const contact of GlobalState.contacts){
+                    const key = Utils.bytesToHex(contact.publicKey);
+                    if(!before.has(key)){
+                        added++;
+                    } else if((contact.lastAdvert ?? 0) > before.get(key)){
+                        refreshed++;
+                    }
+                }
+
+                this.discoveryMessage = added === 0 && refreshed === 0
+                    ? "Advert sent. No station answered within the listening window."
+                    : `Advert sent. ${added} new, ${refreshed} heard again.`;
+
+            } catch(e) {
+                console.log("discovery failed", e);
+                this.discoveryMessage = "Could not send the advert. Check the radio is still connected.";
+            } finally {
+                this.isDiscovering = false;
+            }
 
         },
 
