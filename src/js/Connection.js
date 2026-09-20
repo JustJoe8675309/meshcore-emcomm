@@ -776,13 +776,20 @@ class Connection {
      * one. `CMD_SEND_LOGIN` carries it in the frame every time, so the operator
      * types it per login. For an emergency client that is the right trade.
      *
-     * The failure case is the point of this method. The firmware answers a wrong
-     * password with `PUSH_CODE_LOGIN_FAIL`, but `meshcore.js` listens only for
-     * the success push, so the refusal is ignored and its own timer eventually
-     * rejects with "timeout". A room that answered and said no then reads exactly
-     * like a room that is out of range, and the operator retries the same wrong
-     * password at a station that already told them. So the fail push is read off
-     * the raw frames here, the way discovery is.
+     * The failure case is the point of this method, and it has two shapes.
+     *
+     * A station that refuses sends `PUSH_CODE_LOGIN_FAIL`, which `meshcore.js`
+     * never listens for: it waits only on the success push, so the refusal is
+     * ignored and its own timer rejects with "timeout". The operator then retries
+     * the same wrong password at a station that already told them no. That push is
+     * read off the raw frames here, the way discovery is.
+     *
+     * A room server, though, refuses by saying nothing. Its own source reads
+     * "no response. Client will timeout", and a real room three hops out returned
+     * neither 0x85 nor 0x86 for a bad password, only an unrelated rx log. So for a
+     * room the silent branch is where a wrong password lands, and the caller must
+     * not present silence as a range problem. Repeaters do answer, which is why
+     * this stays.
      */
     static async loginToRoom(publicKey, password) {
 

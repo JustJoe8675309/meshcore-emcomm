@@ -1,11 +1,18 @@
 // Logging in to a room server.
 //
-// The interesting part is failure. The firmware answers a wrong password with
-// PUSH_CODE_LOGIN_FAIL (0x86), but meshcore.js listens only for the success
-// push, so the refusal is dropped and its own timer rejects with "timeout".
-// A room that answered and said no then looks exactly like a room out of range,
-// and the operator's next move is completely different in each case: fix the
-// password, or move. So the fail push is read off the raw frames here.
+// Failure is the interesting part, and it has two shapes.
+//
+// A station that does refuse sends PUSH_CODE_LOGIN_FAIL (0x86), which meshcore.js
+// never listens for: it waits only on the success push, so the refusal is dropped
+// and its own timer rejects with "timeout". That refusal is read off the raw
+// frames here instead.
+//
+// A room server does not refuse at all. Its source says so outright — "no
+// response. Client will timeout" — so a wrong room password produces silence,
+// indistinguishable from a room that is out of range. Tested against a real room
+// three hops out: a bad password drew no 0x85 and no 0x86, only an unrelated rx
+// log. So the silent branch must not blame the range, because that is exactly
+// where a wrong password lands.
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { mount } from "@vue/test-utils";
@@ -142,13 +149,21 @@ describe("RoomLoginBar", () => {
         expect(wrapper.vm.errorMessage).toMatch(/in range/);
     });
 
-    it("blames the range when nothing answered", async () => {
+    it("does not blame the range when a room falls silent", async () => {
+        // A room server answers a wrong password with silence, by design: its
+        // source says "no response. Client will timeout". So this branch is where
+        // a bad password actually lands, and sending the operator to check the
+        // antenna would be a confident wrong answer.
         vi.spyOn(Connection, "loginToRoom").mockRejectedValue(new Error("timeout"));
         const wrapper = mountBar();
         wrapper.vm.password = "pw";
         await wrapper.vm.logIn();
-        expect(wrapper.vm.errorMessage).toMatch(/No answer/);
-        expect(wrapper.vm.errorMessage).not.toMatch(/password/);
+        expect(wrapper.vm.errorMessage).toMatch(/check the password first/);
+        expect(wrapper.vm.errorMessage).toMatch(/reachable/);
+    });
+
+    it("warns up front that a wrong password looks like silence", () => {
+        expect(mountBar().text()).toMatch(/does not reply to a wrong password/);
     });
 
     it("blames the radio when the link dropped", async () => {

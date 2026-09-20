@@ -10,7 +10,8 @@
 
         <div v-if="!loggedIn" class="text-xs text-gray-500">
             A room holds its posts until you log in. The password is sent straight to the radio
-            and kept nowhere, so it is typed each time.
+            and kept nowhere, so it is typed each time. A room does not reply to a wrong password,
+            so a failed login looks the same as one that never arrived.
         </div>
 
         <form v-if="!loggedIn" @submit.prevent="logIn" class="flex space-x-2">
@@ -103,7 +104,15 @@ export default {
                 } else if(reason === Connection.DISCONNECTED || GlobalState.connection == null){
                     this.errorMessage = "The radio disconnected, so nothing was sent.";
                 } else {
-                    this.errorMessage = "No answer from the room. It may be out of range, or too busy to reply.";
+                    // A room server answers a wrong password with silence. Its own
+                    // source says so: "no response. Client will timeout". So this
+                    // is the case a bad password actually lands in, and blaming
+                    // the range would send the operator to check an antenna when
+                    // the likeliest fault is the password they just typed. The app
+                    // cannot tell the two apart, so it says both rather than
+                    // picking one and sounding sure.
+                    this.errorMessage = "No answer. A room says nothing to a wrong password, so check the password first, "
+                        + "then whether the room is reachable at all.";
                 }
 
             } finally {
