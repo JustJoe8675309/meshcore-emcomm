@@ -262,25 +262,61 @@ class Connection {
         // contacts tab simply shows fewer people and nothing suggests anyone is
         // missing, which on a roster of two hundred is not something an operator
         // can notice by eye.
+        //
+        // And they do go missing. A node holding 265 contacts over Bluetooth
+        // delivered 252, then 259, then 258 on consecutive reads. Counting the raw
+        // frames showed the shortfall is not this app or the library losing them:
+        // only 258 ever arrived, all 258 were parsed, and none turned up after the
+        // end marker. The notifications are dropped under the burst, and a
+        // different few are dropped each time.
+        //
+        // Which is what makes re-reading worth it. This is a query to the attached
+        // device, not a transmission, so it costs no airtime and nothing on the
+        // mesh hears it. Merging passes by public key converges on the full list,
+        // and a link that loses nothing pays for one pass.
         let announced = null;
         const onContactsStart = (start) => {
             announced = start?.count ?? null;
         };
         connection.on(Constants.ResponseCodes.ContactsStart, onContactsStart);
 
+        const byPublicKey = new Map();
+        let passes = 0;
+
         try {
-            GlobalState.contacts = await connection.getContacts();
+
+            for(let attempt = 0; attempt < this.MAX_CONTACT_LOAD_PASSES; attempt++){
+
+                const before = byPublicKey.size;
+                for(const contact of await connection.getContacts()){
+                    byPublicKey.set(Utils.bytesToHex(contact.publicKey), contact);
+                }
+                passes++;
+
+                // got the lot, or the device never said how many to expect
+                if(announced == null || byPublicKey.size >= announced){
+                    break;
+                }
+
+                // a pass that added nobody will not be improved on by another
+                if(byPublicKey.size === before){
+                    break;
+                }
+
+            }
+
         } finally {
             connection.off(Constants.ResponseCodes.ContactsStart, onContactsStart);
         }
 
+        GlobalState.contacts = [...byPublicKey.values()];
         GlobalState.contactsAnnounced = announced;
         GlobalState.contactsMissing = announced == null
             ? 0
             : Math.max(0, announced - GlobalState.contacts.length);
 
-        if(GlobalState.contactsMissing > 0){
-            console.log(`contacts: device announced ${announced}, received ${GlobalState.contacts.length}`);
+        if(passes > 1){
+            console.log(`contacts: ${GlobalState.contacts.length} of ${announced} after ${passes} passes`);
         }
 
     }
@@ -405,6 +441,10 @@ class Connection {
 
     // the room refused the password, as opposed to never answering at all
     static LOGIN_FAILED = "login-failed";
+
+    // how many times to re-read the contact list when the device says it sent more
+    // than arrived. a local query, so this costs no airtime, only a second or two
+    static MAX_CONTACT_LOAD_PASSES = 4;
 
     static async getPosition(timeoutMillis = 5000) {
 
