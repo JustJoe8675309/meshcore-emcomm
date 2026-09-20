@@ -179,7 +179,8 @@ describe("RoomLoginBar", () => {
         const wrapper = mountBar();
         wrapper.vm.password = "hunter2";
         await wrapper.vm.logIn();
-        expect(wrapper.vm.password).toBe("");
+        // not retained, and not left blank either
+        expect(wrapper.vm.password).toBe("hello");
     });
 
     it("forgets it after a failure as well", async () => {
@@ -187,15 +188,51 @@ describe("RoomLoginBar", () => {
         const wrapper = mountBar();
         wrapper.vm.password = "hunter2";
         await wrapper.vm.logIn();
-        expect(wrapper.vm.password).toBe("");
+        // not retained, and not left blank either
+        expect(wrapper.vm.password).toBe("hello");
     });
 
-    it("will not send an empty password", async () => {
-        const login = vi.spyOn(Connection, "loginToRoom");
+    it("starts at the stock room password", () => {
+        // -D ROOM_PASSWORD='"hello"' in the MeshCore variants, so most rooms take
+        // it and it is published rather than secret
+        expect(mountBar().vm.password).toBe("hello");
+    });
+
+    it("says which default it is using rather than applying it invisibly", () => {
+        expect(mountBar().text()).toMatch(/hello/);
+        expect(mountBar().text()).toMatch(/stock room password/);
+    });
+
+    it("sends the default when the box is left alone", async () => {
+        const login = vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ reserved: 0 });
         const wrapper = mountBar();
         await wrapper.vm.logIn();
-        expect(login).not.toHaveBeenCalled();
-        expect(wrapper.vm.errorMessage).toMatch(/Enter the room password/);
+        expect(login).toHaveBeenCalledWith(ROOM_KEY, "hello");
+    });
+
+    it("sends the default when the box has been cleared", async () => {
+        const login = vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ reserved: 0 });
+        const wrapper = mountBar();
+        wrapper.vm.password = "";
+        await wrapper.vm.logIn();
+        expect(login).toHaveBeenCalledWith(ROOM_KEY, "hello");
+    });
+
+    it("prefers a typed password over the default", async () => {
+        const login = vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ reserved: 0 });
+        const wrapper = mountBar();
+        wrapper.vm.password = "something-else";
+        await wrapper.vm.logIn();
+        expect(login).toHaveBeenCalledWith(ROOM_KEY, "something-else");
+    });
+
+    it("goes back to the default after an attempt, not to empty", async () => {
+        vi.spyOn(Connection, "loginToRoom").mockRejectedValue(new Error(Connection.LOGIN_FAILED));
+        const wrapper = mountBar();
+        wrapper.vm.password = "typed-one";
+        await wrapper.vm.logIn();
+        // the typed one is gone, and the box is usable again without retyping
+        expect(wrapper.vm.password).toBe("hello");
     });
 
     it("reports being logged in, and as admin when the room says so", async () => {

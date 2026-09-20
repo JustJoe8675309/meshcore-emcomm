@@ -10,8 +10,10 @@
 
         <div v-if="!loggedIn" class="text-xs text-gray-500">
             A room holds its posts until you log in. The password is sent straight to the radio
-            and kept nowhere, so it is typed each time. A room does not reply to a wrong password,
-            so a failed login looks the same as one that never arrived.
+            and kept nowhere, so it is typed each time. This starts at
+            <span class="font-mono">hello</span>, the stock room password the MeshCore firmware
+            ships with, which is a published default rather than a secret. A room does not reply
+            to a wrong password, so a failed login looks the same as one that never arrived.
         </div>
 
         <form v-if="!loggedIn" @submit.prevent="logIn" class="flex space-x-2">
@@ -51,6 +53,12 @@ import GlobalState from "../../js/GlobalState.js";
 import Connection from "../../js/Connection.js";
 import Utils from "../../js/Utils.js";
 
+// The stock room password the firmware ships with, set as a build flag in the
+// MeshCore variants: -D ROOM_PASSWORD='"hello"'. A published default, not a
+// secret, so starting here saves typing on most rooms and is shown rather than
+// applied invisibly: an operator should be able to see what is being sent.
+const DEFAULT_ROOM_PASSWORD = "hello";
+
 export default {
     name: 'RoomLoginBar',
     props: {
@@ -58,7 +66,7 @@ export default {
     },
     data() {
         return {
-            password: "",
+            password: DEFAULT_ROOM_PASSWORD,
             isLoggingIn: false,
             errorMessage: null,
             // a login lasts as long as the radio holds the session, so this is not
@@ -70,7 +78,7 @@ export default {
     watch: {
         // a different room is a different login
         contactKey(key) {
-            this.password = "";
+            this.password = DEFAULT_ROOM_PASSWORD;
             this.errorMessage = null;
             // a login already made this session still stands
             const existing = key == null ? null : GlobalState.roomLogins[key];
@@ -88,17 +96,14 @@ export default {
     methods: {
         async logIn() {
 
-            if(this.password === ""){
-                this.errorMessage = "Enter the room password.";
-                return;
-            }
-
             this.isLoggingIn = true;
             this.errorMessage = null;
 
             try {
 
-                const response = await Connection.loginToRoom(this.contact.publicKey, this.password);
+                // an empty box means the default rather than a blank password
+                const password = this.password === "" ? DEFAULT_ROOM_PASSWORD : this.password;
+                const response = await Connection.loginToRoom(this.contact.publicKey, password);
                 this.loggedIn = true;
                 this.isAdmin = (response?.reserved ?? 0) !== 0;
                 // the composer reads this, so it can refuse to post into a room
@@ -128,8 +133,8 @@ export default {
                 }
 
             } finally {
-                // held only for the call
-                this.password = "";
+                // held only for the call, then back to the default
+                this.password = DEFAULT_ROOM_PASSWORD;
                 this.isLoggingIn = false;
             }
 
