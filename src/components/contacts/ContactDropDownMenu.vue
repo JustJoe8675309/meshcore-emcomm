@@ -17,10 +17,7 @@
                 <div class="text-sm text-gray-500">
                     <!-- hops away -->
                     <span class="flex my-auto text-sm text-gray-500">
-                        <span v-if="contact.outPathLen === -1">No Path (Flood)</span>
-                        <span v-else-if="contact.outPathLen === 0">Direct</span>
-                        <span v-else-if="contact.outPathLen === 1">1 Hop</span>
-                        <span v-else>• {{ contact.outPathLen }} Hops</span>
+                        <span :class="{ 'text-amber-700': pathIsUnknown }">{{ pathDescription }}</span>
                     </span>
                 </div>
             </div>
@@ -84,6 +81,7 @@ import DropDownMenuItem from "../DropDownMenuItem.vue";
 import Connection from "../../js/Connection.js";
 import Database from "../../js/Database.js";
 import Utils from "../../js/Utils.js";
+import PathInfo from "../../js/PathInfo.js";
 
 export default {
     name: 'ContactDropDownMenu',
@@ -99,6 +97,14 @@ export default {
     emits: [
         "contact-deleted",
     ],
+    computed: {
+        pathDescription() {
+            return PathInfo.describe(this.contact.outPathLen);
+        },
+        pathIsUnknown() {
+            return PathInfo.isUnknown(this.contact.outPathLen);
+        },
+    },
     methods: {
         copyPublicKey(contact) {
             Utils.copyToClipboard(Utils.bytesToHex(contact.publicKey));

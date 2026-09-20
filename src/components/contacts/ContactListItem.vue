@@ -25,10 +25,7 @@
 
                 <!-- hops away -->
                 <span class="flex my-auto text-sm text-gray-500 space-x-1">
-                    <span v-if="contact.outPathLen === -1">• No Path (Flood)</span>
-                    <span v-else-if="contact.outPathLen === 0">• Direct</span>
-                    <span v-else-if="contact.outPathLen === 1">• 1 Hop</span>
-                    <span v-else>• {{ contact.outPathLen }} Hops</span>
+                    <span :class="{ 'text-amber-700': pathIsUnknown }">• {{ pathDescription }}</span>
                 </span>
 
             </div>
@@ -57,6 +54,7 @@ import TimeUtils from "../../js/TimeUtils.js";
 import ContactDropDownMenu from "./ContactDropDownMenu.vue";
 import Database from "../../js/Database.js";
 import ContactIcon from "./ContactIcon.vue";
+import PathInfo from "../../js/PathInfo.js";
 
 export default {
     name: 'ContactListItem',
@@ -114,6 +112,14 @@ export default {
     computed: {
         GlobalState() {
             return GlobalState;
+        },
+        pathDescription() {
+            return PathInfo.describe(this.contact.outPathLen);
+        },
+        // a path length the app cannot read is worth flagging rather than
+        // rendering as though it were an ordinary distance
+        pathIsUnknown() {
+            return PathInfo.isUnknown(this.contact.outPathLen);
         },
     },
 }

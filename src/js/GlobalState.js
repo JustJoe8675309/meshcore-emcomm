@@ -10,6 +10,9 @@ const globalState = reactive({
     connectionWatchdog: null,
     connectionTransport: null,
     contacts: [],
+    // how many the device said it would send, and how many never arrived
+    contactsAnnounced: null,
+    contactsMissing: 0,
     channels: [],
     // whether the device is serving a live GPS fix: "unknown" before a device is
     // connected, "checking" while the probe runs, then "live" or "unconfirmed"

@@ -248,7 +248,39 @@ class Connection {
     }
 
     static async loadContacts() {
-        GlobalState.contacts = await GlobalState.connection.getContacts();
+
+        const connection = GlobalState.connection;
+        if(connection == null){
+            throw new Error(this.DISCONNECTED);
+        }
+
+        // The device says how many contacts it is about to send, and meshcore.js
+        // discards that number, resolving with whatever turned up before the end
+        // marker. A truncated list is then indistinguishable from a short one: the
+        // contacts tab simply shows fewer people and nothing suggests anyone is
+        // missing, which on a roster of two hundred is not something an operator
+        // can notice by eye.
+        let announced = null;
+        const onContactsStart = (start) => {
+            announced = start?.count ?? null;
+        };
+        connection.on(Constants.ResponseCodes.ContactsStart, onContactsStart);
+
+        try {
+            GlobalState.contacts = await connection.getContacts();
+        } finally {
+            connection.off(Constants.ResponseCodes.ContactsStart, onContactsStart);
+        }
+
+        GlobalState.contactsAnnounced = announced;
+        GlobalState.contactsMissing = announced == null
+            ? 0
+            : Math.max(0, announced - GlobalState.contacts.length);
+
+        if(GlobalState.contactsMissing > 0){
+            console.log(`contacts: device announced ${announced}, received ${GlobalState.contacts.length}`);
+        }
+
     }
 
     // used when the device can't tell us which channels it has configured
