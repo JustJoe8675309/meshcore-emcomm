@@ -1,4 +1,5 @@
 import { reactive } from "vue";
+import Dtg from "./Dtg.js";
 
 /**
  * Operator preferences for report traffic, stored in this browser.
@@ -101,24 +102,13 @@ class OperatorSettings {
     }
 
     /**
-     * Date time group in the operator's chosen zone, e.g "191830L SEP" or "190030Z SEP".
-     * Day of month, hour, minute, zone letter, then the month, which is short enough
-     * to be worth the bytes and removes the ambiguity a bare day would leave.
+     * Current date time group in the operator's chosen zone.
+     * The format itself lives in Dtg, which also has to read these values back.
      */
     static formatDtg(date = new Date()) {
-
-        const isZulu = state.dtgZone === "zulu";
-        const pad = (value) => value.toString().padStart(2, "0");
-        const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-
-        const day = isZulu ? date.getUTCDate() : date.getDate();
-        const hours = isZulu ? date.getUTCHours() : date.getHours();
-        const minutes = isZulu ? date.getUTCMinutes() : date.getMinutes();
-        const month = months[isZulu ? date.getUTCMonth() : date.getMonth()];
-
-        return `${pad(day)}${pad(hours)}${pad(minutes)}${isZulu ? "Z" : "L"} ${month}`;
-
+        return Dtg.format(date, state.dtgZone);
     }
+
 
 }
 

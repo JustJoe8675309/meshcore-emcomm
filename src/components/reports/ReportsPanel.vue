@@ -61,8 +61,7 @@
                 :fields="selectedForm.fields"
                 :values="values"
                 :disabled="isSending"
-                @input="onFieldInput"
-                @set-now="onSetFieldToNow"/>
+                @input="onFieldInput"/>
 
             <!-- what will actually be transmitted -->
             <TransmissionPreview
@@ -275,10 +274,6 @@ export default {
 
         onFieldInput(fieldId, value) {
             this.values[fieldId] = value;
-        },
-
-        onSetFieldToNow(fieldId) {
-            this.values[fieldId] = this.formatDtg();
         },
 
         // current date time group in the operator's chosen zone

@@ -86,6 +86,27 @@ uses at SF8 and below. It is a floor: repeater retransmission and contention wit
 stations are not included. Reports longer than 30 seconds of airtime carry an extra
 warning, since holding a shared emergency channel that long is an operational decision.
 
+### Date time groups
+
+A DTG field can be exact, approximate, or a range. The qualifier is carried in the value
+itself rather than in a separate tag, so an exact time costs exactly what it always did
+and only the reports that need a qualifier pay for one.
+
+| Mode | On the air | Bytes |
+| ---- | ---------- | ----- |
+| Exact | 191745L SEP | 11 |
+| Approximate | ABT 191745L SEP | 15 |
+| Between, same day | 191700-1745L SEP | 16 |
+| Between, over midnight | 191700-201745L SEP | 18 |
+
+A range states the day, zone and month once where both ends allow it, which saves seven
+bytes over repeating the whole group. That only happens when both ends match the expected
+shape exactly; anything else is joined verbatim, so free text such as `first light-dusk`
+still transmits rather than being refused or rearranged.
+
+The zone letter follows the operator setting above. The composing and reading back live in
+`src/js/reports/Dtg.js` and are covered by `test/dtg.test.mjs`.
+
 ### Packet size handling
 
 The companion firmware caps a channel message at `MAX_TEXT_LEN` (160 bytes), and that budget
