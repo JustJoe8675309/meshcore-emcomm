@@ -29,16 +29,15 @@ fill it in, and send. Seventeen forms are included:
 | SALUTE Spot Report | Size, activity, location, unit, time, equipment | 144 b, 2 packets |
 | Shelter Status | Population, capacity and needs | 135 b, 1 packet |
 | SKYWARN Spotter Report | Severe weather observation for the NWS | 170 b, 2 packets |
-| 9-Line MEDEVAC Request | Medical evacuation request, standard nine lines | 218 b, 2 packets (est) |
-| ARRL Radiogram (NTS) | Formal traffic in National Traffic System format | 218 b, 2 packets (est) |
-| Communications Status | A repeater, mesh node or link up or down | 151 b, 1 packet (est) |
-| Net Activation | Announce a net is open and how to check in | 161 b, 2 packets (est) |
-| Position / Station Report | Where a station is and whether it is operational | 141 b, 1 packet (est) |
+| 9-Line MEDEVAC Request | Medical evacuation request, standard nine lines | 214 b, 2 packets |
+| ARRL Radiogram (NTS) | Formal traffic in National Traffic System format | 218 b, 2 packets |
+| Communications Status | A repeater, mesh node or link up or down | 151 b, 1 packet |
+| Net Activation | Announce a net is open and how to check in | 167 b, 2 packets |
+| Position / Station Report | Where a station is and whether it is operational | 141 b, 1 packet |
 
-The first twelve have been transmitted and received between two nodes, and their byte
-figures are measured: they are what went to the radio, including the sender name prefix
-the firmware prepends, using realistic content for each form. The five marked (est) are
-encoder output for the same kind of content but have not been sent yet.
+All seventeen have been transmitted and received between two nodes. The byte figures are
+measured, not estimated: they are what went to the radio, including the sender name prefix
+the firmware prepends, using realistic content for each form.
 
 Those figures depend on the sending node's name. The prefix is charged against the same
 160 bytes as the content, so a long device name costs every channel report. The measurements
