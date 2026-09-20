@@ -137,6 +137,8 @@ class Connection {
 
         // update ui
         GlobalState.connection = null;
+        // room sessions live on the radio, so they do not survive it going away
+        GlobalState.roomLogins = {};
 
         // clear previous connection timers
         clearInterval(GlobalState.batteryPercentageInterval);

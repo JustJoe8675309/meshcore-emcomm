@@ -230,6 +230,35 @@ describe("RoomLoginBar", () => {
         expect(wrapper.vm.loggedIn).toBe(false);
     });
 
+    it("records the login so the composer can see it", async () => {
+        // a room ignores a post from a client that has not logged in, so the
+        // composer needs to know, and it is a different component
+        GlobalState.roomLogins = {};
+        vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ reserved: 1 });
+        const wrapper = mountBar();
+        wrapper.vm.password = "pw";
+        await wrapper.vm.logIn();
+        const key = Array.from(ROOM_KEY).map((b) => b.toString(16).padStart(2, "0")).join("");
+        expect(GlobalState.roomLogins[key]).toEqual({ isAdmin: true });
+    });
+
+    it("records nothing when the login failed", async () => {
+        GlobalState.roomLogins = {};
+        vi.spyOn(Connection, "loginToRoom").mockRejectedValue(new Error(Connection.LOGIN_FAILED));
+        const wrapper = mountBar();
+        wrapper.vm.password = "wrong";
+        await wrapper.vm.logIn();
+        expect(GlobalState.roomLogins).toEqual({});
+    });
+
+    it("shows a login already made this session", () => {
+        const key = Array.from(ROOM_KEY).map((b) => b.toString(16).padStart(2, "0")).join("");
+        GlobalState.roomLogins = { [key]: { isAdmin: false } };
+        // coming back to the room should not ask again
+        expect(mountBar().vm.loggedIn).toBe(true);
+        GlobalState.roomLogins = {};
+    });
+
     it("says so when there is no radio", () => {
         GlobalState.connection = null;
         const wrapper = mountBar();

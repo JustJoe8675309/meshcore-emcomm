@@ -103,6 +103,11 @@
         <!-- message composer -->
         <div class="flex bg-gray-100 p-2 border-t space-x-2">
 
+            <div v-if="needsRoomLogin" role="status" class="w-full text-xs text-red-600 pb-1">
+                Log in to this room before posting. A room ignores a post from a client that has
+                not logged in, and says nothing, so it would look sent and never arrive.
+            </div>
+
             <!-- text input -->
             <textarea
                 v-model="newMessageText"
@@ -124,6 +129,7 @@
 </template>
 
 <script>
+import { Constants } from "@liamcottle/meshcore.js";
 import Database from "../../js/Database.js";
 import GlobalState from "../../js/GlobalState.js";
 import Connection from "../../js/Connection.js";
@@ -380,6 +386,16 @@ export default {
         },
     },
     computed: {
+        // a room, and no login recorded for it this session
+        needsRoomLogin() {
+            if(this.type !== 'contact' || this.contact == null){
+                return false;
+            }
+            if(this.contact.type !== Constants.AdvType.Room){
+                return false;
+            }
+            return GlobalState.roomLogins[Utils.bytesToHex(this.contact.publicKey)] == null;
+        },
         canSendMessage() {
 
             // can't send if contact is not selected
@@ -389,6 +405,14 @@ export default {
 
             // can't send if channel is not selected
             if(this.type === 'channel' && this.channel == null){
+                return false;
+            }
+
+            // A room ignores a post from a client that has not logged in, and says
+            // nothing about it. The send would look perfectly successful here and
+            // simply never appear in the room, which is the worst way for a
+            // message to fail: the operator believes it went.
+            if(this.needsRoomLogin){
                 return false;
             }
 

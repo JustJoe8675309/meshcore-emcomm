@@ -69,12 +69,21 @@ export default {
     },
     watch: {
         // a different room is a different login
-        contactKey() {
+        contactKey(key) {
             this.password = "";
             this.errorMessage = null;
-            this.loggedIn = false;
-            this.isAdmin = false;
+            // a login already made this session still stands
+            const existing = key == null ? null : GlobalState.roomLogins[key];
+            this.loggedIn = existing != null;
+            this.isAdmin = existing?.isAdmin ?? false;
         },
+    },
+    mounted() {
+        const existing = this.contactKey == null ? null : GlobalState.roomLogins[this.contactKey];
+        if(existing != null){
+            this.loggedIn = true;
+            this.isAdmin = existing.isAdmin;
+        }
     },
     methods: {
         async logIn() {
@@ -92,6 +101,9 @@ export default {
                 const response = await Connection.loginToRoom(this.contact.publicKey, this.password);
                 this.loggedIn = true;
                 this.isAdmin = (response?.reserved ?? 0) !== 0;
+                // the composer reads this, so it can refuse to post into a room
+                // that would ignore the post
+                GlobalState.roomLogins[this.contactKey] = { isAdmin: this.isAdmin };
                 this.$emit("logged-in");
 
             } catch(e) {
