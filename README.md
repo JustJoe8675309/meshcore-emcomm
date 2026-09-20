@@ -278,6 +278,38 @@ this repository supplies that directory, so either shape works.
 Nothing else needs configuring. There are no environment variables, no server, no API: the
 radio is attached to the operator's own machine and the messages live in their browser.
 
+### Updating a deployed copy
+
+There is one step: push to `master`. Cloudflare watches the repository, runs the build and
+deploys it. Nothing is uploaded by hand and there is no separate deploy action.
+
+    npm test                      # six suites, no hardware needed
+    npm run build                 # optional, to see it build before pushing
+    git add -A
+    git commit -m "..."
+    git push
+
+Watch the build under Workers & Pages, the `app` worker, Deployments. A build takes a
+couple of minutes, most of it installing dependencies. Check the outcome rather than
+assuming it: a failed *deploy* is reported after a *successful* build, so the log ends in
+green vite output and then says Failed.
+
+Then confirm what is actually being served, which is the only check that matters:
+
+    curl -s https://app.meshcore-emcomm.workers.dev/ | grep -o 'assets/index-[A-Za-z0-9_-]*\.js'
+
+and compare it with `dist/assets/` from a local build of the same commit. Matching hashes
+mean the deployed bundle is the one you built.
+
+The service worker cache name does not need bumping for an ordinary change. Asset filenames
+carry a content hash, so a new build cannot be served from an old cache entry, and the page
+itself is fetched network first. Bump `CACHE_NAME` only when changing what the service
+worker caches or how, which is a change to the caching rules rather than to the app.
+
+To roll back, revert the commit and push. Deployments are per commit and Cloudflare keeps
+the previous ones, so an older deployment can also be promoted from the dashboard, but
+reverting keeps the repository and the live site telling the same story.
+
 ### What other operators get
 
 They open the URL once while online. That first load fetches the current build and fills the
