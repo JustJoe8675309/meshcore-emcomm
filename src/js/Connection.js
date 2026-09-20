@@ -522,6 +522,7 @@ class Connection {
         crypto.getRandomValues(tag);
 
         const request = new Uint8Array([
+            CMD_SEND_CONTROL_DATA,          // the frame is a command; the control payload follows it
             CTL_DISCOVER_REQ,               // prefix_only left clear, so replies carry the full key
             1 << ADV_TYPE_REPEATER,
             ...tag,
