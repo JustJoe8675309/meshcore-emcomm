@@ -108,11 +108,30 @@ describe("Connection.loginToRoom", () => {
         expect(settled).toBe(false);
     });
 
-    it("succeeds and reports admin rights when the room grants them", async () => {
-        const login = Connection.loginToRoom(ROOM_KEY, "adminpw");
+    // PERM_ACL_ROLE_MASK is the low two bits: guest 0, read only 1, read write 2,
+    // admin 3. Reading the byte as "nonzero means admin" called a read only login
+    // an admin one, and let the operator post into a room that drops it.
+    it("reads the role from the low two bits", async () => {
+        const cases = [
+            [0, { role: 0, isAdmin: false, canPost: false }],   // guest
+            [1, { role: 1, isAdmin: false, canPost: false }],   // read only
+            [2, { role: 2, isAdmin: false, canPost: true }],    // read write
+            [3, { role: 3, isAdmin: true, canPost: true }],     // admin
+        ];
+        for(const [granted, expected] of cases){
+            const login = Connection.loginToRoom(ROOM_KEY, "pw");
+            await Promise.resolve();
+            radio.emit("rx", loginSuccessFrame(ROOM_KEY, granted));
+            await expect(login).resolves.toMatchObject(expected);
+        }
+    });
+
+    it("ignores bits above the role", async () => {
+        // the byte carries more than the role, so masking matters
+        const login = Connection.loginToRoom(ROOM_KEY, "pw");
         await Promise.resolve();
-        radio.emit("rx", loginSuccessFrame(ROOM_KEY, 1));
-        await expect(login).resolves.toMatchObject({ isAdmin: true, permissions: 1 });
+        radio.emit("rx", loginSuccessFrame(ROOM_KEY, 0b11111110));
+        await expect(login).resolves.toMatchObject({ role: 2, isAdmin: false, canPost: true });
     });
 
     it("ignores a success meant for a different room", async () => {
@@ -207,7 +226,7 @@ describe("RoomLoginBar", () => {
     });
 
     it("forgets the password as soon as the login call is done", async () => {
-        vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ isAdmin: false });
+        vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ isAdmin: false, canPost: true });
         const wrapper = mountBar();
         wrapper.vm.password = "hunter2";
         await wrapper.vm.logIn();
@@ -236,7 +255,7 @@ describe("RoomLoginBar", () => {
     });
 
     it("sends the default when the box is left alone", async () => {
-        const login = vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ isAdmin: false });
+        const login = vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ isAdmin: false, canPost: true });
         const wrapper = mountBar();
         await wrapper.vm.logIn();
         expect(login).toHaveBeenCalledWith(ROOM_KEY, "hello");
@@ -247,7 +266,7 @@ describe("RoomLoginBar", () => {
         // "check whether this sender is in the ACL", which is how a room with no
         // password is joined, so substituting the default would make such a room
         // impossible to reach from here.
-        const login = vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ isAdmin: false });
+        const login = vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ isAdmin: false, canPost: true });
         const wrapper = mountBar();
         wrapper.vm.password = "";
         await wrapper.vm.logIn();
@@ -259,7 +278,7 @@ describe("RoomLoginBar", () => {
     });
 
     it("prefers a typed password over the default", async () => {
-        const login = vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ isAdmin: false });
+        const login = vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ isAdmin: false, canPost: true });
         const wrapper = mountBar();
         wrapper.vm.password = "something-else";
         await wrapper.vm.logIn();
@@ -275,8 +294,18 @@ describe("RoomLoginBar", () => {
         expect(wrapper.vm.password).toBe("hello");
     });
 
+    it("says a read only login is read only, not just logged in", async () => {
+        // the room the bench tested granted guest, and the app said "Logged in"
+        vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ role: 0, isAdmin: false, canPost: false });
+        const wrapper = mountBar();
+        await wrapper.vm.logIn();
+        await wrapper.vm.$nextTick();
+        expect(wrapper.text()).toMatch(/Logged in, read only/);
+        expect(wrapper.text()).toMatch(/posts will not be accepted/);
+    });
+
     it("reports being logged in, and as admin when the room says so", async () => {
-        vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ isAdmin: true });
+        vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ isAdmin: true, canPost: true });
         const wrapper = mountBar();
         wrapper.vm.password = "adminpw";
         await wrapper.vm.logIn();
@@ -287,7 +316,7 @@ describe("RoomLoginBar", () => {
 
     it("warns that a long absence leaves a gap rather than an error", async () => {
         // the server keeps a bounded backlog, so posts can be missed silently
-        vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ isAdmin: false });
+        vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ isAdmin: false, canPost: true });
         const wrapper = mountBar();
         wrapper.vm.password = "pw";
         await wrapper.vm.logIn();
@@ -296,7 +325,7 @@ describe("RoomLoginBar", () => {
     });
 
     it("drops the login when the room changes", async () => {
-        vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ isAdmin: false });
+        vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ isAdmin: false, canPost: true });
         const wrapper = mountBar();
         wrapper.vm.password = "pw";
         await wrapper.vm.logIn();
@@ -311,12 +340,12 @@ describe("RoomLoginBar", () => {
         // a room ignores a post from a client that has not logged in, so the
         // composer needs to know, and it is a different component
         GlobalState.roomLogins = {};
-        vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ isAdmin: true });
+        vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ isAdmin: true, canPost: true });
         const wrapper = mountBar();
         wrapper.vm.password = "pw";
         await wrapper.vm.logIn();
         const key = Array.from(ROOM_KEY).map((b) => b.toString(16).padStart(2, "0")).join("");
-        expect(GlobalState.roomLogins[key]).toEqual({ isAdmin: true });
+        expect(GlobalState.roomLogins[key]).toEqual({ isAdmin: true, canPost: true });
     });
 
     it("records nothing when the login failed", async () => {

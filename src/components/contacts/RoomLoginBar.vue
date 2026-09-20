@@ -4,7 +4,7 @@
         <div class="flex items-center justify-between">
             <div class="text-sm font-medium text-gray-900">Room server</div>
             <div class="text-xs" :class="[ loggedIn ? 'text-green-700' : 'text-gray-500' ]">
-                {{ loggedIn ? (isAdmin ? "Logged in as admin" : "Logged in") : "Not logged in" }}
+                {{ loggedIn ? roleLabel : "Not logged in" }}
             </div>
         </div>
 
@@ -40,6 +40,11 @@
 
         <div v-if="errorMessage" role="status" class="text-xs text-red-600">{{ errorMessage }}</div>
 
+        <div v-if="loggedIn && !canPost" role="status" class="text-xs text-amber-700">
+            This room granted read access only, so posts will not be accepted. Log in again with a
+            password that has posting rights.
+        </div>
+
         <div v-if="loggedIn" class="text-xs text-gray-500">
             Posts made while you were away arrive once the server has sent them. A room keeps only
             a limited backlog, so a long absence can leave a gap rather than an error.
@@ -74,6 +79,7 @@ export default {
             // persisted anywhere: reconnecting means logging in again
             loggedIn: false,
             isAdmin: false,
+            canPost: false,
         };
     },
     watch: {
@@ -85,6 +91,7 @@ export default {
             const existing = key == null ? null : GlobalState.roomLogins[key];
             this.loggedIn = existing != null;
             this.isAdmin = existing?.isAdmin ?? false;
+            this.canPost = existing?.canPost ?? false;
         },
     },
     mounted() {
@@ -92,6 +99,7 @@ export default {
         if(existing != null){
             this.loggedIn = true;
             this.isAdmin = existing.isAdmin;
+            this.canPost = existing.canPost === true;
         }
     },
     methods: {
@@ -110,9 +118,10 @@ export default {
                 const response = await Connection.loginToRoom(this.contact.publicKey, this.password);
                 this.loggedIn = true;
                 this.isAdmin = response?.isAdmin === true;
+                this.canPost = response?.canPost === true;
                 // the composer reads this, so it can refuse to post into a room
                 // that would ignore the post
-                GlobalState.roomLogins[this.contactKey] = { isAdmin: this.isAdmin };
+                GlobalState.roomLogins[this.contactKey] = { isAdmin: this.isAdmin, canPost: this.canPost };
                 this.$emit("logged-in");
 
             } catch(e) {
@@ -146,6 +155,12 @@ export default {
         },
     },
     computed: {
+        roleLabel() {
+            if(this.isAdmin){
+                return "Logged in as admin";
+            }
+            return this.canPost ? "Logged in" : "Logged in, read only";
+        },
         isRoom() {
             return this.contact?.type === Constants.AdvType.Room;
         },

@@ -113,6 +113,11 @@
                 not logged in, and says nothing, so it would look sent and never arrive.
             </div>
 
+            <div v-else-if="roomIsReadOnly" role="status" class="w-full text-xs text-red-600 pb-1">
+                This room granted read access only. It will drop a post rather than refuse it, so
+                sending would time out and look like a range problem.
+            </div>
+
             <!-- text input -->
             <textarea
                 v-model="newMessageText"
@@ -422,6 +427,19 @@ export default {
             }
             return GlobalState.roomLogins[Utils.bytesToHex(this.contact.publicKey)] == null;
         },
+        // logged in, but with a role the room will not accept posts from. it drops
+        // them rather than refusing, so the send would time out and read as a
+        // range problem
+        roomIsReadOnly() {
+            if(this.type !== 'contact' || this.contact == null){
+                return false;
+            }
+            if(this.contact.type !== Constants.AdvType.Room){
+                return false;
+            }
+            const login = GlobalState.roomLogins[Utils.bytesToHex(this.contact.publicKey)];
+            return login != null && login.canPost !== true;
+        },
         canSendMessage() {
 
             // can't send if contact is not selected
@@ -438,7 +456,7 @@ export default {
             // nothing about it. The send would look perfectly successful here and
             // simply never appear in the room, which is the worst way for a
             // message to fail: the operator believes it went.
-            if(this.needsRoomLogin){
+            if(this.needsRoomLogin || this.roomIsReadOnly){
                 return false;
             }
 

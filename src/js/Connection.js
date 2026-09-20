@@ -890,8 +890,19 @@ class Connection {
                 }
 
                 if(bytes[0] === PUSH_LOGIN_SUCCESS){
-                    // second byte is the permissions the room granted
-                    resolve({ isAdmin: bytes[1] !== 0, permissions: bytes[1] });
+                    // The second byte is what the room granted. The role is the low
+                    // two bits (PERM_ACL_ROLE_MASK): guest 0, read only 1, read
+                    // write 2, admin 3. Reading it as "nonzero means admin" would
+                    // call a read only login an admin one, and letting an operator
+                    // believe they can post when the room will drop it is the fault
+                    // this whole method exists to avoid.
+                    const role = bytes[1] & 3;
+                    resolve({
+                        role: role,
+                        isAdmin: role === 3,
+                        canPost: role >= 2,
+                        permissions: bytes[1],
+                    });
                 } else if(bytes[0] === PUSH_LOGIN_FAIL){
                     reject(new Error(this.LOGIN_FAILED));
                 }
