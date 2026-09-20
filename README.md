@@ -423,6 +423,13 @@ fail is only decoration.
   packet loss, statistics must describe what was sent rather than what was intended,
   averages must stay hidden when nothing came back, and leaving the tab must stop
   transmitting.
+- `test/components/reports_panel.test.mjs` covers the send orchestration, which is where a
+  mistake quietly loses somebody's traffic. Parts must go out in order; a direct message
+  must wait for each acknowledgement before sending the next, because the device tracks
+  only one outstanding message and the next part is simply lost otherwise; an
+  unacknowledged part must be retried and then stop rather than be transmitted over; and a
+  resume must continue from the part that failed, to the destination the earlier parts
+  went to, rather than repeating what already arrived.
 
 ### Known issue: serial resync
 
