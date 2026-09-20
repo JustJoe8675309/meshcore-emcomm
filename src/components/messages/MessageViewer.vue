@@ -25,7 +25,12 @@
                                     <div v-if="message.text" style="white-space:pre-wrap;word-break:break-word;font-family:inherit;">
 
                                         <!-- message text to/from contact -->
-                                        <div v-if="type === 'contact'">{{ message.text }}</div>
+                                        <div v-if="type === 'contact'">
+                                            <!-- a room relays other people's posts, so say whose this is.
+                                                 the room is the contact; the author is somebody else -->
+                                            <div v-if="postAuthor(message)" class="text-xs font-semibold text-blue-700">{{ postAuthor(message) }}</div>
+                                            <div>{{ message.text }}</div>
+                                        </div>
 
                                         <!-- message text to/from channel -->
                                         <div v-else-if="type === 'channel'">
@@ -137,6 +142,7 @@ import MessageUtils from "../../js/MessageUtils.js";
 import DeviceUtils from "../../js/DeviceUtils.js";
 import TimeUtils from "../../js/TimeUtils.js";
 import Utils from "../../js/Utils.js";
+import SignedPosts from "../../js/SignedPosts.js";
 
 export default {
     name: 'MessageViewer',
@@ -176,6 +182,26 @@ export default {
         },
     },
     methods: {
+        /**
+         * Who wrote a room post, or null for an ordinary message.
+         *
+         * The room sends four bytes of the author's public key. Four bytes can
+         * collide, so an unmatched prefix is shown as itself rather than pinned on
+         * whoever happens to be nearest: a post under the wrong callsign is worse
+         * than a post under none.
+         */
+        postAuthor(message) {
+
+            if(!message?.author_prefix){
+                return null;
+            }
+
+            const bytes = message.author_prefix.match(/../g)?.map((h) => parseInt(h, 16)) ?? [];
+            const author = SignedPosts.findAuthor(GlobalState.contacts, bytes);
+
+            return author?.advName?.trim() || `<${message.author_prefix}>`;
+
+        },
 
         subscribeToMessages() {
 

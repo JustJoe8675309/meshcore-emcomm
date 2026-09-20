@@ -27,7 +27,7 @@ async function initDatabase(publicKeyHex) {
     await database.addCollections({
         messages: {
             schema: {
-                version: 1,
+                version: 2,
                 primaryKey: 'id',
                 type: 'object',
                 properties: {
@@ -71,12 +71,25 @@ async function initDatabase(publicKeyHex) {
                     error: {
                         type: 'string',
                     },
+                    // who wrote a room post: the first four bytes of their public
+                    // key, as hex. a room relays other people's posts, so the
+                    // contact a post arrives from is the room, not the author
+                    author_prefix: {
+                        type: 'string',
+                    },
                 },
             },
             migrationStrategies: {
                 // add rtt integer property in v1
                 1: (oldMessage) => {
                     oldMessage.rtt = null;
+                    return oldMessage;
+                },
+                // add author_prefix in v2, for room posts. older rows kept theirs
+                // inside the text, where it rendered as mojibake, and the bytes
+                // cannot be recovered from that, so they stay as they are
+                2: (oldMessage) => {
+                    oldMessage.author_prefix = null;
                     return oldMessage;
                 },
             }

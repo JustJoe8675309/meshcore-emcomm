@@ -5,6 +5,7 @@ import Utils from "./Utils.js";
 import NotificationUtils from "./NotificationUtils.js";
 import Position from "./reports/Position.js";
 import ContactFlags from "./ContactFlags.js";
+import SignedPosts from "./SignedPosts.js";
 import { Advert } from "@liamcottle/meshcore.js";
 
 class Connection {
@@ -139,6 +140,7 @@ class Connection {
         GlobalState.connection = null;
         // room sessions live on the radio, so they do not survive it going away
         GlobalState.roomLogins = {};
+        SignedPosts.forget();
 
         // clear previous connection timers
         clearInterval(GlobalState.batteryPercentageInterval);
@@ -208,6 +210,11 @@ class Connection {
         });
 
         // listen for message send confirmed events
+        // read received message frames before meshcore.js decodes them: a room post
+        // carries its author in four bytes that do not survive being run through a
+        // UTF-8 decoder along with the text
+        GlobalState.connection.on("rx", (frame) => SignedPosts.observe(frame));
+
         GlobalState.connection.on(Constants.PushCodes.SendConfirmed, async (event) => {
             console.log("SendConfirmed", event);
             await databaseToBeReady;
@@ -1101,6 +1108,11 @@ class Connection {
             return;
         }
 
+        // A room post carries its author in front of the text. Recovered from the
+        // raw frame, because the copy the library hands over has had those bytes
+        // put through a UTF-8 decoder and any that were not valid UTF-8 are gone.
+        const signed = SignedPosts.take(message);
+
         // save message to database
         await Database.Message.insert({
             status: "received",
@@ -1109,7 +1121,8 @@ class Connection {
             path_len: message.pathLen,
             txt_type: message.txtType,
             sender_timestamp: message.senderTimestamp,
-            text: message.text,
+            text: signed ? signed.text : message.text,
+            author_prefix: signed ? Utils.bytesToHex(signed.authorPrefix) : null,
             expected_ack_crc: null,
             error: null,
         });
