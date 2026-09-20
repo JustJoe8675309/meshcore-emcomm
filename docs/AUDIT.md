@@ -96,6 +96,33 @@ rather than an error.
 - [ ] **Switch tabs mid send.** Transmission stops. Nothing should keep talking to the
       radio with no display and no way to cancel.
 
+### Room servers
+
+Needs a room you control. Everything here was wrong at some point and none of it
+failed loudly, so walk it rather than assuming. A room three or four hops out is a
+worse test than one at zero hops: put the room in direct range and routing stops
+being a variable.
+
+- [ ] **The room appears** in the contacts tab with its own icon, and opens a
+      conversation titled Room. Discovery will never find it, whatever the range:
+      the room firmware does not implement the control packet at all. It has to
+      advert in earshot, or be added from a `meshcore://` link.
+- [ ] **Log in.** Watch how long it takes. A room in direct range answers in about
+      a second and one several hops out took 10 to 12, against the 8.8 the library
+      used to allow. If a login ever reports no answer, listen past the timeout on
+      the raw frames before believing it.
+- [ ] **The role is read from the reply**, not guessed. A room granting admin says
+      "Logged in as admin"; one granting read only says so and the composer refuses
+      to post. Both were reported wrong by reading the legacy byte.
+- [ ] **A wrong password looks exactly like silence**, by design: the room source
+      says "no response. Client will timeout". The message must not blame the range.
+- [ ] **Post.** It should read Delivered, and it should appear in the room on
+      another client. Delivered alone is not proof the room accepted it.
+- [ ] **A post from somebody else is attributed by name**, not by four bytes of
+      mojibake. Rows stored before that fix keep theirs: the bytes were destroyed
+      by UTF-8 decoding before they were saved and cannot be recovered, so check a
+      post that arrives during the test rather than scrollback.
+
 ### Offline
 
 The interesting case is the **first** load after a deploy, not the steady state. A new
@@ -115,6 +142,51 @@ all offline.
       radio. The app is deployed to Cloudflare rather than run locally, so there is no
       server to stop; see below for how to cut the network and how to prove it was cut.
 - [ ] Put the tab back online and reload. It picks up the current build.
+
+## The firmware source is not what arrives
+
+Read this before adding anything that parses a new frame. It cost three fixes that
+were declared done, tested, deployed, and still did nothing.
+
+**The companion radio is a layer, not a pipe.** It does not hand a client what the
+mesh packet carried. It unpacks, re-packs and reorders on the way through, so a
+constant read from the firmware's mesh code is a statement about the mesh, not
+about the bytes that reach this app. Two examples, both of which passed review
+against the source:
+
+- A room packs a post's type as `(TXT_TYPE_SIGNED_PLAIN << 2) | retry`, so the
+  source says 8. The companion strips the retry bits first, so **2** arrives.
+  Testing the packed form matched no post ever, and every author stayed mojibake.
+- A login reply carries a legacy `is_admin` flag immediately after the push code
+  and the real ACL role at index 12. Reading the obvious first byte turned a room
+  granting admin into "read only", and the app then refused to post into a room
+  that had given it full rights.
+
+**Both failed silently, which is the point.** A post with no recovered author looks
+exactly like a post whose frame was never seen. A login reporting read only looks
+exactly like a room that really is read only. Nothing errors, so nothing prompts a
+second look, and a test written from the same misreading agrees with the code.
+
+**So: capture the frame, then write the test against those bytes.** Attach a raw
+`rx` listener, log the frame, and put the real array in the test.
+`test/components/signed_posts.test.mjs` has one exactly as the radio sent it, and
+`test/components/room_login.test.mjs` has the login reply. A test built from a
+captured frame cannot agree with a misreading of the protocol, because it does not
+contain one.
+
+**Watch the timing too, not just the layout.** `meshcore.js` allows a login the
+device's estimated transmit time plus one second. That estimate is for a
+transmission; flood routing adds a random delay at every hop, so the round trip has
+little to do with it. A room three hops out answered at 12 seconds against a
+deadline of 8.8, and the operator was told nobody answered while they were logged
+in. When something times out, listen past the timeout before believing it.
+
+**And check where the data goes after it is parsed.** A field can be correct in the
+frame, the schema, the migration, the caller and the view, and still never reach a
+row: `Database.Message.insert` copies fields one at a time and drops anything not
+named, without complaint. A round trip through the database will not catch that,
+because the document stored is the one the insert built. `message_insert.test.mjs`
+reads the source and checks the two lists agree.
 
 ## Two traps when testing this
 
