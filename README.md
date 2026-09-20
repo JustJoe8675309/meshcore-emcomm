@@ -120,6 +120,18 @@ A dropped link is not packet loss and is not recorded as any. Pulling the cable 
 stops the run and says so, keeping the replies already collected, rather than filling the
 remainder with timeouts and reporting a loss figure for requests that were never sent.
 
+Getting that right needed more than checking the link before each request. A trace already
+in flight when the radio goes away used to surface as the trace's own timeout, seconds
+later, and a timeout is recorded as loss — so whether a cable pull came out as a disconnect
+or as a lost packet depended on which arrived first. The request now races the trace
+against the connection's own `disconnected` event, which decides it by what happened rather
+than by when.
+
+With no radio the panel says so, on both cards, instead of leaving the buttons greyed out
+with no explanation. Discovery used to not check the link at all, so it stayed pressable
+and failed into a message offering the firmware version as an equally likely cause; it now
+only offers that when the cause is genuinely unknown.
+
 All of that has happened on the air rather than only in tests, including the awkward middle
 case of a run that partly succeeds: three sent, one lost, 33.33%, with the averages taken
 over the two real replies.
@@ -283,17 +295,36 @@ emergency. Everything needed at runtime is already local: the radio is on USB or
 Bluetooth, and messages are stored in IndexedDB. The service worker caches the app's
 own files so it starts with no network at all.
 
-One online load is needed first to populate the cache. After that, pull the plug on
-the network and the app still opens, routes and talks to the radio. This was verified
-by stopping the web server entirely and reloading.
+One online load is needed first to populate the cache. After that, pull the plug on the
+network and the app still opens, routes and talks to the radio.
 
 Installing it (Chrome's "Install app") is worth doing for field use: it opens in its
 own window with no browser chrome, and the cache is what makes that work when
 disconnected.
 
-Hashed build assets are cached as they are requested, since their names change every
-build. The page itself is fetched network first so a new deployment is picked up when
-online, and served from cache when not.
+The page itself is fetched network first, so a new deployment is picked up when online and
+served from cache when not. Each build gets its own cache, named after the main bundle's
+content hash, and activating a new one deletes the previous. Before that the cache name was
+fixed and nothing ever evicted a superseded build: twelve deploys in one day left twelve
+complete copies of the app on the device, 197 entries and 6.75 MB. It also meant the worker
+itself never updated, because its bytes never changed.
+
+The whole build is precached when the worker installs, rather than cached as each file is
+requested. That is not an optimisation. A new build starts with an empty cache, and a new
+worker only takes control after the page that fetched the bundle has already loaded, so the
+first load after a deploy stored the shell and none of the code it references — `index.html`
+came back from the cache offline and then failed to boot. It healed on the next online load,
+which is worth nothing to an operator who updates and then loses infrastructure. Precaching
+also means routes never opened online still work offline. The list is written into the
+worker by `scripts/stamp-service-worker.mjs`, which runs after the build and so can see what
+the build actually produced.
+
+This is verified on the radios rather than assumed, and the verification is fussier than it
+looks. Chrome's DevTools offline throttle is owned by whichever debugger attached last, so
+running any script in the tab to check whether it is offline puts it back online. Set the
+throttle, reload without probing first, then read the page's own timings: zero bytes
+transferred, and `workerStart` above zero on both the navigation and the bundle, which
+together prove the worker's cache fallback ran rather than a quiet hit on the network.
 
 ## Running it
 
@@ -416,7 +447,12 @@ failed when offline.
 `docs/AUDIT.md` has the other half, a hardware checklist for two radios. That half has
 found every real fault so far. None of them failed a test or a build at the time: a
 request frame missing its command byte, a run still transmitting after its tab closed, a
-disconnected radio reported as packet loss.
+disconnected radio reported as packet loss, and an app that could not start offline on the
+first load after any deploy while looking perfectly healthy online.
+
+They share a shape. None is a crash; each is a confident answer where the honest one is
+that the radio went away or the file was never cached. That is the class of fault a test
+suite is worst at noticing and an operator is worst placed to second guess.
 
 ## Tests
 
@@ -424,7 +460,8 @@ disconnected radio reported as packet loss.
 npm test
 ```
 
-Six plain node suites and two component suites, no hardware required:
+Six plain node suites and five component suites, 81 component tests in all, no hardware
+required:
 
 - `test/report_encoder.test.mjs` covers rendering and packet splitting, including a
   simulation of the firmware's own truncation rule to confirm no part can ever exceed
@@ -458,12 +495,17 @@ fail is only decoration.
 - `test/components/discovery.test.mjs` drives repeater discovery against a fake radio and
   asserts the bytes on the wire, not merely that the function returns. It feeds synthetic
   replies back too, including one carrying another operator's tag, which must be ignored
-  because discovery responses are broadcast rather than addressed.
+  because discovery responses are broadcast rather than addressed. It also covers a ping
+  whose radio vanishes mid trace, which must give up at once rather than wait out the
+  trace's own timeout and be counted as a lost packet; without the fix that test hangs for
+  the full timeout, which is exactly the symptom on the bench.
 - `test/components/ping_panel.test.mjs` mounts the ping panel and covers the cases that
   produce a confident wrong answer: a dropped link must stop the run rather than count as
   packet loss, statistics must describe what was sent rather than what was intended,
   averages must stay hidden when nothing came back, and leaving the tab must stop
-  transmitting.
+  transmitting. With no radio it must say so rather than only grey its buttons, refuse to
+  transmit if started anyway, and blame the disconnect for a failed discovery only when
+  the disconnect is actually the cause.
 - `test/components/reports_panel.test.mjs` covers the send orchestration, which is where a
   mistake quietly loses somebody's traffic. Parts must go out in order; a direct message
   must wait for each acknowledgement before sending the next, because the device tracks
