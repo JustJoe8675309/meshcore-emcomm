@@ -10,6 +10,7 @@
                 <div @click="tab = 'contacts'" class="w-full border-b-2 py-3 px-1 text-center text-sm font-medium cursor-pointer" :class="[ tab === 'contacts' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700']">Contacts</div>
                 <div @click="tab = 'channels'" class="w-full border-b-2 py-3 px-1 text-center text-sm font-medium cursor-pointer" :class="[ tab === 'channels' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700']">Channels</div>
                 <div @click="tab = 'reports'" class="w-full border-b-2 py-3 px-1 text-center text-sm font-medium cursor-pointer" :class="[ tab === 'reports' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700']">Reports</div>
+                <div @click="tab = 'ping'" class="w-full border-b-2 py-3 px-1 text-center text-sm font-medium cursor-pointer" :class="[ tab === 'ping' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700']">Ping</div>
             </div>
         </div>
 
@@ -18,6 +19,7 @@
             <ContactsList v-if="tab === 'contacts'" :contacts="contacts" @contact-click="onContactClick"/>
             <ChannelsList v-if="tab === 'channels'" :channels="channels" @channel-click="onChannelClick"/>
             <ReportsPanel v-if="tab === 'reports'"/>
+            <PingPanel v-if="tab === 'ping'"/>
         </div>
 
         <!-- not connected and no content -->
@@ -38,11 +40,13 @@ import ContactsList from "../contacts/ContactsList.vue";
 import Utils from "../../js/Utils.js";
 import ChannelsList from "../channels/ChannelsList.vue";
 import ReportsPanel from "../reports/ReportsPanel.vue";
+import PingPanel from "../ping/PingPanel.vue";
 
 export default {
     name: 'MainPage',
     components: {
         ReportsPanel,
+        PingPanel,
         ChannelsList,
         ContactsList,
         ConnectButtons,

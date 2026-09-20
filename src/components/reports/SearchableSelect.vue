@@ -19,7 +19,18 @@
             @keydown.up.prevent="moveHighlight(-1)"
             @keydown.enter.prevent="selectHighlighted"
             @keydown.esc="close"
-            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 pr-10">
+
+        <!-- the chevron a native select draws for itself, so this reads as a dropdown
+             rather than a text box. not focusable and not clickable: the input behind it
+             already opens the list, and a second tab stop for decoration would be worse
+             than none -->
+        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
+                 class="h-5 w-5 text-gray-500 transition-transform" :class="{ 'rotate-180': isOpen }">
+                <path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
+            </svg>
+        </div>
 
         <!-- filtered options -->
         <div

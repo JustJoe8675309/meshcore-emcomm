@@ -443,6 +443,44 @@ class Connection {
 
     }
 
+    /**
+     * Sends one zero hop trace to a contact and reports what came back.
+     *
+     * This is the measurement behind the ping tab. A trace goes out and returns
+     * along the same hop, so the reply carries the signal to noise ratio measured
+     * at each end: how well they heard us, and how well we heard them. Those two
+     * numbers are often very different, and a link that works in one direction
+     * only is exactly the failure worth finding before an incident rather than
+     * during one.
+     *
+     * Zero hop on purpose. It tests the direct path to that station rather than
+     * whatever route the mesh might find, which is the thing an operator needs to
+     * know, and it does not ask every repeater in range to relay a test.
+     *
+     * Throws on timeout, which the caller records as a lost packet.
+     */
+    static async pingContact(publicKey, extraTimeoutMillis = 0) {
+
+        const startedAt = performance.now();
+
+        // the first byte of their public key is the whole path for a single hop
+        const reply = await GlobalState.connection.tracePath([publicKey[0]], extraTimeoutMillis);
+
+        const timeMillis = Math.round(performance.now() - startedAt);
+
+        // snrs arrive as signed bytes in quarter dB steps
+        const toSnr = (byte) => new Int8Array([byte])[0] / 4;
+
+        return {
+            // how well the far end heard us, measured there
+            snrThere: toSnr((reply.pathSnrs ?? [])[0] ?? 0),
+            // how well we heard the reply, measured here
+            snrBack: reply.lastSnr,
+            timeMillis: timeMillis,
+        };
+
+    }
+
     static async sendMessage(publicKey, text) {
 
         // send message
