@@ -150,6 +150,26 @@ and a report past that is refused outright rather than silently shortened.
 The Reports tab shows the exact bytes and the exact packets before you transmit, so what you see on
 screen is what goes over the air.
 
+### Newlines between fields, and what other clients do with them
+
+Fields are separated by a newline, which costs one byte. This client preserves them, so a report
+arrives laid out one field per line.
+
+Not every client does. The upstream client renders message text without `white-space: pre-wrap`,
+so newlines collapse into spaces and the report arrives as one run-on line. The `TAG: value` shape
+survives that well enough to read, because each tag delimits itself:
+
+    SITREP DTG: 192004L SEP LOC: Shelter 3, Main St COND: Power out, road passable...
+
+It survives least well on the 9-line and SALUTE, whose tags are single digits and letters and so
+blend into the content: `3: 1 URGENT 4: NONE 5: 1 LITTER` takes a moment to parse.
+
+Separating with ` | ` instead would render identically everywhere. It was measured and rejected:
+it costs 8 to 18 bytes per report, and pushes SITREP, Damage Assessment and Communications Status
+from one packet to two, in the SITREP case spending a whole second transmission on `NEXT: 2100L`.
+Paying a packet on the common forms to improve two uncommon ones is the wrong trade on shared air.
+Both were sent on the air and compared on a stock client before deciding.
+
 ### Real channel selection
 
 Upstream hardcoded a single "Public Channel". This fork upgrades `@liamcottle/meshcore.js` from
