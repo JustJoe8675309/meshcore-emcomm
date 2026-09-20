@@ -21,8 +21,9 @@ function fakeRadio() {
         off(event, cb) { listeners[event] = (listeners[event] ?? []).filter((f) => f !== cb); },
         async sendToRadioFrame(bytes) { this.sent.push(new Uint8Array(bytes)); },
         // pretend a frame arrived from the mesh
-        receive(bytes) { (listeners["rx"] ?? []).forEach((cb) => cb(new Uint8Array(bytes))); },
-        listenerCount() { return (listeners["rx"] ?? []).length; },
+        receive(bytes) { this.emit("rx", new Uint8Array(bytes)); },
+        emit(event, ...args) { (listeners[event] ?? []).slice().forEach((cb) => cb(...args)); },
+        listenerCount(event = "rx") { return (listeners[event] ?? []).length; },
     };
 }
 
@@ -169,6 +170,62 @@ describe("discoverRepeaters", () => {
     it("refuses to run without a radio, rather than reporting nothing found", async () => {
         GlobalState.connection = null;
         await expect(Connection.discoverRepeaters(20)).rejects.toThrow(Connection.DISCONNECTED);
+    });
+
+});
+
+// The cable pull case, which is the one that produces a wrong number rather than
+// an error: a trace still in flight when the radio goes away used to surface as
+// the trace's own timeout, and a timeout is recorded as packet loss. Whether a
+// cable pull read as a disconnect or as a lost packet then came down to which
+// happened first.
+describe("pingContact when the radio goes away", () => {
+
+    beforeEach(() => {
+        GlobalState.connection = null;
+    });
+
+    it("gives up as soon as the link drops, rather than waiting for the trace to time out", async () => {
+
+        const radio = fakeRadio();
+        // a trace that never answers, standing in for the seconds before a timeout
+        radio.tracePath = () => new Promise(() => {});
+        GlobalState.connection = radio;
+
+        const ping = Connection.pingContact(new Uint8Array(32));
+        radio.emit("disconnected");
+
+        await expect(ping).rejects.toThrow(Connection.DISCONNECTED);
+
+    });
+
+    it("still reports a real reply, and does not leave a listener behind", async () => {
+
+        const radio = fakeRadio();
+        radio.tracePath = async () => ({ pathSnrs: [25], lastSnr: 11.5 });
+        GlobalState.connection = radio;
+
+        const reply = await Connection.pingContact(new Uint8Array(32));
+        expect(reply.snrThere).toBe(6.25);
+
+        // a listener that outlives its request rejects a promise nobody awaits
+        expect(radio.listenerCount("disconnected")).toBe(0);
+
+    });
+
+    it("does not leave a listener behind when the trace fails either", async () => {
+
+        const radio = fakeRadio();
+        radio.tracePath = async () => { throw new Error("timeout"); };
+        GlobalState.connection = radio;
+
+        await expect(Connection.pingContact(new Uint8Array(32))).rejects.toThrow("timeout");
+        expect(radio.listenerCount("disconnected")).toBe(0);
+
+    });
+
+    it("refuses before transmitting when there is no radio at all", async () => {
+        await expect(Connection.pingContact(new Uint8Array(32))).rejects.toThrow(Connection.DISCONNECTED);
     });
 
 });

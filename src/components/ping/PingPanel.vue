@@ -25,7 +25,7 @@
 
                 <button
                     @click="discover"
-                    :disabled="isRunning || isDiscovering"
+                    :disabled="isRunning || isDiscovering || notConnected"
                     type="button"
                     class="w-full text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 disabled:opacity-60 font-medium rounded-lg text-sm px-5 py-2.5">{{ isDiscovering ? "Listening..." : "Discover repeaters" }}</button>
 
@@ -70,6 +70,10 @@
                         <div v-if="addMessage" role="status" class="text-xs text-gray-600">{{ addMessage }}</div>
 
                     </div>
+                </div>
+
+                <div v-if="notConnected" role="status" class="text-xs text-red-600">
+                    No radio connected, so there is nothing to discover with.
                 </div>
 
                 <div v-if="discoverError" role="status" class="text-xs text-red-600">{{ discoverError }}</div>
@@ -166,6 +170,10 @@
 
             <!-- controls -->
             <div class="space-y-2 pb-3">
+
+                <div v-if="notConnected" role="status" class="text-xs text-red-600">
+                    No radio connected, so nothing can be transmitted. Connect one and the controls come back.
+                </div>
 
                 <div v-if="errorMessage" role="status" class="text-xs text-red-600">{{ errorMessage }}</div>
 
@@ -302,6 +310,11 @@ export default {
             return this.runToken !== null;
         },
 
+        // the radio going away should read as an explanation, not as controls that
+        // have quietly stopped working
+        notConnected() {
+            return GlobalState.connection == null;
+        },
         canStart() {
             return this.selectedContact !== null
                 && GlobalState.connection != null
@@ -360,6 +373,14 @@ export default {
             this.results = [];
             this.stats = null;
             this.errorMessage = null;
+
+            // the button is disabled without a radio, but the connection can drop
+            // between the render and the press, and returning silently here would
+            // look exactly like a run that finished instantly
+            if(GlobalState.connection == null){
+                this.errorMessage = "No radio connected, so nothing was sent.";
+                return;
+            }
 
             const token = Date.now();
             this.runToken = token;
@@ -423,6 +444,11 @@ export default {
          */
         async discover() {
 
+            if(GlobalState.connection == null){
+                this.discoverError = "No radio connected, so nothing was sent.";
+                return;
+            }
+
             this.isDiscovering = true;
             this.discoverError = null;
             this.discoverResults = null;
@@ -448,7 +474,10 @@ export default {
 
             } catch(e) {
                 console.log("discovery failed", e);
-                this.discoverError = "Discovery failed. The radio may be disconnected, or its firmware may predate this feature.";
+                // only guess at the cause when the cause is actually unknown
+                this.discoverError = String(e.message) === Connection.DISCONNECTED || GlobalState.connection == null
+                    ? "The radio disconnected, so discovery stopped. Anything already found is real."
+                    : "Discovery failed. The radio may be disconnected, or its firmware may predate this feature.";
             } finally {
                 clearInterval(this.discoverTicker);
                 this.discoverTicker = null;

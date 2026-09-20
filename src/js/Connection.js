@@ -480,8 +480,29 @@ class Connection {
 
         const startedAt = performance.now();
 
-        // the first byte of their public key is the whole path for a single hop
-        const reply = await connection.tracePath([publicKey[0]], extraTimeoutMillis);
+        // A radio unplugged while a trace is in flight used to surface as the trace's
+        // own timeout, seconds later, and a timeout is recorded as packet loss. Which
+        // of the two arrived first decided how the cable pull was reported, so the
+        // same event could come out as a disconnect or as a lost packet depending on
+        // timing. Racing them makes it decided by what happened rather than by when.
+        let onDisconnected = null;
+        const disconnected = new Promise((resolve, reject) => {
+            onDisconnected = () => reject(new Error(this.DISCONNECTED));
+            connection.on("disconnected", onDisconnected);
+        });
+
+        let reply;
+        try {
+            // the first byte of their public key is the whole path for a single hop
+            reply = await Promise.race([
+                connection.tracePath([publicKey[0]], extraTimeoutMillis),
+                disconnected,
+            ]);
+        } finally {
+            // without this the listener outlives the request, and a later disconnect
+            // rejects a promise nobody is waiting on any more
+            connection.off("disconnected", onDisconnected);
+        }
 
         const timeMillis = Math.round(performance.now() - startedAt);
 

@@ -192,4 +192,69 @@ describe("PingPanel", () => {
 
     });
 
+    // A dropped USB cable greyed both buttons out and said nothing. Disabled states
+    // the control cannot be used and nothing about why, which on a radio that went
+    // away mid session is the one thing worth telling the operator.
+    describe("with no radio connected", () => {
+
+        beforeEach(() => {
+            GlobalState.connection = null;
+        });
+
+        it("says why, rather than only grey buttons", () => {
+            const wrapper = mountPanel();
+            expect(wrapper.text()).toMatch(/No radio connected/);
+        });
+
+        it("will not start a run", () => {
+            const wrapper = mountPanel();
+            wrapper.vm.selectedContactKey = wrapper.vm.pingableContacts[0].publicKeyHex;
+            expect(wrapper.vm.canStart).toBe(false);
+        });
+
+        it("says nothing was sent if a run is started anyway", async () => {
+            // the connection can drop between the render and the press, and returning
+            // silently there looks exactly like a run that finished instantly
+            const ping = vi.spyOn(Connection, "pingContact");
+            const wrapper = mountPanel();
+            wrapper.vm.selectedContactKey = wrapper.vm.pingableContacts[0].publicKeyHex;
+            // the watcher on the selection clears the message, and it flushes on the
+            // first await inside start(), so let it run before there is one to clear
+            await wrapper.vm.$nextTick();
+            await wrapper.vm.start();
+            expect(ping).not.toHaveBeenCalled();
+            expect(wrapper.vm.errorMessage).toMatch(/nothing was sent/i);
+        });
+
+        it("will not discover either", async () => {
+            const discover = vi.spyOn(Connection, "discoverRepeaters");
+            const wrapper = mountPanel();
+            await wrapper.vm.discover();
+            expect(discover).not.toHaveBeenCalled();
+            expect(wrapper.vm.discoverError).toMatch(/nothing was sent/i);
+        });
+
+    });
+
+    it("blames the disconnect for a failed discovery when that is the cause", async () => {
+        // it used to offer the firmware version as an equally likely explanation,
+        // which is a guess in a case where the app already knows the answer
+        vi.spyOn(Connection, "discoverRepeaters").mockImplementation(async () => {
+            throw new Error(Connection.DISCONNECTED);
+        });
+        const wrapper = mountPanel();
+        await wrapper.vm.discover();
+        expect(wrapper.vm.discoverError).toMatch(/radio disconnected/i);
+        expect(wrapper.vm.discoverError).not.toMatch(/firmware/i);
+    });
+
+    it("still hedges about a discovery failure it cannot explain", async () => {
+        vi.spyOn(Connection, "discoverRepeaters").mockImplementation(async () => {
+            throw new Error("something else entirely");
+        });
+        const wrapper = mountPanel();
+        await wrapper.vm.discover();
+        expect(wrapper.vm.discoverError).toMatch(/firmware/i);
+    });
+
 });
