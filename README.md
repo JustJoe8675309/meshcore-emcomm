@@ -383,7 +383,7 @@ in this repository or anywhere else public. Pass it out of band.
 npm test
 ```
 
-Five suites, no hardware required:
+Six plain node suites and two component suites, no hardware required:
 
 - `test/report_encoder.test.mjs` covers rendering and packet splitting, including a
   simulation of the firmware's own truncation rule to confirm no part can ever exceed
@@ -404,6 +404,25 @@ Five suites, no hardware required:
 - `test/forms.test.mjs` checks the form catalogue as data: unique ids, names and on air
   headers, no duplicated tags within a form, no select without options, no unknown field
   type or prefill flag, and that every form renders both empty and fully populated.
+- `test/position.test.mjs` covers decoding the radio's position, and refusing the unset
+  one: zero, zero formats perfectly well and points at the Gulf of Guinea.
+
+The component suites under `test/components/` run on Vitest and need a DOM, which is why
+they are separate. They exist because the logic suites cannot see the faults that actually
+occurred: a request frame built without its command byte, a guard never consulted, a loop
+still transmitting after its panel was unmounted, an error recorded as a measurement. Each
+was checked to fail before its fix and pass after, because a regression test that cannot
+fail is only decoration.
+
+- `test/components/discovery.test.mjs` drives repeater discovery against a fake radio and
+  asserts the bytes on the wire, not merely that the function returns. It feeds synthetic
+  replies back too, including one carrying another operator's tag, which must be ignored
+  because discovery responses are broadcast rather than addressed.
+- `test/components/ping_panel.test.mjs` mounts the ping panel and covers the cases that
+  produce a confident wrong answer: a dropped link must stop the run rather than count as
+  packet loss, statistics must describe what was sent rather than what was intended,
+  averages must stay hidden when nothing came back, and leaving the tab must stop
+  transmitting.
 
 ### Known issue: serial resync
 

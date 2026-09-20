@@ -8,7 +8,8 @@
     "build": "vite build",
     "dev": "vite",
     "preview": "vite preview",
-    "test": "node test/report_encoder.test.mjs && node test/serial_framing.test.mjs && node test/airtime.test.mjs && node test/dtg.test.mjs && node test/forms.test.mjs && node test/position.test.mjs"
+    "test:components": "vitest run --config vitest.config.js",
+    "test": "node test/report_encoder.test.mjs && node test/serial_framing.test.mjs && node test/airtime.test.mjs && node test/dtg.test.mjs && node test/forms.test.mjs && node test/position.test.mjs && vitest run --config vitest.config.js"
   },
   "author": "Liam Cottle <liam@liamcottle.com>",
   "license": "MIT",
@@ -27,5 +28,10 @@
     "vite": "^6.1.0",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@vue/test-utils": "^2.5.1",
+    "happy-dom": "^20.14.5",
+    "vitest": "^5.0.1"
   }
 }
