@@ -68,7 +68,8 @@
                 v-if="selectedForm && prepared"
                 :parts="prepared.parts"
                 :summary="sizeSummary"
-                :part-delay-seconds="partDelaySeconds"/>
+                :part-delay-seconds="partDelaySeconds"
+                :is-contact="destinationType === 'contact'"/>
 
             <!-- send -->
             <div v-if="selectedForm" class="space-y-2 pb-3">
@@ -412,16 +413,42 @@ export default {
 
                     this.sendingPartIndex = i;
 
+                    const isLastPart = i === parts.length - 1;
+
                     if(destination.isContact){
-                        await Connection.sendMessage(destination.contact.publicKey, parts[i]);
+
+                        const sent = await Connection.sendMessage(destination.contact.publicKey, parts[i]);
+
+                        // the device tracks one outstanding direct message, so sending the
+                        // next part before this one is acknowledged loses it. wait for the
+                        // acknowledgement rather than guessing at a delay. nothing follows
+                        // the last part, so there is nothing to protect it from
+                        if(!isLastPart){
+
+                            const status = await Connection.waitForDelivery(
+                                sent.id,
+                                sent.estTimeout + Connection.DELIVERY_GRACE_MILLIS,
+                            );
+
+                            // stop here rather than transmitting on top of it. sentCount is
+                            // still i, so resuming retransmits this part, which is right:
+                            // it went out but never arrived
+                            if(status !== "delivered"){
+                                throw new Error(`part ${i + 1} of ${parts.length} was not acknowledged (${status})`);
+                            }
+
+                        }
+
                     } else {
                         await Connection.sendChannelMessage(destination.channel.idx, parts[i]);
                     }
 
                     sentCount = i + 1;
 
-                    // space the parts out so we don't flood the channel
-                    if(i < parts.length - 1){
+                    // channel messages are never acknowledged, so the only thing available
+                    // to stop them treading on each other is a gap. direct messages already
+                    // waited for the acknowledgement above, which spaces them out for free
+                    if(!isLastPart && !destination.isContact){
                         await Utils.sleep(ReportEncoder.PART_SEND_DELAY_MILLIS);
                     }
 

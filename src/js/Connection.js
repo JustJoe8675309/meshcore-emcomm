@@ -360,6 +360,55 @@ class Connection {
             await Database.Message.setMessageFailedById(databaseMessage.id, "timeout");
         }, message.estTimeout);
 
+        // a caller sending a report in parts has to wait for this one to be acknowledged
+        // before sending the next, so hand back what it takes to do that
+        return {
+            id: databaseMessage.id,
+            estTimeout: message.estTimeout,
+        };
+
+    }
+
+    // how often to check whether a direct message has been acknowledged
+    static DELIVERY_POLL_MILLIS = 250;
+
+    // how long to keep waiting past the firmware's own estimate, so that the timeout
+    // marking has a chance to land and we report the real status rather than our own
+    static DELIVERY_GRACE_MILLIS = 2000;
+
+    /**
+     * Waits for a direct message to be acknowledged, and returns its final status.
+     *
+     * Direct messages are acknowledged one at a time. The device tracks a single
+     * outstanding message, so transmitting the next part before this one resolves
+     * loses it: proven on the air, where part 2 sent two seconds behind part 1 never
+     * arrived, and the identical part delivered when sent on its own.
+     *
+     * Channel messages are not acknowledged at all, so this does not apply to them.
+     */
+    static async waitForDelivery(messageId, timeoutMillis) {
+
+        const deadline = Date.now() + timeoutMillis;
+
+        while(Date.now() < deadline){
+
+            const message = await Database.Message.getMessageById(messageId);
+
+            // the row is gone, so there is nothing left to wait for
+            if(!message){
+                return "missing";
+            }
+
+            if(message.status !== "sending"){
+                return message.status;
+            }
+
+            await Utils.sleep(this.DELIVERY_POLL_MILLIS);
+
+        }
+
+        return "timeout";
+
     }
 
     static async sendChannelMessage(channelIdx, text) {

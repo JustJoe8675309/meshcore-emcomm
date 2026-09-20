@@ -24,7 +24,12 @@
                 class="bg-gray-50 border border-gray-200 rounded p-2 text-xs text-gray-800"
                 style="white-space:pre-wrap;word-break:break-word;">{{ part }}</div>
             <div v-if="parts.length > 1" class="text-xs text-gray-500">
-                Sent as {{ parts.length }} separate messages, about {{ partDelaySeconds }} seconds apart.
+                <template v-if="isContact">
+                    Sent as {{ parts.length }} separate messages, each one after the previous is acknowledged.
+                </template>
+                <template v-else>
+                    Sent as {{ parts.length }} separate messages, about {{ partDelaySeconds }} seconds apart.
+                </template>
             </div>
         </div>
 
@@ -48,6 +53,12 @@ export default {
         partDelaySeconds: {
             type: Number,
             default: 0,
+        },
+        // direct messages are acknowledged one at a time, so the parts are paced by the
+        // acknowledgement rather than by a fixed gap
+        isContact: {
+            type: Boolean,
+            default: false,
         },
     },
 }
