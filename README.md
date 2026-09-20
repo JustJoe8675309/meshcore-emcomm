@@ -250,6 +250,42 @@ To build for production:
 npm run build
 ```
 
+## Deploying it for other operators
+
+The app is static once built, so it can be hosted anywhere that serves files over HTTPS.
+HTTPS is not optional: Web Serial and Web Bluetooth refuse to run without a secure context,
+so a plain http host will load the page and then fail to connect to anything.
+
+It is built for the **root** of a domain. The manifest declares `"scope": "/"` and
+`"start_url": "/"`, and the service worker caches absolute paths like `/index.html` and
+`/assets/`. A host that serves the app from a subdirectory, which is what GitHub Pages does
+for a project repository, breaks all three. Use a host that gives you a root domain, or
+change the Vite `base`, the manifest and the service worker paths together.
+
+On Cloudflare Pages, connect the repository and set:
+
+| Setting | Value |
+| ------- | ----- |
+| Build command | `npm run build` |
+| Output directory | `dist` |
+| Node version | from `.node-version`, currently 22 |
+
+Nothing else needs configuring. There are no environment variables, no server, no API: the
+radio is attached to the operator's own machine and the messages live in their browser.
+
+### What other operators get
+
+They open the URL once while online. That first load fetches the current build and fills the
+cache, and the app works with no network from then on.
+
+Updates need no action from them. A navigation, which means opening the app or launching the
+installed copy, tries the network first and falls back to the cache only when the network
+cannot be reached. So an operator who can reach the internet always starts the newest build,
+and one who cannot still starts. Both halves were tested by killing the server and reloading.
+
+They will each need the channel secret to exchange traffic with you, and that does not belong
+in this repository or anywhere else public. Pass it out of band.
+
 ## Tests
 
 ```bash
