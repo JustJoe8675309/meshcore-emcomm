@@ -24,7 +24,7 @@
                         :options="contactOptions"
                         placeholder="Select a station, or type to filter..."/>
                     <div v-if="pingableContacts.length === 0" class="text-xs text-red-600">
-                        No {{ contactType }}s known yet. Try Discover, or wait for one to advert.
+                        No {{ contactType }}s known yet.
                     </div>
                     <div v-else class="text-xs text-gray-500">
                         Most recently heard first. Tests the direct path to this station, not whatever route the mesh would find.
@@ -112,16 +112,6 @@
                     type="button"
                     class="w-full text-white bg-red-700 hover:bg-red-800 font-medium rounded-lg text-sm px-5 py-2.5">Cancel ({{ results.length }} of {{ requestCount }})</button>
 
-                <!-- one transmission announcing ourselves. it cannot make another station
-                     advert on demand, because the protocol has no such request -->
-                <button
-                    @click="discover"
-                    :disabled="isRunning || isDiscovering"
-                    type="button"
-                    class="w-full text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 disabled:opacity-60 font-medium rounded-lg text-sm px-5 py-2.5">{{ isDiscovering ? "Discovering..." : "Discover stations" }}</button>
-
-                <div v-if="discoveryMessage" role="status" class="text-xs text-gray-600">{{ discoveryMessage }}</div>
-
                 <button
                     v-if="stats"
                     @click="copyResults"
@@ -143,10 +133,6 @@ import Utils from "../../js/Utils.js";
 import TimeUtils from "../../js/TimeUtils.js";
 import SearchableSelect from "../reports/SearchableSelect.vue";
 
-// how long to listen for answers after adverting, before counting what changed.
-// a custom component option would not reach `this` in vue 3, so it lives here
-const DISCOVERY_LISTEN_MILLIS = 8000;
-
 export default {
     name: 'PingPanel',
     components: {
@@ -156,8 +142,6 @@ export default {
         return {
             selectedContactKey: null,
             contactType: "companion",
-            isDiscovering: false,
-            discoveryMessage: null,
             requestCount: 5,
             delayMillis: 1000,
             results: [],
@@ -303,59 +287,6 @@ export default {
 
             this.runToken = null;
             this.computeStats();
-
-        },
-
-        /**
-         * Announces this station and reloads the contact list.
-         *
-         * Not a discovery request, because the protocol has no such thing: there is a
-         * command to advertise ourselves and none to ask anyone else to. What this
-         * relies on is that a station hearing our advert may advert back, which would
-         * refresh when it was last heard. That behaviour was observed once and is not
-         * guaranteed, so the result reports what actually changed rather than claiming
-         * to have found anything.
-         *
-         * Zero hop rather than flood: it asks the neighbours we could actually reach
-         * directly, which is what the ping tab is about, and does not push an advert
-         * across the whole region.
-         */
-        async discover() {
-
-            this.isDiscovering = true;
-            this.discoveryMessage = null;
-
-            const before = new Map(GlobalState.contacts.map((c) => [Utils.bytesToHex(c.publicKey), c.lastAdvert ?? 0]));
-
-            try {
-
-                await GlobalState.connection.sendZeroHopAdvert();
-
-                // give neighbours a moment to answer before looking
-                await Utils.sleep(DISCOVERY_LISTEN_MILLIS);
-                await Connection.loadContacts();
-
-                var added = 0;
-                var refreshed = 0;
-                for(const contact of GlobalState.contacts){
-                    const key = Utils.bytesToHex(contact.publicKey);
-                    if(!before.has(key)){
-                        added++;
-                    } else if((contact.lastAdvert ?? 0) > before.get(key)){
-                        refreshed++;
-                    }
-                }
-
-                this.discoveryMessage = added === 0 && refreshed === 0
-                    ? "Advert sent. No station answered within the listening window."
-                    : `Advert sent. ${added} new, ${refreshed} heard again.`;
-
-            } catch(e) {
-                console.log("discovery failed", e);
-                this.discoveryMessage = "Could not send the advert. Check the radio is still connected.";
-            } finally {
-                this.isDiscovering = false;
-            }
 
         },
 
