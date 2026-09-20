@@ -2,14 +2,6 @@
     <div class="w-full overflow-y-auto">
         <div class="p-3 space-y-3">
 
-            <div class="text-xs text-gray-600 bg-white border border-gray-300 rounded-lg p-3">
-                <div class="text-sm font-medium text-gray-900 mb-1">Repeater zero hop ping test</div>
-                Sends trace requests directly to a repeater, with no relaying in between, and reports how
-                well each end heard the other. A reply proves you can work that repeater yourself rather
-                than only reaching it through another one, and the two signal readings show whether the
-                link is as good in both directions.
-            </div>
-
             <!-- find repeaters in direct range, including ones not in contacts -->
             <div class="bg-white border border-gray-300 rounded-lg p-3 space-y-2">
 

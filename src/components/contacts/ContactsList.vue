@@ -3,8 +3,8 @@
 
         <!-- search -->
         <div class="flex bg-white border-b border-gray-300 divide-x">
-            <div v-if="userContacts.length > 0" class="flex p-1 w-full">
-                <input v-model="contactsSearchTerm" type="text" :placeholder="`Search ${userContacts.length} ${userContacts.length === 1 ? 'Contact' : 'Contacts'} by name or key...`" class="h-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+            <div v-if="listedContacts.length > 0" class="flex p-1 w-full">
+                <input v-model="contactsSearchTerm" type="text" :placeholder="`Search ${listedContacts.length} ${listedContacts.length === 1 ? 'Contact' : 'Contacts'} by name or key...`" class="h-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
             </div>
             <div class="flex text-gray-500 ml-auto">
                 <button
@@ -19,7 +19,7 @@
                     </svg>
                 </button>
             </div>
-            <div v-if="userContacts.length > 0" class="flex text-gray-500">
+            <div v-if="listedContacts.length > 0" class="flex text-gray-500">
                 <DropDownMenu class="mx-auto my-auto">
                     <template v-slot:button>
                         <IconButton class="mx-1">
@@ -29,6 +29,23 @@
                         </IconButton>
                     </template>
                     <template v-slot:items>
+                        <div class="p-2 border-b text-sm font-bold">Show</div>
+                        <DropDownMenuItem @click="filter = 'all'">
+                            <input type="radio" :checked="filter === 'all'"/>
+                            <div class="my-auto" :class="{ 'font-bold': filter === 'all' }">All</div>
+                        </DropDownMenuItem>
+                        <DropDownMenuItem @click="filter = 'companion'">
+                            <input type="radio" :checked="filter === 'companion'"/>
+                            <div class="my-auto" :class="{ 'font-bold': filter === 'companion' }">Companions</div>
+                        </DropDownMenuItem>
+                        <DropDownMenuItem @click="filter = 'room'">
+                            <input type="radio" :checked="filter === 'room'"/>
+                            <div class="my-auto" :class="{ 'font-bold': filter === 'room' }">Rooms</div>
+                        </DropDownMenuItem>
+                        <DropDownMenuItem @click="filter = 'repeater'">
+                            <input type="radio" :checked="filter === 'repeater'"/>
+                            <div class="my-auto" :class="{ 'font-bold': filter === 'repeater' }">Repeaters</div>
+                        </DropDownMenuItem>
                         <div class="p-2 border-b text-sm font-bold">Order</div>
                         <DropDownMenuItem @click="order = 'a-z'">
                             <input type="radio" :checked="order === 'a-z'"/>
@@ -83,21 +100,20 @@
         </div>
 
         <!-- contacts -->
-        <div v-if="userContacts.length > 0" class="h-full overflow-y-auto">
+        <div v-if="listedContacts.length > 0" class="h-full overflow-y-auto">
             <ContactListItem :key="contact.publicKey" v-for="contact of searchedContacts" :contact="contact" @click="onContactClick(contact)"/>
         </div>
 
         <!-- empty state -->
-        <div v-if="userContacts.length === 0" class="mx-auto my-auto">
+        <div v-if="listedContacts.length === 0" class="mx-auto my-auto">
             <div class="flex flex-col mx-auto my-auto text-gray-700 text-center">
                 <div class="mb-2 mx-auto">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-10">
                         <path fill-rule="evenodd" d="M5.636 4.575a.75.75 0 0 1 0 1.061 9 9 0 0 0 0 12.728.75.75 0 1 1-1.06 1.06c-4.101-4.1-4.101-10.748 0-14.849a.75.75 0 0 1 1.06 0Zm12.728 0a.75.75 0 0 1 1.06 0c4.101 4.1 4.101 10.75 0 14.85a.75.75 0 1 1-1.06-1.061 9 9 0 0 0 0-12.728.75.75 0 0 1 0-1.06ZM7.757 6.697a.75.75 0 0 1 0 1.06 6 6 0 0 0 0 8.486.75.75 0 0 1-1.06 1.06 7.5 7.5 0 0 1 0-10.606.75.75 0 0 1 1.06 0Zm8.486 0a.75.75 0 0 1 1.06 0 7.5 7.5 0 0 1 0 10.606.75.75 0 0 1-1.06-1.06 6 6 0 0 0 0-8.486.75.75 0 0 1 0-1.06ZM9.879 8.818a.75.75 0 0 1 0 1.06 3 3 0 0 0 0 4.243.75.75 0 1 1-1.061 1.061 4.5 4.5 0 0 1 0-6.364.75.75 0 0 1 1.06 0Zm4.242 0a.75.75 0 0 1 1.061 0 4.5 4.5 0 0 1 0 6.364.75.75 0 0 1-1.06-1.06 3 3 0 0 0 0-4.243.75.75 0 0 1 0-1.061ZM10.875 12a1.125 1.125 0 1 1 2.25 0 1.125 1.125 0 0 1-2.25 0Z" clip-rule="evenodd" />
                     </svg>
                 </div>
-                <div class="font-semibold">No Users or Rooms</div>
+                <div class="font-semibold">No Contacts</div>
                 <div>If someone Adverts, they will show up here.</div>
-                <div class="mt-1 text-sm">Repeaters are in the Ping tab.</div>
             </div>
         </div>
 
@@ -134,6 +150,7 @@ export default {
     data() {
         return {
             order: window.localStorage.getItem("contacts_list_order") ?? "heard-recently",
+            filter: window.localStorage.getItem("contacts_list_filter") ?? "all",
             contactsSearchTerm: "",
             showImport: false,
             importText: "",
@@ -212,19 +229,27 @@ export default {
         GlobalState() {
             return GlobalState;
         },
-        // This tab lists the contacts you can send text to: people, and the room
-        // servers that relay text between them. Repeaters belong to the Ping tab,
-        // which discovers them, shows both signal readings and can add them.
-        userContacts() {
+        // Everything the radio knows: companions, rooms and repeaters. The filter
+        // narrows it; the count and the search follow whatever is showing, so the
+        // number beside "Search" always matches the rows below it.
+        listedContacts() {
             return this.contacts.filter((contact) => {
-                return contact.type === Constants.AdvType.Chat
-                    || contact.type === Constants.AdvType.Room;
+                if(this.filter === "companion"){
+                    return contact.type === Constants.AdvType.Chat;
+                }
+                if(this.filter === "room"){
+                    return contact.type === Constants.AdvType.Room;
+                }
+                if(this.filter === "repeater"){
+                    return contact.type === Constants.AdvType.Repeater;
+                }
+                return true;
             });
         },
         searchedContacts() {
 
             // sort, then search
-            var contacts = [...this.userContacts];
+            var contacts = [...this.listedContacts];
             contacts = this.getOrderedContacts(contacts);
             // favourites first, keeping the chosen order within each group. sort is
             // stable, so this lifts them without disturbing anything else
@@ -254,6 +279,9 @@ export default {
         },
     },
     watch: {
+        filter() {
+            window.localStorage.setItem("contacts_list_filter", this.filter);
+        },
         order() {
             window.localStorage.setItem("contacts_list_order", this.order);
         },

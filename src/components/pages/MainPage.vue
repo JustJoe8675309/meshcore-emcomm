@@ -7,10 +7,10 @@
         <!-- tabs -->
         <div v-if="GlobalState.connection || (contacts.length > 0 || channels.length > 0)" class="bg-white border-b border-gray-200">
             <div class="-mb-px flex">
-                <div @click="tab = 'contacts'" class="w-full border-b-2 py-3 px-1 text-center text-sm font-medium cursor-pointer" :class="[ tab === 'contacts' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700']">Contacts</div>
-                <div @click="tab = 'channels'" class="w-full border-b-2 py-3 px-1 text-center text-sm font-medium cursor-pointer" :class="[ tab === 'channels' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700']">Channels</div>
-                <div @click="tab = 'reports'" class="w-full border-b-2 py-3 px-1 text-center text-sm font-medium cursor-pointer" :class="[ tab === 'reports' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700']">Reports</div>
-                <div @click="tab = 'ping'" class="w-full border-b-2 py-3 px-1 text-center text-sm font-medium cursor-pointer" :class="[ tab === 'ping' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700']">Ping</div>
+                <div @click="tab = 'contacts'" class="w-full border-b-2 py-3 px-1 text-center text-sm font-medium cursor-pointer" :class="[ tab === 'contacts' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700']"><div>Contacts</div><div class="invisible" aria-hidden="true">&nbsp;</div></div>
+                <div @click="tab = 'channels'" class="w-full border-b-2 py-3 px-1 text-center text-sm font-medium cursor-pointer" :class="[ tab === 'channels' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700']"><div>Channels</div><div class="invisible" aria-hidden="true">&nbsp;</div></div>
+                <div @click="tab = 'reports'" class="w-full border-b-2 py-3 px-1 text-center text-sm font-medium cursor-pointer" :class="[ tab === 'reports' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700']"><div>Reports</div><div class="invisible" aria-hidden="true">&nbsp;</div></div>
+                <div @click="tab = 'ping'" class="w-full border-b-2 py-3 px-1 text-center text-sm font-medium cursor-pointer" :class="[ tab === 'ping' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700']"><div>Repeater</div><div>Search</div></div>
             </div>
         </div>
 
@@ -68,7 +68,15 @@ export default {
                 return;
             }
 
-            // user clicked an unsupported contact type
+            // A repeater has no conversation: it relays for others rather than
+            // holding messages of its own. It is listed here so its path, telemetry
+            // and favourite can be reached from the menu, so say where its own tab
+            // is rather than only saying no.
+            if(contact.type === Constants.AdvType.Repeater){
+                alert("Repeaters cannot be messaged. Use the Repeater Search tab to ping one, or the menu on the right for its path and other options.");
+                return;
+            }
+
             alert("Messaging this contact type is not supported.");
 
         },
