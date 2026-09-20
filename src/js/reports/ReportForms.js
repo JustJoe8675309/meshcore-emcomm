@@ -293,6 +293,21 @@ const ReportForms = [
         ],
     },
 
+    {
+        id: "netopen",
+        name: "Net Activation",
+        description: "Announce that a net is open and how to check in.",
+        header: "NET-OPEN",
+        fields: [
+            { id: "net", tag: "NET", label: "Net name", type: "text", placeholder: "e.g: DAC ARES Emergency Net", required: true },
+            { id: "datetime", tag: "DTG", label: "Date / time", type: "dtg", required: true },
+            { id: "control", tag: "NCS", label: "Net control", type: "text", placeholder: "e.g: K7ABC", required: true, prefillFromCallsign: true },
+            { id: "type", tag: "TYPE", label: "Net type", type: "select", required: true, options: ["DIRECTED", "OPEN", "EMERGENCY", "TRAINING"] },
+            { id: "purpose", tag: "PURP", label: "Purpose", type: "text", placeholder: "e.g: Flooding, Dona Ana County", required: false },
+            { id: "checkin", tag: "CHK", label: "Check-in instructions", type: "text", placeholder: "e.g: By callsign when called", required: false },
+        ],
+    },
+
     // ---- Welfare and shelter ----
 
     {
@@ -357,6 +372,40 @@ const ReportForms = [
         ],
     },
 
+    {
+        id: "comms",
+        name: "Communications Status",
+        description: "Report a repeater, mesh node or link up or down.",
+        header: "COMMS",
+        fields: [
+            { id: "datetime", tag: "DTG", label: "Date / time", type: "dtg", required: true },
+            { id: "system", tag: "SYS", label: "System or asset", type: "text", placeholder: "e.g: W5XYZ 146.940", required: true },
+            { id: "type", tag: "TYPE", label: "Type", type: "select", required: true, options: ["REPEATER", "MESH NODE", "SIMPLEX", "INTERNET", "PHONE", "POWER"] },
+            { id: "status", tag: "STAT", label: "Status", type: "select", required: true, options: ["UP", "DEGRADED", "INTERMITTENT", "DOWN"] },
+            { id: "location", tag: "LOC", label: "Location", type: "text", placeholder: "e.g: Tortugas Mtn", required: false },
+            { id: "restore", tag: "ETR", label: "Estimated restoration", type: "text", placeholder: "e.g: Unknown, or 0600L", required: false },
+            { id: "comments", tag: "CMT", label: "Comments", type: "text", placeholder: "e.g: Mains lost, no generator", required: false },
+        ],
+    },
+
+    // ---- Station position ----
+
+    {
+        id: "position",
+        name: "Position / Station Report",
+        description: "Report where your station is and whether it is operational.",
+        header: "POSITION",
+        fields: [
+            { id: "callsign", tag: "CALL", label: "Callsign", type: "text", placeholder: "e.g: K7ABC", required: true, prefillFromCallsign: true },
+            { id: "datetime", tag: "DTG", label: "Date / time", type: "dtg", required: true },
+            { id: "location", tag: "LOC", label: "Location / grid square", type: "text", placeholder: "e.g: DM62nr, or 1400 blk Alameda", required: true },
+            { id: "station_type", tag: "STA", label: "Station type", type: "select", required: true, options: ["FIXED", "MOBILE", "PORTABLE", "IN TRANSIT"] },
+            { id: "status", tag: "STAT", label: "Operational status", type: "select", required: true, options: ["OPERATIONAL", "LIMITED", "STANDBY", "OFF AIR"] },
+            { id: "power", tag: "PWR", label: "Power source", type: "select", required: false, options: ["MAINS", "GENERATOR", "BATTERY", "SOLAR"] },
+            { id: "destination", tag: "DEST", label: "Heading to", type: "text", placeholder: "e.g: Lincoln MS shelter", required: false },
+        ],
+    },
+
     // ---- Weather and observation ----
 
     {
@@ -387,6 +436,49 @@ const ReportForms = [
             { id: "unit", tag: "U", label: "Unit or identity", type: "text", placeholder: "e.g: County road crew", required: false },
             { id: "datetime", tag: "T", label: "Time observed", type: "dtg", required: true },
             { id: "equipment", tag: "E", label: "Equipment", type: "text", placeholder: "e.g: 1 backhoe, 1 dump truck", required: false },
+        ],
+    },
+
+    // ---- Formal traffic ----
+
+    {
+        id: "radiogram",
+        name: "ARRL Radiogram (NTS)",
+        description: "Formal traffic in National Traffic System format.",
+        header: "RADIOGRAM",
+        fields: [
+            { id: "number", tag: "NR", label: "Message number", type: "text", placeholder: "e.g: 41", required: true },
+            // the NTS precedences as they are actually written on a radiogram
+            { id: "precedence", tag: "PREC", label: "Precedence", type: "select", required: true, options: ["R", "W", "P", "EMERGENCY"] },
+            { id: "handling", tag: "HX", label: "Handling instructions", type: "text", placeholder: "e.g: HXC", required: false },
+            { id: "station", tag: "STN", label: "Station of origin", type: "text", placeholder: "e.g: K7ABC", required: true, prefillFromCallsign: true },
+            { id: "check", tag: "CK", label: "Check (word count of text)", type: "text", placeholder: "e.g: 12", required: true },
+            { id: "place", tag: "PLC", label: "Place of origin", type: "text", placeholder: "e.g: LAS CRUCES NM", required: true },
+            { id: "datetime", tag: "DTG", label: "Time filed", type: "dtg", required: true },
+            { id: "addressee", tag: "TO", label: "Addressee (name, address, phone)", type: "textarea", placeholder: "e.g: M SMITH, 42 MAIN ST, LAS CRUCES NM 88001", required: true },
+            { id: "text", tag: "TEXT", label: "Text (25 words or fewer)", type: "textarea", placeholder: "Plain language, X between sentences. The check must match the word count.", required: true },
+            { id: "signature", tag: "SIG", label: "Signature", type: "text", placeholder: "e.g: JOE", required: true },
+        ],
+    },
+
+    // ---- Medical ----
+
+    {
+        id: "medevac",
+        name: "9-Line MEDEVAC Request",
+        description: "Medical evacuation request in the standard nine line format.",
+        header: "9-LINE",
+        // the lines are numbered rather than tagged, because that is the format
+        fields: [
+            { id: "line1", tag: "1", label: "1. Pickup location", type: "text", placeholder: "e.g: DM62nr, soccer field E of Lincoln MS", required: true },
+            { id: "line2", tag: "2", label: "2. Frequency and callsign at site", type: "text", placeholder: "e.g: 146.520 K7ABC", required: true },
+            { id: "line3", tag: "3", label: "3. Patients by precedence", type: "text", placeholder: "e.g: 1 URGENT, 2 PRIORITY", required: true },
+            { id: "line4", tag: "4", label: "4. Special equipment", type: "select", required: true, options: ["NONE", "HOIST", "EXTRACTION", "VENTILATOR"] },
+            { id: "line5", tag: "5", label: "5. Patients by type", type: "text", placeholder: "e.g: 1 LITTER, 2 AMBULATORY", required: true },
+            { id: "line6", tag: "6", label: "6. Injury or illness", type: "textarea", placeholder: "What you observed. e.g: Fall from roof, head injury, conscious", required: true },
+            { id: "line7", tag: "7", label: "7. Site marking", type: "select", required: true, options: ["NONE", "PANELS", "SMOKE", "SIGNAL", "LIGHTS", "OTHER"] },
+            { id: "line8", tag: "8", label: "8. Patient status", type: "text", placeholder: "e.g: 3 CIVILIAN", required: false },
+            { id: "line9", tag: "9", label: "9. Terrain and hazards at site", type: "text", placeholder: "e.g: Open field, power lines N side", required: false },
         ],
     },
 

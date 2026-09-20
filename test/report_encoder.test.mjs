@@ -77,6 +77,34 @@ const sampleValues = {
         location: "1400 blk Alameda", unit: "County road crew",
         datetime: "191830L SEP", equipment: "1 backhoe, 1 dump truck",
     },
+    netopen: {
+        net: "DAC ARES Emergency Net", datetime: "191830L SEP", control: "K7ABC",
+        type: "DIRECTED", purpose: "Flooding, Dona Ana County",
+        checkin: "By callsign when called",
+    },
+    comms: {
+        datetime: "191830L SEP", system: "W5XYZ 146.940", type: "REPEATER",
+        status: "DOWN", location: "Tortugas Mtn", restore: "Unknown",
+        comments: "Mains lost, no generator",
+    },
+    position: {
+        callsign: "K7ABC", datetime: "191830L SEP", location: "DM62nr",
+        station_type: "MOBILE", status: "OPERATIONAL", power: "BATTERY",
+        destination: "Lincoln MS shelter",
+    },
+    radiogram: {
+        number: "41", precedence: "R", handling: "", station: "K7ABC", check: "12",
+        place: "LAS CRUCES NM", datetime: "191830L SEP",
+        addressee: "M SMITH, 42 MAIN ST, LAS CRUCES NM 88001",
+        text: "ARRIVED SAFELY X ALL WELL HERE X PLEASE ADVISE FAMILY X NO NEED TO WORRY",
+        signature: "JOE",
+    },
+    medevac: {
+        line1: "DM62nr, soccer field E of Lincoln MS", line2: "146.520 K7ABC",
+        line3: "1 URGENT", line4: "NONE", line5: "1 LITTER",
+        line6: "Fall from roof, head injury, conscious", line7: "SMOKE",
+        line8: "1 CIVILIAN", line9: "Open field, power lines N side",
+    },
 };
 
 const nodeName = "K7ABC";

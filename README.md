@@ -13,7 +13,7 @@ messaging, settings and the RX log.
 ### Reports tab
 
 A third tab alongside Contacts and Channels. Pick the channel to transmit on, choose a report form,
-fill it in, and send. Four forms are included:
+fill it in, and send. Seventeen forms are included:
 
 | Form | Purpose | On the air |
 | ---- | ------- | ---------- |
@@ -29,15 +29,22 @@ fill it in, and send. Four forms are included:
 | SALUTE Spot Report | Size, activity, location, unit, time, equipment | 144 b, 2 packets |
 | Shelter Status | Population, capacity and needs | 135 b, 1 packet |
 | SKYWARN Spotter Report | Severe weather observation for the NWS | 170 b, 2 packets |
+| 9-Line MEDEVAC Request | Medical evacuation request, standard nine lines | 218 b, 2 packets (est) |
+| ARRL Radiogram (NTS) | Formal traffic in National Traffic System format | 218 b, 2 packets (est) |
+| Communications Status | A repeater, mesh node or link up or down | 151 b, 1 packet (est) |
+| Net Activation | Announce a net is open and how to check in | 161 b, 2 packets (est) |
+| Position / Station Report | Where a station is and whether it is operational | 141 b, 1 packet (est) |
 
-All twelve have been transmitted and received between two nodes. The byte figures are
-measured, not estimated: they are what went to the radio, including the sender name
-prefix the firmware prepends, using realistic content for each form.
+The first twelve have been transmitted and received between two nodes, and their byte
+figures are measured: they are what went to the radio, including the sender name prefix
+the firmware prepends, using realistic content for each form. The five marked (est) are
+encoder output for the same kind of content but have not been sent yet.
 
 Those figures depend on the sending node's name. The prefix is charged against the same
 160 bytes as the content, so a long device name costs every channel report. The measurements
-above use a 15 character name, which spends 17 bytes before any content. The four forms
-that exceed one packet would all fit in one with a short name. Direct messages carry no
+above use a 15 character name, which spends 17 bytes before any content. Most of the forms
+that exceed one packet would fit in one with a short name; the radiogram and the 9-line
+carry enough content that they will usually split whatever the node is called. Direct messages carry no
 prefix at all and always have the full budget.
 
 The four ICS forms carry their real form numbers and sort first. The rest have no ICS
