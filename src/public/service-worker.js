@@ -27,14 +27,28 @@
 // arrives over the network in the first place.
 const CACHE_NAME = "meshcore-emcomm-__BUILD_ID__";
 
-// the minimum needed to boot. hashed assets are picked up as they are requested,
-// since their names change every build and cannot be listed ahead of time.
+// the minimum needed to boot
 const APP_SHELL = [
     "/",
     "/index.html",
     "/manifest.json",
     "/icon.png",
 ];
+
+// This build's hashed output, listed by scripts/stamp-service-worker.mjs, which
+// runs after vite and so can see what the build actually produced.
+//
+// These used to be cached only as they were requested, which left a window where
+// the app could not start offline at all. A new build gets a new, empty cache, and
+// the new worker only takes control after the page that fetched the bundle has
+// already loaded, so the first load after a deploy cached the shell and none of the
+// code it references. index.html would come back from the cache offline and then
+// fail to boot. It healed on the next online load, which is no comfort to an
+// operator who updated the app and then lost infrastructure.
+//
+// Precaching also makes routes that were never visited online work offline, rather
+// than only the ones the operator happened to open while they still had a network.
+const BUILD_ASSETS = __BUILD_ASSETS__;
 
 // Only build output is cached, named explicitly.
 //
@@ -145,13 +159,23 @@ self.addEventListener("fetch", (event) => {
 // allow service worker to install updates without waiting force existing tabs to be closed
 self.addEventListener("install", (event) => {
     event.waitUntil((async () => {
-        // best effort: a missing shell file should not block installation
+        // best effort: a missing file should not block installation
+        const cache = await caches.open(CACHE_NAME);
         try {
-            const cache = await caches.open(CACHE_NAME);
             await cache.addAll(APP_SHELL);
         } catch(e) {
             console.log("service worker: failed to precache app shell", e);
         }
+        // one at a time, so a single failure does not cost the whole build. addAll
+        // rejects atomically, which would leave the app unable to start offline
+        // because of one chunk.
+        await Promise.all(BUILD_ASSETS.map(async (path) => {
+            try {
+                await cache.add(path);
+            } catch(e) {
+                console.log("service worker: failed to precache", path, e);
+            }
+        }));
         await self.skipWaiting();
     })());
 });

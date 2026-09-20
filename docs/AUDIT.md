@@ -30,7 +30,7 @@ the hand written frames should be deleted rather than maintained.
 | meshcore.js | installed version, a newer release, `AdvType.Repeater`, whether control data is still unimplemented |
 | Firmware | `CMD_SEND_CONTROL_DATA`, `PUSH_CODE_CONTROL_DATA`, `DISCOVER_REQ`, `DISCOVER_RESP`, `MAX_TEXT_LEN` |
 | Upstream | commits in `liamcottle/meshcore-web` not in this fork |
-| Deployment | the live build matches the local one, the tree is clean, everything is pushed |
+| Deployment | the live build matches the local one, the worker is stamped and precaches this build, the tree is clean, everything is pushed |
 
 Network checks are skipped rather than failed when offline, so an audit in the field
 still tells you whether the app works.
@@ -98,6 +98,19 @@ rather than an error.
 
 ### Offline
 
+The interesting case is the **first** load after a deploy, not the steady state. A new
+build gets a new, empty cache, so anything the worker does not precache at install is
+missing exactly once — and the app looked fine online while being unable to start at
+all offline.
+
+- [ ] After a deploy, load the app **once**, then check the cache holds the whole build
+      and not just the shell. `caches.keys()` should show one `meshcore-emcomm-<hash>`
+      matching the bundle in `index.html`, and it should contain
+      `/assets/index-<hash>.js`, not only `/`, `/index.html`, `/manifest.json`,
+      `/icon.png`. A shell without its code comes back from the cache offline and then
+      fails to boot.
+- [ ] Only one cache is present. Earlier builds are deleted on activate, so a device
+      that has seen a dozen deploys holds one copy of the app, not a dozen.
 - [ ] Load the app, then stop the server and reload. It still starts from cache.
 - [ ] Start the server again and reload. It picks up the current build.
 

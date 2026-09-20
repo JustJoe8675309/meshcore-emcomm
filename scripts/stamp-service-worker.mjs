@@ -16,11 +16,13 @@
 // counter. That way a build which changes no code keeps the same cache, and
 // returning operators re-download nothing.
 
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 
 const INDEX = "dist/index.html";
 const WORKER = "dist/service-worker.js";
+const ASSETS = "dist/assets";
 const PLACEHOLDER = "__BUILD_ID__";
+const ASSETS_PLACEHOLDER = "__BUILD_ASSETS__";
 
 for(const path of [INDEX, WORKER]){
     if(!existsSync(path)){
@@ -36,13 +38,27 @@ if(!bundle){
 }
 
 const worker = readFileSync(WORKER, "utf8");
-if(!worker.includes(PLACEHOLDER)){
-    // the source worker should carry the placeholder; without it the cache name
-    // would be fixed again and the growth would come back silently
-    console.error(`stamp-service-worker: ${PLACEHOLDER} not found in the built worker`);
+for(const placeholder of [PLACEHOLDER, ASSETS_PLACEHOLDER]){
+    if(!worker.includes(placeholder)){
+        // without these the worker still runs, and that is the problem: the cache
+        // name would be fixed again and the growth would return, or the build would
+        // precache nothing and fail to start offline. Both are silent.
+        console.error(`stamp-service-worker: ${placeholder} not found in the built worker`);
+        process.exit(1);
+    }
+}
+
+// everything vite emitted, which is knowable here and not inside the worker.
+// caching these at install is what lets the app start offline after one load
+// rather than two, and makes routes work that were never opened online.
+const assets = readdirSync(ASSETS).map((name) => `/assets/${name}`).sort();
+if(assets.length === 0){
+    console.error("stamp-service-worker: dist/assets is empty, the build produced nothing to cache");
     process.exit(1);
 }
 
 const buildId = bundle[1];
-writeFileSync(WORKER, worker.replaceAll(PLACEHOLDER, buildId));
-console.log(`stamp-service-worker: cache is meshcore-emcomm-${buildId}`);
+writeFileSync(WORKER, worker
+    .replaceAll(PLACEHOLDER, buildId)
+    .replace(ASSETS_PLACEHOLDER, JSON.stringify(assets)));
+console.log(`stamp-service-worker: cache is meshcore-emcomm-${buildId}, ${assets.length} assets precached`);

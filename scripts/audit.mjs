@@ -225,6 +225,17 @@ section("Deployment");
             stamped && stamped === bundle ? PASS : FAIL,
             stamped === "__BUILD_ID__" ? "placeholder left in place, the cache would grow for ever"
                 : (stamped === bundle ? `meshcore-emcomm-${stamped}` : `worker says ${stamped}, bundle is ${bundle}`));
+
+        // without the asset list the worker still installs and the app still works
+        // online, and only fails on the first offline start after a deploy, which is
+        // the moment it is least likely to be noticed and most likely to matter
+        const listed = worker.match(/const BUILD_ASSETS = (\[[^\]]*\])/)?.[1];
+        const precached = listed ? JSON.parse(listed) : [];
+        const hasBundle = bundle && precached.includes(`/assets/index-${bundle}.js`);
+        record("deploy", "service worker precaches this build",
+            hasBundle ? PASS : FAIL,
+            !listed ? "no asset list, the app cannot start offline until its second load"
+                : (hasBundle ? `${precached.length} assets` : "the main bundle is not in the precache list"));
     }
 
     const dirty = tryRun("git status --porcelain");
