@@ -262,13 +262,18 @@ It is built for the **root** of a domain. The manifest declares `"scope": "/"` a
 for a project repository, breaks all three. Use a host that gives you a root domain, or
 change the Vite `base`, the manifest and the service worker paths together.
 
-On Cloudflare Pages, connect the repository and set:
+On Cloudflare, connect the repository and set the build command to `npm run build` and the
+output directory to `dist`. The node version comes from `.node-version`, currently 22.
 
-| Setting | Value |
-| ------- | ----- |
-| Build command | `npm run build` |
-| Output directory | `dist` |
-| Node version | from `.node-version`, currently 22 |
+Cloudflare now offers two shapes of project, and they do not configure the same way. A classic
+**Pages** project takes the output directory from the dashboard and needs nothing else. A
+**Worker** with static assets deploys with wrangler, which does not read that dashboard field,
+and fails with
+
+    The `assets` property in your configuration is missing the required `directory` property
+
+*after* a successful build, which reads as a build failure and is not one. `wrangler.toml` in
+this repository supplies that directory, so either shape works.
 
 Nothing else needs configuring. There are no environment variables, no server, no API: the
 radio is attached to the operator's own machine and the messages live in their browser.
