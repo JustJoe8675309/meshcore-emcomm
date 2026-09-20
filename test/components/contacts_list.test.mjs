@@ -121,25 +121,27 @@ describe("ContactsList", () => {
         expect(wrapper.vm.searchedContacts.map((c) => c.advName)).toEqual(["A User"]);
     });
 
-    it("leaves room servers out too, because they are not supported yet", () => {
+    it("lists room servers alongside users, since both take text", () => {
         const wrapper = mountList([
             aContact({ advName: "A User" }),
             aContact({ advName: "A Room", type: Constants.AdvType.Room }),
         ]);
-        expect(wrapper.vm.searchedContacts.map((c) => c.advName)).toEqual(["A User"]);
+        expect(wrapper.vm.searchedContacts.map((c) => c.advName).sort()).toEqual(["A Room", "A User"]);
     });
 
-    it("counts users rather than every contact, so the count matches the list", () => {
+    it("counts what it lists, so the count matches the rows", () => {
         const wrapper = mountList([
             aContact({ advName: "A User" }),
+            aContact({ advName: "A Room", type: Constants.AdvType.Room }),
             aContact({ advName: "A Repeater", type: Constants.AdvType.Repeater }),
         ]);
-        expect(wrapper.find("input").attributes("placeholder")).toMatch(/Search 1 User/);
+        // the repeater is not listed, so it is not counted either
+        expect(wrapper.find("input").attributes("placeholder")).toMatch(/Search 2 Contacts/);
     });
 
     it("says the tab is empty when every contact is a repeater", () => {
         const wrapper = mountList([aContact({ type: Constants.AdvType.Repeater })]);
-        expect(wrapper.text()).toMatch(/No Users/);
+        expect(wrapper.text()).toMatch(/No Users or Rooms/);
         // and points at where they went, rather than implying none were heard
         expect(wrapper.text()).toMatch(/Ping tab/);
     });

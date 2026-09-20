@@ -402,6 +402,9 @@ class Connection {
     // it so they can say the link dropped rather than inventing a result
     static DISCONNECTED = "disconnected";
 
+    // the room refused the password, as opposed to never answering at all
+    static LOGIN_FAILED = "login-failed";
+
     static async getPosition(timeoutMillis = 5000) {
 
         const selfInfo = await Utils.withTimeout(GlobalState.connection.getSelfInfo(), timeoutMillis);
@@ -695,6 +698,66 @@ class Connection {
         await this.loadContacts();
 
         return name;
+
+    }
+
+    /**
+     * Logs in to a room server, which has to happen before its posts arrive.
+     *
+     * The password is passed straight through to the radio and kept nowhere: not
+     * in this app, not in storage, and not on the node, which has no field for
+     * one. `CMD_SEND_LOGIN` carries it in the frame every time, so the operator
+     * types it per login. For an emergency client that is the right trade.
+     *
+     * The failure case is the point of this method. The firmware answers a wrong
+     * password with `PUSH_CODE_LOGIN_FAIL`, but `meshcore.js` listens only for
+     * the success push, so the refusal is ignored and its own timer eventually
+     * rejects with "timeout". A room that answered and said no then reads exactly
+     * like a room that is out of range, and the operator retries the same wrong
+     * password at a station that already told them. So the fail push is read off
+     * the raw frames here, the way discovery is.
+     */
+    static async loginToRoom(publicKey, password) {
+
+        const connection = GlobalState.connection;
+        if(connection == null){
+            throw new Error(this.DISCONNECTED);
+        }
+
+        const PUSH_LOGIN_FAIL = 0x86;
+        const prefix = publicKey.subarray(0, 6);
+
+        let onFrame = null;
+        const refused = new Promise((resolve, reject) => {
+            onFrame = (frame) => {
+
+                // [push code, reserved, ...public key prefix]
+                const bytes = new Uint8Array(frame);
+                if(bytes.length < 8 || bytes[0] !== PUSH_LOGIN_FAIL){
+                    return;
+                }
+
+                // somebody else's refusal
+                for(let i = 0; i < 6; i++){
+                    if(bytes[2 + i] !== prefix[i]){
+                        return;
+                    }
+                }
+
+                reject(new Error(this.LOGIN_FAILED));
+
+            };
+            connection.on("rx", onFrame);
+        });
+
+        try {
+            return await Promise.race([
+                connection.login(publicKey, password),
+                refused,
+            ]);
+        } finally {
+            connection.off("rx", onFrame);
+        }
 
     }
 

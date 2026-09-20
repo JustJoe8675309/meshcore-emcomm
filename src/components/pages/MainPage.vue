@@ -56,8 +56,9 @@ export default {
     methods: {
         async onContactClick(contact) {
 
-            // handle clicking a chat contact
-            if(contact.type === Constants.AdvType.Chat){
+            // a room server's posts arrive addressed from its own public key, so
+            // the same conversation view serves both
+            if(contact.type === Constants.AdvType.Chat || contact.type === Constants.AdvType.Room){
                 this.$router.push({
                     name: "contact.messages",
                     params: {
