@@ -2,11 +2,24 @@
     <div class="flex flex-col h-full w-full overflow-hidden">
 
         <!-- search -->
-        <div v-if="userContacts.length > 0" class="flex bg-white border-b border-gray-300 divide-x">
-            <div class="flex p-1 w-full">
+        <div class="flex bg-white border-b border-gray-300 divide-x">
+            <div v-if="userContacts.length > 0" class="flex p-1 w-full">
                 <input v-model="contactsSearchTerm" type="text" :placeholder="`Search ${userContacts.length} ${userContacts.length === 1 ? 'Contact' : 'Contacts'} by name or key...`" class="h-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
             </div>
-            <div class="flex text-gray-500">
+            <div class="flex text-gray-500 ml-auto">
+                <button
+                    @click="showImport = !showImport"
+                    type="button"
+                    :aria-expanded="showImport"
+                    aria-label="Add a contact from a link"
+                    title="Add a contact from a link"
+                    class="px-2 hover:text-gray-900">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                        <path fill-rule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H4.5a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
+            <div v-if="userContacts.length > 0" class="flex text-gray-500">
                 <DropDownMenu class="mx-auto my-auto">
                     <template v-slot:button>
                         <IconButton class="mx-1">
@@ -28,6 +41,38 @@
                     </template>
                 </DropDownMenu>
             </div>
+        </div>
+
+        <!-- adding a contact by hand. the only way to add a room server, because
+             discovery cannot find one: the room firmware does not implement the
+             control packet, so a room is invisible until it adverts in earshot -->
+        <div v-if="showImport" class="bg-white border-b border-gray-300 p-3 space-y-2">
+
+            <div class="text-sm font-medium text-gray-900">Add a contact from a link</div>
+            <div class="text-xs text-gray-500">
+                Paste a <span class="font-mono">meshcore://</span> link, shared from another client.
+                Rooms have to be added this way, since discovery cannot find them.
+            </div>
+
+            <form @submit.prevent="importContact" class="flex space-x-2">
+                <input
+                    v-model="importText"
+                    id="import-contact"
+                    type="text"
+                    autocomplete="off"
+                    :disabled="isImporting"
+                    placeholder="meshcore://..."
+                    aria-label="Contact link"
+                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                <button
+                    type="submit"
+                    :disabled="isImporting"
+                    class="shrink-0 text-white bg-blue-700 hover:bg-blue-800 disabled:bg-gray-400 font-medium rounded-lg text-sm px-4">{{ isImporting ? "..." : "Add" }}</button>
+            </form>
+
+            <div v-if="importError" role="status" class="text-xs text-red-600">{{ importError }}</div>
+            <div v-if="importMessage" role="status" class="text-xs text-green-700">{{ importMessage }}</div>
+
         </div>
 
         <!-- the device said it would send more than arrived, so somebody is missing -->
@@ -63,6 +108,7 @@
 import { Constants } from "@liamcottle/meshcore.js";
 import GlobalState from "../../js/GlobalState.js";
 import ContactFlags from "../../js/ContactFlags.js";
+import Connection from "../../js/Connection.js";
 import Utils from "../../js/Utils.js";
 import IconButton from "../IconButton.vue";
 import DropDownMenu from "../DropDownMenu.vue";
@@ -89,9 +135,40 @@ export default {
         return {
             order: window.localStorage.getItem("contacts_list_order") ?? "heard-recently",
             contactsSearchTerm: "",
+            showImport: false,
+            importText: "",
+            importError: null,
+            importMessage: null,
+            isImporting: false,
         };
     },
     methods: {
+        async importContact() {
+
+            this.isImporting = true;
+            this.importError = null;
+            this.importMessage = null;
+
+            try {
+
+                const { contact, alreadyKnown } = await Connection.importContact(this.importText);
+                const name = contact.advName?.trim() || "that contact";
+                this.importMessage = alreadyKnown
+                    ? `${name} was already in the list, and has been updated.`
+                    : `Added ${name}.`;
+                this.importText = "";
+
+            } catch(e) {
+                // the message is written for the operator where the cause is known,
+                // so pass it through rather than replacing it with something vaguer
+                this.importError = String(e?.message ?? e) === Connection.DISCONNECTED
+                    ? "No radio connected, so nothing was added."
+                    : String(e?.message ?? e);
+            } finally {
+                this.isImporting = false;
+            }
+
+        },
         onContactClick(contact) {
             this.$emit("contact-click", contact);
         },

@@ -5,6 +5,7 @@ import Utils from "./Utils.js";
 import NotificationUtils from "./NotificationUtils.js";
 import Position from "./reports/Position.js";
 import ContactFlags from "./ContactFlags.js";
+import { Advert } from "@liamcottle/meshcore.js";
 
 class Connection {
 
@@ -698,6 +699,72 @@ class Connection {
         await this.loadContacts();
 
         return name;
+
+    }
+
+    /**
+     * Adds a contact from a shared `meshcore://` link, or the bare hex inside one.
+     *
+     * This is the only way to add a room server. Discovery cannot find one: the
+     * room firmware does not implement the control packet at all, so a room is
+     * invisible until it adverts within earshot, however close it is. A link
+     * pasted from another client sidesteps that.
+     *
+     * The advert is parsed here before it is sent, so bad input is named rather
+     * than handed to the radio to reject with a bare error code.
+     */
+    static async importContact(text) {
+
+        const connection = GlobalState.connection;
+        if(connection == null){
+            throw new Error(this.DISCONNECTED);
+        }
+
+        const hex = String(text ?? "")
+            .trim()
+            .replace(/^meshcore:\/\//i, "")
+            .replace(/\s+/g, "");
+
+        if(hex === ""){
+            throw new Error("Paste a meshcore:// contact link.");
+        }
+
+        if(!/^[0-9a-f]+$/i.test(hex) || hex.length % 2 !== 0){
+            throw new Error("That does not look like a contact link.");
+        }
+
+        const bytes = new Uint8Array(hex.length / 2);
+        for(let i = 0; i < bytes.length; i++){
+            bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+        }
+
+        // 32 byte public key, 4 byte timestamp, 64 byte signature, then app data
+        if(bytes.length <= 100){
+            throw new Error("That link is too short to be a contact.");
+        }
+
+        let advert;
+        try {
+            advert = Advert.fromBytes(bytes);
+        } catch(e) {
+            throw new Error("That contact link could not be read.");
+        }
+
+        const publicKeyHex = Utils.bytesToHex(advert.publicKey);
+        const alreadyKnown = GlobalState.contacts.some((c) => Utils.bytesToHex(c.publicKey) === publicKeyHex);
+
+        await connection.importContact(bytes);
+
+        // read back rather than assume: the device owns the list, and this should
+        // report what it actually holds now
+        await this.loadContacts();
+
+        const contact = GlobalState.contacts.find((c) => Utils.bytesToHex(c.publicKey) === publicKeyHex);
+        if(contact == null){
+            throw new Error("The radio accepted that link but the contact did not appear.");
+        }
+
+        return { contact: contact, alreadyKnown: alreadyKnown };
 
     }
 
