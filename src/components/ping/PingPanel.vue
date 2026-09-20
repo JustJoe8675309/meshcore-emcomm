@@ -77,7 +77,9 @@
                     </div>
                     <div v-else class="text-xs text-gray-500">
                         Most recently heard first. A repeater listed as flood routed or several hops away is
-                        known to the mesh but may not be reachable directly, and will simply time out.
+                        known to the mesh but may not be reachable directly, and will simply time out. Some
+                        repeaters answer discovery but not ping, so one found above can still time out here:
+                        discovery proves it hears you, ping additionally needs it to answer trace requests.
                     </div>
                 </div>
 
