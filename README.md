@@ -15,20 +15,30 @@ messaging, settings and the RX log.
 A third tab alongside Contacts and Channels. Pick the channel to transmit on, choose a report form,
 fill it in, and send. Four forms are included:
 
-| Form | Purpose |
-| ---- | ------- |
-| ICS-209 SITREP / Status Report | Situation report from the field |
-| ICS-211 ARES/RACES Check-In | Register your station with net control |
-| ICS-213 General Message | General message traffic between stations |
-| ICS-213RR Resource Request | Request personnel, equipment or supplies |
-| Damage Assessment | Observed damage at a location, with severity |
-| Health & Welfare | Enquiry or reply about an individual |
-| Net Check-Out | Leave the net and release your station |
-| Net Traffic Summary | Net control summary of a session |
-| Road / Route Status | Whether a route is passable, and any detour |
-| SALUTE Spot Report | Size, activity, location, unit, time, equipment |
-| Shelter Status | Population, capacity and needs |
-| SKYWARN Spotter Report | Severe weather observation for the NWS |
+| Form | Purpose | On the air |
+| ---- | ------- | ---------- |
+| ICS-209 SITREP / Status Report | Situation report from the field | 99 b, 1 packet |
+| ICS-211 ARES/RACES Check-In | Register your station with net control | 104 b, 1 packet |
+| ICS-213 General Message | General message traffic between stations | 154 b, 2 packets |
+| ICS-213RR Resource Request | Request personnel, equipment or supplies | 132 b, 1 packet |
+| Damage Assessment | Observed damage at a location, with severity | 157 b, 1 packet |
+| Health & Welfare | Enquiry or reply about an individual | 167 b, 2 packets |
+| Net Check-Out | Leave the net and release your station | 114 b, 1 packet |
+| Net Traffic Summary | Net control summary of a session | 113 b, 1 packet |
+| Road / Route Status | Whether a route is passable, and any detour | 134 b, 1 packet |
+| SALUTE Spot Report | Size, activity, location, unit, time, equipment | 144 b, 2 packets |
+| Shelter Status | Population, capacity and needs | 135 b, 1 packet |
+| SKYWARN Spotter Report | Severe weather observation for the NWS | 170 b, 2 packets |
+
+All twelve have been transmitted and received between two nodes. The byte figures are
+measured, not estimated: they are what went to the radio, including the sender name
+prefix the firmware prepends, using realistic content for each form.
+
+Those figures depend on the sending node's name. The prefix is charged against the same
+160 bytes as the content, so a long device name costs every channel report. The measurements
+above use a 15 character name, which spends 17 bytes before any content. The four forms
+that exceed one packet would all fit in one with a short name. Direct messages carry no
+prefix at all and always have the full budget.
 
 The four ICS forms carry their real form numbers and sort first. The rest have no ICS
 number, and none has been invented for them: a made up number on a form an incident
@@ -176,7 +186,7 @@ npm run build
 npm test
 ```
 
-Three suites, no hardware required:
+Five suites, no hardware required:
 
 - `test/report_encoder.test.mjs` covers rendering and packet splitting, including a
   simulation of the firmware's own truncation rule to confirm no part can ever exceed
@@ -188,6 +198,11 @@ Three suites, no hardware required:
 - `test/airtime.test.mjs` checks the airtime estimate on the confirmation step: packet
   sizes against the firmware's datagram layout, time on air against the LoRa
   calculation, and the totals an operator sees before transmitting.
+- `test/dtg.test.mjs` covers composing and reading back date time groups, including
+  ranges that cross midnight, span months, mix zones, or are only half typed.
+- `test/forms.test.mjs` checks the form catalogue as data: unique ids, names and on air
+  headers, no duplicated tags within a form, no select without options, no unknown field
+  type or prefill flag, and that every form renders both empty and fully populated.
 
 ### Known issue: serial resync
 
