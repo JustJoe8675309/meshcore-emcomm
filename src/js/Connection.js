@@ -137,6 +137,9 @@ class Connection {
         this.clearConnectionWatchdog();
         GlobalState.connectionTransport = null;
 
+        // the next device connected may be a different radio entirely
+        GlobalState.gpsStatus = "unknown";
+
     }
 
     static async onConnected() {
@@ -219,6 +222,10 @@ class Connection {
         GlobalState.batteryPercentageInterval = setInterval(async () => {
             await this.updateBatteryPercentage();
         }, 60000);
+
+        // find out whether the position this device reports is a live fix. deliberately
+        // not awaited: it takes eight seconds and nothing else needs to wait for it
+        this.probeForLiveGps();
 
     }
 
@@ -358,6 +365,81 @@ class Connection {
         const selfInfo = await Utils.withTimeout(GlobalState.connection.getSelfInfo(), timeoutMillis);
 
         return Position.fromDevice(selfInfo.advLat, selfInfo.advLon);
+
+    }
+
+    /**
+     * How many times the probe below reads the position, and how far apart.
+     *
+     * Five reads two seconds apart span eight seconds, which is long enough that a
+     * receiver holding still will still have wandered in its lowest digits.
+     */
+    static GPS_PROBE_READS = 5;
+    static GPS_PROBE_INTERVAL_MILLIS = 2000;
+
+    /**
+     * Works out whether the device is serving a live GPS fix.
+     *
+     * MeshCore exposes one position for the local device and nothing that says where
+     * it came from. On a node with GPS it is the live fix; on a node without, it is
+     * whatever was typed into Settings, possibly while parked somewhere else months
+     * ago. Nothing in the protocol distinguishes them: the board string names the
+     * board, not the sensor, and there is no capability flag to read.
+     *
+     * So it is measured. A live receiver wanders by a metre or so even standing
+     * still, which shows up in the sixth decimal; a stored constant repeats exactly.
+     * If any read differs from the first, the fix is live and that is certain.
+     *
+     * The converse is not certain, which is why this returns a verdict rather than a
+     * fact: five identical reads are good evidence of no GPS, but an unusually steady
+     * fix would look the same. Callers should treat "unconfirmed" as "do not trust
+     * this position to be current", not as "this radio has no GPS".
+     */
+    static async probeForLiveGps() {
+
+        GlobalState.gpsStatus = "checking";
+
+        try {
+
+            var first = null;
+
+            for(let i = 0; i < this.GPS_PROBE_READS; i++){
+
+                if(i > 0){
+                    await Utils.sleep(this.GPS_PROBE_INTERVAL_MILLIS);
+                }
+
+                // the device may go away underneath us mid probe
+                if(GlobalState.connection == null){
+                    GlobalState.gpsStatus = "unknown";
+                    return;
+                }
+
+                const selfInfo = await Utils.withTimeout(GlobalState.connection.getSelfInfo(), 5000);
+                const reading = `${selfInfo.advLat},${selfInfo.advLon}`;
+
+                // a device with no position at all cannot demonstrate anything
+                if(Position.fromDevice(selfInfo.advLat, selfInfo.advLon) === null){
+                    GlobalState.gpsStatus = "unconfirmed";
+                    return;
+                }
+
+                if(first === null){
+                    first = reading;
+                } else if(reading !== first){
+                    // it moved, so it is live, and there is nothing left to prove
+                    GlobalState.gpsStatus = "live";
+                    return;
+                }
+
+            }
+
+            GlobalState.gpsStatus = "unconfirmed";
+
+        } catch(e) {
+            console.log("gps probe failed", e);
+            GlobalState.gpsStatus = "unconfirmed";
+        }
 
     }
 

@@ -95,10 +95,15 @@
                         v-if="field.offersPosition"
                         @click="onUsePosition(field)"
                         type="button"
-                        :disabled="positionBusyField === field.id"
-                        :aria-label="`Fill ${field.label} from the radio's position`"
-                        class="shrink-0 bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 disabled:opacity-60">{{ positionBusyField === field.id ? "..." : "Position" }}</button>
+                        :disabled="positionBusyField === field.id || gpsStatus === 'checking' || gpsStatus === 'unknown'"
+                        :title="positionButtonHint"
+                        :aria-label="`Fill ${field.label} from the radio's GPS`"
+                        class="shrink-0 bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-900 text-sm rounded-lg px-3 disabled:opacity-60">{{ positionButtonLabel(field) }}</button>
                 </div>
+
+                <!-- a disabled control with no reason given is worse than no control -->
+                <p v-if="field.offersPosition && gpsStatus === 'checking'" class="text-xs text-gray-500">Checking whether the radio has a live GPS fix...</p>
+                <p v-else-if="field.offersPosition && gpsStatus === 'unconfirmed'" class="text-xs text-gray-500">No live GPS fix yet. Press Check GPS to look again, or type the location.</p>
 
                 <!-- only ever shown after the operator pressed the button, so it explains
                      a specific failure rather than warning about one that may not happen -->
@@ -116,6 +121,7 @@ import Dtg from "../../js/reports/Dtg.js";
 import OperatorSettings from "../../js/reports/OperatorSettings.js";
 import Position from "../../js/reports/Position.js";
 import Connection from "../../js/Connection.js";
+import GlobalState from "../../js/GlobalState.js";
 
 export default {
     name: 'ReportFormFields',
@@ -151,6 +157,24 @@ export default {
             positionErrors: {},
         };
     },
+    computed: {
+
+        // the probe runs on the connection, so every field sees the same verdict
+        gpsStatus() {
+            return GlobalState.gpsStatus;
+        },
+
+        positionButtonHint() {
+            if(this.gpsStatus === "checking"){
+                return "Checking whether this radio is serving a live GPS fix";
+            }
+            if(this.gpsStatus === "live"){
+                return "Fill from the radio's live GPS fix";
+            }
+            return "Check again for a live GPS fix. A receiver that had none when this radio connected may have one now";
+        },
+
+    },
     watch: {
         fields() {
             this.chosenModes = {};
@@ -179,6 +203,18 @@ export default {
             this.onInput(field, Dtg.compose(this.dtgMode(field), parts.from, parts.to));
         },
 
+        positionButtonLabel(field) {
+            if(this.positionBusyField === field.id){
+                return "...";
+            }
+            if(this.gpsStatus === "checking"){
+                return "GPS?";
+            }
+            // an unconfirmed radio is worth asking again rather than written off: a
+            // receiver that had no fix when we probed may well have one by now
+            return this.gpsStatus === "unconfirmed" ? "Check GPS" : "GPS";
+        },
+
         onDtgNow(field, part) {
             this.onDtgPartInput(field, part, OperatorSettings.formatDtg());
         },
@@ -201,6 +237,24 @@ export default {
             this.positionErrors = { ...this.positionErrors, [field.id]: null };
 
             try {
+
+                // a radio that could not show us a live fix when it connected may have
+                // acquired one since, which is the normal case for a receiver still
+                // getting its first lock. ask again rather than making the operator
+                // reconnect to escape a verdict reached seconds after power on
+                if(GlobalState.gpsStatus !== "live"){
+
+                    await Connection.probeForLiveGps();
+
+                    if(GlobalState.gpsStatus !== "live"){
+                        this.positionErrors = {
+                            ...this.positionErrors,
+                            [field.id]: "Still no live GPS fix. Give the receiver time to lock, or type the location.",
+                        };
+                        return;
+                    }
+
+                }
 
                 const position = await Connection.getPosition();
 
