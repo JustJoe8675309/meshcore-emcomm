@@ -451,6 +451,13 @@ class Connection {
     // the room refused the password, as opposed to never answering at all
     static LOGIN_FAILED = "login-failed";
 
+    // How long to wait for a room to answer a login. meshcore.js allows the
+    // device's estimated transmit time plus one second, about 8.8 seconds for a
+    // room three hops out, and a real room answered at 12. Flood routing adds a
+    // random delay at every hop, so the round trip is far longer than the transmit
+    // estimate it is derived from.
+    static ROOM_LOGIN_TIMEOUT_MILLIS = 45000;
+
     // how many times to re-read the contact list when the device says it sent more
     // than arrived. a local query, so this costs no airtime, only a second or two
     static MAX_CONTACT_LOAD_PASSES = 4;
@@ -825,20 +832,23 @@ class Connection {
      * one. `CMD_SEND_LOGIN` carries it in the frame every time, so the operator
      * types it per login. For an emergency client that is the right trade.
      *
-     * The failure case is the point of this method, and it has two shapes.
+     * The waiting is done here rather than by `meshcore.js`, because its `login()`
+     * gives up far too early. It waits the device's own estimated transmit time
+     * plus one second, which for a room three hops out came to about 8.8 seconds.
+     * Measured against a real room: the success push arrived at **12 seconds**, by
+     * which point the library had already rejected with "timeout" and removed its
+     * listener. The operator was told nobody answered while they were, in fact,
+     * logged in. Several apparently dead rooms were this.
      *
-     * A station that refuses sends `PUSH_CODE_LOGIN_FAIL`, which `meshcore.js`
-     * never listens for: it waits only on the success push, so the refusal is
-     * ignored and its own timer rejects with "timeout". The operator then retries
-     * the same wrong password at a station that already told them no. That push is
-     * read off the raw frames here, the way discovery is.
+     * So the command is sent directly and both answers are read off the raw frames
+     * here, the way discovery is:
      *
-     * A room server, though, refuses by saying nothing. Its own source reads
-     * "no response. Client will timeout", and a real room three hops out returned
-     * neither 0x85 nor 0x86 for a bad password, only an unrelated rx log. So for a
-     * room the silent branch is where a wrong password lands, and the caller must
-     * not present silence as a range problem. Repeaters do answer, which is why
-     * this stays.
+     *   success: [0x85, permissions, ...public key prefix, ...]
+     *   refusal: [0x86, reserved, ...public key prefix]
+     *
+     * A room never sends the refusal — its source says "no response. Client will
+     * timeout" for a wrong password — but repeaters do, and it is the only way to
+     * tell a refusal from silence.
      */
     static async loginToRoom(publicKey, password) {
 
@@ -847,38 +857,50 @@ class Connection {
             throw new Error(this.DISCONNECTED);
         }
 
+        const PUSH_LOGIN_SUCCESS = 0x85;
         const PUSH_LOGIN_FAIL = 0x86;
         const prefix = publicKey.subarray(0, 6);
 
+        const isForThisRoom = (bytes) => {
+            for(let i = 0; i < 6; i++){
+                if(bytes[2 + i] !== prefix[i]){
+                    return false;
+                }
+            }
+            return true;
+        };
+
         let onFrame = null;
-        const refused = new Promise((resolve, reject) => {
+        let timer = null;
+
+        const answered = new Promise((resolve, reject) => {
+
             onFrame = (frame) => {
 
-                // [push code, reserved, ...public key prefix]
                 const bytes = new Uint8Array(frame);
-                if(bytes.length < 8 || bytes[0] !== PUSH_LOGIN_FAIL){
+                if(bytes.length < 8 || !isForThisRoom(bytes)){
                     return;
                 }
 
-                // somebody else's refusal
-                for(let i = 0; i < 6; i++){
-                    if(bytes[2 + i] !== prefix[i]){
-                        return;
-                    }
+                if(bytes[0] === PUSH_LOGIN_SUCCESS){
+                    // second byte is the permissions the room granted
+                    resolve({ isAdmin: bytes[1] !== 0, permissions: bytes[1] });
+                } else if(bytes[0] === PUSH_LOGIN_FAIL){
+                    reject(new Error(this.LOGIN_FAILED));
                 }
 
-                reject(new Error(this.LOGIN_FAILED));
-
             };
+
             connection.on("rx", onFrame);
+            timer = setTimeout(() => reject(new Error("timeout")), this.ROOM_LOGIN_TIMEOUT_MILLIS);
+
         });
 
         try {
-            return await Promise.race([
-                connection.login(publicKey, password),
-                refused,
-            ]);
+            await connection.sendCommandSendLogin(publicKey, password);
+            return await answered;
         } finally {
+            clearTimeout(timer);
             connection.off("rx", onFrame);
         }
 

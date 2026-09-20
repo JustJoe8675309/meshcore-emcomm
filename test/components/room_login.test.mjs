@@ -33,12 +33,17 @@ function fakeRadio() {
         off(event, cb) { listeners[event] = (listeners[event] ?? []).filter((f) => f !== cb); },
         emit(event, ...args) { (listeners[event] ?? []).slice().forEach((cb) => cb(...args)); },
         listenerCount(event) { return (listeners[event] ?? []).length; },
-        // stands in for the library's login(), which never settles on a refusal
-        login(publicKey, password) {
+        // the app sends the command itself now and does its own waiting, because
+        // the library gives up before a room several hops out can answer
+        async sendCommandSendLogin(publicKey, password) {
             this.logins.push({ publicKey, password });
-            return this.loginResult ?? new Promise(() => {});
         },
     };
+}
+
+// PUSH_CODE_LOGIN_SUCCESS: [0x85, permissions, ...public key prefix, ...]
+function loginSuccessFrame(publicKey, permissions = 0) {
+    return new Uint8Array([0x85, permissions, ...publicKey.subarray(0, 6), 0, 0]);
 }
 
 // PUSH_CODE_LOGIN_FAIL: [0x86, reserved, ...public key prefix]
@@ -59,9 +64,23 @@ describe("Connection.loginToRoom", () => {
     });
 
     it("sends the password straight through to the radio", async () => {
-        radio.loginResult = Promise.resolve({ reserved: 0 });
-        await Connection.loginToRoom(ROOM_KEY, "hunter2");
+        const login = Connection.loginToRoom(ROOM_KEY, "hunter2");
+        await Promise.resolve();
+        radio.emit("rx", loginSuccessFrame(ROOM_KEY));
+        await login;
         expect(radio.logins).toEqual([{ publicKey: ROOM_KEY, password: "hunter2" }]);
+    });
+
+    it("accepts a success that arrives after the library would have given up", async () => {
+        // measured against a real room three hops out: meshcore.js rejects at
+        // about 8.8 seconds and the success push arrived at 12, so the operator
+        // was told nobody answered while they were in fact logged in
+        expect(Connection.ROOM_LOGIN_TIMEOUT_MILLIS).toBeGreaterThan(12000);
+
+        const login = Connection.loginToRoom(ROOM_KEY, "");
+        await Promise.resolve();
+        radio.emit("rx", loginSuccessFrame(ROOM_KEY));
+        await expect(login).resolves.toMatchObject({ isAdmin: false });
     });
 
     it("tells a refusal apart from silence", async () => {
@@ -90,14 +109,26 @@ describe("Connection.loginToRoom", () => {
     });
 
     it("succeeds and reports admin rights when the room grants them", async () => {
-        radio.loginResult = Promise.resolve({ reserved: 1 });
-        const response = await Connection.loginToRoom(ROOM_KEY, "adminpw");
-        expect(response.reserved).toBe(1);
+        const login = Connection.loginToRoom(ROOM_KEY, "adminpw");
+        await Promise.resolve();
+        radio.emit("rx", loginSuccessFrame(ROOM_KEY, 1));
+        await expect(login).resolves.toMatchObject({ isAdmin: true, permissions: 1 });
+    });
+
+    it("ignores a success meant for a different room", async () => {
+        let settled = false;
+        Connection.loginToRoom(ROOM_KEY, "pw").then(() => settled = true, () => settled = true);
+        await Promise.resolve();
+        radio.emit("rx", loginSuccessFrame(OTHER_KEY));
+        await Promise.resolve();
+        expect(settled).toBe(false);
     });
 
     it("stops listening once the login settles", async () => {
-        radio.loginResult = Promise.resolve({ reserved: 0 });
-        await Connection.loginToRoom(ROOM_KEY, "pw");
+        const login = Connection.loginToRoom(ROOM_KEY, "pw");
+        await Promise.resolve();
+        radio.emit("rx", loginSuccessFrame(ROOM_KEY));
+        await login;
         // a listener left behind would reject a promise nobody awaits
         expect(radio.listenerCount("rx")).toBe(0);
     });
@@ -159,7 +190,8 @@ describe("RoomLoginBar", () => {
         wrapper.vm.password = "pw";
         await wrapper.vm.logIn();
         expect(wrapper.vm.errorMessage).toMatch(/check the password first/);
-        expect(wrapper.vm.errorMessage).toMatch(/reachable/);
+        // and points at the remedy that actually worked on the bench
+        expect(wrapper.vm.errorMessage).toMatch(/reset the path/);
     });
 
     it("warns up front that a wrong password looks like silence", () => {
@@ -175,7 +207,7 @@ describe("RoomLoginBar", () => {
     });
 
     it("forgets the password as soon as the login call is done", async () => {
-        vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ reserved: 0 });
+        vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ isAdmin: false });
         const wrapper = mountBar();
         wrapper.vm.password = "hunter2";
         await wrapper.vm.logIn();
@@ -204,7 +236,7 @@ describe("RoomLoginBar", () => {
     });
 
     it("sends the default when the box is left alone", async () => {
-        const login = vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ reserved: 0 });
+        const login = vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ isAdmin: false });
         const wrapper = mountBar();
         await wrapper.vm.logIn();
         expect(login).toHaveBeenCalledWith(ROOM_KEY, "hello");
@@ -215,7 +247,7 @@ describe("RoomLoginBar", () => {
         // "check whether this sender is in the ACL", which is how a room with no
         // password is joined, so substituting the default would make such a room
         // impossible to reach from here.
-        const login = vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ reserved: 0 });
+        const login = vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ isAdmin: false });
         const wrapper = mountBar();
         wrapper.vm.password = "";
         await wrapper.vm.logIn();
@@ -227,7 +259,7 @@ describe("RoomLoginBar", () => {
     });
 
     it("prefers a typed password over the default", async () => {
-        const login = vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ reserved: 0 });
+        const login = vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ isAdmin: false });
         const wrapper = mountBar();
         wrapper.vm.password = "something-else";
         await wrapper.vm.logIn();
@@ -244,7 +276,7 @@ describe("RoomLoginBar", () => {
     });
 
     it("reports being logged in, and as admin when the room says so", async () => {
-        vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ reserved: 1 });
+        vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ isAdmin: true });
         const wrapper = mountBar();
         wrapper.vm.password = "adminpw";
         await wrapper.vm.logIn();
@@ -255,7 +287,7 @@ describe("RoomLoginBar", () => {
 
     it("warns that a long absence leaves a gap rather than an error", async () => {
         // the server keeps a bounded backlog, so posts can be missed silently
-        vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ reserved: 0 });
+        vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ isAdmin: false });
         const wrapper = mountBar();
         wrapper.vm.password = "pw";
         await wrapper.vm.logIn();
@@ -264,7 +296,7 @@ describe("RoomLoginBar", () => {
     });
 
     it("drops the login when the room changes", async () => {
-        vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ reserved: 0 });
+        vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ isAdmin: false });
         const wrapper = mountBar();
         wrapper.vm.password = "pw";
         await wrapper.vm.logIn();
@@ -279,7 +311,7 @@ describe("RoomLoginBar", () => {
         // a room ignores a post from a client that has not logged in, so the
         // composer needs to know, and it is a different component
         GlobalState.roomLogins = {};
-        vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ reserved: 1 });
+        vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ isAdmin: true });
         const wrapper = mountBar();
         wrapper.vm.password = "pw";
         await wrapper.vm.logIn();

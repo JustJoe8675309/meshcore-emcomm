@@ -109,7 +109,7 @@ export default {
                 // impossible to log in to from this app.
                 const response = await Connection.loginToRoom(this.contact.publicKey, this.password);
                 this.loggedIn = true;
-                this.isAdmin = (response?.reserved ?? 0) !== 0;
+                this.isAdmin = response?.isAdmin === true;
                 // the composer reads this, so it can refuse to post into a room
                 // that would ignore the post
                 GlobalState.roomLogins[this.contactKey] = { isAdmin: this.isAdmin };
@@ -132,8 +132,9 @@ export default {
                     // the likeliest fault is the password they just typed. The app
                     // cannot tell the two apart, so it says both rather than
                     // picking one and sounding sure.
-                    this.errorMessage = "No answer. A room says nothing to a wrong password, so check the password first, "
-                        + "then whether the room is reachable at all.";
+                    this.errorMessage = "No answer after 45 seconds. A room says nothing to a wrong password, so check "
+                        + "the password first. If the password is right, reset the path from the menu above and try again: "
+                        + "a stale path to a room several hops out is a common cause.";
                 }
 
             } finally {
