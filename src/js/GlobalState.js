@@ -40,6 +40,11 @@ const globalState = reactive({
     // whether the screen is being kept on for the schedule: "none", "held",
     // "waiting" (hidden, taken again on return), "unsupported" or "failed"
     advertWakeLock: "none",
+    // bumped whenever a node enters or leaves EMCOMM mode. The mode itself lives
+    // in browser storage, which is not reactive, so the badge read it once and
+    // kept that answer: on the bench it said "Not in EMCOMM mode" straight after
+    // a conversion, and "In EMCOMM mode" straight after the restore that ended it
+    emcommModeRevision: 0,
 });
 
 export default globalState;

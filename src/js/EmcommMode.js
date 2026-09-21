@@ -151,6 +151,7 @@ class EmcommMode {
         } catch(e) {
             console.log("could not record emcomm mode state", e);
         }
+        GlobalState.emcommModeRevision += 1;
     }
 
     static markLeft(nodePublicKeyHex) {
@@ -159,6 +160,7 @@ class EmcommMode {
         } catch(e) {
             console.log("could not clear emcomm mode state", e);
         }
+        GlobalState.emcommModeRevision += 1;
     }
 
     /** When the node entered EMCOMM mode, or null if it is not in it. */

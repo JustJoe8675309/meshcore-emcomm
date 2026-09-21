@@ -297,10 +297,14 @@ export default {
         },
 
         inEmcommMode() {
+            // read so this recomputes when the mode changes: the mode is kept in
+            // browser storage, which the page cannot watch
+            GlobalState.emcommModeRevision;
             return this.nodePublicKey != null && EmcommMode.enteredAt(this.nodePublicKey) != null;
         },
 
         modeLabel() {
+            GlobalState.emcommModeRevision;
             const at = this.nodePublicKey == null ? null : EmcommMode.enteredAt(this.nodePublicKey);
             return at == null ? "Not in EMCOMM mode" : `In EMCOMM mode since ${new Date(at).toLocaleString()}`;
         },

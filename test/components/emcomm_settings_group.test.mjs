@@ -10,6 +10,7 @@ import { mount } from "@vue/test-utils";
 import EmcommSettingsGroup from "../../src/components/settings/EmcommSettingsGroup.vue";
 import GlobalState from "../../src/js/GlobalState.js";
 import AdvertSchedule from "../../src/js/AdvertSchedule.js";
+import EmcommMode from "../../src/js/EmcommMode.js";
 
 const PUBLIC_KEY = new Uint8Array(32).fill(0xab);
 const NODE = Array.from(PUBLIC_KEY).map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -157,6 +158,41 @@ describe("EmcommSettingsGroup advert schedule", () => {
         const wrapper = mountGroup();
         await wrapper.find("#zero-hop-advert-minutes").setValue("2");
         expect(wrapper.text()).not.toContain("worth a second thought");
+    });
+
+});
+
+describe("EmcommSettingsGroup mode badge", () => {
+
+    beforeEach(() => {
+        window.localStorage.clear();
+        GlobalState.connection = null;
+        AdvertSchedule.stop();
+    });
+
+    it("says the node is in EMCOMM mode as soon as it enters, without leaving the page", async () => {
+        // on the bench it still said "Not in EMCOMM mode" after a conversion,
+        // until the page was left and opened again
+        const wrapper = mountGroup();
+        await wrapper.vm.$nextTick();
+        expect(wrapper.text()).toContain("Not in EMCOMM mode");
+
+        EmcommMode.markEntered(NODE);
+        await wrapper.vm.$nextTick();
+
+        expect(wrapper.text()).toContain("In EMCOMM mode since");
+    });
+
+    it("says it has left as soon as the restore ends it", async () => {
+        EmcommMode.markEntered(NODE);
+        const wrapper = mountGroup();
+        await wrapper.vm.$nextTick();
+        expect(wrapper.text()).toContain("In EMCOMM mode since");
+
+        EmcommMode.markLeft(NODE);
+        await wrapper.vm.$nextTick();
+
+        expect(wrapper.text()).toContain("Not in EMCOMM mode");
     });
 
 });
