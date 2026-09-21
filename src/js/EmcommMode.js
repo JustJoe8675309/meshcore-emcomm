@@ -96,17 +96,17 @@ class EmcommMode {
         };
 
         if(options.name != null && options.name !== ""){
-            await attempt("node name", () => connection.setAdvertName(options.name));
+            await attempt("node name", () => Connection.setAdvertName(options.name));
         }
 
         if(options.radio != null){
-            await attempt("radio settings", () => connection.setRadioParams(
+            await attempt("radio settings", () => Connection.setRadioParams(
                 options.radio.radioFreq, options.radio.radioBw, options.radio.radioSf, options.radio.radioCr,
             ));
         }
 
         if(options.txPower != null){
-            await attempt("transmit power", () => connection.setTxPower(options.txPower));
+            await attempt("transmit power", () => Connection.setTxPower(options.txPower));
         }
 
         if(options.syncClock){
@@ -123,7 +123,7 @@ class EmcommMode {
                     throw new Error("the radio has no live GPS fix, so the position was left alone");
                 }
 
-                await connection.setAdvertLatLong(
+                await Connection.setAdvertLatLong(
                     Math.round(position.latitude * 1000000),
                     Math.round(position.longitude * 1000000),
                 );
@@ -178,7 +178,7 @@ class EmcommMode {
         if(connection == null){
             throw new Error(Connection.DISCONNECTED);
         }
-        await connection.setOtherParams(manual);
+        await Connection.setOtherParams(manual);
     }
 
     /**
@@ -303,6 +303,9 @@ class EmcommMode {
                     what: contact.advName || Utils.bytesToHex(contact.publicKey).slice(0, 8),
                 });
                 try {
+                    // the library's own call, which waits for the device to
+                    // acknowledge. Slower than firing and forgetting, and this is
+                    // the path proven on the radios, so it stays
                     await connection.removeContact(contact.publicKey);
                 } catch(e) {
                     // left in the map, so the next pass tries again

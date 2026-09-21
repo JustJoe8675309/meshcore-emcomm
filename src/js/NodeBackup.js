@@ -178,29 +178,29 @@ class NodeBackup {
 
         // settings first: they are few, and a failure here is worth knowing about
         // before spending minutes on contacts
-        await this.attempt(failures, "name", () => connection.setAdvertName(settings.name));
+        await this.attempt(failures, "name", () => Connection.setAdvertName(settings.name));
         step("name");
-        await this.attempt(failures, "position", () => connection.setAdvertLatLong(settings.advLat, settings.advLon));
+        await this.attempt(failures, "position", () => Connection.setAdvertLatLong(settings.advLat, settings.advLon));
         step("position");
-        await this.attempt(failures, "transmit power", () => connection.setTxPower(settings.txPower));
+        await this.attempt(failures, "transmit power", () => Connection.setTxPower(settings.txPower));
         step("transmit power");
-        await this.attempt(failures, "radio settings", () => connection.setRadioParams(
+        await this.attempt(failures, "radio settings", () => Connection.setRadioParams(
             settings.radioFreq, settings.radioBw, settings.radioSf, settings.radioCr,
         ));
         step("radio settings");
 
-        await this.attempt(failures, "add contacts mode", () => connection.setOtherParams(settings.manualAddContacts === 1));
+        await this.attempt(failures, "add contacts mode", () => Connection.setOtherParams(settings.manualAddContacts === 1));
         step("add contacts mode");
 
         for(const channel of backup.channels){
-            await this.attempt(failures, `channel ${channel.name}`, () => connection.setChannel(
+            await this.attempt(failures, `channel ${channel.name}`, () => Connection.setChannel(
                 channel.idx, channel.name, Utils.hexToBytes(channel.secret),
             ));
             step(`channel ${channel.name}`);
         }
 
         for(const contact of backup.contacts){
-            await this.attempt(failures, contact.advName || contact.publicKey.slice(0, 8), () => connection.addOrUpdateContact(
+            await this.attempt(failures, contact.advName || contact.publicKey.slice(0, 8), () => Connection.addOrUpdateContact(
                 Utils.hexToBytes(contact.publicKey),
                 contact.type,
                 contact.flags,

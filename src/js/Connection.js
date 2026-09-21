@@ -463,20 +463,65 @@ class Connection {
         return await GlobalState.connection.deviceQuery(appTargetVer);
     }
 
+    /**
+     * How long to wait for the device to acknowledge a setting.
+     *
+     * Every setter in `meshcore.js` resolves when an `Ok` frame arrives and
+     * rejects when an `Err` does, and waits for one of them with no timeout at
+     * all. Bluetooth drops frames, so a dropped `Ok` left the Save button stuck
+     * on "Saving..." for ever, on a radio that had very likely applied the change
+     * and was answering everything else.
+     *
+     * Generous, because a busy device can be slow and a false failure would have
+     * the operator save again. Long enough to be sure, short enough that the
+     * button always comes back.
+     */
+    static SETTING_TIMEOUT_MILLIS = 15000;
+
+    /**
+     * Waits for a device command, but not for ever.
+     *
+     * A timeout here means the acknowledgement did not arrive, which is not the
+     * same as the change not happening, so callers say so rather than reporting a
+     * clean failure.
+     */
+    static async withSettingTimeout(what, promise) {
+        try {
+            return await Utils.withTimeout(promise, this.SETTING_TIMEOUT_MILLIS);
+        } catch(e) {
+            if(String(e?.message ?? e) === "timed out"){
+                throw new Error(`the radio did not confirm the ${what} within ${Math.round(this.SETTING_TIMEOUT_MILLIS / 1000)} seconds. It may still have been applied.`);
+            }
+            throw e;
+        }
+    }
+
     static async setAdvertName(name) {
-        await GlobalState.connection.setAdvertName(name);
+        await this.withSettingTimeout("name", GlobalState.connection.setAdvertName(name));
     }
 
     static async setAdvertLatLong(latitude, longitude) {
-        await GlobalState.connection.setAdvertLatLong(latitude, longitude);
+        await this.withSettingTimeout("position", GlobalState.connection.setAdvertLatLong(latitude, longitude));
     }
 
     static async setTxPower(txPower) {
-        await GlobalState.connection.setTxPower(txPower);
+        await this.withSettingTimeout("transmit power", GlobalState.connection.setTxPower(txPower));
     }
 
     static async setRadioParams(radioFreq, radioBw, radioSf, radioCr) {
-        await GlobalState.connection.setRadioParams(radioFreq, radioBw, radioSf, radioCr);
+        await this.withSettingTimeout("radio settings", GlobalState.connection.setRadioParams(radioFreq, radioBw, radioSf, radioCr));
+    }
+
+    static async setChannel(channelIdx, name, secret) {
+        await this.withSettingTimeout("channel", GlobalState.connection.setChannel(channelIdx, name, secret));
+    }
+
+    static async setOtherParams(manualAddContacts) {
+        await this.withSettingTimeout("add contacts mode", GlobalState.connection.setOtherParams(manualAddContacts));
+    }
+
+    static async addOrUpdateContact(...args) {
+        await this.withSettingTimeout("contact", GlobalState.connection.addOrUpdateContact(...args));
     }
 
     static async syncDeviceTime() {
@@ -488,6 +533,16 @@ class Connection {
         await GlobalState.connection.sendCommandResetPath(publicKey);
     }
 
+    /**
+     * Deliberately does not wait for the device to acknowledge.
+     *
+     * Every other setting here is bounded and waits, because a caller needs to
+     * know. This one is the contact menu's delete, which was written this way
+     * before and is left alone: the contact list is read back afterwards, so the
+     * device gets the last word either way. EMCOMM mode's trim deliberately uses
+     * the library's own acknowledged call instead, which is the path proven on
+     * the radios.
+     */
     static async removeContact(publicKey) {
         await GlobalState.connection.sendCommandRemoveContact(publicKey);
     }
