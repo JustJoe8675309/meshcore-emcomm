@@ -397,11 +397,24 @@ every setting identical afterwards.
 | `loadChannels` falls back to default channels carrying no secrets | A backup that would have restored garbage over working channels |
 | `getChannels` stops at the first index it cannot read | One channel with an unusual key would silently truncate the list and take every later one with it |
 | Commands share one emitter and match replies by response code, not by request | The settings page stopped prefilling: the group's clock read and the page's self info read crossed, and every field came up empty |
+| Bluetooth writes that collide are caught and only logged | "GATT operation already in progress" in the console, and a command that never reached the radio waiting for a reply that could not come |
 
-The last of those is the same shape as the rest and the worst of them, because it was silent and
-it lied: an empty Name box looks like a node with no name, and saving it would have written one.
-Device commands now go out one at a time, and a read that fails says so instead of leaving the
-form blank.
+The crossed replies are the same shape as the rest and the worst of them, because it was silent
+and it lied: an empty Name box looks like a node with no name, and saving it would have written
+one. The emitter hands each reply to every listener waiting on that code, so one `Ok` confirms
+every command waiting for an `Ok`, whether or not the radio has read it yet.
+
+The fix is in two layers, because the failures are in two places. Frames go onto the wire one at
+a time, per connection, which ends the Bluetooth collisions for every command including the ones
+the library sends itself; the library marks that spot with a todo for exactly this. Above that,
+every command that gets a reply holds a queue until it has its reply, and never for ever: a queue
+turns one lost reply into a frozen app unless every place in it is bounded. Commands the app does
+not wait on, such as a path reset or the contact menu's delete, now collect their reply while
+still at the head of the queue, because an `Ok` nobody collects lands on the next command. Long
+waits on the mesh, a room login or a repeater discovery, hold the queue only until the radio says
+the packet went out; the answer comes back as a push that only they can match.
+
+A read that fails says so instead of leaving the form blank.
 
 The first of those is older than EMCOMM mode. `loadContacts` could always have hung at connect;
 re-reading for completeness simply gave it more chances.
@@ -646,7 +659,7 @@ timeout behind it, on a link that was otherwise working perfectly.
 npm test
 ```
 
-Six plain node suites and twenty-one component suites, 336 tests in all, no hardware
+Six plain node suites and twenty-one component suites, 353 component tests, no hardware
 required:
 
 - `test/report_encoder.test.mjs` covers rendering and packet splitting, including a

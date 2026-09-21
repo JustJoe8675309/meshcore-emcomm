@@ -71,6 +71,7 @@ class Connection {
 
         // update connection and listen for events
         GlobalState.connection = connection;
+        this.serialiseFrames(connection);
         GlobalState.connectionTransport = transport;
         GlobalState.connection.on("connected", () => this.onConnected());
         GlobalState.connection.on("disconnected", () => this.onDisconnected());
@@ -151,6 +152,10 @@ class Connection {
         GlobalState.batteryPercentageInterval = null;
         this.clearConnectionWatchdog();
         GlobalState.connectionTransport = null;
+
+        // anything still queued was for the radio that just went, and must not
+        // hold up the next one
+        this.commandQueue = Promise.resolve();
 
         // the next device connected may be a different radio entirely
         GlobalState.gpsStatus = "unknown";
@@ -281,6 +286,15 @@ class Connection {
      * which is what it was already built to do for dropped contacts.
      */
     static async readContactsOnce(connection) {
+        // the whole stream is one command: a contact frame arriving mid read is
+        // exactly as much a reply as the end marker
+        return await this.exclusive(
+            () => this.readContactsStream(connection),
+            this.CONTACT_READ_TIMEOUT_MILLIS + this.ACK_TIMEOUT_MILLIS,
+        );
+    }
+
+    static async readContactsStream(connection) {
 
         const contacts = new Map();
         let ended = false;
@@ -429,7 +443,7 @@ class Connection {
         // so this is guarded by a timeout and falls back to the public channel.
         try {
 
-            const channels = await Utils.withTimeout(GlobalState.connection.getChannels(), 10000);
+            const channels = await this.exclusive(() => GlobalState.connection.getChannels(), 10000);
 
             // unused channel slots come back with an empty name, so skip those.
             // the rest of the app identifies a channel by "idx", so normalise "channelIdx" here.
@@ -459,7 +473,7 @@ class Connection {
     static async updateBatteryPercentage() {
         if(GlobalState.connection){
             try {
-                const response = await GlobalState.connection.getBatteryVoltage();
+                const response = await this.exclusive(() => GlobalState.connection.getBatteryVoltage());
                 GlobalState.batteryPercentage = Utils.getBatteryPercentage(response.batteryMilliVolts);
             } catch(e) {
                 // ignore error
@@ -473,26 +487,129 @@ class Connection {
     static commandQueue = Promise.resolve();
 
     /**
-     * Runs one device command at a time.
+     * How long a queued command may hold the queue before it is abandoned.
      *
-     * Every command in `meshcore.js` sends its bytes and then registers a
-     * `once()` listener for the response code it expects, on one emitter shared
-     * by the whole connection. Nothing ties a reply to the command that asked for
-     * it. Two commands in flight and the first `Err` or `Ok` to arrive is taken by
-     * whichever listener was registered first, which may be the other command's.
+     * The queue trades one failure for another: commands no longer answer each
+     * other, but a command that never finishes now holds up every command behind
+     * it rather than only itself. `meshcore.js` waits for most replies with no
+     * timeout at all, and Bluetooth drops frames, so without this bound one lost
+     * reply would freeze the whole app until it was reconnected.
+     */
+    static COMMAND_TIMEOUT_MILLIS = 20000;
+
+    /**
+     * How long to hold the queue for the reply to a command we do not otherwise
+     * wait on. Local replies come back in well under a second; this is generous.
+     */
+    static ACK_TIMEOUT_MILLIS = 5000;
+
+    /** How long one frame may take to go out before it is given up on. */
+    static FRAME_WRITE_TIMEOUT_MILLIS = 5000;
+
+    /** Headroom over a trace's own timeout, which only starts once it is sent. */
+    static TRACE_QUEUE_TIMEOUT_MILLIS = 30000;
+
+    /**
+     * Runs one device command at a time, and never for ever.
+     *
+     * Every command in `meshcore.js` sends its bytes and then listens for the
+     * response code it expects, on one emitter shared by the whole connection.
+     * Nothing ties a reply to the command that asked for it, and the emitter hands
+     * each reply to every listener waiting on that code. With two commands in
+     * flight, one `Ok` resolves both and one `Err` rejects both: the second reports
+     * the first one's answer as its own, before the radio has even read it, and its
+     * real reply then arrives for nobody, or for whichever command is next.
      *
      * The settings page hit exactly that: the EMCOMM group reads the clock as it
      * mounts, the page reads self info a moment later, and the answers crossed,
-     * leaving every field on the page empty. Sending one at a time costs a little
-     * latency on a page that issues a handful of commands, and removes the race.
+     * leaving every field on the page empty.
      *
-     * A failed command must not poison the queue, so the chain is kept on a
-     * separate promise that always resolves.
+     * A failed or abandoned command must not poison the queue, so the chain is
+     * kept on a separate promise that always resolves.
+     *
+     * Only ever wrap a single library call, never a function that itself queues:
+     * the queue is not re-entrant, and a queued function waiting on the queue
+     * waits on itself until the timeout frees it.
      */
-    static async exclusive(fn) {
-        const run = this.commandQueue.then(fn);
+    static async exclusive(fn, timeoutMillis = this.COMMAND_TIMEOUT_MILLIS) {
+        const run = this.commandQueue.then(() => Utils.withTimeout(Promise.resolve().then(fn), timeoutMillis));
         this.commandQueue = run.catch(() => {});
         return await run;
+    }
+
+    /**
+     * Sends a command and holds the queue until the radio answers it.
+     *
+     * For commands whose reply nothing else waits for. The radio answers them
+     * anyway, and an answer nobody collects is delivered to whatever command is
+     * waiting next: a path reset's `Ok` would report a setter as confirmed before
+     * the radio had read it. Collecting the reply here, while the command still
+     * holds the queue, keeps it from landing on anyone else.
+     *
+     * Never throws on silence. Some of these commands may not be answered at all
+     * on some firmware, and waiting a few seconds and carrying on is exactly what
+     * they did before. Returns the response code that arrived, or null.
+     */
+    static async sendAwaiting(connection, send, codes = [Constants.ResponseCodes.Ok, Constants.ResponseCodes.Err], timeoutMillis = this.ACK_TIMEOUT_MILLIS) {
+        return await this.exclusive(() => new Promise((resolve, reject) => {
+
+            const listeners = [];
+            let timer = null;
+
+            const finish = () => {
+                clearTimeout(timer);
+                for(const [code, listener] of listeners){
+                    connection.off(code, listener);
+                }
+            };
+
+            for(const code of codes){
+                const listener = (data) => {
+                    finish();
+                    resolve({ code, data });
+                };
+                listeners.push([code, listener]);
+                connection.on(code, listener);
+            }
+
+            timer = setTimeout(() => {
+                finish();
+                resolve({ code: null, data: null });
+            }, timeoutMillis);
+
+            Promise.resolve().then(send).catch((e) => {
+                finish();
+                reject(e);
+            });
+
+        }), timeoutMillis + this.ACK_TIMEOUT_MILLIS);
+    }
+
+    /**
+     * Puts one frame on the wire at a time.
+     *
+     * On Bluetooth two writes at once fail with "GATT operation already in
+     * progress", and `meshcore.js` catches that and only logs it, so the command
+     * never reaches the radio and whoever sent it waits for a reply that cannot
+     * come. The library marks the spot with a todo for exactly this mutex. The
+     * command queue above cannot cover it alone, because the library also writes
+     * on its own behalf. Wrapping the connection's frame writer covers every
+     * frame, whoever sends it.
+     *
+     * The chain belongs to this connection, so a stuck write cannot follow the
+     * operator onto the next radio they connect.
+     */
+    static serialiseFrames(connection) {
+        if(typeof connection.sendToRadioFrame !== "function"){
+            return;
+        }
+        const send = connection.sendToRadioFrame.bind(connection);
+        let tail = Promise.resolve();
+        connection.sendToRadioFrame = (frame) => {
+            const run = tail.then(() => Utils.withTimeout(send(frame), this.FRAME_WRITE_TIMEOUT_MILLIS));
+            tail = run.catch(() => {});
+            return run;
+        };
     }
 
     static async deviceQuery(appTargetVer = 1) {
@@ -525,15 +642,18 @@ class Connection {
     static SETTING_TIMEOUT_MILLIS = 15000;
 
     /**
-     * Waits for a device command, but not for ever.
+     * Runs a setting command through the queue, and not for ever.
+     *
+     * Takes a function rather than a promise. A promise has already been sent by
+     * the time it is handed over, so queueing it would queue nothing.
      *
      * A timeout here means the acknowledgement did not arrive, which is not the
      * same as the change not happening, so callers say so rather than reporting a
      * clean failure.
      */
-    static async withSettingTimeout(what, promise) {
+    static async withSettingTimeout(what, fn) {
         try {
-            return await Utils.withTimeout(promise, this.SETTING_TIMEOUT_MILLIS);
+            return await this.exclusive(fn, this.SETTING_TIMEOUT_MILLIS);
         } catch(e) {
             if(String(e?.message ?? e) === "timed out"){
                 throw new Error(`the radio did not confirm the ${what} within ${Math.round(this.SETTING_TIMEOUT_MILLIS / 1000)} seconds. It may still have been applied.`);
@@ -542,63 +662,71 @@ class Connection {
         }
     }
 
+    static async sendZeroHopAdvert() {
+        return await this.exclusive(() => GlobalState.connection.sendZeroHopAdvert());
+    }
+
+    static async sendFloodAdvert() {
+        return await this.exclusive(() => GlobalState.connection.sendFloodAdvert());
+    }
+
     static async setAdvertName(name) {
-        await this.withSettingTimeout("name", GlobalState.connection.setAdvertName(name));
+        await this.withSettingTimeout("name", () => GlobalState.connection.setAdvertName(name));
     }
 
     static async setAdvertLatLong(latitude, longitude) {
-        await this.withSettingTimeout("position", GlobalState.connection.setAdvertLatLong(latitude, longitude));
+        await this.withSettingTimeout("position", () => GlobalState.connection.setAdvertLatLong(latitude, longitude));
     }
 
     static async setTxPower(txPower) {
-        await this.withSettingTimeout("transmit power", GlobalState.connection.setTxPower(txPower));
+        await this.withSettingTimeout("transmit power", () => GlobalState.connection.setTxPower(txPower));
     }
 
     static async setRadioParams(radioFreq, radioBw, radioSf, radioCr) {
-        await this.withSettingTimeout("radio settings", GlobalState.connection.setRadioParams(radioFreq, radioBw, radioSf, radioCr));
+        await this.withSettingTimeout("radio settings", () => GlobalState.connection.setRadioParams(radioFreq, radioBw, radioSf, radioCr));
     }
 
     static async setChannel(channelIdx, name, secret) {
-        await this.withSettingTimeout("channel", GlobalState.connection.setChannel(channelIdx, name, secret));
+        await this.withSettingTimeout("channel", () => GlobalState.connection.setChannel(channelIdx, name, secret));
     }
 
     static async setOtherParams(manualAddContacts) {
-        await this.withSettingTimeout("add contacts mode", GlobalState.connection.setOtherParams(manualAddContacts));
+        await this.withSettingTimeout("add contacts mode", () => GlobalState.connection.setOtherParams(manualAddContacts));
     }
 
     static async addOrUpdateContact(...args) {
-        await this.withSettingTimeout("contact", GlobalState.connection.addOrUpdateContact(...args));
+        await this.withSettingTimeout("contact", () => GlobalState.connection.addOrUpdateContact(...args));
     }
 
     static async syncDeviceTime() {
         const timestamp = Math.floor(Date.now() / 1000);
-        await this.exclusive(() => GlobalState.connection.sendCommandSetDeviceTime(timestamp));
+        await this.sendAwaiting(GlobalState.connection, () => GlobalState.connection.sendCommandSetDeviceTime(timestamp));
     }
 
     static async resetContactPath(publicKey) {
-        await GlobalState.connection.sendCommandResetPath(publicKey);
+        await this.sendAwaiting(GlobalState.connection, () => GlobalState.connection.sendCommandResetPath(publicKey));
     }
 
     /**
-     * Deliberately does not wait for the device to acknowledge.
+     * Deliberately does not report failure.
      *
-     * Every other setting here is bounded and waits, because a caller needs to
-     * know. This one is the contact menu's delete, which was written this way
-     * before and is left alone: the contact list is read back afterwards, so the
-     * device gets the last word either way. EMCOMM mode's trim deliberately uses
-     * the library's own acknowledged call instead, which is the path proven on
-     * the radios.
+     * This is the contact menu's delete, which was written this way before and
+     * is left alone: the contact list is read back afterwards, so the device gets
+     * the last word either way. It does now collect the radio's reply, because an
+     * uncollected `Ok` would confirm whatever command came next. EMCOMM mode's
+     * trim uses the library's own acknowledged call instead, which is the path
+     * proven on the radios.
      */
     static async removeContact(publicKey) {
-        await GlobalState.connection.sendCommandRemoveContact(publicKey);
+        await this.sendAwaiting(GlobalState.connection, () => GlobalState.connection.sendCommandRemoveContact(publicKey));
     }
 
     static async shareContact(publicKey) {
-        await GlobalState.connection.shareContact(publicKey);
+        await this.exclusive(() => GlobalState.connection.shareContact(publicKey));
     }
 
     static async exportContact(publicKey) {
-        return await GlobalState.connection.exportContact(publicKey);
+        return await this.exclusive(() => GlobalState.connection.exportContact(publicKey));
     }
 
     /**
@@ -638,7 +766,7 @@ class Connection {
 
     static async getPosition(timeoutMillis = 5000) {
 
-        const selfInfo = await Utils.withTimeout(GlobalState.connection.getSelfInfo(), timeoutMillis);
+        const selfInfo = await this.exclusive(() => GlobalState.connection.getSelfInfo(), timeoutMillis);
 
         return Position.fromDevice(selfInfo.advLat, selfInfo.advLon);
 
@@ -691,7 +819,7 @@ class Connection {
                     return;
                 }
 
-                const selfInfo = await Utils.withTimeout(GlobalState.connection.getSelfInfo(), 5000);
+                const selfInfo = await this.exclusive(() => GlobalState.connection.getSelfInfo(), 5000);
                 const reading = `${selfInfo.advLat},${selfInfo.advLon}`;
 
                 // a device with no position at all cannot demonstrate anything
@@ -762,7 +890,12 @@ class Connection {
         try {
             // the first byte of their public key is the whole path for a single hop
             reply = await Promise.race([
-                connection.tracePath([publicKey[0]], extraTimeoutMillis),
+                // held for the whole trace: until it is sent it can take another
+                // command's Sent or Err, and a ping is a few seconds at most
+                this.exclusive(
+                    () => connection.tracePath([publicKey[0]], extraTimeoutMillis),
+                    extraTimeoutMillis + this.TRACE_QUEUE_TIMEOUT_MILLIS,
+                ),
                 disconnected,
             ]);
         } finally {
@@ -881,7 +1014,10 @@ class Connection {
         connection.on("rx", onFrame);
 
         try {
-            await connection.sendToRadioFrame(request);
+            // queued only until the radio acknowledges: holding the queue for the
+            // whole listen would stall everything else for half a minute. Replies
+            // come as pushes carrying our tag, so nothing else can take them
+            await this.sendAwaiting(connection, () => connection.sendToRadioFrame(request));
             // replies are spread over a random widened delay, since many nodes may
             // answer at once, so this listens rather than waiting for one response
             await Utils.sleep(listenMillis);
@@ -914,7 +1050,7 @@ class Connection {
 
         const name = `Repeater ${discovered.publicKeyHex.slice(0, 6)}`;
 
-        await connection.addOrUpdateContact(
+        await this.withSettingTimeout("contact", () => connection.addOrUpdateContact(
             discovered.publicKey,
             discovered.nodeType,
             0,                              // flags
@@ -924,7 +1060,7 @@ class Connection {
             Math.floor(Date.now() / 1000),  // heard just now, which is why we are here
             0,                              // advLat, unknown until it adverts
             0,                              // advLon
-        );
+        ));
 
         await this.loadContacts();
 
@@ -983,7 +1119,7 @@ class Connection {
         const publicKeyHex = Utils.bytesToHex(advert.publicKey);
         const alreadyKnown = GlobalState.contacts.some((c) => Utils.bytesToHex(c.publicKey) === publicKeyHex);
 
-        await connection.importContact(bytes);
+        await this.withSettingTimeout("contact import", () => connection.importContact(bytes));
 
         // read back rather than assume: the device owns the list, and this should
         // report what it actually holds now
@@ -1104,8 +1240,25 @@ class Connection {
 
         });
 
+        // a quick refusal can land while the login is still waiting for the radio
+        // to say it was sent, before anything awaits this. Marked handled here so
+        // that is not reported as an unhandled rejection; the await below still
+        // receives it
+        answered.catch(() => {});
+
         try {
-            await connection.sendCommandSendLogin(publicKey, password);
+            // queued only until the radio says it has sent the login. The room's
+            // answer can take the best part of a minute and arrives as a push
+            // matched to this room, so nothing else can take it, and holding the
+            // queue that long would stall everything else
+            const ack = await this.sendAwaiting(
+                connection,
+                () => connection.sendCommandSendLogin(publicKey, password),
+                [Constants.ResponseCodes.Sent, Constants.ResponseCodes.Err],
+            );
+            if(ack.code === Constants.ResponseCodes.Err){
+                throw new Error("the radio would not send the login");
+            }
             return await answered;
         } finally {
             clearTimeout(timer);
@@ -1135,7 +1288,7 @@ class Connection {
             throw new Error("no such contact");
         }
 
-        await connection.addOrUpdateContact(
+        await this.withSettingTimeout("favourite", () => connection.addOrUpdateContact(
             contact.publicKey,
             contact.type,
             ContactFlags.withFavourite(contact.flags, favourite),
@@ -1145,7 +1298,7 @@ class Connection {
             contact.lastAdvert,
             contact.advLat,
             contact.advLon,
-        );
+        ));
 
         // read back rather than assume: the device owns this record now, and a
         // write it rejected or altered should not leave the list saying otherwise
@@ -1156,7 +1309,7 @@ class Connection {
     static async sendMessage(publicKey, text) {
 
         // send message
-        const message = await GlobalState.connection.sendTextMessage(publicKey, text);
+        const message = await this.exclusive(() => GlobalState.connection.sendTextMessage(publicKey, text));
 
         // save to database
         const databaseMessage = await Database.Message.insert({
@@ -1252,7 +1405,7 @@ class Connection {
     static async sendChannelMessage(channelIdx, text) {
 
         // send message
-        await GlobalState.connection.sendChannelTextMessage(channelIdx, text);
+        await this.exclusive(() => GlobalState.connection.sendChannelTextMessage(channelIdx, text));
 
         // save to database
         await Database.ChannelMessage.insert({
@@ -1269,8 +1422,17 @@ class Connection {
     static async syncMessages() {
         while(true){
 
-            // sync messages until no more returned
-            const message = await GlobalState.connection.syncNextMessage();
+            // one message per turn of the queue, so a long backlog lets other
+            // commands through between messages rather than holding them all up
+            let message;
+            try {
+                message = await this.exclusive(() => GlobalState.connection.syncNextMessage());
+            } catch(e) {
+                // a lost reply used to hang here for ever; now it stops this sync,
+                // and the next message waiting notification starts another
+                console.log("message sync stopped", e);
+                break;
+            }
             if(!message){
                 break;
             }
@@ -1286,7 +1448,7 @@ class Connection {
     }
 
     static async reboot() {
-        await GlobalState.connection.reboot();
+        await this.exclusive(() => GlobalState.connection.reboot());
     }
 
     static async onContactMessageReceived(message) {

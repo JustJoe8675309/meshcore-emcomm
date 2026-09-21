@@ -133,6 +133,12 @@ being a variable.
       an empty Name box looks exactly like a node that has no name.
 - [ ] **A failed read says so.** If the radio will not answer, the page must show the
       warning above the fields rather than a form full of blanks.
+- [ ] **No collisions on Bluetooth.** Over a Bluetooth session that connects, opens
+      settings, runs a repeating advert and receives adverts from the other node, the
+      browser console must show no `GATT operation already in progress`. Before the
+      frame lock it appeared at connect and again whenever an advert arrived while
+      something else was talking to the radio. Serial cannot show this one: it is the
+      Bluetooth stack that refuses a second write.
 - [ ] **Set a zero hop advert interval of 1 minute and watch the other node.** The
       advert should arrive about a minute later, not the moment Apply was pressed.
       Nothing on the air at apply time is the point of the check.

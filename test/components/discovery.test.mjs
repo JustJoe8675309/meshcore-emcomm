@@ -11,6 +11,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import Connection from "../../src/js/Connection.js";
 import GlobalState from "../../src/js/GlobalState.js";
+import { Constants } from "@liamcottle/meshcore.js";
 
 // a radio that records what it was sent and lets a test push frames back
 function fakeRadio() {
@@ -19,7 +20,12 @@ function fakeRadio() {
         sent: [],
         on(event, cb) { (listeners[event] ??= []).push(cb); },
         off(event, cb) { listeners[event] = (listeners[event] ?? []).filter((f) => f !== cb); },
-        async sendToRadioFrame(bytes) { this.sent.push(new Uint8Array(bytes)); },
+        async sendToRadioFrame(bytes) {
+            this.sent.push(new Uint8Array(bytes));
+            // the companion acknowledges a control frame as it queues it, the way a
+            // real radio does, so the app is not left waiting out its ack window
+            setTimeout(() => this.emit(Constants.ResponseCodes.Ok), 0);
+        },
         // pretend a frame arrived from the mesh
         receive(bytes) { this.emit("rx", new Uint8Array(bytes)); },
         emit(event, ...args) { (listeners[event] ?? []).slice().forEach((cb) => cb(...args)); },
@@ -49,6 +55,7 @@ describe("discoverRepeaters", () => {
     beforeEach(() => {
         radio = fakeRadio();
         GlobalState.connection = radio;
+        Connection.commandQueue = Promise.resolve();
     });
 
     it("sends a frame the device will accept", async () => {
@@ -183,6 +190,10 @@ describe("pingContact when the radio goes away", () => {
 
     beforeEach(() => {
         GlobalState.connection = null;
+        // what Connection.disconnect does in the app. The fake radio's
+        // "disconnected" event only reaches the ping, so without this the trace
+        // abandoned in the first test would keep its place in the queue
+        Connection.commandQueue = Promise.resolve();
     });
 
     it("gives up as soon as the link drops, rather than waiting for the trace to time out", async () => {

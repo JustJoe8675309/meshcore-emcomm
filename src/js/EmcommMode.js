@@ -193,7 +193,7 @@ class EmcommMode {
         if(connection == null){
             throw new Error(Connection.DISCONNECTED);
         }
-        return flood ? await connection.sendFloodAdvert() : await connection.sendZeroHopAdvert();
+        return await Connection.exclusive(() => flood ? connection.sendFloodAdvert() : connection.sendZeroHopAdvert());
     }
 
     /** True when a contact's age cannot be trusted, whichever way it is wrong. */
@@ -306,7 +306,7 @@ class EmcommMode {
                     // the library's own call, which waits for the device to
                     // acknowledge. Slower than firing and forgetting, and this is
                     // the path proven on the radios, so it stays
-                    await connection.removeContact(contact.publicKey);
+                    await Connection.withSettingTimeout("contact removal", () => connection.removeContact(contact.publicKey));
                 } catch(e) {
                     // left in the map, so the next pass tries again
                     continue;

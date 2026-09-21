@@ -81,11 +81,11 @@ export default {
     components: {DropDownMenuItem, DropDownMenu, IconButton},
     methods: {
         async sendZeroHopAdvert() {
-            await GlobalState.connection.sendZeroHopAdvert();
+            await Connection.sendZeroHopAdvert();
             alert("A zero hop advert has been sent.");
         },
         async sendFloodAdvert() {
-            await GlobalState.connection.sendFloodAdvert();
+            await Connection.sendFloodAdvert();
             alert("A flood routed advert has been sent.");
         },
         async disconnect() {

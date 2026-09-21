@@ -394,7 +394,7 @@ Convert anyway?`,
                 // everything is decided in one dialog rather than a chain of
                 // prompts: six confirmations under time pressure is how the wrong
                 // one gets accepted
-                this.convertCurrent = await GlobalState.connection.getSelfInfo();
+                this.convertCurrent = await Connection.exclusive(() => GlobalState.connection.getSelfInfo());
                 this.convertPlan = EmcommMode.planTrim(GlobalState.contacts);
                 this.backupProgress = null;
 

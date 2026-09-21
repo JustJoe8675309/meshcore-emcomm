@@ -53,7 +53,7 @@ class NodeBackup {
         const warnings = [];
 
         // fresh, not the copy cached at connect time
-        const selfInfo = await connection.getSelfInfo();
+        const selfInfo = await Connection.exclusive(() => connection.getSelfInfo());
 
         // re-read and merge until complete: over Bluetooth a single read has
         // come back up to 9% short, and this is the one place that must not be
@@ -120,7 +120,7 @@ class NodeBackup {
 
             let channel = null;
             try {
-                channel = await Utils.withTimeout(connection.getChannel(idx), 4000);
+                channel = await Connection.exclusive(() => connection.getChannel(idx), 4000);
             } catch(e) {
                 // an empty slot and an unreadable one look the same from here, so
                 // keep going rather than assuming the list has ended

@@ -37,6 +37,8 @@ function fakeRadio() {
         // the library gives up before a room several hops out can answer
         async sendCommandSendLogin(publicKey, password) {
             this.logins.push({ publicKey, password });
+            // the radio says it has sent the login, as it does before any room answers
+            setTimeout(() => this.emit(Constants.ResponseCodes.Sent, { estTimeout: 8000 }), 0);
         },
     };
 }
@@ -70,6 +72,7 @@ describe("Connection.loginToRoom", () => {
     beforeEach(() => {
         radio = fakeRadio();
         GlobalState.connection = radio;
+        Connection.commandQueue = Promise.resolve();
     });
 
     it("sends the password straight through to the radio", async () => {
