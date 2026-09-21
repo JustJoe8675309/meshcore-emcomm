@@ -390,6 +390,11 @@ hidden. That stops the phone timing out and locking itself. It cannot stop someb
 power button, and a browser without the feature, or one that refuses it, is named as such in the
 settings group rather than assumed to be working.
 
+Proven on the same phone, again with node 1 listening: the settings group reported the screen as
+kept on, the phone was left untouched for six minutes, well past its own timeout, and the screen
+stayed on. Node 1 heard six adverts out of six, 58 to 62 seconds apart, where the locked phone had
+fallen silent within a minute.
+
 **The status line says what actually went out.** Each kind shows when it last went out, or when
 the first is due, and turns amber once one is more than thirty seconds late, saying that a locked
 screen or a backgrounded app is the usual reason. Sends are recorded only once the radio has taken
