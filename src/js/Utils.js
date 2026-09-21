@@ -20,6 +20,29 @@ class Utils {
     }
 
     /**
+     * The bytes behind a hex string, as written by bytesToHex.
+     *
+     * Returns an empty array for anything that is not clean hex rather than
+     * guessing: a half decoded public key would be written to the device as a
+     * real one.
+     */
+    static hexToBytes(hex) {
+
+        const text = String(hex ?? "").trim();
+        if(text === "" || text.length % 2 !== 0 || !/^[0-9a-f]+$/i.test(text)){
+            return new Uint8Array(0);
+        }
+
+        const bytes = new Uint8Array(text.length / 2);
+        for(let i = 0; i < bytes.length; i++){
+            bytes[i] = parseInt(text.substr(i * 2, 2), 16);
+        }
+
+        return bytes;
+
+    }
+
+    /**
      * Copies text, and returns what happened rather than announcing it.
      *
      * A modal for a routine confirmation is a poor trade anywhere, and a bad one in

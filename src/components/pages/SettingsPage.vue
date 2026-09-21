@@ -81,6 +81,60 @@
                             </div>
                         </div>
 
+                        <!-- node backup. the way home for EMCOMM mode, so it says
+                             plainly what it holds and when it was taken -->
+                        <div class="w-full p-2 space-y-2">
+
+                            <button
+                                @click="backUpNow"
+                                :disabled="isBackingUp || isRestoring || notConnected"
+                                type="button"
+                                class="w-full text-white bg-blue-700 hover:bg-blue-800 disabled:bg-gray-400 font-medium rounded-lg text-sm px-5 py-2.5">{{ isBackingUp ? "Backing up..." : "Back up current info" }}</button>
+
+                            <button
+                                @click="restoreLatest"
+                                :disabled="isBackingUp || isRestoring || notConnected || backups.length === 0"
+                                type="button"
+                                class="w-full text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 disabled:opacity-60 font-medium rounded-lg text-sm px-5 py-2.5">
+                                <div>{{ isRestoring ? "Restoring..." : "Load last backup" }}</div>
+                                <div class="text-xs font-normal text-gray-500">{{ lastBackupLabel }}</div>
+                            </button>
+
+                            <div v-if="backups.length > 0" class="flex space-x-2">
+                                <button
+                                    @click="exportBackup"
+                                    type="button"
+                                    class="w-full text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 font-medium rounded-lg text-xs px-3 py-2">Save to file</button>
+                                <button
+                                    @click="$refs.backupFile.click()"
+                                    type="button"
+                                    class="w-full text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 font-medium rounded-lg text-xs px-3 py-2">Load from file</button>
+                            </div>
+                            <button
+                                v-else
+                                @click="$refs.backupFile.click()"
+                                type="button"
+                                class="w-full text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 font-medium rounded-lg text-xs px-3 py-2">Load from file</button>
+
+                            <input ref="backupFile" @change="importBackup" type="file" accept="application/json,.json" class="hidden">
+
+                            <div v-if="notConnected" role="status" class="text-xs text-red-600">
+                                No radio connected, so there is nothing to back up.
+                            </div>
+
+                            <div v-if="backupProgress" role="status" class="text-xs text-gray-600">{{ backupProgress }}</div>
+                            <div v-if="backupError" role="status" class="text-xs text-red-600">{{ backupError }}</div>
+                            <div v-if="backupMessage" role="status" class="text-xs text-green-700">{{ backupMessage }}</div>
+
+                            <div v-for="warning of backupWarnings" :key="warning" role="status" class="text-xs text-amber-700">{{ warning }}</div>
+
+                            <div class="text-xs text-gray-500">
+                                Holds contacts, channels and their secrets, and the radio settings. Restoring
+                                adds them back and removes nothing.
+                            </div>
+
+                        </div>
+
                     </div>
 
                     <!-- public info -->
@@ -227,6 +281,7 @@ import SaveButton from "../SaveButton.vue";
 import Page from "./Page.vue";
 import Utils from "../../js/Utils.js";
 import OperatorSettings from "../../js/reports/OperatorSettings.js";
+import NodeBackup from "../../js/NodeBackup.js";
 
 export default {
     name: 'SettingsPage',
@@ -243,12 +298,169 @@ export default {
             latitude: null,
             longitude: null,
             deviceInfo: null,
+            isBackingUp: false,
+            isRestoring: false,
+            backupProgress: null,
+            backupError: null,
+            backupMessage: null,
+            backupWarnings: [],
+            backups: [],
         };
     },
     mounted() {
         this.load();
+        this.refreshBackups();
     },
     methods: {
+
+        refreshBackups() {
+            const key = this.nodePublicKey;
+            this.backups = key == null ? [] : NodeBackup.list(key);
+        },
+
+        async backUpNow() {
+
+            this.isBackingUp = true;
+            this.backupError = null;
+            this.backupMessage = null;
+            this.backupWarnings = [];
+            this.backupProgress = "Reading the node...";
+
+            try {
+
+                const backup = await NodeBackup.capture();
+
+                // the latest slot only. the pre-EMCOMM slot is written when
+                // converting and never by this button, so routine use cannot
+                // replace the way home with whatever the node looks like now
+                if(!NodeBackup.save(backup, NodeBackup.SLOT_LATEST)){
+                    this.backupError = "The backup could not be saved in this browser. Save it to a file instead.";
+                } else {
+                    this.backupMessage = `Backed up ${backup.contacts.length} contacts and ${backup.channels.length} channels.`;
+                }
+
+                this.backupWarnings = backup.warnings;
+                this.refreshBackups();
+
+            } catch(e) {
+                this.backupError = this.describeBackupError(e);
+            } finally {
+                this.backupProgress = null;
+                this.isBackingUp = false;
+            }
+
+        },
+
+        async restoreLatest() {
+
+            const entry = this.backups[0];
+            if(entry == null){
+                return;
+            }
+
+            const when = new Date(entry.backup.capturedAt).toLocaleString();
+            if(!confirm(`Write the backup from ${when} back to this node?
+
+Settings, channels and ${entry.backup.contacts.length} contacts will be restored. Nothing will be removed.`)){
+                return;
+            }
+
+            await this.runRestore(entry.backup);
+
+        },
+
+        async runRestore(backup) {
+
+            this.isRestoring = true;
+            this.backupError = null;
+            this.backupMessage = null;
+            this.backupWarnings = [];
+
+            try {
+
+                const result = await NodeBackup.restore(backup, (p) => {
+                    this.backupProgress = `Restoring ${p.done} of ${p.total}: ${p.what}`;
+                });
+
+                this.backupMessage = `Restored ${backup.contacts.length} contacts and ${backup.channels.length} channels.`;
+
+                if(result.failures.length > 0){
+                    // named rather than counted: which one failed decides what to do
+                    this.backupWarnings = result.failures.map((f) => `${f.what} could not be restored: ${f.reason}`);
+                }
+
+                if(result.notInBackup.length > 0){
+                    this.backupWarnings.push(
+                        `${result.notInBackup.length} contact(s) on the node are not in this backup and were left alone: ${result.notInBackup.slice(0, 5).join(", ")}${result.notInBackup.length > 5 ? "..." : ""}`,
+                    );
+                }
+
+                await this.load();
+
+            } catch(e) {
+                this.backupError = this.describeBackupError(e);
+            } finally {
+                this.backupProgress = null;
+                this.isRestoring = false;
+            }
+
+        },
+
+        exportBackup() {
+            const entry = this.backups[0];
+            if(entry == null){
+                return;
+            }
+            const file = NodeBackup.toFile(entry.backup);
+            const url = URL.createObjectURL(new Blob([file.contents], { type: "application/json" }));
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = file.filename;
+            link.click();
+            URL.revokeObjectURL(url);
+        },
+
+        async importBackup(event) {
+
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if(file == null){
+                return;
+            }
+
+            this.backupError = null;
+            this.backupMessage = null;
+            this.backupWarnings = [];
+
+            try {
+
+                // checked against this node before it can be offered: writing
+                // another node's contacts and channels over this one would be both
+                // wrong and tedious to undo
+                const backup = NodeBackup.fromFile(await file.text(), this.nodePublicKey);
+                const when = new Date(backup.capturedAt).toLocaleString();
+
+                if(!confirm(`Restore the backup from ${when}?
+
+Settings, channels and ${backup.contacts.length} contacts will be written to this node. Nothing will be removed.`)){
+                    return;
+                }
+
+                await this.runRestore(backup);
+
+            } catch(e) {
+                this.backupError = String(e?.message ?? e);
+            }
+
+        },
+
+        describeBackupError(e) {
+            const reason = String(e?.message ?? e);
+            return reason === Connection.DISCONNECTED
+                ? "The radio disconnected, so nothing was read or written."
+                : reason;
+        },
+
 
         onOperatorCallsignInput(event) {
             OperatorSettings.setCallsign(event.target.value);
@@ -406,6 +618,25 @@ export default {
         },
     },
     computed: {
+
+        notConnected() {
+            return GlobalState.connection == null;
+        },
+
+        nodePublicKey() {
+            const key = GlobalState.selfInfo?.publicKey;
+            return key == null ? null : Utils.bytesToHex(key);
+        },
+
+        lastBackupLabel() {
+            const entry = this.backups[0];
+            if(entry == null){
+                return "No backup yet";
+            }
+            const when = new Date(entry.backup.capturedAt).toLocaleString();
+            return entry.slot === NodeBackup.SLOT_PRE_EMCOMM ? `${when} (before EMCOMM mode)` : when;
+        },
+
 
         operatorCallsign() {
             return OperatorSettings.state.callsign;
