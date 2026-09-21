@@ -320,6 +320,30 @@ directly reachable station as 128 hops away. `src/js/PathInfo.js` unpacks it, ap
 firmware's own validity test, and shows anything it cannot read as an unknown path with the
 raw value kept, rather than inventing a distance.
 
+### Repeating adverts
+
+An advert is how a node tells the mesh it exists. Both kinds are on the header menu as single
+presses, which is fine while somebody is watching the app. During a net nobody is, and a station
+that adverted once at sign-on drifts out of everybody's contact list as paths change around it.
+
+Two fields in the EMCOMM settings group take an interval in minutes, one per kind. Blank or zero
+means off. The schedule is stored per node, because it is a property of the station's role: a base
+running flood adverts hourly and a handheld running zero hop adverts every ten minutes are both
+reasonable and are not the same setting. It restarts when that node reconnects.
+
+Nothing is sent the moment the schedule is applied. An advert on every page load would put a burst
+on the air each time the app is reopened, which during testing is constantly, and the station has
+adverted at connect anyway.
+
+**The two kinds cost very different amounts of air.** A zero hop advert is heard only by stations
+in direct range and is repeated by nobody. A flood routed advert is rebroadcast by every repeater
+that hears it, so its cost is multiplied by the size of the mesh — running one every few minutes is
+how a single station drowns a net. Anything under an hour is called out in the form rather than
+blocked: the operator is licensed and it is their call, but they should make it knowingly.
+
+A missed advert is logged and not raised. The next one is along shortly and the radio may simply
+have been busy, so one refusal never silently ends the schedule.
+
 ### EMCOMM mode
 
 Turns a node that has been living on a busy mesh into one set up for an incident, with a way
@@ -358,9 +382,9 @@ Restoring adds everything back and removes nothing. Trimming is the mode's busin
 them apart means a restore can never lose anything by itself.
 
 An **EMCOMM Settings** group at the bottom of the settings page shows each setting the mode
-changes, with what it is now, so any of them can be set or put back by hand. Radio settings
-appear there but are not editable: they are the one change that can leave a node unable to hear
-anybody, and they should not sit beside the emergency controls.
+changes, with what it is now, so any of them can be set or put back by hand, and holds the
+repeating advert intervals. Radio settings are not repeated there: the groups above already show
+them in editable fields, and a second copy of a value is a second thing to disagree.
 
 #### What it cost to get right
 
@@ -372,6 +396,12 @@ every setting identical afterwards.
 | `getContacts` waits for an `EndOfContacts` frame with no timeout | A conversion that finished every removal and then hung for ever, on a radio answering everything else |
 | `loadChannels` falls back to default channels carrying no secrets | A backup that would have restored garbage over working channels |
 | `getChannels` stops at the first index it cannot read | One channel with an unusual key would silently truncate the list and take every later one with it |
+| Commands share one emitter and match replies by response code, not by request | The settings page stopped prefilling: the group's clock read and the page's self info read crossed, and every field came up empty |
+
+The last of those is the same shape as the rest and the worst of them, because it was silent and
+it lied: an empty Name box looks like a node with no name, and saving it would have written one.
+Device commands now go out one at a time, and a read that fails says so instead of leaving the
+form blank.
 
 The first of those is older than EMCOMM mode. `loadContacts` could always have hung at connect;
 re-reading for completeness simply gave it more chances.
@@ -616,7 +646,7 @@ timeout behind it, on a link that was otherwise working perfectly.
 npm test
 ```
 
-Six plain node suites and sixteen component suites, 287 tests in all, no hardware
+Six plain node suites and twenty-one component suites, 336 tests in all, no hardware
 required:
 
 - `test/report_encoder.test.mjs` covers rendering and packet splitting, including a

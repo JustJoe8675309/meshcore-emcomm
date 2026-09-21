@@ -124,6 +124,27 @@ being a variable.
       by UTF-8 decoding before they were saved and cannot be recovered, so check a
       post that arrives during the test rather than scrollback.
 
+### Settings, and repeating adverts
+
+- [ ] **Open settings on a connected node and look before touching anything.** Name,
+      frequency, bandwidth, spreading factor, coding rate, transmit power, latitude
+      and longitude must all be filled in with the radio's current values. Empty
+      fields are the fault, not the default: saving them writes the emptiness, and
+      an empty Name box looks exactly like a node that has no name.
+- [ ] **A failed read says so.** If the radio will not answer, the page must show the
+      warning above the fields rather than a form full of blanks.
+- [ ] **Set a zero hop advert interval of 1 minute and watch the other node.** The
+      advert should arrive about a minute later, not the moment Apply was pressed.
+      Nothing on the air at apply time is the point of the check.
+- [ ] **Clear the field and apply.** The schedule reads off, and nothing further
+      arrives at the other node.
+- [ ] **A flood interval under an hour raises the caution** and still lets you set it.
+- [ ] **Disconnect, and the timers stop.** They belong to the radio that was
+      connected, not to the browser tab.
+- [ ] **Reconnect, and the saved schedule starts again** without being re-entered.
+      Check it against the right node: the schedule is stored per node, and node 2's
+      intervals must not appear on node 1.
+
 ### EMCOMM mode
 
 Needs a node you can afford to change, and its backup on disk before you start.

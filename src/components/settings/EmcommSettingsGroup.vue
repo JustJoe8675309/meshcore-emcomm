@@ -13,6 +13,24 @@
             takes effect on the radio straight away; the groups above still edit the same values.
         </div>
 
+        <!-- automatic contacts -->
+        <div class="w-full p-2 space-y-1">
+            <div class="flex items-center justify-between">
+                <div class="text-sm font-medium text-gray-900">Add contacts automatically</div>
+                <div class="text-xs text-gray-500">{{ current.manualAddContacts === 1 ? "Off" : "On" }}</div>
+            </div>
+            <button
+                @click="toggleManualAdd"
+                :disabled="busy || notConnected"
+                type="button"
+                class="w-full text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 disabled:opacity-60 font-medium rounded-lg text-xs px-3 py-2">
+                {{ current.manualAddContacts === 1 ? "Turn on" : "Turn off" }}
+            </button>
+            <div class="text-xs text-gray-500">
+                Off keeps a trimmed list trimmed. On lets the node re-add every station it hears.
+            </div>
+        </div>
+
         <!-- transmit power -->
         <div class="w-full p-2 space-y-1">
             <div class="flex items-center justify-between">
@@ -60,37 +78,60 @@
                 class="w-full text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 disabled:opacity-60 font-medium rounded-lg text-xs px-3 py-2">Sync to this device</button>
         </div>
 
-        <!-- automatic contacts -->
-        <div class="w-full p-2 space-y-1">
-            <div class="flex items-center justify-between">
-                <div class="text-sm font-medium text-gray-900">Add contacts automatically</div>
-                <div class="text-xs text-gray-500">{{ current.manualAddContacts === 1 ? "Off" : "On" }}</div>
-            </div>
-            <button
-                @click="toggleManualAdd"
-                :disabled="busy || notConnected"
-                type="button"
-                class="w-full text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 disabled:opacity-60 font-medium rounded-lg text-xs px-3 py-2">
-                {{ current.manualAddContacts === 1 ? "Turn on" : "Turn off" }}
-            </button>
-            <div class="text-xs text-gray-500">
-                Off keeps a trimmed list trimmed. On lets the node re-add every station it hears.
-            </div>
-        </div>
+        <!-- repeating adverts -->
+        <div class="w-full p-2 space-y-2">
 
-        <!-- radio, shown but not edited here -->
-        <div class="w-full p-2 space-y-1">
-            <div class="text-sm font-medium text-gray-900">Radio</div>
-            <div class="text-xs text-gray-700 font-mono">
-                {{ current.radioFreq }} kHz &middot; BW {{ current.radioBw }} &middot; SF {{ current.radioSf }} &middot; CR {{ current.radioCr }}
+            <div class="flex items-center justify-between">
+                <div class="text-sm font-medium text-gray-900">Repeating adverts</div>
+                <div class="text-xs text-gray-500">{{ advertRunningLabel }}</div>
             </div>
-            <div class="text-xs" :class="[ onUsPreset ? 'text-gray-500' : 'text-amber-700' ]">
-                {{ onUsPreset ? "Matches the USA / Canada preset." : "Does not match the USA / Canada preset." }}
+
+            <div>
+                <label for="zero-hop-advert-minutes" class="block mb-1 text-xs font-medium text-gray-900">Zero hop advert, every</label>
+                <div class="flex items-center gap-2">
+                    <input
+                        id="zero-hop-advert-minutes"
+                        v-model="zeroHopMinutes"
+                        type="number"
+                        min="0"
+                        inputmode="numeric"
+                        placeholder="off"
+                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                    <span class="text-xs text-gray-500 shrink-0">minutes</span>
+                </div>
             </div>
+
+            <div>
+                <label for="flood-advert-minutes" class="block mb-1 text-xs font-medium text-gray-900">Flood routed advert, every</label>
+                <div class="flex items-center gap-2">
+                    <input
+                        id="flood-advert-minutes"
+                        v-model="floodMinutes"
+                        type="number"
+                        min="0"
+                        inputmode="numeric"
+                        placeholder="off"
+                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                    <span class="text-xs text-gray-500 shrink-0">minutes</span>
+                </div>
+            </div>
+
+            <div v-if="floodTooFast" role="status" class="text-xs text-amber-700">
+                Every repeater that hears a flood advert rebroadcasts it, so this one is paid for by
+                the whole mesh. Under {{ floodCautionMinutes }} minutes is worth a second thought.
+            </div>
+
+            <button
+                @click="saveAdvertSchedule"
+                :disabled="busy"
+                type="button"
+                class="w-full text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 disabled:opacity-60 font-medium rounded-lg text-xs px-3 py-2">Apply advert schedule</button>
+
             <div class="text-xs text-gray-500">
-                Changed in Radio Settings above, deliberately not here. This is the one setting that can
-                leave the node unable to hear anybody, and it should not sit beside the emergency controls.
+                Leave blank or set 0 to turn one off. Kept per node and restarted when it reconnects.
+                Nothing is sent the moment you apply: the first one goes out after a full interval.
             </div>
+
         </div>
 
         <div v-if="notConnected" role="status" class="p-2 text-xs text-red-600">
@@ -107,6 +148,7 @@
 import GlobalState from "../../js/GlobalState.js";
 import Connection from "../../js/Connection.js";
 import EmcommMode from "../../js/EmcommMode.js";
+import AdvertSchedule from "../../js/AdvertSchedule.js";
 import Utils from "../../js/Utils.js";
 
 export default {
@@ -117,16 +159,58 @@ export default {
             message: null,
             error: null,
             driftSeconds: null,
+            zeroHopMinutes: "",
+            floodMinutes: "",
         };
     },
     mounted() {
+        this.loadAdvertSchedule();
         this.readDrift();
     },
     methods: {
 
+        loadAdvertSchedule() {
+            const schedule = AdvertSchedule.get(this.nodePublicKey);
+            // zero means off, and an off field should read as empty rather than as
+            // a zero somebody might take for a real interval
+            this.zeroHopMinutes = schedule.zeroHopMinutes === 0 ? "" : String(schedule.zeroHopMinutes);
+            this.floodMinutes = schedule.floodMinutes === 0 ? "" : String(schedule.floodMinutes);
+        },
+
+        saveAdvertSchedule() {
+
+            this.message = null;
+            this.error = null;
+
+            const saved = AdvertSchedule.set(this.nodePublicKey, {
+                zeroHopMinutes: this.zeroHopMinutes,
+                floodMinutes: this.floodMinutes,
+            });
+
+            // read back what was stored, so a clamped or rejected value shows in the
+            // field rather than leaving the operator believing the number they typed
+            this.zeroHopMinutes = saved.zeroHopMinutes === 0 ? "" : String(saved.zeroHopMinutes);
+            this.floodMinutes = saved.floodMinutes === 0 ? "" : String(saved.floodMinutes);
+
+            AdvertSchedule.start(this.nodePublicKey);
+
+            const parts = [];
+            if(saved.zeroHopMinutes > 0){
+                parts.push(`zero hop every ${saved.zeroHopMinutes} min`);
+            }
+            if(saved.floodMinutes > 0){
+                parts.push(`flood every ${saved.floodMinutes} min`);
+            }
+
+            this.message = parts.length === 0
+                ? "Repeating adverts are off."
+                : `Adverts scheduled: ${parts.join(", ")}.`;
+
+        },
+
         async readDrift() {
             try {
-                const time = await GlobalState.connection?.getDeviceTime();
+                const time = await Connection.getDeviceTime();
                 this.driftSeconds = time == null ? null : Math.abs(Math.floor(Date.now() / 1000) - time.epochSecs);
             } catch(e) {
                 this.driftSeconds = null;
@@ -190,15 +274,34 @@ export default {
             return GlobalState.connection == null;
         },
 
-        inEmcommMode() {
+        nodePublicKey() {
             const key = GlobalState.selfInfo?.publicKey;
-            return key != null && EmcommMode.enteredAt(Utils.bytesToHex(key)) != null;
+            return key == null ? null : Utils.bytesToHex(key);
+        },
+
+        inEmcommMode() {
+            return this.nodePublicKey != null && EmcommMode.enteredAt(this.nodePublicKey) != null;
         },
 
         modeLabel() {
-            const key = GlobalState.selfInfo?.publicKey;
-            const at = key == null ? null : EmcommMode.enteredAt(Utils.bytesToHex(key));
+            const at = this.nodePublicKey == null ? null : EmcommMode.enteredAt(this.nodePublicKey);
             return at == null ? "Not in EMCOMM mode" : `In EMCOMM mode since ${new Date(at).toLocaleString()}`;
+        },
+
+        floodCautionMinutes() {
+            return AdvertSchedule.FLOOD_CAUTION_MINUTES;
+        },
+
+        floodTooFast() {
+            return AdvertSchedule.isFloodTooFast(this.floodMinutes);
+        },
+
+        advertRunningLabel() {
+            const running = AdvertSchedule.running();
+            if(running.length === 0){
+                return "Off";
+            }
+            return running.map((kind) => kind === "flood" ? "Flood" : "Zero hop").join(" and ") + " running";
         },
 
         positionLabel() {
@@ -217,10 +320,6 @@ export default {
                 return "Unknown";
             }
             return this.driftSeconds < 2 ? "In step" : `${this.driftSeconds}s out`;
-        },
-
-        onUsPreset() {
-            return EmcommMode.radioMatches(this.current, EmcommMode.US_PRESET);
         },
 
     },
