@@ -29,6 +29,17 @@ const globalState = reactive({
     // its first answer for ever. That one said "Off" while the radio adverted
     // every minute
     advertScheduleRunning: [],
+    // when each kind last actually went out, from this app, to the radio now
+    // connected. The running flag alone said "running" for ten minutes on a locked
+    // phone that sent nothing, so the ui shows this too
+    advertLastSent: { zeroHop: null, flood: null },
+    // when the current schedule was started, which is when the first one falls due
+    // from, and the minutes it was started with
+    advertStartedAt: null,
+    advertIntervals: { zeroHop: 0, flood: 0 },
+    // whether the screen is being kept on for the schedule: "none", "held",
+    // "waiting" (hidden, taken again on return), "unsupported" or "failed"
+    advertWakeLock: "none",
 });
 
 export default globalState;

@@ -156,6 +156,16 @@ being a variable.
 - [ ] **A flood interval under an hour raises the caution** and still lets you set it.
 - [ ] **Disconnect, and the timers stop.** They belong to the radio that was
       connected, not to the browser tab.
+- [ ] **On a phone, set a schedule and leave the phone alone.** The settings group
+      should say the screen is being kept on, and the screen should not time out.
+      Adverts should keep arriving at the other node for as long as it stays on.
+- [ ] **Then lock it with the power button for ten minutes.** Expect the adverts to stop
+      about a minute after locking; that is Android suspending the page, measured and
+      documented rather than a fault. On unlocking, the app should still be connected,
+      send one advert at once, and carry on without being touched. The status line
+      should show the gap: amber and overdue if you look before the catch-up send, and
+      the fresh last-sent time after it. Saying "running" with no overdue warning after
+      ten silent minutes is the fault.
 - [ ] **Reconnect, and the saved schedule starts again** without being re-entered.
       Check it against the right node: the schedule is stored per node, and node 2's
       intervals must not appear on node 1.

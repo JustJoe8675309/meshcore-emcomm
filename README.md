@@ -361,6 +361,41 @@ blocked: the operator is licensed and it is their call, but they should make it 
 A missed advert is logged and not raised. The next one is along shortly and the radio may simply
 have been busy, so one refusal never silently ends the schedule.
 
+**Proven on air, including in a background tab.** The schedule runs on a browser timer, and
+browsers slow the timers of pages nobody is looking at: Chrome throttles a tab hidden for more than
+five minutes to about one wake-up a minute. So it was tested hidden, with a second node listening
+and every frame timestamped at both ends. Node 2 over Bluetooth, on a one minute zero hop schedule
+with its tab hidden for sixteen minutes, sent sixteen adverts and node 1 heard all sixteen, each
+59 to 61 seconds after the last and about a second after it was sent. The eleven minutes past the
+throttling threshold looked no different from the first five, and the page was never frozen. The
+shortest interval the form accepts is one minute, which is already as coarse as the throttling,
+so on a desktop the schedule keeps time with the tab in the background.
+
+**A locked phone stops sending.** Tested the same way, with the phone on node 2 over Bluetooth and
+node 1 listening. With the screen on, one a minute to the second. Locked, one more went out a minute
+later and then nothing: nine missed in a row over the next nine minutes, while node 1 went on
+hearing everything else on the mesh. Android suspends the page. It does not drop the link: on
+unlocking, the app was still connected, sent one advert at once, and carried on at one a minute
+without being touched. The missed ones are not made up, and nothing on the screen admits they were
+missed, because the status line reports that a schedule is set, not that adverts are going out.
+
+So on a phone, repeating adverts need the app on screen. There is no fallback in the radio: the
+companion firmware has no advert timer of its own, only the commented out remains of one, so
+nothing but the app can keep a companion node adverting. Two things follow from that.
+
+**The screen is kept on while a schedule runs.** The page asks the browser for a screen wake lock
+whenever either interval is set, lets it go when the schedule stops or the radio disconnects, and
+takes it again when the page comes back into view, because browsers drop it whenever the page is
+hidden. That stops the phone timing out and locking itself. It cannot stop somebody pressing the
+power button, and a browser without the feature, or one that refuses it, is named as such in the
+settings group rather than assumed to be working.
+
+**The status line says what actually went out.** Each kind shows when it last went out, or when
+the first is due, and turns amber once one is more than thirty seconds late, saying that a locked
+screen or a backgrounded app is the usual reason. Sends are recorded only once the radio has taken
+them, and the times belong to the radio they went through, so connecting another radio starts
+them afresh.
+
 ### EMCOMM mode
 
 Turns a node that has been living on a busy mesh into one set up for an incident, with a way
@@ -676,7 +711,7 @@ timeout behind it, on a link that was otherwise working perfectly.
 npm test
 ```
 
-Six plain node suites and twenty-three component suites, 373 component tests, no hardware
+Six plain node suites and twenty-four component suites, 394 component tests, no hardware
 required:
 
 - `test/report_encoder.test.mjs` covers rendering and packet splitting, including a

@@ -44,6 +44,17 @@ class AdvertSchedule {
     // second set of them and double the transmit rate
     static timers = {};
 
+    // the node the last-sent times belong to; a different radio starts afresh
+    static node = null;
+
+    // the screen wake lock held while a schedule runs, if the browser gives one
+    static wakeLock = null;
+
+    // how late an advert may be before the ui calls it overdue. Sends land a second
+    // or two after the minute on the bench; this is generous so a slow radio does
+    // not raise a false alarm
+    static OVERDUE_GRACE_MILLIS = 30000;
+
     /**
      * Reads a minute count the way a text field hands it over.
      *
@@ -140,6 +151,9 @@ class AdvertSchedule {
             await Connection.exclusive(() => kind === "flood"
                 ? connection.sendFloodAdvert()
                 : connection.sendZeroHopAdvert());
+            // recorded only on success: this is what the operator reads to know the
+            // schedule is really transmitting
+            GlobalState.advertLastSent = { ...GlobalState.advertLastSent, [kind]: Date.now() };
             return true;
         } catch(e) {
             // a missed advert is not worth interrupting the operator over: the next
@@ -161,7 +175,15 @@ class AdvertSchedule {
 
         this.stop();
 
+        // the times belong to the radio they were sent through
+        if(this.node !== nodePublicKeyHex){
+            this.node = nodePublicKeyHex;
+            GlobalState.advertLastSent = { zeroHop: null, flood: null };
+        }
+
         const schedule = this.get(nodePublicKeyHex);
+        GlobalState.advertStartedAt = Date.now();
+        GlobalState.advertIntervals = { zeroHop: schedule.zeroHopMinutes, flood: schedule.floodMinutes };
 
         for(const kind of KINDS){
 
@@ -179,6 +201,10 @@ class AdvertSchedule {
 
         this.publishRunning();
 
+        if(this.running().length > 0){
+            this.holdScreen();
+        }
+
         return schedule;
 
     }
@@ -190,6 +216,111 @@ class AdvertSchedule {
             delete this.timers[kind];
         }
         this.publishRunning();
+        this.releaseScreen();
+    }
+
+    /**
+     * When the next advert of a kind is due, or null if that kind is off.
+     *
+     * Counted from whichever is later, the last send or the start: applying a
+     * schedule restarts the timer, so the first one after that is a full interval
+     * from the press.
+     */
+    static nextDue(kind) {
+        const minutes = GlobalState.advertIntervals?.[kind] ?? 0;
+        if(minutes <= 0 || !this.running().includes(kind)){
+            return null;
+        }
+        const from = Math.max(GlobalState.advertLastSent?.[kind] ?? 0, GlobalState.advertStartedAt ?? 0);
+        return from + minutes * 60 * 1000;
+    }
+
+    /**
+     * True when a running kind has missed its time by more than the grace.
+     *
+     * On the bench a locked phone stopped sending a minute after locking and the
+     * status line went on saying the schedule was running. This is the part that
+     * says it is not.
+     */
+    static isOverdue(kind, now = Date.now()) {
+        const due = this.nextDue(kind);
+        return due != null && now > due + this.OVERDUE_GRACE_MILLIS;
+    }
+
+    /**
+     * Asks the browser to keep the screen on while a schedule runs.
+     *
+     * A phone that locks suspends the page, and with it the timer: measured, it
+     * stopped sending a minute after locking and missed nine in a row. The
+     * companion firmware has no advert timer of its own to fall back on, so the
+     * page staying awake is the only thing that keeps a phone adverting. This
+     * stops the screen timing out; it cannot stop somebody pressing the power
+     * button, which the status line then reports as overdue.
+     *
+     * Browsers drop the lock whenever the page is hidden, so it is taken again
+     * when the page comes back.
+     */
+    static async holdScreen() {
+
+        this.listenForReturn();
+
+        if(this.wakeLock != null){
+            return;
+        }
+
+        if(typeof navigator === "undefined" || !navigator.wakeLock){
+            GlobalState.advertWakeLock = "unsupported";
+            return;
+        }
+
+        if(document.visibilityState !== "visible"){
+            GlobalState.advertWakeLock = "waiting";
+            return;
+        }
+
+        try {
+            const lock = await navigator.wakeLock.request("screen");
+            // the schedule may have been stopped while the request was out
+            if(this.running().length === 0){
+                await lock.release();
+                return;
+            }
+            this.wakeLock = lock;
+            GlobalState.advertWakeLock = "held";
+            lock.addEventListener("release", () => {
+                if(this.wakeLock === lock){
+                    this.wakeLock = null;
+                    GlobalState.advertWakeLock = this.running().length > 0 ? "waiting" : "none";
+                }
+            });
+        } catch(e) {
+            // refused, which a browser may do on low battery or by policy
+            console.log("could not keep the screen on", e);
+            GlobalState.advertWakeLock = "failed";
+        }
+
+    }
+
+    static releaseScreen() {
+        const lock = this.wakeLock;
+        this.wakeLock = null;
+        GlobalState.advertWakeLock = "none";
+        if(lock != null){
+            lock.release().catch(() => {});
+        }
+    }
+
+    // takes the lock again when the page comes back into view. Registered once
+    static listenForReturn() {
+        if(this.listening || typeof document === "undefined"){
+            return;
+        }
+        this.listening = true;
+        document.addEventListener("visibilitychange", () => {
+            if(document.visibilityState === "visible" && this.running().length > 0){
+                this.holdScreen();
+            }
+        });
     }
 
     /** Mirrors the live timers into reactive state, for the ui to read. */

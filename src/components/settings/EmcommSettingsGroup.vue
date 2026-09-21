@@ -86,6 +86,16 @@
                 <div class="text-xs text-gray-500">{{ advertRunningLabel }}</div>
             </div>
 
+            <!-- what has actually gone out, not only what is set: a locked phone
+                 stopped sending and this line alone went on saying running -->
+            <div v-for="line of advertProgress" :key="line.kind" class="text-xs" :class="[ line.overdue ? 'text-amber-700' : 'text-gray-500' ]" :role="line.overdue ? 'status' : null">
+                {{ line.text }}
+            </div>
+
+            <div v-if="wakeLockNote" class="text-xs" :class="[ wakeLockNote.warn ? 'text-amber-700' : 'text-gray-500' ]">
+                {{ wakeLockNote.text }}
+            </div>
+
             <div>
                 <label for="zero-hop-advert-minutes" class="block mb-1 text-xs font-medium text-gray-900">Zero hop advert, every</label>
                 <div class="flex items-center gap-2">
@@ -161,11 +171,18 @@ export default {
             driftSeconds: null,
             zeroHopMinutes: "",
             floodMinutes: "",
+            // ticks so last-sent and overdue stay current while the page is open
+            now: Date.now(),
+            ticker: null,
         };
     },
     mounted() {
         this.loadAdvertSchedule();
         this.readDrift();
+        this.ticker = setInterval(() => { this.now = Date.now(); }, 5000);
+    },
+    beforeUnmount() {
+        clearInterval(this.ticker);
     },
     methods: {
 
@@ -305,6 +322,57 @@ export default {
                 return "Off";
             }
             return running.map((kind) => kind === "flood" ? "Flood" : "Zero hop").join(" and ") + " running";
+        },
+
+        advertProgress() {
+
+            const lines = [];
+            const time = (t) => new Date(t).toLocaleTimeString();
+
+            for(const kind of GlobalState.advertScheduleRunning){
+
+                const label = kind === "flood" ? "Flood" : "Zero hop";
+                const last = GlobalState.advertLastSent?.[kind] ?? null;
+                const due = AdvertSchedule.nextDue(kind);
+
+                if(AdvertSchedule.isOverdue(kind, this.now)){
+                    lines.push({
+                        kind,
+                        overdue: true,
+                        text: last == null
+                            ? `${label}: overdue, none sent since ${time(GlobalState.advertStartedAt)}. A locked screen or a backgrounded app stops adverts until it is back on screen.`
+                            : `${label}: overdue, last sent ${time(last)}. A locked screen or a backgrounded app stops adverts until it is back on screen.`,
+                    });
+                    continue;
+                }
+
+                lines.push({
+                    kind,
+                    overdue: false,
+                    text: last == null
+                        ? `${label}: first due ${due == null ? "soon" : time(due)}`
+                        : `${label}: last sent ${time(last)}`,
+                });
+
+            }
+
+            return lines;
+
+        },
+
+        wakeLockNote() {
+            switch(GlobalState.advertWakeLock){
+                case "held":
+                    return { warn: false, text: "The screen is kept on while adverts are scheduled. Pressing the power button still stops them." };
+                case "waiting":
+                    return { warn: false, text: "The screen will be kept on again when the app is back in view." };
+                case "unsupported":
+                    return { warn: true, text: "This browser cannot keep the screen on. On a phone, adverts stop when the screen locks." };
+                case "failed":
+                    return { warn: true, text: "The browser refused to keep the screen on. On a phone, adverts stop when the screen locks." };
+                default:
+                    return null;
+            }
         },
 
         positionLabel() {
