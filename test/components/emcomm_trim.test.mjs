@@ -364,3 +364,39 @@ describe("applying the settings", () => {
     });
 
 });
+
+describe("remembering whether a node is in EMCOMM mode", () => {
+
+    const NODE_A = "aaaa";
+    const NODE_B = "bbbb";
+
+    beforeEach(() => window.localStorage.clear());
+
+    it("says nothing for a node that was never converted", () => {
+        expect(EmcommMode.enteredAt(NODE_A)).toBe(null);
+    });
+
+    it("remembers when a node entered", () => {
+        EmcommMode.markEntered(NODE_A, 1700000000000);
+        expect(EmcommMode.enteredAt(NODE_A)).toBe(1700000000000);
+    });
+
+    it("keeps each node's state to itself", () => {
+        // connecting a different radio must not show the last one's state
+        EmcommMode.markEntered(NODE_A);
+        expect(EmcommMode.enteredAt(NODE_B)).toBe(null);
+    });
+
+    it("forgets when a node is put back", () => {
+        EmcommMode.markEntered(NODE_A);
+        EmcommMode.markLeft(NODE_A);
+        expect(EmcommMode.enteredAt(NODE_A)).toBe(null);
+    });
+
+    it("treats a corrupted value as not in the mode", () => {
+        // rather than showing a badge dated to the Invalid Date
+        window.localStorage.setItem("emcomm_mode:aaaa", "not a number");
+        expect(EmcommMode.enteredAt(NODE_A)).toBe(null);
+    });
+
+});

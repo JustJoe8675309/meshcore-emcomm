@@ -33,6 +33,9 @@ const FUTURE_TOLERANCE_SECONDS = DAY_SECONDS;
 // how many times to go back for contacts the device did not remove
 const MAX_REMOVE_PASSES = 3;
 
+// mode state lives per node, keyed on its public key
+const MODE_STATE_PREFIX = "emcomm_mode";
+
 class EmcommMode {
 
     static get QUIET_DAYS() {
@@ -130,6 +133,43 @@ class EmcommMode {
 
         return { applied: applied, failures: failures };
 
+    }
+
+    /**
+     * Whether a node is in EMCOMM mode, and since when.
+     *
+     * Kept per node, keyed on its public key: connecting a different radio must
+     * not show the state of the last one. Held in this browser rather than on the
+     * device, because the device has nowhere to put it, so a node converted from
+     * another machine will read as not in the mode here. That is worth knowing
+     * but not worth lying about, so the state says when it was set and nothing
+     * more.
+     */
+    static markEntered(nodePublicKeyHex, at = Date.now()) {
+        try {
+            window.localStorage.setItem(`${MODE_STATE_PREFIX}:${nodePublicKeyHex}`, String(at));
+        } catch(e) {
+            console.log("could not record emcomm mode state", e);
+        }
+    }
+
+    static markLeft(nodePublicKeyHex) {
+        try {
+            window.localStorage.removeItem(`${MODE_STATE_PREFIX}:${nodePublicKeyHex}`);
+        } catch(e) {
+            console.log("could not clear emcomm mode state", e);
+        }
+    }
+
+    /** When the node entered EMCOMM mode, or null if it is not in it. */
+    static enteredAt(nodePublicKeyHex) {
+        try {
+            const raw = window.localStorage.getItem(`${MODE_STATE_PREFIX}:${nodePublicKeyHex}`);
+            const at = raw == null ? NaN : Number(raw);
+            return Number.isFinite(at) ? at : null;
+        } catch(e) {
+            return null;
+        }
     }
 
     /** Sets whether the node adds contacts by itself. Done last, after discovery. */

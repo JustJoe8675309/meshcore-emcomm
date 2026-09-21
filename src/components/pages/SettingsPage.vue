@@ -233,6 +233,8 @@
 
                     </div>
 
+                    <EmcommSettingsGroup/>
+
                     <!-- commands -->
                     <div class="flex flex-col divide-y bg-white">
 
@@ -303,10 +305,11 @@ import OperatorSettings from "../../js/reports/OperatorSettings.js";
 import NodeBackup from "../../js/NodeBackup.js";
 import EmcommMode from "../../js/EmcommMode.js";
 import EmcommConvertDialog from "../settings/EmcommConvertDialog.vue";
+import EmcommSettingsGroup from "../settings/EmcommSettingsGroup.vue";
 
 export default {
     name: 'SettingsPage',
-    components: {Page, SaveButton, AppBar, EmcommConvertDialog},
+    components: {Page, SaveButton, AppBar, EmcommConvertDialog, EmcommSettingsGroup},
     data() {
         return {
             isSaving: false,
@@ -454,6 +457,13 @@ Convert anyway?`,
                 }
 
                 await this.load();
+
+                // recorded only now, after the node really changed, so the badge
+                // never claims a mode the radio is not in
+                if(this.nodePublicKey != null){
+                    EmcommMode.markEntered(this.nodePublicKey);
+                }
+
                 this.backupMessage = "Removed " + result.removed + " contacts. " + GlobalState.contacts.length + " remain.";
 
                 if(plan.keptForUnreadableAge > 0){
@@ -529,7 +539,7 @@ Settings, channels and ${entry.backup.contacts.length} contacts will be restored
                 return;
             }
 
-            await this.runRestore(entry.backup);
+            await this.runRestore({ ...entry.backup, slot: entry.slot });
 
         },
 
@@ -560,6 +570,13 @@ Settings, channels and ${entry.backup.contacts.length} contacts will be restored
                 }
 
                 await this.load();
+
+                // putting the node back is how it leaves the mode. only the
+                // pre-EMCOMM backup means that: restoring an ordinary one is just
+                // a restore, and may well have been taken while in the mode
+                if(this.nodePublicKey != null && backup.slot === NodeBackup.SLOT_PRE_EMCOMM){
+                    EmcommMode.markLeft(this.nodePublicKey);
+                }
 
             } catch(e) {
                 this.backupError = this.describeBackupError(e);
