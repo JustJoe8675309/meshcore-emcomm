@@ -258,6 +258,72 @@ class Connection {
 
     }
 
+    /**
+     * One read of the contact list, bounded.
+     *
+     * `getContacts` in meshcore.js collects contacts until an `EndOfContacts`
+     * frame arrives and waits for it with no timeout at all, so a dropped end
+     * marker leaves the promise pending for ever. On Bluetooth that happened
+     * mid way through an EMCOMM conversion: every contact had arrived, the end
+     * marker had not, and the app sat waiting on a radio that was answering
+     * everything else perfectly.
+     *
+     * So the frames are collected here instead. A read that never sees its end
+     * marker returns what it did get, and the caller's merge loop asks again,
+     * which is what it was already built to do for dropped contacts.
+     */
+    static async readContactsOnce(connection) {
+
+        const contacts = new Map();
+        let ended = false;
+
+        const onContact = (contact) => contacts.set(Utils.bytesToHex(contact.publicKey), contact);
+        const onEnd = () => ended = true;
+
+        connection.on(Constants.ResponseCodes.Contact, onContact);
+        connection.on(Constants.ResponseCodes.EndOfContacts, onEnd);
+
+        try {
+
+            await connection.sendCommandGetContacts();
+
+            const deadline = Date.now() + this.CONTACT_READ_TIMEOUT_MILLIS;
+            let lastCount = -1;
+            let quietSince = Date.now();
+
+            while(!ended && Date.now() < deadline){
+
+                await Utils.sleep(this.CONTACT_READ_POLL_MILLIS);
+
+                // finish early when the frames have stopped coming: without the
+                // end marker there is nothing else to wait for, and holding the
+                // full timeout on every pass would make a lossy link crawl
+                if(contacts.size !== lastCount){
+                    lastCount = contacts.size;
+                    quietSince = Date.now();
+                } else if(contacts.size > 0 && Date.now() - quietSince > this.CONTACT_READ_QUIET_MILLIS){
+                    break;
+                }
+
+            }
+
+        } finally {
+            connection.off(Constants.ResponseCodes.Contact, onContact);
+            connection.off(Constants.ResponseCodes.EndOfContacts, onEnd);
+        }
+
+        return [...contacts.values()];
+
+    }
+
+    // how long one contact read may take before it is abandoned and asked again
+    static CONTACT_READ_TIMEOUT_MILLIS = 20000;
+    static CONTACT_READ_POLL_MILLIS = 100;
+
+    // how long without a new contact counts as the list having finished, when the
+    // end marker never arrived
+    static CONTACT_READ_QUIET_MILLIS = 1500;
+
     static async loadContacts() {
 
         const connection = GlobalState.connection;
@@ -304,7 +370,7 @@ class Connection {
             for(let attempt = 0; attempt < this.MAX_CONTACT_LOAD_PASSES; attempt++){
 
                 const before = byPublicKey.size;
-                for(const contact of await connection.getContacts()){
+                for(const contact of await this.readContactsOnce(connection)){
                     byPublicKey.set(Utils.bytesToHex(contact.publicKey), contact);
                 }
                 passes++;

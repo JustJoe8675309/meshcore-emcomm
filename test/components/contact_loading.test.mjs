@@ -24,22 +24,26 @@ function contact(n) {
  * A radio holding `total` contacts that only delivers some of them each read.
  * `drops` lists which indexes to withhold on each successive pass.
  */
-function fakeRadio(total, drops = []) {
+function fakeRadio(total, drops = [], { dropEndMarkerOnPass = [] } = {}) {
     const all = Array.from({ length: total }, (_, i) => contact(i));
     let pass = 0;
     const listeners = {};
+    const emit = (code, value) => (listeners[code] ?? []).slice().forEach((cb) => cb(value));
     return {
         passes: 0,
         on(event, cb) { (listeners[event] ??= []).push(cb); },
         off(event, cb) { listeners[event] = (listeners[event] ?? []).filter((f) => f !== cb); },
-        async getContacts() {
-            // ResponseCodes.ContactsStart is 2: the device always announces the
-            // true total, however many it then manages to deliver
-            (listeners[2] ?? []).forEach((cb) => cb({ count: total }));
-            const withheld = new Set(drops[pass] ?? []);
-            pass++;
+        // the app sends the command and collects the frames itself, because the
+        // library waits for an end marker that Bluetooth sometimes drops
+        async sendCommandGetContacts() {
+            const thisPass = pass++;
             this.passes = pass;
-            return all.filter((_, i) => !withheld.has(i));
+            emit(2, { count: total });                       // ContactsStart
+            const withheld = new Set(drops[thisPass] ?? []);
+            all.filter((_, i) => !withheld.has(i)).forEach((c) => emit(3, c));
+            if(!dropEndMarkerOnPass.includes(thisPass)){
+                emit(4, {});                                 // EndOfContacts
+            }
         },
     };
 }
@@ -129,18 +133,39 @@ describe("loading contacts from a lossy link", () => {
         expect(GlobalState.contactsMissing).toBe(2);
     });
 
+    it("finishes a read whose end marker never arrived", async () => {
+        // getContacts in meshcore.js waits for EndOfContacts with no timeout, so
+        // a dropped end marker left the app waiting for ever on a radio that was
+        // answering everything else. It happened mid way through a conversion.
+        const radio = fakeRadio(10, [], { dropEndMarkerOnPass: [0] });
+        GlobalState.connection = radio;
+
+        await Connection.loadContacts();
+
+        expect(GlobalState.contacts).toHaveLength(10);
+        expect(GlobalState.contactsMissing).toBe(0);
+    }, 30000);
+
     it("reads once when the device never says how many to expect", async () => {
-        const radio = fakeRadio(10);
-        // a device that sends no ContactsStart leaves nothing to compare against
-        radio.getContacts = async function() {
-            this.passes = (this.passes ?? 0) + 1;
-            return [contact(0), contact(1)];
+        // older firmware sends no ContactsStart, leaving nothing to compare
+        // against, so there is no basis for asking again
+        const listeners = {};
+        const radio = {
+            passes: 0,
+            on(event, cb) { (listeners[event] ??= []).push(cb); },
+            off(event, cb) { listeners[event] = (listeners[event] ?? []).filter((f) => f !== cb); },
+            async sendCommandGetContacts() {
+                this.passes++;
+                (listeners[3] ?? []).forEach((cb) => { cb(contact(0)); cb(contact(1)); });
+                (listeners[4] ?? []).forEach((cb) => cb({}));
+            },
         };
         GlobalState.connection = radio;
 
         await Connection.loadContacts();
 
         expect(radio.passes).toBe(1);
+        expect(GlobalState.contacts).toHaveLength(2);
         expect(GlobalState.contactsAnnounced).toBe(null);
         expect(GlobalState.contactsMissing).toBe(0);
     });
