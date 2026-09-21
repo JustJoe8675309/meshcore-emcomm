@@ -133,6 +133,18 @@
                                 adds them back and removes nothing.
                             </div>
 
+                            <button
+                                @click="convertToEmcomm"
+                                :disabled="isBackingUp || isRestoring || isConverting || notConnected"
+                                type="button"
+                                class="w-full text-white bg-amber-700 hover:bg-amber-800 disabled:bg-gray-400 font-medium rounded-lg text-sm px-5 py-2.5">{{ isConverting ? "Converting..." : "Convert to EMCOMM mode" }}</button>
+
+                            <div class="text-xs text-gray-500">
+                                Clears companions and drops repeaters and rooms not heard in
+                                {{ quietDays }} days. Takes its own backup first, kept separately from the one
+                                above so routine backups cannot overwrite the way back.
+                            </div>
+
                         </div>
 
                     </div>
@@ -282,6 +294,7 @@ import Page from "./Page.vue";
 import Utils from "../../js/Utils.js";
 import OperatorSettings from "../../js/reports/OperatorSettings.js";
 import NodeBackup from "../../js/NodeBackup.js";
+import EmcommMode from "../../js/EmcommMode.js";
 
 export default {
     name: 'SettingsPage',
@@ -300,6 +313,7 @@ export default {
             deviceInfo: null,
             isBackingUp: false,
             isRestoring: false,
+            isConverting: false,
             backupProgress: null,
             backupError: null,
             backupMessage: null,
@@ -316,6 +330,102 @@ export default {
         refreshBackups() {
             const key = this.nodePublicKey;
             this.backups = key == null ? [] : NodeBackup.list(key);
+        },
+
+        async convertToEmcomm() {
+
+            this.backupError = null;
+            this.backupMessage = null;
+            this.backupWarnings = [];
+
+            try {
+
+                // the way home first, into its own slot. a backup taken here is
+                // never overwritten by the ordinary backup button
+                this.isConverting = true;
+                this.backupProgress = "Backing up before any change...";
+
+                const backup = await NodeBackup.capture();
+                const saved = NodeBackup.save(backup, NodeBackup.SLOT_PRE_EMCOMM);
+
+                if(!saved){
+                    this.backupError = "The backup could not be saved, so nothing was changed. Save one to a file first.";
+                    return;
+                }
+
+                // an incomplete read is the operator's call, not the app's, but it
+                // is shown with real numbers rather than a shrug
+                if(backup.warnings.length > 0){
+                    const proceed = confirm(
+                        `${backup.warnings.join(" ")}
+
+Anything missing from the backup cannot be restored afterwards.
+
+Convert anyway?`,
+                    );
+                    if(!proceed){
+                        this.backupWarnings = backup.warnings;
+                        this.backupMessage = "Nothing was changed. The backup was kept.";
+                        this.refreshBackups();
+                        return;
+                    }
+                }
+
+                const plan = EmcommMode.planTrim(GlobalState.contacts);
+                const counts = plan.counts;
+
+                const proceed = confirm(
+                    `Remove ${plan.remove.length} contacts from this node?
+
+`
+                    + `${counts.companions} companions (all of them)
+`
+                    + `${counts.repeaters} repeaters quiet for over ${EmcommMode.QUIET_DAYS} days
+`
+                    + `${counts.rooms} rooms quiet for over ${EmcommMode.QUIET_DAYS} days
+
+`
+                    + `${plan.keep.length} contacts will be kept.
+
+`
+                    + `A backup was taken first, so this can be undone.`,
+                );
+
+                if(!proceed){
+                    this.backupMessage = "Nothing was changed. The backup was kept.";
+                    this.refreshBackups();
+                    return;
+                }
+
+                const result = await EmcommMode.trim(plan, (p) => {
+                    this.backupProgress = `Removing ${p.done} of ${p.total}${p.pass > 1 ? ` (retry ${p.pass - 1})` : ""}: ${p.what}`;
+                });
+
+                this.backupMessage = `Removed ${result.removed} contacts. ${GlobalState.contacts.length} remain.`;
+
+                if(plan.keptForUnreadableAge > 0){
+                    this.backupWarnings.push(
+                        `${plan.keptForUnreadableAge} kept because their last heard time could not be read. `
+                        + "That time comes from the other node's clock, so it is not always trustworthy.",
+                    );
+                }
+
+                if(result.notRemoved.length > 0){
+                    this.backupWarnings.push(
+                        `${result.notRemoved.length} could not be removed: ${result.notRemoved.slice(0, 5).join(", ")}`
+                        + `${result.notRemoved.length > 5 ? "..." : ""}`,
+                    );
+                }
+
+                this.refreshBackups();
+
+            } catch(e) {
+                this.backupError = this.describeBackupError(e);
+            } finally {
+                this.backupProgress = null;
+                this.isConverting = false;
+            }
+
         },
 
         async backUpNow() {
@@ -621,6 +731,10 @@ Settings, channels and ${backup.contacts.length} contacts will be written to thi
 
         notConnected() {
             return GlobalState.connection == null;
+        },
+
+        quietDays() {
+            return EmcommMode.QUIET_DAYS;
         },
 
         nodePublicKey() {
