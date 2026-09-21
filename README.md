@@ -659,7 +659,7 @@ timeout behind it, on a link that was otherwise working perfectly.
 npm test
 ```
 
-Six plain node suites and twenty-one component suites, 353 component tests, no hardware
+Six plain node suites and twenty-two component suites, 359 component tests, no hardware
 required:
 
 - `test/report_encoder.test.mjs` covers rendering and packet splitting, including a

@@ -133,6 +133,11 @@ being a variable.
       an empty Name box looks exactly like a node that has no name.
 - [ ] **A failed read says so.** If the radio will not answer, the page must show the
       warning above the fields rather than a form full of blanks.
+- [ ] **A slow read says so too, and Save waits for it.** Over Bluetooth, open settings
+      straight after an advert arrives from the other node. The read queues behind
+      the contact reload that advert set off, which took several seconds on the
+      bench. The page must say it is reading, with Save greyed out, and then fill in.
+      Empty fields and a live Save button is the fault.
 - [ ] **No collisions on Bluetooth.** Over a Bluetooth session that connects, opens
       settings, runs a repeating advert and receives adverts from the other node, the
       browser console must show no `GATT operation already in progress`. Before the

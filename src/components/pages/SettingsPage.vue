@@ -11,7 +11,7 @@
         <!-- app bar -->
         <AppBar title="Settings">
             <template v-slot:trailing>
-                <SaveButton @click="save" :is-saving="isSaving"/>
+                <SaveButton @click="save" :is-saving="isSaving" :disabled="!canSave"/>
             </template>
         </AppBar>
 
@@ -160,6 +160,13 @@
                          them would write the emptiness to the radio -->
                     <div v-if="loadError" role="status" class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg m-2 p-2">
                         {{ loadError }}
+                    </div>
+
+                    <!-- the read waits its turn behind whatever else the radio is
+                         doing, which after an advert can be a few seconds of
+                         contact reload. Say so, rather than show empty fields -->
+                    <div v-else-if="isLoading" role="status" class="bg-blue-50 border border-blue-200 text-blue-800 text-sm rounded-lg m-2 p-2">
+                        Reading settings from the radio. Save is off until they have loaded.
                     </div>
 
                     <!-- public info -->
@@ -329,6 +336,10 @@ export default {
             longitude: null,
             deviceInfo: null,
             loadError: null,
+            // a read of the radio's settings is in flight
+            isLoading: false,
+            // the fields hold values the radio gave us, rather than blanks
+            hasLoaded: false,
             isBackingUp: false,
             isRestoring: false,
             isConverting: false,
@@ -665,6 +676,7 @@ Settings, channels and ${backup.contacts.length} contacts will be written to thi
         async load() {
 
             this.loadError = null;
+            this.isLoading = true;
 
             try {
                 await Connection.loadSelfInfo();
@@ -672,12 +684,14 @@ Settings, channels and ${backup.contacts.length} contacts will be written to thi
                 // every field below is filled from self info, so a failure here used
                 // to leave the whole page blank with nothing said. An empty Name box
                 // looks like a node with no name, and saving it would write one.
-                this.loadError = "Could not read the current settings from the radio, so the fields below are empty. Do not save until they have loaded.";
+                this.loadError = this.hasLoaded
+                    ? "Could not re-read the settings from the radio. The fields show what was last read, which may no longer be current, so Save is off."
+                    : "Could not read the current settings from the radio, so the fields below are empty. Save is off until they have loaded.";
+                this.hasLoaded = false;
+                this.isLoading = false;
                 console.log(e);
                 return;
             }
-
-            await this.loadDeviceInfo();
 
             this.name = GlobalState.selfInfo.name;
 
@@ -695,6 +709,13 @@ Settings, channels and ${backup.contacts.length} contacts will be written to thi
             this.latitude = GlobalState.selfInfo.advLat / 1000000;
             this.longitude = GlobalState.selfInfo.advLon / 1000000;
 
+            this.hasLoaded = true;
+            this.isLoading = false;
+
+            // after the fields, not before: the firmware details are one more turn
+            // in the queue, and nothing above waits on them
+            await this.loadDeviceInfo();
+
         },
         async loadDeviceInfo() {
             try {
@@ -704,6 +725,12 @@ Settings, channels and ${backup.contacts.length} contacts will be written to thi
             }
         },
         async save() {
+
+            // the button is disabled too; this covers anything that reaches save
+            // another way. Blank fields would be written to the radio as blanks
+            if(!this.canSave){
+                return;
+            }
 
             // show loading
             this.isSaving = true;
@@ -818,6 +845,9 @@ Settings, channels and ${backup.contacts.length} contacts will be written to thi
         },
     },
     computed: {
+        canSave() {
+            return this.hasLoaded && !this.isLoading && !this.isSaving;
+        },
 
         notConnected() {
             return GlobalState.connection == null;
