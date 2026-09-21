@@ -31,6 +31,8 @@ function mountHeader() {
 const hasConnectButton = (wrapper) => wrapper.findAll("a.router-link")
     .some((link) => link.text().trim() === "Connect");
 
+const hasDisconnectButton = (wrapper) => wrapper.text().includes("Disconnect");
+
 describe("Header connect button", () => {
 
     beforeEach(() => {
@@ -58,7 +60,38 @@ describe("Header connect button", () => {
     it("is hidden while connected, where Disconnect belongs instead", () => {
         GlobalState.connection = {};
         GlobalState.contacts = [{ publicKey: new Uint8Array(32), advName: "KJ5HBN" }];
-        expect(hasConnectButton(mountHeader())).toBe(false);
+        const wrapper = mountHeader();
+        expect(hasConnectButton(wrapper)).toBe(false);
+        expect(hasDisconnectButton(wrapper)).toBe(true);
+    });
+
+});
+
+describe("Header disconnect button", () => {
+
+    beforeEach(() => {
+        GlobalState.connection = null;
+        GlobalState.selfInfo = null;
+        GlobalState.contacts = [];
+        GlobalState.channels = [];
+    });
+
+    it("is offered while connected", () => {
+        GlobalState.connection = {};
+        expect(hasDisconnectButton(mountHeader())).toBe(true);
+    });
+
+    it("is not offered on a fresh disconnected app", () => {
+        // hiding the connect button must not hand its place to the connected
+        // controls: the header said "Not connected" and offered Disconnect
+        expect(hasDisconnectButton(mountHeader())).toBe(false);
+    });
+
+    it("is not offered when disconnected with contacts cached", () => {
+        GlobalState.contacts = [{ publicKey: new Uint8Array(32), advName: "KJ5HBN" }];
+        const wrapper = mountHeader();
+        expect(hasConnectButton(wrapper)).toBe(true);
+        expect(hasDisconnectButton(wrapper)).toBe(false);
     });
 
 });

@@ -30,8 +30,11 @@
                 </div>
             </RouterLink>
 
-            <!-- action buttons -->
-            <div v-else class="flex space-x-1">
+            <!-- action buttons. keyed on the connection, not on the absence of the
+                 connect button: with neither a connection nor anything cached,
+                 neither belongs, and a v-else here offered Disconnect on an app
+                 that plainly said it was not connected -->
+            <div v-else-if="GlobalState.connection != null" class="flex space-x-1">
                 <DropDownMenu>
                     <template v-slot:button>
                         <button type="button" class="my-auto bg-gray-500 text-white px-2 py-1 p-1 rounded shadow hover:bg-gray-400">
