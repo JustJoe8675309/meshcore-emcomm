@@ -28,7 +28,7 @@ the hand written frames should be deleted rather than maintained.
 | ----- | ------ |
 | Tests and build | six node suites, the component suites, a production build |
 | meshcore.js | installed version, a newer release, `AdvType.Repeater`, whether control data is still unimplemented |
-| Firmware | `CMD_SEND_CONTROL_DATA`, `PUSH_CODE_CONTROL_DATA`, `DISCOVER_REQ`, `DISCOVER_RESP`, `MAX_TEXT_LEN`, the path length packing, `OUT_PATH_UNKNOWN`, `MAX_PATH_SIZE` |
+| Firmware | `CMD_SEND_CONTROL_DATA`, `PUSH_CODE_CONTROL_DATA`, `CMD_GET_CONTACT_BY_KEY`, `PUSH_CODE_CONTACT_DELETED`, `DISCOVER_REQ`, `DISCOVER_RESP`, `MAX_TEXT_LEN`, the path length packing, `OUT_PATH_UNKNOWN`, `MAX_PATH_SIZE` |
 | Upstream | commits in `liamcottle/meshcore-web` not in this fork |
 | Deployment | the live build matches the local one, the worker is stamped and precaches this build, the tree is clean, everything is pushed |
 | Database | every field a schema declares is copied by its insert, and the version keeps pace with its migrations |
@@ -133,11 +133,15 @@ being a variable.
       an empty Name box looks exactly like a node that has no name.
 - [ ] **A failed read says so.** If the radio will not answer, the page must show the
       warning above the fields rather than a form full of blanks.
-- [ ] **A slow read says so too, and Save waits for it.** Over Bluetooth, open settings
-      straight after an advert arrives from the other node. The read queues behind
-      the contact reload that advert set off, which took several seconds on the
-      bench. The page must say it is reading, with Save greyed out, and then fill in.
-      Empty fields and a live Save button is the fault.
+- [ ] **A slow read says so too, and Save waits for it.** If the radio is busy, the
+      page must say it is reading, with Save greyed out, and then fill in. Empty
+      fields and a live Save button is the fault.
+- [ ] **An advert updates one contact, not the list.** Over Bluetooth, open settings
+      straight after an advert arrives from the other node. It should fill within
+      about a second. Before the one-contact fetch it waited out a full re-read of
+      the list, twelve seconds on the bench with 161 contacts. The console should not
+      print `contacts: ... after 2 passes` for an advert; that line means the full
+      read ran, which is only right at connect or as the fallback.
 - [ ] **No collisions on Bluetooth.** Over a Bluetooth session that connects, opens
       settings, runs a repeating advert and receives adverts from the other node, the
       browser console must show no `GATT operation already in progress`. Before the

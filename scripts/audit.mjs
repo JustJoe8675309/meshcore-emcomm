@@ -123,6 +123,18 @@ section("Assumptions about the MeshCore firmware");
                 why: "discovery replies are recognised by this push code",
             },
             {
+                name: "CMD_GET_CONTACT_BY_KEY is 30",
+                path: "examples/companion_radio/MyMesh.cpp",
+                pattern: /#define\s+CMD_GET_CONTACT_BY_KEY\s+30\b/,
+                why: "an advert fetches just that contact with this command; renumbered, every advert falls back to a full re-read of the list",
+            },
+            {
+                name: "PUSH_CODE_CONTACT_DELETED is 0x8F",
+                path: "examples/companion_radio/MyMesh.cpp",
+                pattern: /#define\s+PUSH_CODE_CONTACT_DELETED\s+0x8F\b/i,
+                why: "contacts the radio evicts are removed from the list on this push; missed, they stay listed for good",
+            },
+            {
                 name: "DISCOVER_REQ is 0x80",
                 path: "examples/simple_repeater/MyMesh.cpp",
                 pattern: /#define\s+CTL_TYPE_NODE_DISCOVER_REQ\s+0x80\b/i,

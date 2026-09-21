@@ -314,6 +314,23 @@ transmission, so it costs no airtime, and merging passes by public key converged
 in two or three. A link that loses nothing still pays for exactly one pass, and a shortfall
 that cannot be made up is reported rather than quietly settled for.
 
+**After that, one contact at a time.** Every advert the radio heard used to re-read the whole
+list: on the bench, 211 contacts and 2.8 seconds over serial, or 161 contacts read twice over
+Bluetooth, for one station's update. Once device commands took turns, everything else waited
+behind that read, and the settings page sat empty for twelve seconds after an advert arrived.
+The notification names the contact, and the firmware has a command `meshcore.js` does not
+implement, `CMD_GET_CONTACT_BY_KEY`, that returns just that one. Captured on the radio: the
+contact in 21 ms, and `ERR` not found in 9 ms for a key it does not hold.
+
+What the firmware sends was read from its source and confirmed on the radio, and it is not what
+the library's naming suggests. A station the radio has just added arrives as a plain advert,
+key only, not as a new-advert notice: that one carries a full record, but only for stations the
+radio chose not to keep. An eviction to make room arrives as its own notice, which the library
+does not parse and which the full re-read used to cover without anyone noticing; it is now
+handled, or evicted contacts would stay in the list for good. If the radio will not answer the
+one-contact request, on older firmware or with a dropped reply, the app falls back to the full
+read.
+
 **A contact's path length is not a hop count.** The firmware packs the hop count into the low
 six bits and the path hash size into the top two, so reading the byte as a number reported a
 directly reachable station as 128 hops away. `src/js/PathInfo.js` unpacks it, applies the
@@ -659,7 +676,7 @@ timeout behind it, on a link that was otherwise working perfectly.
 npm test
 ```
 
-Six plain node suites and twenty-two component suites, 359 component tests, no hardware
+Six plain node suites and twenty-three component suites, 373 component tests, no hardware
 required:
 
 - `test/report_encoder.test.mjs` covers rendering and packet splitting, including a

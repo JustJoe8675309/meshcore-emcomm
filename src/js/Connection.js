@@ -197,19 +197,8 @@ class Connection {
             onDatabaseReady();
         });
 
-        // listen for adverts
-        GlobalState.connection.on(Constants.PushCodes.Advert, async () => {
-            console.log("Advert");
-            await databaseToBeReady;
-            await this.loadContacts();
-        });
-
-        // listen for path updates
-        GlobalState.connection.on(Constants.PushCodes.PathUpdated, async (event) => {
-            console.log("PathUpdated", event);
-            await databaseToBeReady;
-            await this.loadContacts();
-        });
+        // adverts, path changes and evictions, each updating the one contact
+        this.listenForContactChanges(GlobalState.connection, databaseToBeReady);
 
         // listen for new message available event
         GlobalState.connection.on(Constants.PushCodes.MsgWaiting, async () => {
@@ -336,6 +325,145 @@ class Connection {
 
         return [...contacts.values()];
 
+    }
+
+    /**
+     * Keeps the contact list current as the radio reports changes to it.
+     *
+     * Every advert the radio hears from a contact, and every path change, used to
+     * re-read the entire list. On the bench that was 161 contacts, read twice over
+     * Bluetooth because the first pass drops some, for one station's update. Once
+     * device commands took turns, everything else waited behind it: the settings
+     * page sat empty for twelve seconds after an advert arrived. On a busy mesh
+     * during a net, adverts come often enough to keep the queue occupied.
+     *
+     * The notifications name the contact, so only that contact is fetched. What
+     * the firmware sends, from its source and confirmed on the radio:
+     *
+     *   0x80  an advert from a contact the radio holds, including one it has just
+     *         added. Public key only.
+     *   0x81  the path to a contact changed. Public key only.
+     *   0x8F  the radio evicted its oldest contact to make room. Public key only.
+     *   0x8A  heard a station but did not add it (manual add, hop limit, or full).
+     *         Not in the radio's list, so not in ours either; ignored as before.
+     *
+     * The eviction was invisible until now because the next full read dropped it.
+     * With single updates nothing would, so it is removed here.
+     */
+    static listenForContactChanges(connection, ready = Promise.resolve()) {
+
+        connection.on(Constants.PushCodes.Advert, async (event) => {
+            console.log("Advert");
+            await ready;
+            await this.refreshContact(event.publicKey);
+        });
+
+        connection.on(Constants.PushCodes.PathUpdated, async (event) => {
+            console.log("PathUpdated", event);
+            await ready;
+            await this.refreshContact(event.publicKey);
+        });
+
+        // not parsed by meshcore.js, so read off the raw frame
+        connection.on("rx", async (frame) => {
+            const bytes = new Uint8Array(frame);
+            if(bytes[0] === this.PUSH_CONTACT_DELETED && bytes.length >= 33){
+                await ready;
+                this.forgetContact(bytes.slice(1, 33));
+            }
+        });
+
+    }
+
+    // CMD_GET_CONTACT_BY_KEY: [30, public key x 32], answered with one contact
+    // frame, or ERR not found. Not in meshcore.js
+    static CMD_GET_CONTACT_BY_KEY = 30;
+    static PUSH_CONTACT_DELETED = 0x8F;
+
+    /**
+     * Fetches one contact from the radio and puts it in the list.
+     *
+     * Measured on the radio: 21 milliseconds, against the several seconds of a
+     * full read. If the radio will not answer it, whether on older firmware
+     * without the command, with a dropped reply, or for a contact it no longer
+     * holds, this falls back to the full read, which is slow but always right.
+     */
+    static async refreshContact(publicKey) {
+
+        const connection = GlobalState.connection;
+        if(connection == null){
+            return;
+        }
+
+        const key = new Uint8Array(publicKey);
+
+        let reply = null;
+        try {
+            reply = await this.sendAwaiting(
+                connection,
+                () => connection.sendToRadioFrame(new Uint8Array([this.CMD_GET_CONTACT_BY_KEY, ...key])),
+                [Constants.ResponseCodes.Contact, Constants.ResponseCodes.Err],
+            );
+        } catch(e) {
+            console.log("could not fetch one contact", e);
+        }
+
+        const contact = reply?.code === Constants.ResponseCodes.Contact ? reply.data : null;
+
+        // the key check is belt and braces: the queue means no other contact frame
+        // can be in flight, but merging the wrong record over a contact would be
+        // silent, and the full read costs nothing but time
+        if(contact == null || !Utils.isUint8ArrayEqual(new Uint8Array(contact.publicKey), key)){
+            await this.loadContacts();
+            return;
+        }
+
+        this.mergeContact(contact);
+
+    }
+
+    /** Replaces a contact in the list, or adds it if this is the first we have. */
+    static mergeContact(contact) {
+
+        const hex = Utils.bytesToHex(contact.publicKey);
+        const contacts = [...GlobalState.contacts];
+        const index = contacts.findIndex((c) => Utils.bytesToHex(c.publicKey) === hex);
+
+        if(index >= 0){
+            contacts[index] = contact;
+        } else {
+            contacts.push(contact);
+            // the radio's own total went up by one, so the missing count stays true
+            if(GlobalState.contactsAnnounced != null){
+                GlobalState.contactsAnnounced += 1;
+            }
+        }
+
+        GlobalState.contacts = contacts;
+        this.updateContactsMissing();
+
+    }
+
+    /** Takes a contact the radio has evicted out of the list. */
+    static forgetContact(publicKey) {
+
+        const hex = Utils.bytesToHex(publicKey);
+        GlobalState.contacts = GlobalState.contacts.filter((c) => Utils.bytesToHex(c.publicKey) !== hex);
+
+        // the radio's total dropped whether or not we had it: it may have been one
+        // of the contacts a lossy read never delivered
+        if(GlobalState.contactsAnnounced != null){
+            GlobalState.contactsAnnounced = Math.max(0, GlobalState.contactsAnnounced - 1);
+        }
+
+        this.updateContactsMissing();
+
+    }
+
+    static updateContactsMissing() {
+        GlobalState.contactsMissing = GlobalState.contactsAnnounced == null
+            ? 0
+            : Math.max(0, GlobalState.contactsAnnounced - GlobalState.contacts.length);
     }
 
     // how long one contact read may take before it is abandoned and asked again
