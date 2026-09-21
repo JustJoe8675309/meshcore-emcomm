@@ -133,7 +133,7 @@ export default {
             }
         },
 
-        async run(what, action) {
+        async run(what, action, doneMessage = null) {
 
             this.busy = true;
             this.message = null;
@@ -143,7 +143,7 @@ export default {
                 await action();
                 // read back rather than assume: the device owns these values
                 await Connection.loadSelfInfo();
-                this.message = `${what} done.`;
+                this.message = doneMessage ?? `${what} done.`;
             } catch(e) {
                 const reason = String(e?.message ?? e);
                 this.error = reason === Connection.DISCONNECTED
@@ -173,8 +173,9 @@ export default {
         toggleManualAdd() {
             const turningOff = this.current.manualAddContacts !== 1;
             return this.run(
-                turningOff ? "Automatic contacts off" : "Automatic contacts on",
+                "Automatic contacts",
                 () => EmcommMode.setManualAddContacts(turningOff),
+                turningOff ? "Contacts are no longer added automatically." : "Contacts are added automatically again.",
             );
         },
 
