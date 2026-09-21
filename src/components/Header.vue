@@ -23,8 +23,8 @@
         </div>
         <div class="my-auto flex font-semibold">
 
-            <!-- connect button -->
-            <RouterLink v-if="GlobalState.connection == null" :to="{ name: 'connect' }">
+            <!-- connect button, only when it goes somewhere -->
+            <RouterLink v-if="showConnectButton" :to="{ name: 'connect' }">
                 <div class="bg-blue-500 text-white px-2 py-1 rounded shadow hover:bg-blue-400">
                     Connect
                 </div>
@@ -93,6 +93,26 @@ export default {
         GlobalState() {
             return GlobalState;
         },
+
+        /**
+         * Whether the Connect button is worth showing.
+         *
+         * A disconnected node with nothing cached already puts the Bluetooth and
+         * Serial buttons in the middle of the page, and this button only links to
+         * another copy of them. Pressing it looked like it did nothing, because
+         * near enough nothing is what it did.
+         *
+         * With contacts or channels cached the page shows those lists instead, and
+         * then this is the only way back to the connect screen. So it appears only
+         * in the case where it leads somewhere the operator cannot already see.
+         */
+        showConnectButton() {
+            if(GlobalState.connection != null){
+                return false;
+            }
+            return GlobalState.contacts.length > 0 || GlobalState.channels.length > 0;
+        },
+
     },
 }
 </script>
