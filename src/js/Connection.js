@@ -6,6 +6,7 @@ import NotificationUtils from "./NotificationUtils.js";
 import Position from "./reports/Position.js";
 import ContactFlags from "./ContactFlags.js";
 import SignedPosts from "./SignedPosts.js";
+import AdvertSchedule from "./AdvertSchedule.js";
 import { Advert } from "@liamcottle/meshcore.js";
 
 class Connection {
@@ -142,6 +143,9 @@ class Connection {
         GlobalState.roomLogins = {};
         SignedPosts.forget();
 
+        // repeating adverts belong to the radio that was connected, not to the app
+        AdvertSchedule.stop();
+
         // clear previous connection timers
         clearInterval(GlobalState.batteryPercentageInterval);
         GlobalState.batteryPercentageInterval = null;
@@ -225,6 +229,10 @@ class Connection {
         await this.loadSelfInfo();
         await this.syncDeviceTime();
 
+        // started once self info is in, because the schedule is stored per node and
+        // until now we did not know which node this is
+        AdvertSchedule.start(Utils.bytesToHex(GlobalState.selfInfo.publicKey));
+
         // wait for database to be ready
         await databaseToBeReady;
 
@@ -251,7 +259,7 @@ class Connection {
 
     static async loadSelfInfo() {
 
-        GlobalState.selfInfo = await GlobalState.connection.getSelfInfo(this.CONNECTION_TIMEOUT_MILLIS);
+        GlobalState.selfInfo = await this.exclusive(() => GlobalState.connection.getSelfInfo(this.CONNECTION_TIMEOUT_MILLIS));
 
         // device answered, so the watchdog no longer needs to fire
         this.clearConnectionWatchdog();
@@ -459,8 +467,46 @@ class Connection {
         }
     }
 
+    /**
+     * The tail of the queue of device commands. Never rejects.
+     */
+    static commandQueue = Promise.resolve();
+
+    /**
+     * Runs one device command at a time.
+     *
+     * Every command in `meshcore.js` sends its bytes and then registers a
+     * `once()` listener for the response code it expects, on one emitter shared
+     * by the whole connection. Nothing ties a reply to the command that asked for
+     * it. Two commands in flight and the first `Err` or `Ok` to arrive is taken by
+     * whichever listener was registered first, which may be the other command's.
+     *
+     * The settings page hit exactly that: the EMCOMM group reads the clock as it
+     * mounts, the page reads self info a moment later, and the answers crossed,
+     * leaving every field on the page empty. Sending one at a time costs a little
+     * latency on a page that issues a handful of commands, and removes the race.
+     *
+     * A failed command must not poison the queue, so the chain is kept on a
+     * separate promise that always resolves.
+     */
+    static async exclusive(fn) {
+        const run = this.commandQueue.then(fn);
+        this.commandQueue = run.catch(() => {});
+        return await run;
+    }
+
     static async deviceQuery(appTargetVer = 1) {
-        return await GlobalState.connection.deviceQuery(appTargetVer);
+        return await this.exclusive(() => GlobalState.connection.deviceQuery(appTargetVer));
+    }
+
+    /**
+     * The device's own clock, or null if it will not say.
+     *
+     * Queued with everything else: this is what the EMCOMM settings group reads
+     * while the settings page is reading self info.
+     */
+    static async getDeviceTime() {
+        return await this.exclusive(() => GlobalState.connection.getDeviceTime());
     }
 
     /**
@@ -526,7 +572,7 @@ class Connection {
 
     static async syncDeviceTime() {
         const timestamp = Math.floor(Date.now() / 1000);
-        await GlobalState.connection.sendCommandSetDeviceTime(timestamp);
+        await this.exclusive(() => GlobalState.connection.sendCommandSetDeviceTime(timestamp));
     }
 
     static async resetContactPath(publicKey) {

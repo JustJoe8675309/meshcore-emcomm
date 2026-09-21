@@ -156,6 +156,12 @@
 
                     </div>
 
+                    <!-- the fields below are empty rather than current, and saving
+                         them would write the emptiness to the radio -->
+                    <div v-if="loadError" role="status" class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg m-2 p-2">
+                        {{ loadError }}
+                    </div>
+
                     <!-- public info -->
                     <div class="bg-white divide-y">
 
@@ -322,6 +328,7 @@ export default {
             latitude: null,
             longitude: null,
             deviceInfo: null,
+            loadError: null,
             isBackingUp: false,
             isRestoring: false,
             isConverting: false,
@@ -657,7 +664,19 @@ Settings, channels and ${backup.contacts.length} contacts will be written to thi
 
         async load() {
 
-            await Connection.loadSelfInfo();
+            this.loadError = null;
+
+            try {
+                await Connection.loadSelfInfo();
+            } catch(e) {
+                // every field below is filled from self info, so a failure here used
+                // to leave the whole page blank with nothing said. An empty Name box
+                // looks like a node with no name, and saving it would write one.
+                this.loadError = "Could not read the current settings from the radio, so the fields below are empty. Do not save until they have loaded.";
+                console.log(e);
+                return;
+            }
+
             await this.loadDeviceInfo();
 
             this.name = GlobalState.selfInfo.name;
