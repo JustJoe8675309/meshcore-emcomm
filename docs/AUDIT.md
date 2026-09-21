@@ -31,6 +31,7 @@ the hand written frames should be deleted rather than maintained.
 | Firmware | `CMD_SEND_CONTROL_DATA`, `PUSH_CODE_CONTROL_DATA`, `DISCOVER_REQ`, `DISCOVER_RESP`, `MAX_TEXT_LEN`, the path length packing, `OUT_PATH_UNKNOWN`, `MAX_PATH_SIZE` |
 | Upstream | commits in `liamcottle/meshcore-web` not in this fork |
 | Deployment | the live build matches the local one, the worker is stamped and precaches this build, the tree is clean, everything is pushed |
+| Database | every field a schema declares is copied by its insert, and the version keeps pace with its migrations |
 
 Network checks are skipped rather than failed when offline, so an audit in the field
 still tells you whether the app works.
@@ -122,6 +123,45 @@ being a variable.
       mojibake. Rows stored before that fix keep theirs: the bytes were destroyed
       by UTF-8 decoding before they were saved and cannot be recovered, so check a
       post that arrives during the test rather than scrollback.
+
+### EMCOMM mode
+
+Needs a node you can afford to change, and its backup on disk before you start.
+Everything here deletes or rewrites something on the radio, so the order matters:
+the way home is proven first, and only then is anything removed.
+
+Do this on **Bluetooth** if you have the choice. Serial hides the faults: every
+one found so far came from a dropped frame, and the link that drops them is BLE.
+
+- [ ] **Back up, and check what is in it.** Contacts and channels both counted,
+      no warnings. Then **Save to file** and open the file: it should carry the
+      channel secrets, distinct per channel and not zeroed. A backup that quietly
+      holds the fallback channel list looks fine until it is restored.
+- [ ] **Restore without converting.** Nothing should change, nothing should be
+      removed, and the settings should match afterwards. This is the way home, so
+      it is proven before anything needs it.
+- [ ] **Read the plan before agreeing to it.** The dialog states what will go, by
+      kind, and how many are kept only because their age could not be read. On the
+      bench that last number was 19 of 191, about 10%, which is worth noticing: if
+      it reads zero on a node with a large list, suspect the check rather than the
+      clocks.
+- [ ] **Convert.** Watch that the radio row says *No change* when the node is
+      already on the right settings. Nothing should be written that would not
+      change anything.
+- [ ] **A node without GPS refuses the position** and says why. It must never
+      write 0, 0, which formats perfectly well and points at the Gulf of Guinea.
+- [ ] **Check the radio afterwards, not the screen.** Name, contact counts by
+      type, clock drift, automatic contacts. The app reporting success is not the
+      same as the device agreeing.
+- [ ] **Restore from the pre-EMCOMM slot.** Contact counts by type back to what
+      they were, name back, no setting different, nothing missing from the backup.
+      The mode badge should go back to saying the node is not in EMCOMM mode.
+- [ ] **The two slots stay apart.** Backing up while converted must not overwrite
+      the pre-EMCOMM one. If it does, the way home is gone at the moment it is
+      least recoverable.
+
+Expect a conversion to take a couple of minutes over Bluetooth. Removals run at
+roughly a third the speed of writes, so the trim is the slow half.
 
 ### Offline
 

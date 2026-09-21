@@ -320,6 +320,66 @@ directly reachable station as 128 hops away. `src/js/PathInfo.js` unpacks it, ap
 firmware's own validity test, and shows anything it cannot read as an unknown path with the
 raw value kept, rather than inventing a distance.
 
+### EMCOMM mode
+
+Turns a node that has been living on a busy mesh into one set up for an incident, with a way
+back. Three buttons under Emcomm in settings: back up, restore, and convert. The decisions and
+their reasoning are in [docs/EMCOMM-MODE.md](docs/EMCOMM-MODE.md).
+
+**Converting** clears every companion, drops repeaters and rooms quiet for more than 90 days,
+sets the node name, transmit power, position and clock, optionally checks the radio settings,
+then announces the station and looks for repeaters. It is decided in one dialog rather than a
+chain of prompts, because six confirmations under time pressure is how the wrong one gets
+accepted.
+
+Companions go entirely because a person's node re-adds itself the moment it adverts. Repeaters
+and rooms are kept on an age rule because they do not come back so easily: discovery finds
+repeaters only at zero hops, and cannot find a room at all.
+
+**A contact whose age cannot be read is kept.** `lastAdvert` is the advertising node's own
+clock, not when this node heard it, and on the bench a contact claimed an advert about four
+years in the future. On a 265 contact node, 19 of 191 repeaters and rooms had timestamps that
+could not be trusted — about 10%. Deleting a working repeater over a wrong clock costs routing
+during an incident; keeping a dead one costs a line in a list.
+
+**Radio settings default to the USA/Canada preset** — 910.525 MHz, BW 62.5, SF 7, CR 5 — behind
+a dialog showing the current values beside the new ones, with every field editable. That is the
+only preset MeshCore publishes; the FAQ says the rest live in the phone client and the web
+flasher, and a guessed frequency is both an off mesh problem and a licensing one. The dialog
+says plainly that changing them takes the node off the mesh of anyone still on the old settings.
+
+**Backups** live in two slots per node: a protected pre-EMCOMM one written only when converting,
+and a latest one written by the button. Otherwise pressing backup while already converted would
+replace the way home with the stripped configuration it was meant to undo. They can be written
+to and read from a file, which is the copy that survives clearing site data, and a file is
+checked against the connected node before it can be restored.
+
+Restoring adds everything back and removes nothing. Trimming is the mode's business, and keeping
+them apart means a restore can never lose anything by itself.
+
+An **EMCOMM Settings** group at the bottom of the settings page shows each setting the mode
+changes, with what it is now, so any of them can be set or put back by hand. Radio settings
+appear there but are not editable: they are the one change that can leave a node unable to hear
+anybody, and they should not sit beside the emergency controls.
+
+#### What it cost to get right
+
+Proven on both radios and both transports: 265 contacts to 155 and back, 211 to 134 and back,
+every setting identical afterwards.
+
+| Fault | What the operator saw |
+| ----- | --------------------- |
+| `getContacts` waits for an `EndOfContacts` frame with no timeout | A conversion that finished every removal and then hung for ever, on a radio answering everything else |
+| `loadChannels` falls back to default channels carrying no secrets | A backup that would have restored garbage over working channels |
+| `getChannels` stops at the first index it cannot read | One channel with an unusual key would silently truncate the list and take every later one with it |
+
+The first of those is older than EMCOMM mode. `loadContacts` could always have hung at connect;
+re-reading for completeness simply gave it more chances.
+
+**Timing, measured.** Over serial: backup 5s, restore of 229 writes 18s. Over Bluetooth: backup
+6s, restore of 286 writes 64s, and 110 removals 67s. Removals run about a third the speed of
+writes, so trimming is the slow half, not restoring.
+
 ### Room servers
 
 Rooms appear in the contacts tab beside people, with their own icon, and open the same
@@ -546,13 +606,17 @@ from a reading of the protocol passed while the feature did nothing.
 What worked, and is worth repeating: capture the frame the radio actually sent, put those
 bytes in the test, and reason from them.
 
+EMCOMM mode added three more, all in reading from the radio rather than writing to it, and all
+found on hardware rather than in a suite. The worst waited for a frame that never came, with no
+timeout behind it, on a link that was otherwise working perfectly.
+
 ## Tests
 
 ```bash
 npm test
 ```
 
-Six plain node suites and fourteen component suites, 222 tests in all, no hardware
+Six plain node suites and sixteen component suites, 287 tests in all, no hardware
 required:
 
 - `test/report_encoder.test.mjs` covers rendering and packet splitting, including a
