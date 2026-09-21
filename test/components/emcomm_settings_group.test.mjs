@@ -100,6 +100,33 @@ describe("EmcommSettingsGroup advert schedule", () => {
         expect(wrapper.text()).toContain("flood every 90 min");
     });
 
+    it("says what is running, instead of reporting off while it transmits", async () => {
+        // the label read the timers directly, which are not reactive, so the
+        // computed cached "Off" on first render and never recomputed. On the bench
+        // it said Off while the radio adverted every minute
+        const wrapper = mountGroup();
+        expect(wrapper.text()).toContain("Off");
+
+        await wrapper.find("#zero-hop-advert-minutes").setValue("1");
+        await wrapper.vm.saveAdvertSchedule();
+        await wrapper.vm.$nextTick();
+
+        expect(wrapper.text()).toContain("Zero hop running");
+    });
+
+    it("goes back to off once the schedule is cleared", async () => {
+        const wrapper = mountGroup();
+        await wrapper.find("#zero-hop-advert-minutes").setValue("1");
+        await wrapper.vm.saveAdvertSchedule();
+        await wrapper.vm.$nextTick();
+
+        await wrapper.find("#zero-hop-advert-minutes").setValue("");
+        await wrapper.vm.saveAdvertSchedule();
+        await wrapper.vm.$nextTick();
+
+        expect(wrapper.text()).not.toContain("Zero hop running");
+    });
+
     it("says plainly when both are off rather than claiming a schedule", async () => {
         const wrapper = mountGroup();
         await wrapper.vm.saveAdvertSchedule();

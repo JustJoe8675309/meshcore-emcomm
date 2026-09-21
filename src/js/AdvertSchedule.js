@@ -177,6 +177,8 @@ class AdvertSchedule {
 
         }
 
+        this.publishRunning();
+
         return schedule;
 
     }
@@ -187,6 +189,12 @@ class AdvertSchedule {
             clearInterval(this.timers[kind]);
             delete this.timers[kind];
         }
+        this.publishRunning();
+    }
+
+    /** Mirrors the live timers into reactive state, for the ui to read. */
+    static publishRunning() {
+        GlobalState.advertScheduleRunning = KINDS.filter((kind) => this.timers[kind] != null);
     }
 
     /** Which kinds are currently running, for the ui to report honestly. */

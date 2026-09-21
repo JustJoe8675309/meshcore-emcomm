@@ -297,7 +297,10 @@ export default {
         },
 
         advertRunningLabel() {
-            const running = AdvertSchedule.running();
+            // read from reactive state rather than from the timers themselves: a
+            // computed with no reactive dependency never recomputes, and this one
+            // sat on "Off" while the radio adverted every minute
+            const running = GlobalState.advertScheduleRunning;
             if(running.length === 0){
                 return "Off";
             }
