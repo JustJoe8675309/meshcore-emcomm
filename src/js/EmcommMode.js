@@ -39,6 +39,123 @@ class EmcommMode {
         return QUIET_DAYS;
     }
 
+    /**
+     * The only radio preset MeshCore publishes: "USA/Canada (Recommended)".
+     *
+     * From the MeshCore FAQ, which notes that as of October 2025 many regions
+     * moved to BW 62.5 and a lower spreading factor in place of the original
+     * SF11. Frequency is in kHz and bandwidth in Hz, matching what the device
+     * reports, so these round trip without conversion.
+     *
+     * No other region is listed. The FAQ says the rest live in the phone client
+     * and the web flasher, and a guessed frequency is both an off mesh problem
+     * and a licensing one, so the dialog offers this or free entry and nothing
+     * in between.
+     */
+    static get US_PRESET() {
+        return { radioFreq: 910525, radioBw: 62500, radioSf: 7, radioCr: 5 };
+    }
+
+    /** True when the radio is already on the given settings, so nothing need change. */
+    static radioMatches(selfInfo, radio) {
+        return selfInfo?.radioFreq === radio.radioFreq
+            && selfInfo?.radioBw === radio.radioBw
+            && selfInfo?.radioSf === radio.radioSf
+            && selfInfo?.radioCr === radio.radioCr;
+    }
+
+    /**
+     * Applies the settings EMCOMM mode changes, one at a time.
+     *
+     * Each is attempted on its own and a failure is recorded rather than thrown:
+     * stopping partway would leave the node in a state that is neither what it
+     * was nor what was asked for, and the operator can act on "the clock did not
+     * sync" far better than on nothing at all.
+     */
+    static async applySettings(options, onProgress = () => {}) {
+
+        const connection = GlobalState.connection;
+        if(connection == null){
+            throw new Error(Connection.DISCONNECTED);
+        }
+
+        const applied = [];
+        const failures = [];
+
+        const attempt = async (what, action) => {
+            onProgress({ what: what });
+            try {
+                await action();
+                applied.push(what);
+            } catch(e) {
+                failures.push({ what: what, reason: String(e?.message ?? e) });
+            }
+        };
+
+        if(options.name != null && options.name !== ""){
+            await attempt("node name", () => connection.setAdvertName(options.name));
+        }
+
+        if(options.radio != null){
+            await attempt("radio settings", () => connection.setRadioParams(
+                options.radio.radioFreq, options.radio.radioBw, options.radio.radioSf, options.radio.radioCr,
+            ));
+        }
+
+        if(options.txPower != null){
+            await attempt("transmit power", () => connection.setTxPower(options.txPower));
+        }
+
+        if(options.syncClock){
+            await attempt("device clock", () => Connection.syncDeviceTime());
+        }
+
+        if(options.setPositionFromGps){
+            await attempt("position", async () => {
+
+                // a fix that was true at connect time is not a position now, and
+                // 0,0 formats perfectly well while pointing at the Gulf of Guinea
+                const position = await Connection.getPosition();
+                if(position == null){
+                    throw new Error("the radio has no live GPS fix, so the position was left alone");
+                }
+
+                await connection.setAdvertLatLong(
+                    Math.round(position.latitude * 1000000),
+                    Math.round(position.longitude * 1000000),
+                );
+
+            });
+        }
+
+        return { applied: applied, failures: failures };
+
+    }
+
+    /** Sets whether the node adds contacts by itself. Done last, after discovery. */
+    static async setManualAddContacts(manual) {
+        const connection = GlobalState.connection;
+        if(connection == null){
+            throw new Error(Connection.DISCONNECTED);
+        }
+        await connection.setOtherParams(manual);
+    }
+
+    /**
+     * Announces the station.
+     *
+     * Flood is the default for an incident: every operator and repeater learns
+     * the station is up, for one packet. Zero hop reaches only direct neighbours
+     * and is the quieter choice for a drill or a busy band.
+     */
+    static async announce(flood = true) {
+        const connection = GlobalState.connection;
+        if(connection == null){
+            throw new Error(Connection.DISCONNECTED);
+        }
+        return flood ? await connection.sendFloodAdvert() : await connection.sendZeroHopAdvert();
+    }
+
     /** True when a contact's age cannot be trusted, whichever way it is wrong. */
     static hasUnreadableAge(contact, nowSeconds) {
         const heard = contact?.lastAdvert;

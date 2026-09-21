@@ -245,3 +245,122 @@ describe("carrying out the trim", () => {
     });
 
 });
+
+describe("the radio preset", () => {
+
+    it("is the only one MeshCore publishes", () => {
+        // USA/Canada (Recommended) from the FAQ. Frequency in kHz, bandwidth in
+        // Hz, matching what the device reports so they round trip untouched.
+        expect(EmcommMode.US_PRESET).toEqual({
+            radioFreq: 910525, radioBw: 62500, radioSf: 7, radioCr: 5,
+        });
+    });
+
+    it("recognises a radio already on those settings", () => {
+        // the bench node is, so the dialog shows no change and is a confirm
+        expect(EmcommMode.radioMatches(
+            { radioFreq: 910525, radioBw: 62500, radioSf: 7, radioCr: 5 }, EmcommMode.US_PRESET,
+        )).toBe(true);
+    });
+
+    it("spots a radio that differs in any one field", () => {
+        for(const field of ["radioFreq", "radioBw", "radioSf", "radioCr"]){
+            const self = { ...EmcommMode.US_PRESET, [field]: 1 };
+            expect(EmcommMode.radioMatches(self, EmcommMode.US_PRESET)).toBe(false);
+        }
+    });
+
+});
+
+describe("applying the settings", () => {
+
+    let radio;
+
+    function settingsRadio() {
+        return {
+            calls: [],
+            on() {}, off() {},
+            async setAdvertName(v) { this.calls.push(["name", v]); },
+            async setRadioParams(f, bw, sf, cr) { this.calls.push(["radio", f, bw, sf, cr]); },
+            async setTxPower(v) { this.calls.push(["txPower", v]); },
+            async setAdvertLatLong(a, b) { this.calls.push(["position", a, b]); },
+            async setOtherParams(v) { this.calls.push(["manualAdd", v]); },
+            async sendFloodAdvert() { this.calls.push(["advert", "flood"]); },
+            async sendZeroHopAdvert() { this.calls.push(["advert", "zerohop"]); },
+        };
+    }
+
+    beforeEach(() => {
+        radio = settingsRadio();
+        GlobalState.connection = radio;
+        vi.restoreAllMocks();
+    });
+
+    it("applies what it was asked for and nothing else", async () => {
+        const result = await EmcommMode.applySettings({
+            name: "KJ5HBN-EMCOMM", txPower: 22, radio: EmcommMode.US_PRESET,
+        });
+
+        expect(radio.calls.map((c) => c[0])).toEqual(["name", "radio", "txPower"]);
+        expect(result.failures).toEqual([]);
+    });
+
+    it("leaves out anything not asked for", async () => {
+        await EmcommMode.applySettings({ txPower: 22 });
+        expect(radio.calls.map((c) => c[0])).toEqual(["txPower"]);
+    });
+
+    it("keeps going when one setting fails, and names it", async () => {
+        // stopping partway leaves a node that is neither what it was nor what was
+        // asked for, and "the clock did not sync" is actionable where silence is not
+        radio.setTxPower = async () => { throw new Error("refused"); };
+
+        const result = await EmcommMode.applySettings({
+            name: "KJ5HBN-EMCOMM", txPower: 22, radio: EmcommMode.US_PRESET,
+        });
+
+        expect(result.failures).toEqual([{ what: "transmit power", reason: "refused" }]);
+        expect(result.applied).toEqual(["node name", "radio settings"]);
+    });
+
+    it("writes a live GPS fix as the advert position", async () => {
+        vi.spyOn(Connection, "getPosition").mockResolvedValue({ latitude: 31.926986, longitude: -106.400129 });
+
+        await EmcommMode.applySettings({ setPositionFromGps: true });
+
+        expect(radio.calls).toEqual([["position", 31926986, -106400129]]);
+    });
+
+    it("leaves the position alone when there is no live fix", async () => {
+        // writing 0,0 would format perfectly well and point at the Gulf of Guinea
+        vi.spyOn(Connection, "getPosition").mockResolvedValue(null);
+
+        const result = await EmcommMode.applySettings({ setPositionFromGps: true });
+
+        expect(radio.calls).toEqual([]);
+        expect(result.failures[0].reason).toMatch(/no live GPS fix/);
+    });
+
+    it("syncs the clock when asked", async () => {
+        const sync = vi.spyOn(Connection, "syncDeviceTime").mockResolvedValue(undefined);
+        await EmcommMode.applySettings({ syncClock: true });
+        expect(sync).toHaveBeenCalled();
+    });
+
+    it("refuses without a radio", async () => {
+        GlobalState.connection = null;
+        await expect(EmcommMode.applySettings({ txPower: 22 })).rejects.toThrow(Connection.DISCONNECTED);
+    });
+
+    it("sends a flood advert by default and a zero hop one on request", async () => {
+        await EmcommMode.announce(true);
+        await EmcommMode.announce(false);
+        expect(radio.calls).toEqual([["advert", "flood"], ["advert", "zerohop"]]);
+    });
+
+    it("sets the add contacts mode separately, for after discovery", async () => {
+        await EmcommMode.setManualAddContacts(true);
+        expect(radio.calls).toEqual([["manualAdd", true]]);
+    });
+
+});

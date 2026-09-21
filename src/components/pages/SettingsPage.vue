@@ -1,6 +1,13 @@
 <template>
     <Page>
 
+        <EmcommConvertDialog
+            v-if="convertPlan != null"
+            :plan="convertPlan"
+            :current="convertCurrent"
+            @cancel="cancelConvert"
+            @confirm="runConvert"/>
+
         <!-- app bar -->
         <AppBar title="Settings">
             <template v-slot:trailing>
@@ -295,10 +302,11 @@ import Utils from "../../js/Utils.js";
 import OperatorSettings from "../../js/reports/OperatorSettings.js";
 import NodeBackup from "../../js/NodeBackup.js";
 import EmcommMode from "../../js/EmcommMode.js";
+import EmcommConvertDialog from "../settings/EmcommConvertDialog.vue";
 
 export default {
     name: 'SettingsPage',
-    components: {Page, SaveButton, AppBar},
+    components: {Page, SaveButton, AppBar, EmcommConvertDialog},
     data() {
         return {
             isSaving: false,
@@ -314,6 +322,8 @@ export default {
             isBackingUp: false,
             isRestoring: false,
             isConverting: false,
+            convertPlan: null,
+            convertCurrent: null,
             backupProgress: null,
             backupError: null,
             backupMessage: null,
@@ -371,49 +381,93 @@ Convert anyway?`,
                     }
                 }
 
-                const plan = EmcommMode.planTrim(GlobalState.contacts);
-                const counts = plan.counts;
+                // everything is decided in one dialog rather than a chain of
+                // prompts: six confirmations under time pressure is how the wrong
+                // one gets accepted
+                this.convertCurrent = await GlobalState.connection.getSelfInfo();
+                this.convertPlan = EmcommMode.planTrim(GlobalState.contacts);
+                this.backupProgress = null;
 
-                const proceed = confirm(
-                    `Remove ${plan.remove.length} contacts from this node?
+            } catch(e) {
+                this.backupError = this.describeBackupError(e);
+                this.backupProgress = null;
+                this.isConverting = false;
+            }
 
-`
-                    + `${counts.companions} companions (all of them)
-`
-                    + `${counts.repeaters} repeaters quiet for over ${EmcommMode.QUIET_DAYS} days
-`
-                    + `${counts.rooms} rooms quiet for over ${EmcommMode.QUIET_DAYS} days
+        },
 
-`
-                    + `${plan.keep.length} contacts will be kept.
+        cancelConvert() {
+            this.convertPlan = null;
+            this.convertCurrent = null;
+            this.isConverting = false;
+            this.backupMessage = "Nothing was changed. The backup was kept.";
+            this.refreshBackups();
+        },
 
-`
-                    + `A backup was taken first, so this can be undone.`,
-                );
+        async runConvert(choices) {
 
-                if(!proceed){
-                    this.backupMessage = "Nothing was changed. The backup was kept.";
-                    this.refreshBackups();
-                    return;
+            const plan = this.convertPlan;
+            this.convertPlan = null;
+            this.convertCurrent = null;
+
+            try {
+
+                // settings before the trim, so the radio is right before anything
+                // is announced on it
+                this.backupProgress = "Applying settings...";
+                const settings = await EmcommMode.applySettings({
+                    name: choices.name,
+                    radio: choices.radio,
+                    txPower: choices.txPower,
+                    syncClock: choices.syncClock,
+                    setPositionFromGps: choices.setPositionFromGps,
+                }, (p) => this.backupProgress = "Applying " + p.what + "...");
+
+                for(const failure of settings.failures){
+                    this.backupWarnings.push(failure.what + " was not changed: " + failure.reason);
                 }
 
                 const result = await EmcommMode.trim(plan, (p) => {
-                    this.backupProgress = `Removing ${p.done} of ${p.total}${p.pass > 1 ? ` (retry ${p.pass - 1})` : ""}: ${p.what}`;
+                    const retry = p.pass > 1 ? " (retry " + (p.pass - 1) + ")" : "";
+                    this.backupProgress = "Removing " + p.done + " of " + p.total + retry + ": " + p.what;
                 });
 
-                this.backupMessage = `Removed ${result.removed} contacts. ${GlobalState.contacts.length} remain.`;
+                if(choices.advert !== "none"){
+                    this.backupProgress = "Announcing the station...";
+                    await EmcommMode.announce(choices.advert === "flood");
+                }
+
+                if(choices.discover){
+                    this.backupProgress = "Looking for repeaters in direct range...";
+                    const found = await Connection.discoverRepeaters();
+                    this.backupWarnings.push(
+                        found.length === 0
+                            ? "No repeater answered the search. That is a normal result, not an error."
+                            : found.length + " repeater(s) answered. Add them from the Repeater Search tab.",
+                    );
+                }
+
+                // last, so discovery and the advert are not fighting it
+                if(choices.manualAddContacts){
+                    this.backupProgress = "Turning off automatic contacts...";
+                    await EmcommMode.setManualAddContacts(true);
+                }
+
+                await this.load();
+                this.backupMessage = "Removed " + result.removed + " contacts. " + GlobalState.contacts.length + " remain.";
 
                 if(plan.keptForUnreadableAge > 0){
                     this.backupWarnings.push(
-                        `${plan.keptForUnreadableAge} kept because their last heard time could not be read. `
+                        plan.keptForUnreadableAge + " kept because their last heard time could not be read. "
                         + "That time comes from the other node's clock, so it is not always trustworthy.",
                     );
                 }
 
                 if(result.notRemoved.length > 0){
+                    const more = result.notRemoved.length > 5 ? "..." : "";
                     this.backupWarnings.push(
-                        `${result.notRemoved.length} could not be removed: ${result.notRemoved.slice(0, 5).join(", ")}`
-                        + `${result.notRemoved.length > 5 ? "..." : ""}`,
+                        result.notRemoved.length + " could not be removed: "
+                        + result.notRemoved.slice(0, 5).join(", ") + more,
                     );
                 }
 
