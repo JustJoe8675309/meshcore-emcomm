@@ -50,6 +50,14 @@
                         <DropDownMenuItem @click="sendFloodAdvert">Advert (Flood Routed)</DropDownMenuItem>
                     </template>
                 </DropDownMenu>
+                <button @click="sharingOpen = true" type="button" aria-label="Share a station mode"
+                        title="Share a station mode"
+                        class="my-auto bg-gray-500 text-white px-2 py-1 p-1 rounded shadow hover:bg-gray-400">
+                    <!-- a QR code, which is what this does -->
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                        <path fill-rule="evenodd" d="M3 4.5A1.5 1.5 0 0 1 4.5 3h4A1.5 1.5 0 0 1 10 4.5v4A1.5 1.5 0 0 1 8.5 10h-4A1.5 1.5 0 0 1 3 8.5v-4Zm2 .5v3h3V5H5Zm-2 10.5A1.5 1.5 0 0 1 4.5 14h4a1.5 1.5 0 0 1 1.5 1.5v4A1.5 1.5 0 0 1 8.5 21h-4A1.5 1.5 0 0 1 3 19.5v-4Zm2 .5v3h3v-3H5ZM14 4.5A1.5 1.5 0 0 1 15.5 3h4A1.5 1.5 0 0 1 21 4.5v4A1.5 1.5 0 0 1 19.5 10h-4A1.5 1.5 0 0 1 14 8.5v-4Zm2 .5v3h3V5h-3Zm-2 9.25a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1-.75-.75v-1.5Zm5 0a.75.75 0 0 1 .75-.75h.5a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-.75.75h-.5a.75.75 0 0 1-.75-.75v-1.5ZM14 19.75a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 .75.75v.5a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1-.75-.75v-.5Zm5 0a.75.75 0 0 1 .75-.75h.5a.75.75 0 0 1 .75.75v.5a.75.75 0 0 1-.75.75h-.5a.75.75 0 0 1-.75-.75v-.5Z" clip-rule="evenodd" />
+                    </svg>
+                </button>
                 <RouterLink :to="{ name: 'settings' }">
                     <button type="button" class="my-auto bg-gray-500 text-white px-2 py-1 p-1 rounded shadow hover:bg-gray-400">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
@@ -78,6 +86,7 @@
     </div>
 
     <ModeSwitchDialog :open="modeDialogOpen" @close="modeDialogOpen = false"/>
+    <ModeSharing :open="sharingOpen" :incoming-link="incomingLink" @close="closeSharing"/>
 
     </div>
 </template>
@@ -90,16 +99,44 @@ import DropDownMenu from "./DropDownMenu.vue";
 import DropDownMenuItem from "./DropDownMenuItem.vue";
 import ModeBanner from "./modes/ModeBanner.vue";
 import ModeSwitchDialog from "./modes/ModeSwitchDialog.vue";
+import ModeSharing from "./modes/ModeSharing.vue";
+import { SHARE_PATH } from "../js/modes/ModeShare.js";
 
 export default {
     name: 'Header',
-    components: {DropDownMenuItem, DropDownMenu, IconButton, ModeBanner, ModeSwitchDialog},
+    components: {DropDownMenuItem, DropDownMenu, IconButton, ModeBanner, ModeSwitchDialog, ModeSharing},
     data() {
         return {
             modeDialogOpen: false,
+            sharingOpen: false,
+            // a code scanned with the phone's own camera opens the app at the
+            // sharing link, which lands here
+            incomingLink: null,
         };
     },
+    mounted() {
+        this.takeIncomingLink();
+        window.addEventListener("hashchange", this.takeIncomingLink);
+    },
+    beforeUnmount() {
+        window.removeEventListener("hashchange", this.takeIncomingLink);
+    },
     methods: {
+        takeIncomingLink() {
+            const hash = window.location.hash ?? "";
+            if(!hash.startsWith(SHARE_PATH)){
+                return;
+            }
+            this.incomingLink = window.location.href;
+            this.sharingOpen = true;
+            // the link is spent: leaving it in the bar would reopen this on every
+            // reload, and the operator has the mode saved by then
+            window.location.hash = "#/";
+        },
+        closeSharing() {
+            this.sharingOpen = false;
+            this.incomingLink = null;
+        },
         async sendZeroHopAdvert() {
             await Connection.sendZeroHopAdvert();
             alert("A zero hop advert has been sent.");

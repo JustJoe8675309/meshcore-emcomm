@@ -360,6 +360,15 @@ one found so far came from a dropped frame, and the link that drops them is BLE.
       Emcomm-Live: the switch says it kept that channel in Normal mode. Switch
       back: the channel is on the radio again with the same key, and the other node
       can still talk on it.
+- [ ] **Sharing a mode.** On the set up node, the QR button beside the gear shows a
+      code for Emcomm-Live and another for Emcomm-Training. Scan the Live one with
+      a phone: the app opens at an import screen naming the mode and its channels.
+      Save it: it says nothing on the radio has changed, and the Live tab in
+      Settings shows those channels. The radio is unchanged until the mode is
+      entered from the banner.
+- [ ] **Private keys.** With a private channel in the mode, the share screen warns
+      that the code carries its key. Untick it: the import says the channel was
+      shared without its key and names it.
 - [ ] **The tabs match.** Each of the three tabs in Settings shows the same fields.
       Editing a mode that is not in use changes nothing on the radio until it is
       entered.

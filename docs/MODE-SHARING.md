@@ -1,6 +1,8 @@
 # Setting one station up, and handing it to the others
 
-A plan, not built yet. Held for when the modes have been tried on the radios.
+**Built on 22 September 2026 and not yet tried on the radios.** The QR button beside
+the settings gear holds it. What follows is the design and the reasoning; the code
+is `src/js/modes/ModeShare.js` and `src/components/modes/ModeSharing.vue`.
 
 ## What it is for
 

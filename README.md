@@ -616,6 +616,25 @@ edits that mode without touching the radio, and says so: the radio changes when 
 entered from the banner. Normal mode's tab also has a button to take the radio's settings and
 channels as they are now, which is the only time normal mode is re-read after the first connect.
 
+**Handing a mode to the other stations.** The QR button beside the settings gear opens sharing.
+One operator sets a station up properly and shows a code; everyone else scans it with their own
+phone camera, which opens this app at an import screen.
+- **One code per mode.** A Live code and a Training code, chosen deliberately, so the wrong one
+  cannot be scanned at a drill. Normal mode is never shared: it is the radio as its owner had it.
+- **What travels:** radio settings, channels, rooms, position answering, advert intervals, the
+  DRILL mark and the entering choices. **What does not:** the node name, the contacts, and Normal
+  mode. The receiving station keeps its own name, so two stations never answer to one.
+- **A # channel travels as a name,** since its key comes from its name. A private channel's key is
+  carried only if the sharer leaves that ticked, and the screen says plainly that anyone who
+  photographs the code can read that channel's traffic afterwards. Unticked, those channels are
+  named without keys for the operator to add by hand.
+- **Taking a code in never touches the radio and never changes mode.** It lists what the mode
+  holds, saves it, and says so. Entering it stays the banner's job.
+- **A code older than a day is marked**, not refused: one printed on a briefing sheet the night
+  before is a normal thing to use.
+- Also **copy the link** or **save it to a file**, for setting a group up from a memory stick with
+  no phones involved, and **paste a link** on the receiving side where a camera cannot be used.
+
 **The way home** is a full backup taken before the first switch away from normal, in its own slot
 that routine backups cannot overwrite. Switching back to normal writes it, which is where the
 contacts come from, and puts the station back as it was.
