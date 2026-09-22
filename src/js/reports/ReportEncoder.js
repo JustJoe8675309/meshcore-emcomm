@@ -257,7 +257,14 @@ class ReportEncoder {
      * The marker width depends on the number of parts, which depends on the marker
      * width, so this tries increasing part counts until one is self consistent.
      */
-    static splitIntoParts(text, budgetBytes) {
+    /**
+     * Splits a report into parts that fit.
+     *
+     * prefix goes in front of every part, not just the first: a drill's parts can
+     * arrive minutes apart and be read on their own, so each one has to say DRILL
+     * for itself. Its bytes are budgeted for like the part marker's.
+     */
+    static splitIntoParts(text, budgetBytes, prefix = "") {
 
         // nothing to send
         if(text === ""){
@@ -265,14 +272,14 @@ class ReportEncoder {
         }
 
         // fits in a single packet, send it without a part marker
-        if(this.byteLength(text) <= budgetBytes){
-            return [text];
+        if(this.byteLength(prefix + text) <= budgetBytes){
+            return [prefix + text];
         }
 
         for(let partCount = 2; partCount <= 99; partCount++){
 
             // assume the widest marker this part count can produce, e.g "[10/10] "
-            const markerBytes = this.byteLength(`[${partCount}/${partCount}] `);
+            const markerBytes = this.byteLength(`${prefix}[${partCount}/${partCount}] `);
             const chunkBudget = budgetBytes - markerBytes;
 
             // node name is so long there is no room left for content
@@ -285,7 +292,7 @@ class ReportEncoder {
             // if it split into no more parts than we assumed, the markers are guaranteed
             // to be no wider than the ones we budgeted for, so every part fits
             if(chunks.length <= partCount){
-                return chunks.map((chunk, i) => `[${i + 1}/${chunks.length}] ${chunk}`);
+                return chunks.map((chunk, i) => `${prefix}[${i + 1}/${chunks.length}] ${chunk}`);
             }
 
         }
@@ -299,11 +306,11 @@ class ReportEncoder {
      * Used both for the live preview and for sending, so what the operator sees
      * on screen is byte for byte what goes out over the air.
      */
-    static prepare(form, values, nodeName, destinationType = "channel") {
+    static prepare(form, values, nodeName, destinationType = "channel", { markDrill = false } = {}) {
 
         const text = this.renderReport(form, values);
         const budgetBytes = this.getTextBudget(destinationType, nodeName);
-        const parts = this.splitIntoParts(text, budgetBytes);
+        const parts = this.splitIntoParts(text, budgetBytes, markDrill ? "DRILL " : "");
 
         return {
             text: text,

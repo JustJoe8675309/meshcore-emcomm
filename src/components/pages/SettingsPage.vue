@@ -1,13 +1,6 @@
 <template>
     <Page>
 
-        <EmcommConvertDialog
-            v-if="convertPlan != null"
-            :plan="convertPlan"
-            :current="convertCurrent"
-            @cancel="cancelConvert"
-            @confirm="runConvert"/>
-
         <!-- app bar -->
         <AppBar title="Settings">
             <template v-slot:trailing>
@@ -40,6 +33,9 @@
 
                 <!-- setting groups -->
                 <div class="space-y-4">
+
+                    <!-- what each mode holds, and which one this station is in -->
+                    <ModeSettingsTabs/>
 
                     <!-- emcomm, stored in this browser rather than on the device -->
                     <div class="bg-white divide-y">
@@ -117,8 +113,8 @@
                                 :disabled="isBackingUp || isRestoring || notConnected"
                                 type="button"
                                 class="w-full text-white bg-amber-700 hover:bg-amber-800 disabled:bg-gray-400 font-medium rounded-lg text-sm px-5 py-2.5">
-                                <div>{{ isRestoring ? "Restoring..." : "Leave EMCOMM mode" }}</div>
-                                <div class="text-xs font-normal">Restores the backup from before EMCOMM mode, {{ preEmcommLabel }}</div>
+                                <div>{{ isRestoring ? "Restoring..." : "Put the radio back as it was" }}</div>
+                                <div class="text-xs font-normal">Writes the backup from before this station left normal mode, {{ preEmcommLabel }}</div>
                             </button>
 
                             <div v-if="backups.length > 0" class="flex space-x-2">
@@ -165,16 +161,10 @@
                                 adds them back and removes nothing.
                             </div>
 
-                            <button
-                                @click="convertToEmcomm"
-                                :disabled="isBackingUp || isRestoring || isConverting || notConnected"
-                                type="button"
-                                class="w-full text-white bg-amber-700 hover:bg-amber-800 disabled:bg-gray-400 font-medium rounded-lg text-sm px-5 py-2.5">{{ isConverting ? "Converting..." : "Convert to EMCOMM mode" }}</button>
-
                             <div class="text-xs text-gray-500">
-                                Clears companions and drops repeaters and rooms not heard in
-                                {{ quietDays }} days. Takes its own backup first, kept separately from the one
-                                above so routine backups cannot overwrite the way back.
+                                Switching modes is the banner at the top of the app. It takes its own backup
+                                first, kept separately from the one above so routine backups cannot overwrite
+                                the way back, and going back to normal writes it.
                             </div>
 
                         </div>
@@ -346,14 +336,15 @@ import AdvertSchedule from "../../js/AdvertSchedule.js";
 import PositionService from "../../js/position/PositionService.js";
 import NodeBackup from "../../js/NodeBackup.js";
 import EmcommMode from "../../js/EmcommMode.js";
-import EmcommConvertDialog from "../settings/EmcommConvertDialog.vue";
 import EmcommSettingsGroup from "../settings/EmcommSettingsGroup.vue";
+import ModeSettingsTabs from "../modes/ModeSettingsTabs.vue";
+import ModeProfiles from "../../js/modes/ModeProfiles.js";
 import BusyOverlay from "../BusyOverlay.vue";
 import PositionSettingsGroup from "../settings/PositionSettingsGroup.vue";
 
 export default {
     name: 'SettingsPage',
-    components: {Page, SaveButton, AppBar, EmcommConvertDialog, EmcommSettingsGroup, BusyOverlay, PositionSettingsGroup},
+    components: {Page, SaveButton, AppBar, EmcommSettingsGroup, BusyOverlay, PositionSettingsGroup, ModeSettingsTabs},
     data() {
         return {
             isSaving: false,
@@ -373,9 +364,6 @@ export default {
             hasLoaded: false,
             isBackingUp: false,
             isRestoring: false,
-            isConverting: false,
-            convertPlan: null,
-            convertCurrent: null,
             backupProgress: null,
             // a count for the loading screen, when the step has one
             backupSteps: null,
@@ -396,237 +384,6 @@ export default {
         refreshBackups() {
             const key = this.nodePublicKey;
             this.backups = key == null ? [] : NodeBackup.list(key);
-        },
-
-        async convertToEmcomm() {
-
-            this.backupError = null;
-            this.backupMessage = null;
-            this.backupWarnings = [];
-
-            try {
-
-                // the way home first, into its own slot. a backup taken here is
-                // never overwritten by the ordinary backup button
-                this.isConverting = true;
-                this.backupProgress = "Backing up before any change...";
-
-                const backup = await NodeBackup.capture();
-                // converting again while already in the mode must not replace the
-                // way home with the EMCOMM setup it was meant to undo. The original
-                // stays, and this goes in the ordinary slot
-                const alreadyIn = this.inEmcommMode && this.preEmcommBackup != null;
-                const saved = NodeBackup.save(backup, alreadyIn ? NodeBackup.SLOT_LATEST : NodeBackup.SLOT_PRE_EMCOMM);
-                if(alreadyIn){
-                    this.backupWarnings.push("Already in EMCOMM mode: the backup from before it was kept as the way home, and this one saved as the latest backup.");
-                }
-
-                // at once, not when the conversion finishes: Save to file and Load
-                // last backup read this list, and mid conversion it still named the
-                // backup before this one
-                this.refreshBackups();
-
-                if(!saved){
-                    this.backupError = "The backup could not be saved, so nothing was changed. Save one to a file first.";
-                    return;
-                }
-
-                // an incomplete read is the operator's call, not the app's, but it
-                // is shown with real numbers rather than a shrug
-                if(backup.warnings.length > 0){
-                    this.backupProgress = null;
-                    const proceed = confirm(
-                        `${backup.warnings.join(" ")}
-
-Anything missing from the backup cannot be restored afterwards.
-
-Convert anyway?`,
-                    );
-                    if(!proceed){
-                        this.backupWarnings = backup.warnings;
-                        this.backupMessage = "Nothing was changed. The backup was kept.";
-                        this.refreshBackups();
-                        return;
-                    }
-                }
-
-                // everything is decided in one dialog rather than a chain of
-                // prompts: six confirmations under time pressure is how the wrong
-                // one gets accepted
-                this.convertCurrent = await Connection.exclusive(() => GlobalState.connection.getSelfInfo());
-                this.convertPlan = EmcommMode.planTrim(GlobalState.contacts);
-                this.backupProgress = null;
-
-            } catch(e) {
-                this.backupError = this.describeBackupError(e);
-                this.backupProgress = null;
-                this.isConverting = false;
-            }
-
-        },
-
-        cancelConvert() {
-            this.convertPlan = null;
-            this.convertCurrent = null;
-            this.isConverting = false;
-            this.backupMessage = "Nothing was changed. The backup was kept.";
-            this.refreshBackups();
-        },
-
-        async runConvert(choices) {
-
-            const plan = this.convertPlan;
-            this.convertPlan = null;
-            this.convertCurrent = null;
-
-            try {
-
-                // settings before the trim, so the radio is right before anything
-                // is announced on it
-                this.backupProgress = "Applying settings...";
-                const settings = await EmcommMode.applySettings({
-                    name: choices.name,
-                    radio: choices.radio,
-                    txPower: choices.txPower,
-                    syncClock: choices.syncClock,
-                    setPositionFromGps: choices.setPositionFromGps,
-                }, (p) => this.backupProgress = "Applying " + p.what + "...");
-
-                for(const failure of settings.failures){
-                    this.backupWarnings.push(failure.what + " was not changed: " + failure.reason);
-                }
-
-                const result = await EmcommMode.trim(plan, (p) => {
-                    const retry = p.pass > 1 ? " (retry " + (p.pass - 1) + ")" : "";
-                    this.backupProgress = "Removing" + retry + ": " + p.what;
-                    this.backupSteps = { done: p.done, total: p.total };
-                });
-                this.backupSteps = null;
-
-                if(choices.advert !== "none"){
-                    this.backupProgress = "Announcing the station...";
-                    await EmcommMode.announce(choices.advert === "flood");
-                }
-
-                if(choices.discover){
-                    this.backupProgress = "Looking for repeaters in direct range...";
-                    const found = await Connection.discoverRepeaters();
-                    this.backupWarnings.push(
-                        found.length === 0
-                            ? "No repeater answered the search. That is a normal result, not an error."
-                            : found.length + " repeater(s) answered. Add them from the Repeater Search tab.",
-                    );
-                }
-
-                // the three parts of one radio command, written together
-                this.backupProgress = "Applying the radio's emcomm settings...";
-                try {
-                    await EmcommMode.applyRadioPolicies({
-                        shareLocation: choices.shareLocation,
-                        advertPosition: choices.advertPosition,
-                        multiAcks: choices.multiAcks,
-                    });
-                } catch(e) {
-                    this.backupWarnings.push("Location sharing, adverts carrying the position and extra acknowledgements were not set: " + (e?.message ?? e));
-                }
-
-                // the net's channel, so every station converts onto the same one
-                if(choices.channelName){
-                    this.backupProgress = "Adding the channel " + choices.channelName + "...";
-                    try {
-                        const channel = await EmcommMode.ensureHashtagChannel(choices.channelName);
-                        if(channel == null){
-                            this.backupWarnings.push("No free channel slot, so " + choices.channelName + " was not added.");
-                        } else {
-                            if(!channel.added){
-                                this.backupWarnings.push(
-                                    channel.spelling === "different case"
-                                        ? "The radio already has this channel, spelled " + channel.name + ", in slot " + channel.idx + ". It was left alone: a different spelling is a different channel, so every station must use the same one."
-                                        : choices.channelName + " was already on the radio, in slot " + channel.idx + ".",
-                                );
-                            }
-                            if(!channel.keyMatches){
-                                // appearing to be on the net while nobody can hear you is
-                                // worse than not being on it, so this is said plainly
-                                this.backupWarnings.push(
-                                    channel.name + " has a key that was not worked out from its name, so stations joining it by name cannot hear you. It was not overwritten: remove or rename it, then convert again.",
-                                );
-                            }
-                            if(choices.answerPositionsOnChannel){
-                                const settings = PositionService.settings();
-                                PositionService.saveSettings({
-                                    ...settings,
-                                    markedChannels: [...new Set([...settings.markedChannels, channel.idx])],
-                                });
-                            }
-                        }
-                        await Connection.loadChannels();
-                    } catch(e) {
-                        this.backupWarnings.push(choices.channelName + " was not added: " + (e?.message ?? e));
-                    }
-                }
-
-                // answering position requests, and who this station calls itself
-                PositionService.saveSettings({ ...PositionService.settings(), autoAnswer: choices.autoAnswerPositions === true });
-                if(choices.callsign){
-                    OperatorSettings.setCallsign(choices.callsign);
-                }
-                OperatorSettings.setDtgZone(choices.dtgZone);
-
-                if(choices.advertSchedule && this.nodePublicKey != null){
-                    const saved = AdvertSchedule.set(this.nodePublicKey, choices.advertSchedule);
-                    AdvertSchedule.start(this.nodePublicKey);
-                    this.backupWarnings.push(
-                        "Repeating adverts are on: "
-                        + (saved.zeroHopMinutes > 0 ? "zero hop every " + saved.zeroHopMinutes + " min" : "no zero hop")
-                        + ", "
-                        + (saved.floodMinutes > 0 ? "flood every " + saved.floodMinutes + " min" : "no flood")
-                        + ". They need this app open.",
-                    );
-                }
-
-                // last, so discovery and the advert are not fighting it
-                if(choices.autoAddContacts){
-                    this.backupProgress = "Turning on automatic contacts...";
-                    await EmcommMode.setManualAddContacts(false);
-                }
-
-                this.backupProgress = "Reading the node back...";
-                await this.load();
-
-                // recorded only now, after the node really changed, so the badge
-                // never claims a mode the radio is not in
-                if(this.nodePublicKey != null){
-                    EmcommMode.markEntered(this.nodePublicKey);
-                }
-
-                this.backupMessage = "Removed " + result.removed + " contacts. " + GlobalState.contacts.length + " remain.";
-
-                if(plan.keptForUnreadableAge > 0){
-                    this.backupWarnings.push(
-                        plan.keptForUnreadableAge + " kept because their last heard time could not be read. "
-                        + "That time comes from the other node's clock, so it is not always trustworthy.",
-                    );
-                }
-
-                if(result.notRemoved.length > 0){
-                    const more = result.notRemoved.length > 5 ? "..." : "";
-                    this.backupWarnings.push(
-                        result.notRemoved.length + " could not be removed: "
-                        + result.notRemoved.slice(0, 5).join(", ") + more,
-                    );
-                }
-
-                this.refreshBackups();
-
-            } catch(e) {
-                this.backupError = this.describeBackupError(e);
-            } finally {
-                this.backupProgress = null;
-                this.backupSteps = null;
-                this.isConverting = false;
-            }
-
         },
 
         async backUpNow() {
@@ -688,7 +445,7 @@ Settings, channels and ${entry.backup.contacts.length} contacts will be restored
             }
 
             const when = new Date(entry.backup.capturedAt).toLocaleString();
-            if(!confirm(`Leave EMCOMM mode, and write the backup from ${when}, taken before this node entered it, back to the node?
+            if(!confirm(`Put the radio back as it was, writing the backup from ${when}, taken before this station left normal mode?
 
 Settings, channels, ${entry.backup.contacts.length} contacts, and this app's advert schedule and position settings for the node will be restored.`)){
                 return;
@@ -723,7 +480,7 @@ OK removes them, so the node is exactly as it was before. Cancel keeps them.`)){
                 this.backupWarnings = [`Could not check what was added while in EMCOMM mode, so nothing extra will be removed: ${e?.message ?? e}`];
             }
 
-            await this.runRestore({ ...entry.backup, slot: NodeBackup.SLOT_PRE_EMCOMM }, "Leaving EMCOMM mode", remove);
+            await this.runRestore({ ...entry.backup, slot: NodeBackup.SLOT_PRE_EMCOMM }, "Putting the radio back as it was", remove);
 
         },
 
@@ -783,10 +540,12 @@ OK removes them, so the node is exactly as it was before. Cancel keeps them.`)){
                     }
                 }
 
-                // putting the node back is how it leaves the mode. only the
-                // pre-EMCOMM backup means that: restoring an ordinary one is just
-                // a restore, and may well have been taken while in the mode
+                // writing that backup is what puts the station back in normal
+                // mode. Only the pre-normal backup means that: restoring an
+                // ordinary one is just a restore, and may well have been taken
+                // while in an emcomm mode
                 if(this.nodePublicKey != null && backup.slot === NodeBackup.SLOT_PRE_EMCOMM){
+                    ModeProfiles.setCurrent("normal", this.nodePublicKey);
                     EmcommMode.markLeft(this.nodePublicKey);
                 }
 
@@ -1051,9 +810,6 @@ Settings, channels and ${backup.contacts.length} contacts will be written to thi
             if(this.isBackingUp){
                 return "Backing up the node";
             }
-            if(this.isConverting && this.backupProgress){
-                return "Converting to EMCOMM mode";
-            }
             return null;
         },
         canSave() {
@@ -1064,20 +820,18 @@ Settings, channels and ${backup.contacts.length} contacts will be written to thi
             return GlobalState.connection == null;
         },
 
-        quietDays() {
-            return EmcommMode.QUIET_DAYS;
-        },
-
         nodePublicKey() {
             const key = GlobalState.selfInfo?.publicKey;
             return key == null ? null : Utils.bytesToHex(key);
         },
 
+        // whether this station is away from normal mode, and so has a way home
         inEmcommMode() {
             // read so this recomputes when the mode changes; the mode itself is
             // kept in browser storage, which the page cannot watch
             GlobalState.emcommModeRevision;
-            return this.nodePublicKey != null && EmcommMode.enteredAt(this.nodePublicKey) != null;
+            void ModeProfiles.state.revision;
+            return this.nodePublicKey != null && ModeProfiles.current(this.nodePublicKey) !== "normal";
         },
 
         preEmcommBackup() {

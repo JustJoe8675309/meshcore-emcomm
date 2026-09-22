@@ -554,11 +554,49 @@ screen or a backgrounded app is the usual reason. Sends are recorded only once t
 them, and the times belong to the radio they went through, so connecting another radio starts
 them afresh.
 
-### EMCOMM mode
+### Station modes
 
-Turns a node that has been living on a busy mesh into one set up for an incident, with a way
-back. Three buttons under Emcomm in settings: back up, restore, and convert. The decisions and
-their reasoning are in [docs/EMCOMM-MODE.md](docs/EMCOMM-MODE.md).
+A station runs in one of three modes, shown as a coloured bar across the header under the
+battery line, and switched by tapping it:
+
+| Mode | Bar | What it is |
+| ---- | --- | ---------- |
+| **Normal mode** | green | The radio as this app first found it: its own settings, channels and contacts. |
+| **Emcomm-Live** | red | A real incident: the net's channels and rooms, and the settings an incident wants. |
+| **Emcomm-Training** | yellow | A drill: its own channels and rooms, and everything sent marked DRILL. |
+
+Black letters on each colour, and the words say it too, so it reads in sunlight and to an
+operator who cannot tell red from green.
+
+**A mode is written to the radio, not pretended at.** Switching writes that mode's radio
+settings and its channels into the radio's slots, clearing any channel the mode does not name, so
+what the radio can hear really changes. The dialog lists what a switch will do, from the radio as
+it stands, before anything is written, and every step is reported as it goes.
+
+**What belongs to a mode:** the node name, radio settings and transmit power; location sharing,
+the position in adverts, extra acknowledgements and automatic contacts; its channels and which of
+them answer position requests; which rooms it uses; whether position requests are answered
+automatically; the repeating advert intervals; whether to trim contacts, announce the station and
+search for repeaters on entering; and whether everything sent is marked DRILL.
+
+**What does not:** the operator's callsign, the report time zone, message history, and contacts.
+Contacts come from the backup rather than from a mode, since they are not a setting.
+
+**Settings has a tab for each mode**, identical in layout: only what is in them differs. A tab
+edits that mode without touching the radio, and says so: the radio changes when the mode is
+entered from the banner. Normal mode's tab also has a button to take the radio's settings and
+channels as they are now, which is the only time normal mode is re-read after the first connect.
+
+**The way home** is a full backup taken before the first switch away from normal, in its own slot
+that routine backups cannot overwrite. Switching back to normal writes it, which is where the
+contacts come from, and puts the station back as it was.
+
+**DRILL marking** in Emcomm-Training goes on every part of a report, not just the first, since
+parts can arrive minutes apart and be read on their own. The marking is budgeted for in the
+split, so parts still fit. Typed messages get DRILL in front unless they already say it.
+
+The decisions behind the emcomm settings, and their reasoning, are in
+[docs/EMCOMM-MODE.md](docs/EMCOMM-MODE.md).
 
 **Converting** clears every companion, drops repeaters and rooms quiet for more than 90 days,
 sets the node name, transmit power, position and clock, optionally checks the radio settings,

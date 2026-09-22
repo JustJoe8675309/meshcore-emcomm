@@ -14,7 +14,6 @@ import Connection from "../../src/js/Connection.js";
 import EmcommMode from "../../src/js/EmcommMode.js";
 import NodeBackup from "../../src/js/NodeBackup.js";
 import GlobalState from "../../src/js/GlobalState.js";
-import EmcommConvertDialog from "../../src/components/settings/EmcommConvertDialog.vue";
 import EmcommSettingsGroup from "../../src/components/settings/EmcommSettingsGroup.vue";
 import SettingsPage from "../../src/components/pages/SettingsPage.vue";
 
@@ -98,102 +97,7 @@ describe("the other params command", () => {
 
 });
 
-describe("the convert dialog", () => {
 
-    const mountDialog = () => mount(EmcommConvertDialog, {
-        props: {
-            current: selfInfo(),
-            plan: { remove: [], keep: [], keptForUnreadableAge: 0, counts: { companions: 0, repeaters: 0, rooms: 0 } },
-        },
-    });
-
-    it("adds contacts automatically, shares location and raises power, by default", async () => {
-        const wrapper = mountDialog();
-        expect(wrapper.text()).toContain("Add contacts automatically");
-        expect(wrapper.text()).toContain("Share location with stations that ask");
-        expect(wrapper.text()).toContain("The EMCOMM default");
-        expect(wrapper.text()).not.toContain("Stop adding contacts automatically");
-        wrapper.vm.confirm();
-        const choices = wrapper.emitted("confirm")[0][0];
-        expect(choices.autoAddContacts).toBe(true);
-        expect(choices.shareLocation).toBe(true);
-        expect(choices.txPower).toBe(22);
-    });
-
-});
-
-describe("converting", () => {
-
-    function mountPage() {
-        return mount(SettingsPage, {
-            global: {
-                stubs: {
-                    Page: { template: "<div><slot/></div>" },
-                    AppBar: { template: "<div><slot name='trailing'/></div>" },
-                    EmcommConvertDialog: true,
-                    EmcommSettingsGroup: true,
-                    PositionSettingsGroup: true,
-                    RouterLink: true,
-                },
-            },
-        });
-    }
-
-    beforeEach(() => {
-        window.localStorage.clear();
-        GlobalState.connection = { on() {}, off() {} };
-        GlobalState.selfInfo = selfInfo();
-        GlobalState.contacts = [];
-        vi.spyOn(Connection, "loadSelfInfo").mockImplementation(async () => {});
-        vi.spyOn(Connection, "deviceQuery").mockResolvedValue(null);
-        vi.spyOn(EmcommMode, "applySettings").mockResolvedValue({ failures: [] });
-        vi.spyOn(EmcommMode, "trim").mockResolvedValue({ removed: 0, notRemoved: [] });
-        vi.spyOn(EmcommMode, "announce").mockResolvedValue(undefined);
-    });
-
-    afterEach(() => {
-        vi.restoreAllMocks();
-        GlobalState.connection = null;
-        GlobalState.selfInfo = null;
-        window.localStorage.clear();
-    });
-
-    it("writes sharing, adverts carrying the position and extra acknowledgements in one command", async () => {
-        // one radio command holds all three, so they are written together rather
-        // than read and rewritten three times
-        const policies = vi.spyOn(EmcommMode, "applyRadioPolicies").mockResolvedValue(undefined);
-        const manual = vi.spyOn(EmcommMode, "setManualAddContacts").mockResolvedValue(undefined);
-        const wrapper = mountPage();
-        await flushPromises();
-        wrapper.vm.convertPlan = { remove: [], keep: [], keptForUnreadableAge: 0 };
-        await wrapper.vm.runConvert({ name: null, radio: null, txPower: 22, syncClock: false, setPositionFromGps: false, advert: "none", discover: false, autoAddContacts: true, shareLocation: true, advertPosition: true, multiAcks: true });
-        expect(policies).toHaveBeenCalledWith({ shareLocation: true, advertPosition: true, multiAcks: true });
-        // manual add off, which is automatic contacts on
-        expect(manual).toHaveBeenCalledWith(false);
-    });
-
-    it("writes what was unticked as off, rather than leaving it to chance", async () => {
-        const policies = vi.spyOn(EmcommMode, "applyRadioPolicies").mockResolvedValue(undefined);
-        const manual = vi.spyOn(EmcommMode, "setManualAddContacts").mockResolvedValue(undefined);
-        const wrapper = mountPage();
-        await flushPromises();
-        wrapper.vm.convertPlan = { remove: [], keep: [], keptForUnreadableAge: 0 };
-        await wrapper.vm.runConvert({ name: null, radio: null, txPower: null, syncClock: false, setPositionFromGps: false, advert: "none", discover: false, autoAddContacts: false, shareLocation: false, advertPosition: false, multiAcks: false });
-        expect(policies).toHaveBeenCalledWith({ shareLocation: false, advertPosition: false, multiAcks: false });
-        expect(manual).not.toHaveBeenCalled();
-    });
-
-    it("carries on, and says so, if the radio will not take them", async () => {
-        vi.spyOn(EmcommMode, "applyRadioPolicies").mockRejectedValue(new Error("the radio refused it"));
-        vi.spyOn(EmcommMode, "setManualAddContacts").mockResolvedValue(undefined);
-        const wrapper = mountPage();
-        await flushPromises();
-        wrapper.vm.convertPlan = { remove: [], keep: [], keptForUnreadableAge: 0 };
-        await wrapper.vm.runConvert({ name: null, radio: null, txPower: null, syncClock: false, setPositionFromGps: false, advert: "none", discover: false, autoAddContacts: true, shareLocation: true, advertPosition: true, multiAcks: true });
-        expect(wrapper.vm.backupWarnings.join(" ")).toMatch(/were not set: the radio refused it/);
-    });
-
-});
 
 describe("leaving EMCOMM mode puts sharing back", () => {
 

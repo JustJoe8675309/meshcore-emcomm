@@ -15,7 +15,7 @@ import Connection from "../../src/js/Connection.js";
 import Database from "../../src/js/Database.js";
 import GlobalState from "../../src/js/GlobalState.js";
 import NodeBackup from "../../src/js/NodeBackup.js";
-import EmcommMode from "../../src/js/EmcommMode.js";
+import ModeProfiles from "../../src/js/modes/ModeProfiles.js";
 
 const KEY = new Uint8Array(32).fill(0x39);
 const NODE = Array.from(KEY).map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -214,9 +214,9 @@ describe("backing up and restoring", () => {
         expect(wrapper.findComponent(BusyOverlay).exists()).toBe(false);
     });
 
-    it("says it is leaving EMCOMM mode, and counts the restore steps", async () => {
+    it("says it is putting the radio back, and counts the restore steps", async () => {
         NodeBackup.save(backup(SELF_INFO.name), NodeBackup.SLOT_PRE_EMCOMM);
-        EmcommMode.markEntered(NODE);
+        ModeProfiles.setCurrent("live", NODE);
         const written = deferred();
         vi.spyOn(NodeBackup, "restore").mockImplementation(async (b, onProgress) => {
             onProgress({ done: 3, total: 9, what: "channel 2" });
@@ -226,10 +226,10 @@ describe("backing up and restoring", () => {
         const wrapper = mountPage();
         await flushPromises();
 
-        await button(wrapper, "Leave EMCOMM mode").trigger("click");
+        await button(wrapper, "Put the radio back as it was").trigger("click");
         await flushPromises();
         const overlay = wrapper.findComponent(BusyOverlay);
-        expect(overlay.text()).toContain("Leaving EMCOMM mode");
+        expect(overlay.text()).toContain("Putting the radio back as it was");
         expect(overlay.text()).toContain("Restoring channel 2");
         expect(overlay.text()).toContain("3 of 9");
 

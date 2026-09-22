@@ -148,6 +148,7 @@ import DeviceUtils from "../../js/DeviceUtils.js";
 import TimeUtils from "../../js/TimeUtils.js";
 import Utils from "../../js/Utils.js";
 import SignedPosts from "../../js/SignedPosts.js";
+import ModeProfiles from "../../js/modes/ModeProfiles.js";
 
 export default {
     name: 'MessageViewer',
@@ -248,6 +249,12 @@ export default {
                 return;
             }
 
+            // in a training mode nothing leaves this station without saying so,
+            // so an exercise message is never taken for the real thing
+            const outgoing = ModeProfiles.marksDrill() && !/DRILL/i.test(newMessageText)
+                ? `DRILL ${newMessageText}`
+                : newMessageText;
+
             // todo validate message max length
 
             // show loading
@@ -256,9 +263,9 @@ export default {
             try {
 
                 if(this.type === "contact"){
-                    await Connection.sendMessage(this.contact.publicKey, newMessageText);
+                    await Connection.sendMessage(this.contact.publicKey, outgoing);
                 } else if(this.type === "channel") {
-                    await Connection.sendChannelMessage(this.channel.idx, newMessageText);
+                    await Connection.sendChannelMessage(this.channel.idx, outgoing);
                 }
 
                 // clear new message input

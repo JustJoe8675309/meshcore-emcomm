@@ -263,6 +263,7 @@ import OperatorSettings from "../../js/reports/OperatorSettings.js";
 import SearchableSelect from "./SearchableSelect.vue";
 import ReportFormFields from "./ReportFormFields.vue";
 import TransmissionPreview from "./TransmissionPreview.vue";
+import ModeProfiles from "../../js/modes/ModeProfiles.js";
 
 export default {
     name: 'ReportsPanel',
@@ -683,6 +684,11 @@ export default {
 
     },
     computed: {
+        // in a training mode every part says DRILL, budgeted for in the split
+        marksDrill() {
+            void ModeProfiles.state.revision;
+            return ModeProfiles.marksDrill();
+        },
 
         // ICS forms first in number order, then everything else alphabetically.
         // Sorting purely by name would bury ICS-209 between Damage Assessment and
@@ -788,7 +794,7 @@ export default {
                 return null;
             }
 
-            return ReportEncoder.prepare(this.selectedForm, this.values, this.nodeName, this.destinationType);
+            return ReportEncoder.prepare(this.selectedForm, this.values, this.nodeName, this.destinationType, { markDrill: this.marksDrill });
 
         },
 

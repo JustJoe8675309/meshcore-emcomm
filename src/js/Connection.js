@@ -12,6 +12,7 @@ import { installResilientSerialReads } from "./SerialResilience.js";
 import { Advert } from "@liamcottle/meshcore.js";
 import Airtime from "./reports/Airtime.js";
 import PositionService from "./position/PositionService.js";
+import ModeProfiles from "./modes/ModeProfiles.js";
 
 // before any connection exists: the serial read loop starts in its constructor
 installResilientSerialReads();
@@ -362,6 +363,19 @@ class Connection {
             await this.loadChannels((slot, slots, found) => {
                 step(`Reading channels... ${found} found`, slot, slots);
             });
+            // the first time this app sees a node, its settings and channels as
+            // they stand become its normal mode: the station as its owner had it.
+            // Never guessed at, and never taken again by itself, since by then the
+            // radio may be in an emcomm mode
+            if(ModeProfiles.profile("normal") == null){
+                step("Remembering this radio's own settings...");
+                try {
+                    await ModeProfiles.captureNormal();
+                } catch(e) {
+                    console.log("could not record the radio's normal mode", e);
+                }
+            }
+
             step("Reading waiting messages...");
             await this.syncMessages();
             step("Reading the battery...");

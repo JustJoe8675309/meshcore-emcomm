@@ -11,6 +11,7 @@ import EmcommSettingsGroup from "../../src/components/settings/EmcommSettingsGro
 import GlobalState from "../../src/js/GlobalState.js";
 import AdvertSchedule from "../../src/js/AdvertSchedule.js";
 import EmcommMode from "../../src/js/EmcommMode.js";
+import ModeProfiles from "../../src/js/modes/ModeProfiles.js";
 
 const PUBLIC_KEY = new Uint8Array(32).fill(0xab);
 const NODE = Array.from(PUBLIC_KEY).map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -170,29 +171,29 @@ describe("EmcommSettingsGroup mode badge", () => {
         AdvertSchedule.stop();
     });
 
-    it("says the node is in EMCOMM mode as soon as it enters, without leaving the page", async () => {
+    it("says which mode the node is in as soon as it changes, without leaving the page", async () => {
         // on the bench it still said "Not in EMCOMM mode" after a conversion,
         // until the page was left and opened again
         const wrapper = mountGroup();
         await wrapper.vm.$nextTick();
-        expect(wrapper.text()).toContain("Not in EMCOMM mode");
+        expect(wrapper.text()).toContain("Normal mode");
 
-        EmcommMode.markEntered(NODE);
+        ModeProfiles.setCurrent("live", NODE);
         await wrapper.vm.$nextTick();
 
-        expect(wrapper.text()).toContain("In EMCOMM mode since");
+        expect(wrapper.text()).toContain("Emcomm-Live");
     });
 
-    it("says it has left as soon as the restore ends it", async () => {
-        EmcommMode.markEntered(NODE);
+    it("says it is back in normal mode as soon as the restore ends the emcomm one", async () => {
+        ModeProfiles.setCurrent("live", NODE);
         const wrapper = mountGroup();
         await wrapper.vm.$nextTick();
-        expect(wrapper.text()).toContain("In EMCOMM mode since");
+        expect(wrapper.text()).toContain("Emcomm-Live");
 
-        EmcommMode.markLeft(NODE);
+        ModeProfiles.setCurrent("normal", NODE);
         await wrapper.vm.$nextTick();
 
-        expect(wrapper.text()).toContain("Not in EMCOMM mode");
+        expect(wrapper.text()).toContain("Normal mode");
     });
 
 });

@@ -11,7 +11,7 @@ import SettingsPage from "../../src/components/pages/SettingsPage.vue";
 import Connection from "../../src/js/Connection.js";
 import GlobalState from "../../src/js/GlobalState.js";
 import NodeBackup from "../../src/js/NodeBackup.js";
-import EmcommMode from "../../src/js/EmcommMode.js";
+import ModeProfiles from "../../src/js/modes/ModeProfiles.js";
 
 const KEY = new Uint8Array(32).fill(0x39);
 const NODE = Array.from(KEY).map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -75,34 +75,34 @@ describe("leaving EMCOMM mode", () => {
     });
 
     it("offers the pre-EMCOMM backup while the node is in EMCOMM mode, though a newer one exists", async () => {
-        EmcommMode.markEntered(NODE);
+        ModeProfiles.setCurrent("live", NODE);
         const wrapper = mountPage();
         await flushPromises();
 
         // Load last backup still means the newest, which is the converted state
         expect(button(wrapper, "Load last backup").text()).not.toContain("before EMCOMM mode");
-        expect(button(wrapper, "Leave EMCOMM mode")).toBeTruthy();
+        expect(button(wrapper, "Put the radio back as it was")).toBeTruthy();
     });
 
     it("restores the pre-EMCOMM backup, not the newest, and leaves the mode", async () => {
-        EmcommMode.markEntered(NODE);
+        ModeProfiles.setCurrent("live", NODE);
         window.confirm = vi.fn(() => true);
         const wrapper = mountPage();
         await flushPromises();
 
-        await button(wrapper, "Leave EMCOMM mode").trigger("click");
+        await button(wrapper, "Put the radio back as it was").trigger("click");
         await flushPromises();
 
         expect(restore).toHaveBeenCalledTimes(1);
         const restored = restore.mock.calls[0][0];
         expect(restored.contacts).toHaveLength(180);
         expect(restored.nodeName).toBe("before");
-        expect(EmcommMode.enteredAt(NODE)).toBe(null);
-        expect(button(wrapper, "Leave EMCOMM mode")).toBeFalsy();
+        expect(ModeProfiles.current(NODE)).toBe("normal");
+        expect(button(wrapper, "Put the radio back as it was")).toBeFalsy();
     });
 
     it("offers to remove what was added in the mode, so the node is exactly as it was", async () => {
-        EmcommMode.markEntered(NODE);
+        ModeProfiles.setCurrent("live", NODE);
         const extras = {
             contacts: [{ publicKey: new Uint8Array(32).fill(9), advName: "Met Since" }],
             channels: [{ idx: 4, name: "Incident Tac 1" }],
@@ -112,7 +112,7 @@ describe("leaving EMCOMM mode", () => {
         const wrapper = mountPage();
         await flushPromises();
 
-        await button(wrapper, "Leave EMCOMM mode").trigger("click");
+        await button(wrapper, "Put the radio back as it was").trigger("click");
         await flushPromises();
 
         expect(window.confirm.mock.calls[1][0]).toContain("Met Since");
@@ -122,95 +122,49 @@ describe("leaving EMCOMM mode", () => {
     });
 
     it("keeps what was added when the operator says so, and still leaves the mode", async () => {
-        EmcommMode.markEntered(NODE);
+        ModeProfiles.setCurrent("live", NODE);
         vi.spyOn(NodeBackup, "extras").mockResolvedValue({ contacts: [{ publicKey: new Uint8Array(32).fill(9), advName: "Met Since" }], channels: [] });
         window.confirm = vi.fn().mockReturnValueOnce(true).mockReturnValueOnce(false);
         const wrapper = mountPage();
         await flushPromises();
 
-        await button(wrapper, "Leave EMCOMM mode").trigger("click");
+        await button(wrapper, "Put the radio back as it was").trigger("click");
         await flushPromises();
 
         expect(restore.mock.calls[0][2]).toEqual({ remove: null });
-        expect(EmcommMode.enteredAt(NODE)).toBe(null);
+        expect(ModeProfiles.current(NODE)).toBe("normal");
     });
 
-    it("converting again while in the mode keeps the way home from before it", async () => {
-        EmcommMode.markEntered(NODE);
-        vi.spyOn(NodeBackup, "capture").mockResolvedValue({ ...backup(Date.UTC(2026, 8, 21, 1, 0), 90, "second convert"), formatVersion: 1 });
-        const wrapper = mountPage();
-        await flushPromises();
-
-        await button(wrapper, "Convert to EMCOMM mode").trigger("click");
-        await flushPromises();
-
-        expect(NodeBackup.load(NODE, NodeBackup.SLOT_PRE_EMCOMM).nodeName).toBe("before");
-        expect(NodeBackup.load(NODE, NodeBackup.SLOT_LATEST).nodeName).toBe("second convert");
-        expect(wrapper.text()).toContain("the backup from before it was kept as the way home");
-    });
 
     it("does nothing if the operator cancels", async () => {
-        EmcommMode.markEntered(NODE);
+        ModeProfiles.setCurrent("live", NODE);
         window.confirm = vi.fn(() => false);
         const wrapper = mountPage();
         await flushPromises();
 
-        await button(wrapper, "Leave EMCOMM mode").trigger("click");
+        await button(wrapper, "Put the radio back as it was").trigger("click");
         await flushPromises();
 
         expect(restore).not.toHaveBeenCalled();
-        expect(EmcommMode.enteredAt(NODE)).not.toBe(null);
+        expect(ModeProfiles.current(NODE)).toBe("live");
     });
 
     it("is not offered to a node that is not in EMCOMM mode", async () => {
         const wrapper = mountPage();
         await flushPromises();
-        expect(button(wrapper, "Leave EMCOMM mode")).toBeFalsy();
+        expect(button(wrapper, "Put the radio back as it was")).toBeFalsy();
     });
 
     it("is not offered when there is no pre-EMCOMM backup to go back to", async () => {
         window.localStorage.removeItem(NodeBackup.storageKey(NODE, NodeBackup.SLOT_PRE_EMCOMM));
-        EmcommMode.markEntered(NODE);
+        ModeProfiles.setCurrent("live", NODE);
         const wrapper = mountPage();
         await flushPromises();
-        expect(button(wrapper, "Leave EMCOMM mode")).toBeFalsy();
+        expect(button(wrapper, "Put the radio back as it was")).toBeFalsy();
     });
 
 });
 
-describe("the backup list during a conversion", () => {
-
-    beforeEach(() => {
-        window.localStorage.clear();
-        GlobalState.selfInfo = SELF_INFO;
-        GlobalState.contacts = [];
-        GlobalState.connection = { on() {}, off() {}, getSelfInfo: async () => SELF_INFO };
-        vi.spyOn(Connection, "loadSelfInfo").mockImplementation(async () => { GlobalState.selfInfo = SELF_INFO; });
-        vi.spyOn(Connection, "deviceQuery").mockResolvedValue(null);
-        NodeBackup.save(backup(Date.UTC(2026, 8, 21, 0, 17), 180, "earlier"), NodeBackup.SLOT_LATEST);
-    });
-
-    afterEach(() => {
-        vi.restoreAllMocks();
-        GlobalState.connection = null;
-        GlobalState.selfInfo = null;
-        window.localStorage.clear();
-    });
-
-    it("names the pre-convert backup as soon as it is taken", async () => {
-        // on the bench, Save to file mid conversion exported the backup before it
-        vi.spyOn(NodeBackup, "capture").mockResolvedValue(backup(Date.UTC(2026, 8, 21, 0, 18), 180, "pre-convert"));
-        const wrapper = mountPage();
-        await flushPromises();
-
-        await wrapper.vm.convertToEmcomm();
-        await flushPromises();
-
-        expect(wrapper.vm.backups[0].slot).toBe(NodeBackup.SLOT_PRE_EMCOMM);
-        expect(wrapper.vm.backups[0].backup.nodeName).toBe("pre-convert");
-    });
-
-});
 
 describe("telling the stations in range after a restore", () => {
 

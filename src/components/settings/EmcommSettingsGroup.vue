@@ -178,6 +178,7 @@ import GlobalState from "../../js/GlobalState.js";
 import Connection from "../../js/Connection.js";
 import EmcommMode from "../../js/EmcommMode.js";
 import AdvertSchedule from "../../js/AdvertSchedule.js";
+import ModeProfiles from "../../js/modes/ModeProfiles.js";
 import Utils from "../../js/Utils.js";
 
 export default {
@@ -336,13 +337,14 @@ export default {
             // read so this recomputes when the mode changes: the mode is kept in
             // browser storage, which the page cannot watch
             GlobalState.emcommModeRevision;
-            return this.nodePublicKey != null && EmcommMode.enteredAt(this.nodePublicKey) != null;
+            void ModeProfiles.state.revision;
+            return this.nodePublicKey != null && ModeProfiles.current(this.nodePublicKey) !== "normal";
         },
 
         modeLabel() {
             GlobalState.emcommModeRevision;
-            const at = this.nodePublicKey == null ? null : EmcommMode.enteredAt(this.nodePublicKey);
-            return at == null ? "Not in EMCOMM mode" : `In EMCOMM mode since ${new Date(at).toLocaleString()}`;
+            void ModeProfiles.state.revision;
+            return ModeProfiles.label(this.nodePublicKey == null ? "normal" : ModeProfiles.current(this.nodePublicKey));
         },
 
         floodCautionMinutes() {

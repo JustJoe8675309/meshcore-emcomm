@@ -326,6 +326,22 @@ one found so far came from a dropped frame, and the link that drops them is BLE.
 - [ ] **The way home stays reachable.** Back up while converted, so the newest backup
       is the converted state, then press **Leave EMCOMM mode**. It must offer the
       pre-EMCOMM backup, not the newest, and restore the node to it.
+- [ ] **The mode banner.** Green and "Normal mode" on a radio this app has just
+      met. Tap it: the dialog offers three modes, marks the one in use, and lists
+      what a switch would do without writing anything.
+- [ ] **Switching to Emcomm-Live.** The bar goes red. On the radio: the name, power
+      and radio settings from the Live tab, #Emcomm in slot 0, and every other
+      channel slot empty. The other node should no longer hear it on the old
+      channels.
+- [ ] **Switching to Emcomm-Training.** The bar goes yellow. Send a report: every
+      part arrives at the other node beginning DRILL, and every part still fits.
+      Type a message: it arrives with DRILL in front.
+- [ ] **Back to Normal mode.** The bar goes green, the radio's own channels and
+      contacts come back from the backup, and the other node hears it on the old
+      channels again.
+- [ ] **The tabs match.** Each of the three tabs in Settings shows the same fields.
+      Editing a mode that is not in use changes nothing on the radio until it is
+      entered.
 - [ ] **The radio's emcomm settings.** After converting, the radio reads back with
       extra acknowledgements on, the position in adverts on, and location sharing
       on. The other node should see this station's position in its advert without

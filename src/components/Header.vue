@@ -1,5 +1,6 @@
 <template>
-    <div class="flex bg-white p-2 border-b h-16">
+    <div class="bg-white border-b">
+    <div class="flex p-2 h-16">
         <div class="flex-shrink-0 my-auto mr-2">
             <img src="/icon.png" class="size-12 rounded"/>
         </div>
@@ -20,6 +21,10 @@
                 <span v-else>Not connected</span>
 
             </div>
+
+            <!-- which mode this station is in, under the battery line -->
+            <ModeBanner class="mt-0.5" @open="modeDialogOpen = true"/>
+
         </div>
         <div class="my-auto flex font-semibold">
 
@@ -67,6 +72,10 @@
 
         </div>
     </div>
+
+    <ModeSwitchDialog :open="modeDialogOpen" @close="modeDialogOpen = false"/>
+
+    </div>
 </template>
 
 <script>
@@ -75,10 +84,17 @@ import Connection from "../js/Connection.js";
 import IconButton from "./IconButton.vue";
 import DropDownMenu from "./DropDownMenu.vue";
 import DropDownMenuItem from "./DropDownMenuItem.vue";
+import ModeBanner from "./modes/ModeBanner.vue";
+import ModeSwitchDialog from "./modes/ModeSwitchDialog.vue";
 
 export default {
     name: 'Header',
-    components: {DropDownMenuItem, DropDownMenu, IconButton},
+    components: {DropDownMenuItem, DropDownMenu, IconButton, ModeBanner, ModeSwitchDialog},
+    data() {
+        return {
+            modeDialogOpen: false,
+        };
+    },
     methods: {
         async sendZeroHopAdvert() {
             await Connection.sendZeroHopAdvert();
