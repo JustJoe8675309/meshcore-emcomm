@@ -753,7 +753,35 @@ it could be either.
 arrived in 0.58 s. The app before this change filed that direct message in the chat with a
 notification, which is why it is now intercepted.
 
+**Proven on the bench, end to end, on 22 September 2026.** Node 1 was on serial and node 2 on
+Bluetooth, on Emcomm Testing:
+- **Once, on the channel.** Node 2 was prompted, Send went out, and node 1 marked it answered,
+  with node 2's live GPS position in degrees and MGRS.
+- **Direct, every minute until answered.** The second request refreshed node 2's prompt to
+  "Asked 2 times" rather than adding one. Nothing reached either conversation. Send with message
+  opened node 2's conversation with node 1, and node 1 showed "message to follow" and stopped.
+- **Up to 3 times every minute, unanswered.** Three requests, then "No answer after 3 requests".
+- **Decline** stopped the repeats after one request and showed "Declined by KJ5HBN".
+- **The radio's own answer.** With node 2's location sharing turned on from the EMCOMM group and
+  its app told "Not now", node 1 had node 2's GPS position from its radio 30 s after asking.
+  Sharing was then turned off from the same button, and the radio read back exactly as before.
+- **A channel not ticked.** Node 2's radio received the request and nothing was put to the
+  operator.
+- **Answering automatically.** Node 2 asked node 1, and node 1 answered within 4 s, with no
+  prompt, that it has no position set.
+
+Two things were changed from what the bench showed:
+- **The list names the radio beside the operator.** Both bench radios share one callsign, so
+  answers were indistinguishable by name.
+- **A decline no longer hides a station's last known position.** It is now shown beneath the
+  decline or "no position" answer.
+
+Not yet seen: what a stock client shows. The third node is on the computer's only Bluetooth
+connection, which node 2 was using.
+
 **Limits.**
+- **A second request replaces the first prompt.** If two stations ask at once, the newer
+  request replaces the older one on screen.
 - **Hidden, not secret.** Anyone holding the channel key who writes their own code can read the
   positions.
 - **Not signed.** Anyone on the channel could send a false one. That was accepted for the first
@@ -1071,7 +1099,7 @@ happen on demand:
 npm test
 ```
 
-Six plain node suites and thirty-six component suites, 562 component tests, no hardware
+Six plain node suites and thirty-six component suites, 565 component tests, no hardware
 required:
 
 - `test/report_encoder.test.mjs` covers rendering and packet splitting, including a

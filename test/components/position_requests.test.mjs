@@ -501,6 +501,40 @@ describe("the positions list", () => {
         expect(text).toContain("Message to follow");
     });
 
+    it("names the radio beside the operator's callsign when they differ", async () => {
+        PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: Protocol.encode({
+            kind: Protocol.KIND.POSITION, tag: 1, to: ME, from: THEM, name: "KJ5HBN", latitude: 31.788, longitude: -106.497, fixTime: 0, flags: 0,
+        }) });
+        const wrapper = mount(PositionsPanel);
+        await flushPromises();
+        expect(wrapper.text()).toContain("KJ5HBN · KJ5HBN-EMCOMM");
+    });
+
+    it("keeps the last known position under a later decline", async () => {
+        PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: Protocol.encode({
+            kind: Protocol.KIND.POSITION, tag: 1, to: ME, from: THEM, name: "KJ5HBN", latitude: 31.788, longitude: -106.497, fixTime: 0, flags: 0,
+        }) });
+        PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: Protocol.encode({
+            kind: Protocol.KIND.DECLINED, tag: 2, to: ME, from: THEM, name: "KJ5HBN",
+        }) });
+        const wrapper = mount(PositionsPanel);
+        await flushPromises();
+        const text = wrapper.text();
+        expect(text).toContain("Declined by KJ5HBN");
+        expect(text).toContain("Last known position");
+        expect(text).toContain("31.7880° N, 106.4970° W");
+        expect(text).toMatch(/\d{3}° magnetic/);
+    });
+
+    it("shows no last known position when there never was one", async () => {
+        PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: Protocol.encode({
+            kind: Protocol.KIND.DECLINED, tag: 2, to: ME, from: THEM, name: "KJ5HBN",
+        }) });
+        const wrapper = mount(PositionsPanel);
+        await flushPromises();
+        expect(wrapper.text()).not.toContain("Last known position");
+    });
+
     it("says why there is no distance when this radio has no position", async () => {
         connect({ lat: 0, lon: 0 });
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: Protocol.encode({

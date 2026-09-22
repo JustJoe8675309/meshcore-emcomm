@@ -65,7 +65,10 @@
                 </div>
                 <div v-for="report of reports" :key="report.id" class="p-3 space-y-1">
                     <div class="flex items-center justify-between">
-                        <div class="text-sm font-semibold text-gray-900">{{ report.name }}</div>
+                        <div class="text-sm font-semibold text-gray-900">
+                            {{ report.name }}
+                            <span v-if="report.nodeName && report.nodeName !== report.name" class="font-normal text-gray-500">· {{ report.nodeName }}</span>
+                        </div>
                         <div class="text-xs text-gray-500">{{ time(report.receivedAt) }}</div>
                     </div>
 
@@ -87,6 +90,16 @@
                     </template>
 
                     <div v-else class="text-xs text-amber-800">Answered, but has no position set.</div>
+
+                    <!-- the newest word was a decline or no position: keep where it was last known to be -->
+                    <div v-if="lastKnown(report)" class="border-l-2 border-gray-200 pl-2 space-y-0.5">
+                        <div class="text-xs text-gray-600">Last known position, {{ time(lastKnown(report).receivedAt) }}</div>
+                        <div class="text-xs text-gray-800">{{ formatDegrees(lastKnown(report).latitude, lastKnown(report).longitude) }}</div>
+                        <div v-if="formatMgrs(lastKnown(report).latitude, lastKnown(report).longitude)" class="text-xs text-gray-800">{{ formatMgrs(lastKnown(report).latitude, lastKnown(report).longitude) }}</div>
+                        <div v-if="relation(lastKnown(report))" class="text-xs text-gray-900">
+                            {{ formatDistance(relation(lastKnown(report)).metres) }}, {{ formatBearing(relation(lastKnown(report)).magneticBearing) }}
+                        </div>
+                    </div>
 
                     <div v-if="report.messageToFollow" class="text-xs font-semibold text-blue-700">Message to follow</div>
                     <div class="text-xs text-gray-500">{{ sourceLabel(report) }}</div>
@@ -126,6 +139,12 @@ export default {
         },
         time(millis) {
             return new Date(millis).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        },
+        lastKnown(report) {
+            if(report.source !== "declined" && report.hasPosition){
+                return null;
+            }
+            return PositionService.lastPositionFrom(report.fromPrefixHex);
         },
         relation(report) {
             if(!this.own.has){

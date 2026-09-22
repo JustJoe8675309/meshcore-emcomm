@@ -461,6 +461,10 @@ class PositionService {
         const fromHex = Protocol.prefixHex(message.from);
         const known = this.contactByPrefix(message.from);
         const name = message.name || this.contactName(known) || fromHex;
+        // the radio's own name, when the sender is a contact. On a channel the
+        // name carried is the operator's callsign, which on the bench was the same
+        // for both radios, so the list could not tell them apart without this
+        const nodeName = this.contactName(known);
 
         if(message.kind === Protocol.KIND.REQUEST){
             if(!this.isForMe(message.to)){
@@ -495,6 +499,7 @@ class PositionService {
                 source: "app",
                 fromPrefixHex: fromHex,
                 name,
+                nodeName,
                 latitude: message.latitude,
                 longitude: message.longitude,
                 hasPosition: message.hasPosition,
@@ -509,6 +514,7 @@ class PositionService {
                 source: "declined",
                 fromPrefixHex: fromHex,
                 name,
+                nodeName,
                 via,
                 requestedByUs: answersMine,
             });
@@ -538,6 +544,16 @@ class PositionService {
     static record(report) {
         state.reports.unshift({ ...report, receivedAt: Date.now(), id: `${report.fromPrefixHex}-${Date.now()}-${Math.random()}` });
         state.reports.splice(MAX_REPORTS);
+    }
+
+    /**
+     * The newest real position from a station, or null. A decline, or an answer
+     * with no position, is the newest word from a station but must not hide
+     * where it was last known to be: on the bench a decline replaced node 2's
+     * position in the list.
+     */
+    static lastPositionFrom(prefixHex) {
+        return state.reports.find((r) => r.fromPrefixHex === prefixHex && r.source !== "declined" && r.hasPosition) ?? null;
     }
 
     /** The newest report from each station, for the list. */
