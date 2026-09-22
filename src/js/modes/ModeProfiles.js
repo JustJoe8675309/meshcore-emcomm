@@ -39,10 +39,18 @@ export const MODE_CLASSES = {
     training: "bg-yellow-400 text-black",
 };
 
+// the channel each emcomm mode starts with. A default, not a rule: an operator
+// who removes it in the settings tab meant to, and it stays removed
 export const DEFAULT_CHANNELS = {
     live: "#Emcomm",
     training: "#Emcomm-Training",
 };
+
+// A channel whose name says emcomm belongs to emergency work whichever mode the
+// station is in, so it is carried into every mode rather than cleared with the
+// rest. This is what keeps a net's own channel, and the bench's Emcomm Testing,
+// on the radio across a switch
+const KEEP_ACROSS_MODES = /emcomm/i;
 
 const state = reactive({
     // bumped on every change, since browser storage is not reactive
@@ -142,6 +150,15 @@ class ModeProfiles {
             // look for repeaters in direct range on entering
             discoverRepeaters: false,
         };
+    }
+
+    /** Whether a channel's name means it is kept in every mode. */
+    static keepsAcrossModes(name) {
+        return KEEP_ACROSS_MODES.test(name ?? "");
+    }
+
+    static defaultChannel(mode) {
+        return DEFAULT_CHANNELS[mode] ?? null;
     }
 
     /** A profile, filled out from what is stored, or the defaults for that mode. */
@@ -281,15 +298,18 @@ class ModeProfiles {
 
     /** The profile for a mode, making the default first if there is none yet. */
     static async profileOrDefault(mode, nodeKeyHex = this.nodeKeyHex()) {
+
         const existing = this.profile(mode, nodeKeyHex);
         if(existing != null){
             return existing;
         }
+
         const profile = mode === "normal"
             ? await this.captureNormal(nodeKeyHex)
             : await this.defaultEmcommProfile(mode, nodeKeyHex);
         this.saveProfile(mode, profile, nodeKeyHex);
         return profile;
+
     }
 
     /** Whether traffic sent now should be marked DRILL. */

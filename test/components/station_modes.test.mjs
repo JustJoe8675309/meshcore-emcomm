@@ -194,9 +194,29 @@ describe("switching a station's mode", () => {
     it("writes the mode's channels from slot 0 and clears the rest", async () => {
         await ModeSwitch.apply("live");
         expect(written[0]).toMatchObject({ idx: 0, name: "#Emcomm" });
-        // every other slot cleared, so the radio hears only this mode's traffic
-        expect(written.slice(1).every((w) => w.secret === "cleared")).toBe(true);
+        // Emcomm Testing goes with it, being an emcomm channel; Public does not
+        expect(written[1]).toMatchObject({ idx: 1, name: "Emcomm Testing" });
+        expect(written.slice(2).every((w) => w.secret === "cleared")).toBe(true);
+        expect(written.map((w) => w.name)).not.toContain("Public");
         expect(written).toHaveLength(16);
+    });
+
+    it("carries a channel whose name says emcomm into every mode, and says so", async () => {
+        const result = await ModeSwitch.apply("live");
+        expect(result.warnings.join(" ")).toContain("Emcomm Testing is an emcomm channel, so it was carried into Emcomm-Live");
+        // and it is in that mode from now on, so the next switch keeps it too
+        expect(ModeProfiles.profile("live", NODE).channels.map((c) => c.name)).toEqual(["#Emcomm", "Emcomm Testing"]);
+    });
+
+    it("gives live and training their own channel by default, and does not force it back", async () => {
+        const live = await ModeProfiles.profileOrDefault("live", NODE);
+        expect(live.channels.map((c) => c.name)).toEqual(["#Emcomm"]);
+        const training = await ModeProfiles.profileOrDefault("training", NODE);
+        expect(training.channels.map((c) => c.name)).toEqual(["#Emcomm-Training"]);
+
+        // an operator who removes it meant to: it stays removed
+        ModeProfiles.saveProfile("live", { ...live, channels: [] }, NODE);
+        expect((await ModeProfiles.profileOrDefault("live", NODE)).channels).toEqual([]);
     });
 
     it("writes the radio settings, and the app's own settings for the node", async () => {

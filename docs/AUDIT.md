@@ -341,6 +341,10 @@ one found so far came from a dropped frame, and the link that drops them is BLE.
       channels again.
 - [ ] **Favourites survive a switch.** Star a companion and a repeater, then switch
       to Emcomm-Live. Both are still in Contacts afterwards.
+- [ ] **Emcomm channels travel.** With Emcomm Testing on the radio in Normal mode,
+      switch to Emcomm-Live. The switch says it carried Emcomm Testing in, the
+      channel is still on the radio, and the two nodes can still talk on it. The
+      Live tab now lists it.
 - [ ] **A channel in no mode is kept, not lost.** While in Normal mode, add a
       channel with a random key from the stock app or the Channels tab. Switch to
       Emcomm-Live: the switch says it kept that channel in Normal mode. Switch

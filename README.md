@@ -591,6 +591,16 @@ channels as they are now, which is the only time normal mode is re-read after th
 that routine backups cannot overwrite. Switching back to normal writes it, which is where the
 contacts come from, and puts the station back as it was.
 
+**Each emcomm mode starts with its own channel:** `#Emcomm` for Emcomm-Live and
+`#Emcomm-Training` for Emcomm-Training, each with the key every client derives from that name, and
+each ticked to answer position requests. It is a default, not a rule: an operator who removes it
+in the tab meant to, and it stays removed.
+
+**A channel whose name contains "emcomm" travels with the station.** Emergency work does not stop
+being emergency work because the mode changed, so any such channel found on the radio is carried
+into the mode being entered rather than cleared, and joins that mode from then on. That covers a
+net's own channel and the bench's Emcomm Testing. Matching ignores case and position in the name.
+
 **Nothing a switch cannot give back is destroyed:**
 - **A starred contact stays**, whatever its type or age. Net control, the EOC and the team are
   the last contacts to throw away, so the trim keeps every favourite.
