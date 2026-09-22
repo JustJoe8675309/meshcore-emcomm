@@ -302,6 +302,19 @@ describe("the header", () => {
         expect(wrapper.vm.sharingOpen).toBe(true);
     });
 
+    it("has a route for a scanned code to land on", async () => {
+        // without one nothing matched the hash, and a scanned code opened a
+        // blank app: no page, and so no header to take the link. Found by
+        // opening a code in a browser rather than by any test
+        const { readFileSync } = await import("node:fs");
+        const { resolve } = await import("node:path");
+        // the test file's url is served, not a file url, so resolve from the
+        // working directory the runner starts in: the repository root
+        const main = readFileSync(resolve("src/main.js"), "utf8");
+        expect(main).toContain("path: '/mode'");
+        expect(main).toContain('name: "mode"');
+    });
+
     it("opens the sharing screen for a link the app was opened with, then clears it", async () => {
         window.location.hash = "#/mode?v=1&d=abc";
         const wrapper = await mountHeader();

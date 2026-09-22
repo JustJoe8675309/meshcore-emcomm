@@ -99,7 +99,7 @@ describe("PathInfo", () => {
 
 });
 
-describe("ContactsList", () => {
+describe("the contacts and channels list", () => {
 
     beforeEach(() => {
         GlobalState.contactsMissing = 0;

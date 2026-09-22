@@ -166,7 +166,6 @@ describe("backing up and restoring", () => {
                 stubs: {
                     Page: { template: "<div><slot/></div>" },
                     AppBar: { template: "<div><slot name='trailing'/></div>" },
-                    EmcommConvertDialog: true,
                     EmcommSettingsGroup: true,
                     RouterLink: true,
                 },

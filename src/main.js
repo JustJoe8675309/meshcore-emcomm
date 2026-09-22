@@ -23,6 +23,14 @@ const routes = [
         component: () => import("./components/pages/MainPage.vue"),
     },
     {
+        // where a scanned mode code lands. It shows the main page, whose header
+        // takes the link and opens the sharing screen: without a route of its own
+        // nothing matched, and a scanned code opened a blank app
+        name: "mode",
+        path: '/mode',
+        component: () => import("./components/pages/MainPage.vue"),
+    },
+    {
         name: "connect",
         path: '/connect',
         component: () => import("./components/pages/ConnectPage.vue"),
