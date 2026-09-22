@@ -7,7 +7,11 @@ import Position from "./reports/Position.js";
 import ContactFlags from "./ContactFlags.js";
 import SignedPosts from "./SignedPosts.js";
 import AdvertSchedule from "./AdvertSchedule.js";
+import { installResilientSerialReads } from "./SerialResilience.js";
 import { Advert } from "@liamcottle/meshcore.js";
+
+// before any connection exists: the serial read loop starts in its constructor
+installResilientSerialReads();
 
 class Connection {
 
