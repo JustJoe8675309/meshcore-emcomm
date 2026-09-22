@@ -344,10 +344,10 @@ class PositionService {
         }
 
         state.requests.unshift(request);
-        state.requests.splice(20);
+        this.trimRequests();
         this.holdScreen();
         this.sendAttempt(request.tag);
-        return request;
+        return state.requests[0];
 
     }
 
@@ -425,11 +425,41 @@ class PositionService {
         }
 
         state.requests.unshift(request);
-        state.requests.splice(20);
+        this.trimRequests();
+        // everything after this works on the list's own copy, which Vue tracks. The
+        // object built above is not, and changes made to it went unseen: the card
+        // said Listening, with a Stop button, after the roll call had closed
+        const live = state.requests[0];
         this.holdScreen();
-        this.sendRollCall(request);
-        return request;
+        this.sendRollCall(live);
+        return live;
 
+    }
+
+    /**
+     * Keeps the list to twenty, dropping the oldest finished requests. A request
+     * still running is never dropped: a roll call dropped while running kept
+     * sending, with nothing left on screen to stop it.
+     */
+    static trimRequests() {
+        while(state.requests.length > 20){
+            let at = -1;
+            for(let i = state.requests.length - 1; i >= 0; i--){
+                if(state.requests[i].status !== "running"){
+                    at = i;
+                    break;
+                }
+            }
+            if(at < 0){
+                break;
+            }
+            state.requests.splice(at, 1);
+        }
+    }
+
+    // a roll call only carries on while it is running and still in the list
+    static isLive(request) {
+        return request.status === "running" && state.requests.includes(request);
     }
 
     static currentRound(request) {
@@ -438,7 +468,7 @@ class PositionService {
 
     static async sendRollCall(request) {
 
-        if(request.status !== "running"){
+        if(!this.isLive(request)){
             return;
         }
         timers.delete(request.tag);
@@ -485,7 +515,7 @@ class PositionService {
 
         request.nextAt = Date.now() + mode.intervalMinutes * MINUTE;
         timers.set(request.tag, setTimeout(() => {
-            if(request.status !== "running"){
+            if(!this.isLive(request)){
                 return;
             }
             timers.delete(request.tag);
@@ -776,7 +806,13 @@ class PositionService {
             }
         }
         state.prompts = [];
+        for(const timer of this.autoPending.values()){
+            clearTimeout(timer);
+        }
         this.autoPending.clear();
+        // a form left open would send by the next radio's channel numbers
+        state.requestTarget = null;
+        state.groupTarget = null;
     }
 
     static dismiss(tag) {
@@ -833,8 +869,10 @@ class PositionService {
         // the room says who wrote it. A payload claiming another author is not believed
         if(authorPrefix != null && authorPrefix.length > 0
             && Protocol.prefixHex(authorPrefix) !== Protocol.prefixHex(message.from).slice(0, authorPrefix.length * 2)){
-            console.log("room post claims another author; ignored");
-            return true;
+            // shown as an ordinary post rather than hidden: it may be someone
+            // passing on another station's position line, which is still chat
+            console.log("room post carries another author's code; left as text");
+            return false;
         }
         const via = { kind: "room", contactKeyHex: Utils.bytesToHex(room.publicKey), name: this.contactName(room) };
         // a room replays what was missed to anyone logging in, and an old request
@@ -849,7 +887,12 @@ class PositionService {
             console.log(`room request ${ageSeconds}s old, a replay; ignored`);
             return true;
         }
-        this.receive(message, via);
+        // a position is kept at the time it was posted, by this clock, so one the
+        // room replays from hours ago does not take the place of a newer one
+        const heardAt = postedAtSeconds && ageSeconds > 0 && ageSeconds < 7 * 24 * 3600
+            ? Date.now() - ageSeconds * 1000
+            : null;
+        this.receive(message, via, heardAt);
         return true;
     }
 
@@ -858,10 +901,14 @@ class PositionService {
         return own != null && Protocol.prefixHex(prefix) === Protocol.prefixHex(own);
     }
 
-    /** Whether this station has an automatic answer to this roll call waiting to go. */
-    static autoPending = new Set();
+    // automatic answers to roll calls waiting their random moment, by station and
+    // tag, so a repeat heard meanwhile is not answered twice, and a disconnect
+    // cancels them: a different radio connected within the minute must not
+    // answer for this one
+    static autoPending = new Map();
 
-    static receive(message, via) {
+    // heardAt: when it was sent, for a post a room replays; otherwise now
+    static receive(message, via, heardAt = null) {
 
         const fromHex = Protocol.prefixHex(message.from);
         const known = this.contactByPrefix(message.from);
@@ -907,15 +954,14 @@ class PositionService {
                     if(this.autoPending.has(key)){
                         return;
                     }
-                    this.autoPending.add(key);
                     const delay = Math.floor(Math.random() * this.rollCallSpreadMillis());
-                    setTimeout(() => {
+                    this.autoPending.set(key, setTimeout(() => {
                         this.autoPending.delete(key);
                         if(GlobalState.connection == null){
                             return;
                         }
                         this.answer(request, { messageToFollow: false }).catch((e) => console.log("automatic roll call answer failed", e));
-                    }, delay);
+                    }, delay));
                     return;
                 }
                 this.answer(request, { messageToFollow: false }).catch((e) => console.log("automatic position answer failed", e));
@@ -939,6 +985,7 @@ class PositionService {
 
         if(message.kind === Protocol.KIND.POSITION){
             this.record({
+                heardAt,
                 shared,
                 source: "app",
                 fromPrefixHex: fromHex,
@@ -957,6 +1004,7 @@ class PositionService {
             });
         } else if(message.kind === Protocol.KIND.DECLINED){
             this.record({
+                heardAt,
                 source: "declined",
                 fromPrefixHex: fromHex,
                 name,
@@ -972,9 +1020,9 @@ class PositionService {
 
         // an answer to one of this station's roll calls joins its list; the roll
         // call runs on, since others are still answering
-        if(this.noteRollCallAnswer(message, fromHex, name, nodeName)){
-            return;
-        }
+        // it may also be the station a single request of ours is waiting on: its
+        // answer to the roll call answers that too
+        this.noteRollCallAnswer(message, fromHex, name, nodeName);
 
         // an answer to one of ours ends it, matched on the tag, or failing that
         // on the station, since an answer to an earlier round still counts. A
@@ -999,8 +1047,17 @@ class PositionService {
 
     }
 
+    /**
+     * Keeps a report, newest first by when it was heard. Nearly always that is
+     * now; a post a room replays at login carries its own, earlier time, and goes
+     * in behind anything newer rather than on top of it.
+     */
     static record(report) {
-        state.reports.unshift({ ...report, receivedAt: Date.now(), id: `${report.fromPrefixHex}-${Date.now()}-${Math.random()}` });
+        const { heardAt, ...rest } = report;
+        const receivedAt = heardAt ?? Date.now();
+        const entry = { ...rest, receivedAt, id: `${report.fromPrefixHex}-${receivedAt}-${Math.random()}` };
+        const at = state.reports.findIndex((r) => r.receivedAt <= receivedAt);
+        state.reports.splice(at < 0 ? state.reports.length : at, 0, entry);
         state.reports.splice(MAX_REPORTS);
     }
 

@@ -390,9 +390,9 @@ describe("in a room", () => {
         expect(Connection.readLoginSuccess(frame.slice(0, 8)).clockOffsetSeconds).toBe(null);
     });
 
-    it("does not believe a post whose code names another author than the room does", () => {
+    it("does not believe a post whose code names another author than the room does, and leaves it as text", () => {
         PositionService.saveSettings({ markedChannels: [], markedRooms: [ROOM_HEX], autoAnswer: false });
-        expect(PositionService.onRoomText(ROOM_CONTACT, BRAVO.slice(0, 4), rollCall(), now())).toBe(true);
+        expect(PositionService.onRoomText(ROOM_CONTACT, BRAVO.slice(0, 4), rollCall(), now())).toBe(false);
         expect(PositionService.state.prompt).toBe(null);
     });
 
@@ -408,6 +408,92 @@ describe("in a room", () => {
         expect(insert).not.toHaveBeenCalled();
         expect(notify).not.toHaveBeenCalled();
         expect(PositionService.state.prompt.rollCall).toBe(true);
+    });
+
+});
+
+describe("what a review of the first build found", () => {
+
+    let sent;
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+        window.localStorage.clear();
+        reset();
+        connect();
+        sent = [];
+        vi.spyOn(Connection, "sendChannelDatagram").mockImplementation(async (idx, type, payload) => { sent.push({ idx, message: Protocol.decode(payload) }); });
+        vi.spyOn(Connection, "sendCommandData").mockImplementation(async (key, text) => { sent.push({ key, message: Protocol.fromDirectText(text) }); });
+        vi.spyOn(Connection, "requestTelemetry").mockRejectedValue(new Error("timeout"));
+    });
+
+    afterEach(() => {
+        reset();
+        vi.useRealTimers();
+        vi.restoreAllMocks();
+    });
+
+    it("a roll call's progress is seen by the screen as it happens", async () => {
+        const { computed } = await import("vue");
+        PositionService.startRollCall(CHANNEL, { type: "once" });
+        const sentCount = computed(() => PositionService.state.requests[0].sent);
+        const status = computed(() => PositionService.state.requests[0].status);
+        expect(sentCount.value).toBe(0);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(sentCount.value).toBe(1);
+        await vi.advanceTimersByTimeAsync(5 * 60000);
+        expect(status.value).toBe("done");
+    });
+
+    it("a running roll call is never dropped from the list, where nothing could stop it", async () => {
+        const rollCall = PositionService.startRollCall(CHANNEL, { type: "again", intervalMinutes: 5, maxCount: 5 });
+        for(let i = 0; i < 25; i++){
+            PositionService.stop(PositionService.start(ALPHA_CONTACT, { kind: "direct" }, { type: "once" }).tag);
+        }
+        expect(PositionService.state.requests).toHaveLength(20);
+        expect(PositionService.state.requests.includes(rollCall)).toBe(true);
+        PositionService.stop(rollCall.tag);
+        const before = sent.filter((s) => s.idx === 7).length;
+        await vi.advanceTimersByTimeAsync(30 * 60000);
+        expect(sent.filter((s) => s.idx === 7).length).toBe(before);
+    });
+
+    it("an answer to a roll call also answers that station's own request of ours", async () => {
+        const single = PositionService.start(ALPHA_CONTACT, CHANNEL, { type: "until", intervalMinutes: 5 });
+        const rollCall = PositionService.startRollCall({ kind: "channel", idx: 0, name: "Public" }, { type: "once" });
+        await vi.advanceTimersByTimeAsync(0);
+        answerOnChannel(ALPHA, rollCall.tag);
+        expect(single.status).toBe("answered");
+        expect(rollCall.rounds[0].answers).toHaveLength(1);
+    });
+
+    it("a position a room replays from an hour ago goes behind a newer one, not on top", () => {
+        answerOnChannel(ALPHA, 0);
+        const hourAgo = Math.floor(Date.now() / 1000) - 3600;
+        PositionService.onRoomText(ROOM_CONTACT, ALPHA.slice(0, 4), Protocol.toDirectText({
+            kind: Protocol.KIND.POSITION, tag: 0, to: Protocol.EVERYONE, from: ALPHA, name: "KJ5HBN", latitude: 31.5, longitude: -106.2, fixTime: 0, flags: 0,
+        }, "Position of KJ5HBN", Protocol.MAX_ROOM_BYTES), hourAgo);
+        const latest = PositionService.latestByStation().find((r) => r.fromPrefixHex === "393939393939");
+        expect(latest.latitude).toBe(31.788);
+        expect(PositionService.state.reports[1].receivedAt).toBeLessThan(Date.now() - 3500 * 1000);
+    });
+
+    it("a room post carrying another station's code is left in the chat as text", () => {
+        const text = Protocol.toDirectText({ kind: Protocol.KIND.POSITION, tag: 0, to: Protocol.EVERYONE, from: ALPHA, name: "KJ5HBN", latitude: 31.5, longitude: -106.2, fixTime: 0, flags: 0 }, "Position of KJ5HBN", Protocol.MAX_ROOM_BYTES);
+        expect(PositionService.onRoomText(ROOM_CONTACT, BRAVO.slice(0, 4), text, Math.floor(Date.now() / 1000))).toBe(false);
+        expect(PositionService.state.reports).toHaveLength(0);
+    });
+
+    it("a disconnect cancels an automatic answer still waiting, and closes open forms", async () => {
+        PositionService.saveSettings({ markedChannels: [7], markedRooms: [], autoAnswer: true });
+        PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: rollCallFrom(ALPHA) });
+        PositionService.openGroup("rollcall", CHANNEL);
+        PositionService.onDisconnected();
+        expect(PositionService.state.groupTarget).toBe(null);
+        // a different radio connected within the minute must not answer for the last one
+        connect();
+        await vi.advanceTimersByTimeAsync(60000);
+        expect(sent).toHaveLength(0);
     });
 
 });

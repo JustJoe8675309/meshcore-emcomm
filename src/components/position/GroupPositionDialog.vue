@@ -118,6 +118,7 @@ export default {
             error: null,
             checking: false,
             check: null,
+            checkRun: 0,
         };
     },
     watch: {
@@ -141,17 +142,23 @@ export default {
             PositionService.closeGroup();
         },
         async runCheck() {
-            const target = this.target;
+            // only the latest check may finish: an earlier one ending first would
+            // enable Send while the latest was still reading the radio
+            const run = ++this.checkRun;
             this.checking = true;
             try {
                 const result = await PositionService.currentPosition();
-                if(this.target === target){
+                if(run === this.checkRun){
                     this.check = result;
                 }
             } catch(e) {
-                this.check = null;
+                if(run === this.checkRun){
+                    this.check = null;
+                }
             } finally {
-                this.checking = false;
+                if(run === this.checkRun){
+                    this.checking = false;
+                }
             }
         },
         async go() {

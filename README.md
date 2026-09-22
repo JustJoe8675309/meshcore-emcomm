@@ -816,7 +816,10 @@ are admins of the test room. Other things differ from a channel:
   out. Answering in a room is off until the room is ticked under Position requests in settings,
   and the settings say so.
 - **The post's author comes from the room,** not from the code. A post whose code names another
-  author is ignored. These posts are kept out of the room's conversation.
+  author is not acted on, and is left in the chat as ordinary text, since it may be someone passing
+  on another station's line. Every other position post is kept out of the room's conversation.
+- **A position the room replays keeps its own time,** worked out from the room's clock, and goes
+  behind anything newer from that station rather than replacing it.
 
 **What is shown.** For each station: its position in **decimal degrees** and as a ten digit
 **MGRS** reference, its distance in **miles and kilometres**, and the bearing to it in **degrees
