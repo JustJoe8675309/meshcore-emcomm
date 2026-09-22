@@ -251,3 +251,64 @@ describe("backing up and restoring", () => {
     });
 
 });
+
+describe("a connection cancelled before the radio identifies itself", () => {
+
+    beforeEach(() => {
+        window.localStorage.clear();
+        vi.spyOn(Database, "initDatabase").mockResolvedValue(undefined);
+        vi.spyOn(Connection, "syncDeviceTime").mockResolvedValue(undefined);
+        vi.spyOn(Connection, "loadContacts").mockResolvedValue(undefined);
+        vi.spyOn(Connection, "loadChannels").mockResolvedValue(undefined);
+        vi.spyOn(Connection, "syncMessages").mockResolvedValue(undefined);
+        vi.spyOn(Connection, "updateBatteryPercentage").mockResolvedValue(undefined);
+        vi.spyOn(Connection, "probeForLiveGps").mockResolvedValue(undefined);
+    });
+
+    afterEach(async () => {
+        await Connection.disconnect();
+        vi.restoreAllMocks();
+        GlobalState.selfInfo = null;
+    });
+
+    it("lets the setup finish rather than wait for ever on a database that never opens", async () => {
+        // the radio answers self info, but its SelfInfo push, which opens the
+        // database, never arrives before the operator gives up
+        vi.spyOn(Connection, "loadSelfInfo").mockImplementation(async () => { GlobalState.selfInfo = SELF_INFO; });
+        const radio = fakeRadio();
+        await Connection.connect(radio, "bluetooth");
+        const setup = Connection.onConnected();
+        await flushPromises();
+
+        await Connection.disconnect();
+
+        const outcome = await Promise.race([
+            setup.then(() => "finished"),
+            new Promise((resolve) => setTimeout(() => resolve("still waiting"), 200)),
+        ]);
+        expect(outcome).toBe("finished");
+        // and it read nothing from a radio that is gone
+        expect(Connection.loadContacts).not.toHaveBeenCalled();
+    });
+
+    it("releases its listeners without letting them act on the radio connected next", async () => {
+        vi.spyOn(Connection, "loadSelfInfo").mockImplementation(async () => { GlobalState.selfInfo = SELF_INFO; });
+        const refresh = vi.spyOn(Connection, "refreshContact").mockResolvedValue(undefined);
+        const first = fakeRadio();
+        await Connection.connect(first, "bluetooth");
+        const setup = Connection.onConnected();
+        await flushPromises();
+
+        // an advert heard just before the cancel waits on the database
+        first.emit(Constants.PushCodes.Advert, { publicKey: new Uint8Array(32).fill(7) });
+        await Connection.disconnect();
+        await setup;
+
+        // another radio is connected by the time that wait ends
+        await Connection.connect(fakeRadio(), "serial");
+        await flushPromises();
+
+        expect(refresh).not.toHaveBeenCalled();
+    });
+
+});

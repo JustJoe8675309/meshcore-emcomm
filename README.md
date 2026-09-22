@@ -909,7 +909,7 @@ now has a component test, which brings the suite to 456.
 npm test
 ```
 
-Six plain node suites and thirty-three component suites, 476 component tests, no hardware
+Six plain node suites and thirty-three component suites, 478 component tests, no hardware
 required:
 
 - `test/report_encoder.test.mjs` covers rendering and packet splitting, including a

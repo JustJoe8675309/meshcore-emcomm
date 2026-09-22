@@ -103,6 +103,9 @@ class Connection {
     // one recovery at a time: a reboot can raise more than one line error
     static recovering = false;
 
+    // releases a connection setup still waiting on its database; see onConnected
+    static abandonConnect = null;
+
     /**
      * Puts the radio right after a restart: the serial read loop recovering from
      * a line error, or the app's own reboot command.
@@ -212,6 +215,11 @@ class Connection {
         // update ui
         GlobalState.connection = null;
         GlobalState.connecting = null;
+
+        // release a setup, and its listeners, still waiting on a database this
+        // radio will now never open
+        this.abandonConnect?.();
+        this.abandonConnect = null;
         // room sessions live on the radio, so they do not survive it going away
         GlobalState.roomLogins = {};
         SignedPosts.forget();
@@ -245,9 +253,23 @@ class Connection {
         // so we need to force the callbacks to wait until the database is ready
         // we will just resolve this promise when the database is ready, and all the callbacks should be set to await it
         var onDatabaseReady = null;
-        const databaseToBeReady = new Promise((resolve) => {
+        const databaseOpened = new Promise((resolve) => {
             onDatabaseReady = resolve;
         });
+
+        // A radio disconnected before it identified itself never opens a database,
+        // so everything waiting on one used to wait for ever: the rest of this
+        // setup, and every listener below. Disconnecting now releases them, and
+        // each checks that its connection is still the current one before doing
+        // anything, since by then it may belong to a radio that has gone
+        const connection = GlobalState.connection;
+        // a setup for a radio that was replaced without a disconnect is released too
+        this.abandonConnect?.();
+        const abandoned = new Promise((resolve) => {
+            this.abandonConnect = resolve;
+        });
+        const databaseToBeReady = Promise.race([databaseOpened, abandoned]);
+        const isCurrent = () => toRaw(GlobalState.connection) === toRaw(connection);
 
         // log raw tx bytes if enabled
         GlobalState.connection.on("tx", async (data) => {
@@ -276,6 +298,9 @@ class Connection {
         GlobalState.connection.on(Constants.PushCodes.MsgWaiting, async () => {
             console.log("MsgWaiting");
             await databaseToBeReady;
+            if(!isCurrent()){
+                return;
+            }
             await this.syncMessages();
         });
 
@@ -288,15 +313,17 @@ class Connection {
         GlobalState.connection.on(Constants.PushCodes.SendConfirmed, async (event) => {
             console.log("SendConfirmed", event);
             await databaseToBeReady;
+            if(!isCurrent()){
+                return;
+            }
             await Database.Message.setMessageDeliveredByAckCode(event.ackCode, event.roundTrip);
         });
 
-        const connection = GlobalState.connection;
         // each step says what it is doing, for the loading screen. only while this
         // connection is still the one being set up: a disconnect part way clears
         // the screen, and a late step must not bring it back
         const step = (text, done = null, total = null) => {
-            if(toRaw(GlobalState.connection) === toRaw(connection) && GlobalState.connecting != null){
+            if(isCurrent() && GlobalState.connecting != null){
                 GlobalState.connecting = { step: text, done: done, total: total };
             }
         };
@@ -316,6 +343,9 @@ class Connection {
             // wait for database to be ready
             step("Opening this node's messages...");
             await databaseToBeReady;
+            if(!isCurrent()){
+                return;
+            }
 
             // fetch data after database is ready. the contact list is most of the
             // wait, a couple of hundred frames on a well used node, so it is counted
@@ -335,7 +365,7 @@ class Connection {
             await this.updateBatteryPercentage();
 
         } finally {
-            if(toRaw(GlobalState.connection) === toRaw(connection)){
+            if(isCurrent()){
                 GlobalState.connecting = null;
             }
         }
@@ -461,16 +491,24 @@ class Connection {
      */
     static listenForContactChanges(connection, ready = Promise.resolve()) {
 
+        // after the wait, the radio this came from may have gone, and a refresh
+        // would then ask whichever radio is connected now about a stranger
+        const isCurrent = () => toRaw(GlobalState.connection) === toRaw(connection);
+
         connection.on(Constants.PushCodes.Advert, async (event) => {
             console.log("Advert");
             await ready;
-            await this.refreshContact(event.publicKey);
+            if(isCurrent()){
+                await this.refreshContact(event.publicKey);
+            }
         });
 
         connection.on(Constants.PushCodes.PathUpdated, async (event) => {
             console.log("PathUpdated", event);
             await ready;
-            await this.refreshContact(event.publicKey);
+            if(isCurrent()){
+                await this.refreshContact(event.publicKey);
+            }
         });
 
         // not parsed by meshcore.js, so read off the raw frame
@@ -478,7 +516,9 @@ class Connection {
             const bytes = new Uint8Array(frame);
             if(bytes[0] === this.PUSH_CONTACT_DELETED && bytes.length >= 33){
                 await ready;
-                this.forgetContact(bytes.slice(1, 33));
+                if(isCurrent()){
+                    this.forgetContact(bytes.slice(1, 33));
+                }
             }
         });
 
@@ -523,6 +563,12 @@ class Connection {
         // can be in flight, but merging the wrong record over a contact would be
         // silent, and the full read costs nothing but time
         if(contact == null || !Utils.isUint8ArrayEqual(new Uint8Array(contact.publicKey), key)){
+            // said, because a full read over Bluetooth is seconds of the queue, and
+            // which of these it was decides whether anything can be done about it
+            const why = reply?.code == null ? "no reply"
+                : reply.code === Constants.ResponseCodes.Err ? "not found"
+                : "a different contact came back";
+            console.log(`one contact read failed (${why}), reading them all`);
             await this.loadContacts();
             return;
         }
@@ -585,6 +631,9 @@ class Connection {
 
     // onProgress, when given, hears how many different contacts have arrived so
     // far and how many the device said it would send
+    // how many full reads are under way, to show when one starts on top of another
+    static contactLoadsRunning = 0;
+
     static async loadContacts(onProgress = null) {
 
         const connection = GlobalState.connection;
@@ -638,6 +687,14 @@ class Connection {
         const byPublicKey = new Map();
         let passes = 0;
 
+        // two full reads at once take turns pass by pass and double the wait. It
+        // looked to have happened on node 2 over Bluetooth, but the console's own
+        // timestamps were too coarse to be sure, so it is said here when it does
+        this.contactLoadsRunning++;
+        if(this.contactLoadsRunning > 1){
+            console.log(`contacts: a full read started while ${this.contactLoadsRunning - 1} other was running`);
+        }
+
         try {
 
             for(let attempt = 0; attempt < this.MAX_CONTACT_LOAD_PASSES; attempt++){
@@ -662,6 +719,7 @@ class Connection {
             }
 
         } finally {
+            this.contactLoadsRunning--;
             connection.off(Constants.ResponseCodes.ContactsStart, onContactsStart);
             connection.off(Constants.ResponseCodes.Contact, onContactSeen);
         }
