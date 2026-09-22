@@ -582,6 +582,17 @@ also means routes never opened online still work offline. The list is written in
 worker by `scripts/stamp-service-worker.mjs`, which runs after the build and so can see what
 the build actually produced.
 
+**The install is all or nothing, and a worker only takes over with a complete copy.** It was
+best effort: a file that failed to download was skipped, and the worker took control anyway,
+deleting the previous build's cache as it did. The final audit caught it by accident, when an
+update arrived while the tab was still set offline from the test before. The new worker
+installed with an empty cache, deleted a complete one, and the next load offline was "This
+site can't be reached". In the field that is an operator who updates over a bad link and
+loses the offline copy at the worst moment. Now a failed install changes nothing: the previous
+worker and its cache stay in charge, and the browser tries the update again later. Activating
+also checks the new cache is complete before deleting anything, because that is the one step
+that cannot be undone.
+
 This is verified on the radios rather than assumed, and the verification is fussier than it
 looks. Chrome's DevTools offline throttle is owned by whichever debugger attached last, so
 running any script in the tab to check whether it is offline puts it back online. Set the
@@ -737,7 +748,7 @@ timeout behind it, on a link that was otherwise working perfectly.
 npm test
 ```
 
-Six plain node suites and twenty-seven component suites, 419 component tests, no hardware
+Six plain node suites and twenty-eight component suites, 424 component tests, no hardware
 required:
 
 - `test/report_encoder.test.mjs` covers rendering and packet splitting, including a

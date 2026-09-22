@@ -156,38 +156,52 @@ self.addEventListener("fetch", (event) => {
 
 });
 
-// allow service worker to install updates without waiting force existing tabs to be closed
+// Install all or nothing, and only then take over.
+//
+// This was best effort: every file that failed to download was logged and
+// skipped, and the worker took control anyway, deleting the previous build's
+// cache as it activated. The audit caught the result on the bench. An update
+// arrived while the tab's network was down, the new worker installed with an
+// empty cache, took over, and threw away a complete one: the next load offline
+// was "This site can't be reached". In the field that is an operator who gets an
+// update over a bad link, and loses the app's offline copy at the worst moment.
+//
+// The old comment here argued that an all or nothing install would leave the app
+// unable to start offline because of one missing chunk. It is the other way
+// round. A failed install changes nothing: the previous worker and its complete
+// cache stay in charge, the app starts offline on the build it already had, and
+// the browser tries the update again on a later visit. Only a first install has
+// no previous copy to fall back on, and a partial copy would not have booted
+// either.
 self.addEventListener("install", (event) => {
     event.waitUntil((async () => {
-        // best effort: a missing file should not block installation
         const cache = await caches.open(CACHE_NAME);
-        try {
-            await cache.addAll(APP_SHELL);
-        } catch(e) {
-            console.log("service worker: failed to precache app shell", e);
-        }
-        // one at a time, so a single failure does not cost the whole build. addAll
-        // rejects atomically, which would leave the app unable to start offline
-        // because of one chunk.
-        await Promise.all(BUILD_ASSETS.map(async (path) => {
-            try {
-                await cache.add(path);
-            } catch(e) {
-                console.log("service worker: failed to precache", path, e);
-            }
-        }));
+        // rejects if any file fails or answers with an error, which fails the
+        // install and leaves the previous worker in control
+        await cache.addAll([...APP_SHELL, ...BUILD_ASSETS]);
         await self.skipWaiting();
     })());
 });
 
-// ensure we claim clients so the service worker can interact with them
+// Take over, and drop older builds only once this one is known to be complete.
+//
+// The install above guarantees that on its own. This checks again because
+// deleting the previous cache is the one step here that cannot be undone, and a
+// worker whose script changed without its bundle changing shares its cache name
+// with the build it replaces.
 self.addEventListener("activate", (event) => {
     event.waitUntil((async () => {
-        // drop caches from previous versions so old builds are not kept forever
-        const names = await caches.keys();
-        await Promise.all(names
-            .filter((name) => name !== CACHE_NAME)
-            .map((name) => caches.delete(name)));
+        const cache = await caches.open(CACHE_NAME);
+        const held = new Set((await cache.keys()).map((request) => new URL(request.url).pathname));
+        const complete = [...APP_SHELL, ...BUILD_ASSETS].every((path) => held.has(path));
+        if(complete){
+            const names = await caches.keys();
+            await Promise.all(names
+                .filter((name) => name !== CACHE_NAME)
+                .map((name) => caches.delete(name)));
+        } else {
+            console.log("service worker: this build is not fully cached, so older caches are kept");
+        }
         await self.clients.claim();
     })());
 });

@@ -235,6 +235,11 @@ all offline.
       fails to boot.
 - [ ] Only one cache is present. Earlier builds are deleted on activate, so a device
       that has seen a dozen deploys holds one copy of the app, not a dozen.
+- [ ] **An update that cannot download changes nothing.** With the previous build cached,
+      set a tab offline in DevTools, deploy, and reload it. The app must still start, on
+      the previous build, and `caches.keys()` must still show that build's cache with its
+      files in it. The fault was a new worker taking over with an empty cache and
+      deleting the complete one, after which the offline load failed outright.
 - [ ] Take the tab offline and reload. The app still starts, routes, and talks to the
       radio. The app is deployed to Cloudflare rather than run locally, so there is no
       server to stop; see below for how to cut the network and how to prove it was cut.
