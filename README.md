@@ -40,7 +40,16 @@ fill it in, and send. Nineteen forms are included:
 The table is in the order the picker shows. The original seventeen have been transmitted between
 two nodes and received whole, the multi part ones in every part, over USB serial and over
 Bluetooth. The two tasking forms, the 5Ws Briefing and the OPORD, were added on 22 September 2026
-and are not yet tried on the radios.
+and sent the same day from node 1 (serial) to node 2 (Bluetooth) on Emcomm Testing:
+- **The 5Ws Briefing** went as 3 parts and arrived whole, numbered 1 WHO to 5 WHY under FM and
+  DTG, with ACK REQ alone on the last line. The parts left 5.5 and 6.0 s apart, and each reached
+  node 2 about 0.6 s after it was sent.
+- **The OPORD,** with the mission and four other fields filled in, went as 4 parts and arrived
+  whole and in Army order, every blank paragraph as its tag and a hyphen. Each part took about
+  0.8 s.
+- **WHERE on a radio with no position at all** left the field empty for typing. It now says so
+  in one line, "No live GPS fix, and the radio has no position set", where before the grey hint
+  and a message about the GPS alone were both shown.
 
 **The tasking forms** differ from the others in three ways:
 - **A blank field is still sent,** as its tag with a hyphen, such as `1A HAZARDS: -`, so the
@@ -885,8 +894,33 @@ Two things were changed from what the bench showed:
 - **A decline no longer hides a station's last known position.** It is now shown beneath the
   decline or "no position" answer.
 
-Not yet seen: what a stock client shows. The third node is on the computer's only Bluetooth
-connection, which node 2 was using.
+**Proven later on 22 September 2026,** with both nodes left connected and the tests run from
+the browser with nobody at the radios:
+- **A station asking twice** kept one place in the queue. Node 2 asked node 1 twice on Emcomm
+  Testing, and node 1 showed one prompt, "Asked 2 times"; node 2 marked its first request
+  "Replaced by a new request". Each request reached node 1 in about 0.4 s.
+- **Entering the current position as MGRS.** Node 1 had no position, and its prompt offered
+  Enter current position. The reference was typed as `13rcr6763033210`, in lower case with no
+  spaces, and shown back as 31.9271° N, 106.4002° W. Save to radio and send set node 1's position
+  ("Position set on the radio, not a live fix"), and node 2 listed it as "Entered by hand, not
+  GPS", 53 ft (16 m) away at 310° magnetic, declination 7.4° E. Node 1's position was then
+  cleared again.
+- **Map links on Windows.** All four on node 2, the degrees and MGRS of both stations, open
+  OpenStreetMap in a new tab, and the entered position opened on the right spot.
+
+Two things were changed from what this showed:
+- **A late answer now closes a request that gave up.** A person took about a minute to answer a
+  single request, by which time node 2 had marked it "No answer" after its 30 s radio fallback.
+  The position was listed, but the request stayed "No answer". An answer carrying that request's
+  own tag now marks it answered, saying the answer came after the app stopped asking. A request
+  the operator stopped stays stopped.
+- **With no position at all,** the entry screen offered "Send the last known position instead".
+  It now reads "Send without a position".
+
+Not yet seen: what a stock client shows, a queue of three different stations (it needs a third
+copy of the app, and the computer allows one Bluetooth connection), and map links on an Android
+phone or an iPhone. The third node is on the computer's only Bluetooth connection, which node 2
+was using.
 
 **Limits.**
 - **Hidden, not secret.** Anyone holding the channel key who writes their own code can read the

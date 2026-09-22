@@ -114,7 +114,7 @@
 
                 <!-- a disabled control with no reason given is worse than no control -->
                 <p v-if="field.offersPosition && gpsStatus === 'checking'" class="text-xs text-gray-500">Checking whether the radio has a live GPS fix...</p>
-                <p v-else-if="field.offersPosition && gpsStatus === 'unconfirmed'" class="text-xs text-gray-500">No live GPS fix yet. Press Check GPS to look again, or type the location.</p>
+                <p v-else-if="field.offersPosition && gpsStatus === 'unconfirmed' && !positionErrors[field.id]" class="text-xs text-gray-500">No live GPS fix yet. Press Check GPS to look again, or type the location.</p>
 
                 <!-- only ever shown after the operator pressed the button, so it explains
                      a specific failure rather than warning about one that may not happen -->
@@ -265,6 +265,11 @@ export default {
                             this.onInput(field, this.positionText(stored, true));
                             return;
                         }
+                        this.positionErrors = {
+                            ...this.positionErrors,
+                            [field.id]: "No live GPS fix, and the radio has no position set. Type the location, or describe it.",
+                        };
+                        return;
                     }
 
                     if(GlobalState.gpsStatus !== "live"){

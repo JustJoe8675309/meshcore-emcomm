@@ -154,7 +154,9 @@ describe("the WHERE button", () => {
         await positionButton(wrapper).trigger("click");
         await flushPromises();
         expect(lastEmitted(wrapper, "where")).toBe(null);
-        expect(wrapper.text()).toMatch(/type the location/);
+        // on the bench node 1 had no position: the reason is given once, not beside a hint
+        expect(wrapper.text()).toContain("No live GPS fix, and the radio has no position set. Type the location, or describe it.");
+        expect(wrapper.text()).not.toContain("No live GPS fix yet");
     });
 
     it("leaves other forms' position buttons as they were: live fixes only, degrees only", async () => {
