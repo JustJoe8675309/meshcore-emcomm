@@ -635,6 +635,16 @@ the moment the link opens until the node has been read. It names each step as it
 It has a Disconnect button, and it goes away if the attempt fails, leaving the reason on the
 connect screen.
 
+Proven on node 2 over Bluetooth, with every change on the screen timestamped:
+- 1.3 s: the radio had answered, its clock was set, and the contacts were being read.
+- 21.2 s: the count had gone up one contact at a time to 183 of 183.
+- 24.3 s: channels. The three seconds before this are a second read of the contact list,
+  checking that none were dropped.
+- 29.5 s: the screen was gone and the node was ready.
+
+A backup on node 1 showed its own screen for the 4 seconds it took, and went away with 213
+contacts and 13 channels saved.
+
 Backing up, restoring, leaving EMCOMM mode and converting to it get the same screen, with the
 step and a count where there is one. Each is a string of commands to the radio. Before this, the
 only sign was a line of small text under the buttons, and the rest of the page was free to
