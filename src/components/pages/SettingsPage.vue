@@ -539,7 +539,18 @@ Convert anyway?`,
                             this.backupWarnings.push("No free channel slot, so " + choices.channelName + " was not added.");
                         } else {
                             if(!channel.added){
-                                this.backupWarnings.push(choices.channelName + " was already on the radio, in slot " + channel.idx + ".");
+                                this.backupWarnings.push(
+                                    channel.spelling === "different case"
+                                        ? "The radio already has this channel, spelled " + channel.name + ", in slot " + channel.idx + ". It was left alone: a different spelling is a different channel, so every station must use the same one."
+                                        : choices.channelName + " was already on the radio, in slot " + channel.idx + ".",
+                                );
+                            }
+                            if(!channel.keyMatches){
+                                // appearing to be on the net while nobody can hear you is
+                                // worse than not being on it, so this is said plainly
+                                this.backupWarnings.push(
+                                    channel.name + " has a key that was not worked out from its name, so stations joining it by name cannot hear you. It was not overwritten: remove or rename it, then convert again.",
+                                );
                             }
                             if(choices.answerPositionsOnChannel){
                                 const settings = PositionService.settings();

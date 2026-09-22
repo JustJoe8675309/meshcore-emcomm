@@ -627,6 +627,13 @@ leaving:**
   document), so a whole net joins by name with nothing to pass around. It goes in the first free
   slot, or says the radio has it already, or that there is no room. It is not private: anyone who
   guesses the name can read it. The name is editable, and the whole thing can be unticked.
+  Nothing is ever overwritten, and two mistakes are reported rather than made:
+  - **A different spelling is the same channel here.** `#emcomm` and `#Emcomm` have different
+    keys, so adding the second would leave two channels that cannot hear each other. The one on
+    the radio is kept and named in the result.
+  - **A channel of that name whose key was not worked out from it** — a private channel someone
+    called `#Emcomm` — is left alone and reported. On it the operator would appear to be on the
+    net while nobody could hear them. Overwriting the key would cut off whoever is using it.
 - **Answering position requests on that channel,** so net control's roll calls reach you. Answering
   automatically is offered too, off by default, so the operator stays in the loop.
 - **Repeating adverts: zero hop every 30 minutes, flood every 60,** both editable, 0 for off.

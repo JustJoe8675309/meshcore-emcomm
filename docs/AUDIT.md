@@ -330,6 +330,11 @@ one found so far came from a dropped frame, and the link that drops them is BLE.
       channel name: the two must be able to message each other on it, which proves
       both derived the same key. Convert a second time: it says the channel is
       already there rather than adding it twice.
+- [ ] **A near miss is caught.** Rename the channel to #emcomm on one node, then
+      convert with #Emcomm. It must keep the one on the radio, name it in the
+      result, and not add a second. Then give a channel the name #Emcomm with a
+      random key and convert: it must say the key was not worked out from the name
+      and leave it alone.
 - [ ] **Repeating adverts start.** The settings group shows zero hop every 30 min and
       flood every 60 after converting, and the other node hears one within the hour.
 - [ ] **Leaving removes what the mode added, when asked.** While converted, let a

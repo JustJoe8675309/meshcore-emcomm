@@ -74,20 +74,53 @@ describe("the net's hashtag channel", () => {
         });
         const set = vi.spyOn(Connection, "setChannel").mockResolvedValue(undefined);
 
-        expect(await EmcommMode.ensureHashtagChannel("#Emcomm")).toEqual({ idx: 2, added: true });
+        expect(await EmcommMode.ensureHashtagChannel("#Emcomm")).toMatchObject({ idx: 2, added: true, keyMatches: true });
         expect(set.mock.calls[0][0]).toBe(2);
         expect(set.mock.calls[0][1]).toBe("#Emcomm");
         expect(Utils.bytesToHex(set.mock.calls[0][2])).toBe(Utils.bytesToHex(await EmcommMode.hashtagChannelKey("#Emcomm")));
     });
 
-    it("leaves it alone when the radio already has it", async () => {
+    // a radio holding the channel exactly as it should be
+    async function radioWith(slots) {
+        const secrets = {};
+        for(const [idx, name] of Object.entries(slots)){
+            secrets[idx] = name.startsWith("#") ? await EmcommMode.hashtagChannelKey(name) : new Uint8Array(16).fill(7);
+        }
         vi.spyOn(Connection, "getChannel").mockImplementation(async (idx) => {
-            const slots = { 0: "Public", 3: "#Emcomm" };
             if(!(idx in slots)) throw new Error("no such channel");
-            return { channelIdx: idx, name: slots[idx], secret: new Uint8Array(16) };
+            return { channelIdx: Number(idx), name: slots[idx], secret: secrets[idx] };
+        });
+        return vi.spyOn(Connection, "setChannel").mockResolvedValue(undefined);
+    }
+
+    it("leaves it alone when the radio already has it, with the right key", async () => {
+        const set = await radioWith({ 0: "Public", 3: "#Emcomm" });
+        expect(await EmcommMode.ensureHashtagChannel("#Emcomm")).toMatchObject({ idx: 3, added: false, keyMatches: true, spelling: "same" });
+        expect(set).not.toHaveBeenCalled();
+    });
+
+    it("treats a different spelling as the same channel rather than adding a second", async () => {
+        // #emcomm and #Emcomm have different keys, so two would be two channels
+        // that cannot hear each other
+        const set = await radioWith({ 0: "Public", 2: "#emcomm" });
+        const result = await EmcommMode.ensureHashtagChannel("#Emcomm");
+        expect(result).toMatchObject({ idx: 2, added: false, name: "#emcomm", spelling: "different case" });
+        // its key is right for the name the radio holds, but not for the one asked for
+        expect(result.keyMatches).toBe(true);
+        expect(result.keyIsForAskedName).toBe(false);
+        expect(set).not.toHaveBeenCalled();
+    });
+
+    it("says when a channel of that name carries a key not worked out from it", async () => {
+        // a private channel someone named #Emcomm: the operator would look like
+        // they were on the net while nobody could hear them
+        vi.spyOn(Connection, "getChannel").mockImplementation(async (idx) => {
+            if(idx !== 1) throw new Error("no such channel");
+            return { channelIdx: 1, name: "#Emcomm", secret: new Uint8Array(16).fill(0xAB) };
         });
         const set = vi.spyOn(Connection, "setChannel").mockResolvedValue(undefined);
-        expect(await EmcommMode.ensureHashtagChannel("#Emcomm")).toEqual({ idx: 3, added: false });
+        expect(await EmcommMode.ensureHashtagChannel("#Emcomm")).toMatchObject({ idx: 1, added: false, keyMatches: false });
+        // never overwritten: that would cut off whoever is using it
         expect(set).not.toHaveBeenCalled();
     });
 
@@ -105,7 +138,7 @@ describe("the net's hashtag channel", () => {
             return { channelIdx: idx, name: `Channel ${idx}`, secret: new Uint8Array(16) };
         });
         vi.spyOn(Connection, "setChannel").mockResolvedValue(undefined);
-        expect(await EmcommMode.ensureHashtagChannel("#Emcomm")).toEqual({ idx: 2, added: true });
+        expect(await EmcommMode.ensureHashtagChannel("#Emcomm")).toMatchObject({ idx: 2, added: true, keyMatches: true });
     });
 
 });
@@ -336,13 +369,28 @@ describe("converting applies them", () => {
     });
 
     it("says so when the channel was already there, or there was no room for it", async () => {
-        EmcommMode.ensureHashtagChannel.mockResolvedValue({ idx: 3, added: false });
+        EmcommMode.ensureHashtagChannel.mockResolvedValue({ idx: 3, added: false, name: "#Emcomm", keyMatches: true, spelling: "same" });
         let wrapper = await convert();
         expect(wrapper.vm.backupWarnings.join(" ")).toContain("already on the radio, in slot 3");
 
         EmcommMode.ensureHashtagChannel.mockResolvedValue(null);
         wrapper = await convert();
         expect(wrapper.vm.backupWarnings.join(" ")).toContain("No free channel slot");
+    });
+
+    it("warns about a different spelling, and still ticks the channel it found", async () => {
+        EmcommMode.ensureHashtagChannel.mockResolvedValue({ idx: 2, added: false, name: "#emcomm", keyMatches: true, spelling: "different case" });
+        const wrapper = await convert();
+        expect(wrapper.vm.backupWarnings.join(" ")).toContain("spelled #emcomm, in slot 2");
+        expect(wrapper.vm.backupWarnings.join(" ")).toContain("every station must use the same one");
+        expect(PositionService.settings(NODE).markedChannels).toEqual([2]);
+    });
+
+    it("warns when the channel's key was not worked out from its name", async () => {
+        EmcommMode.ensureHashtagChannel.mockResolvedValue({ idx: 1, added: false, name: "#Emcomm", keyMatches: false, spelling: "same" });
+        const wrapper = await convert();
+        expect(wrapper.vm.backupWarnings.join(" ")).toContain("stations joining it by name cannot hear you");
+        expect(wrapper.vm.backupWarnings.join(" ")).toContain("was not overwritten");
     });
 
     it("sets the repeating adverts and starts them", async () => {

@@ -301,7 +301,21 @@ class EmcommMode {
 
     /**
      * Puts a hashtag channel on the radio, in the first free slot, unless it is
-     * already there. Returns { idx, added }, or null when every slot is taken.
+     * already there.
+     *
+     * Returns { idx, added, name, keyMatches, spelling }, or null when every slot
+     * is taken. Nothing is ever overwritten.
+     *
+     * A channel already on the radio is matched by name without regard to case:
+     * #emcomm and #Emcomm are different channels to the firmware, since the key
+     * comes from the exact name, but a station that has one and converts with the
+     * other wants to be told, not given a second channel it cannot talk on.
+     *
+     * The key is checked too. A channel can carry the right name and a key that
+     * was never derived from it — a private channel someone named #Emcomm — and
+     * on that the operator would appear to be on the net while nobody could hear
+     * them. That is reported rather than corrected: overwriting a key would cut
+     * whoever is using that channel off from their own.
      */
     static async ensureHashtagChannel(name) {
 
@@ -309,8 +323,11 @@ class EmcommMode {
             throw new Error(Connection.DISCONNECTED);
         }
 
+        const expected = Utils.bytesToHex(await this.hashtagChannelKey(name));
         let free = null;
+
         for(let idx = 0; idx < MAX_CHANNEL_SLOTS; idx++){
+
             let channel = null;
             try {
                 channel = await Connection.getChannel(idx);
@@ -318,13 +335,26 @@ class EmcommMode {
                 // an unreadable slot is not known to be free, so it is not used
                 continue;
             }
+
             const existing = (channel?.name ?? "").trim();
-            if(existing === name){
-                return { idx: idx, added: false };
+            if(existing.toLowerCase() === name.toLowerCase()){
+                const secret = Utils.bytesToHex(channel?.secret ?? new Uint8Array(0));
+                return {
+                    idx: idx,
+                    added: false,
+                    name: existing,
+                    // the key the radio holds is the one derived from the name it holds
+                    keyMatches: secret === Utils.bytesToHex(await this.hashtagChannelKey(existing)),
+                    // and that name is the one being asked for, not a different case
+                    spelling: existing === name ? "same" : "different case",
+                    keyIsForAskedName: secret === expected,
+                };
             }
+
             if(existing === "" && free === null){
                 free = idx;
             }
+
         }
 
         if(free === null){
@@ -332,7 +362,7 @@ class EmcommMode {
         }
 
         await Connection.setChannel(free, name, await this.hashtagChannelKey(name));
-        return { idx: free, added: true };
+        return { idx: free, added: true, name: name, keyMatches: true, spelling: "same", keyIsForAskedName: true };
 
     }
 
