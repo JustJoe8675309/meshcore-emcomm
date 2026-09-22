@@ -422,11 +422,25 @@ from one packet to two, in the SITREP case spending a whole second transmission 
 Paying a packet on the common forms to improve two uncommon ones is the wrong trade on shared air.
 Both were sent on the air and compared on a stock client before deciding.
 
-### Contacts tab
+### Contacts & Channels tab
 
-Lists the contacts you can send text to: people and room servers. Repeaters belong to the
-Ping tab, which discovers them and shows both signal readings, and the empty state says so
-rather than implying none were heard.
+**One list for both.** Contacts and channels were two tabs, which meant knowing which kind of
+thing you were after before you could look for it. A net is a mix of people, repeaters, rooms and
+channels, so they share one tab with a filter by kind — All, Companions, Rooms, Repeaters,
+Channels — and a choice of order. An old link that still says the channels tab opens this one.
+
+**Ordered by what was heard recently, or A-Z,** over both kinds at once, and the choice is
+remembered. A channel has no advert, so its time is the newest message on it, which is what an
+operator means by a channel having been busy. A channel that has never carried a message has no
+time at all, which is not the same as being old, so it goes to the end of that order rather than
+the top. Favourites stay at the top of whichever order is chosen.
+
+**The count beside Search follows the filter** and names the kind, so "Search 1 Repeaters" cannot
+be read as the size of the whole list. A search that matches nothing says so rather than leaving
+an empty tab.
+
+Repeaters have no conversation, so tapping one says to use the Repeater Search tab rather than
+only refusing.
 
 **Favourites live on the radio.** Bit 0 of a contact's flags is the firmware's own favourite
 mark, so these are the same favourites the official app shows: they survive clearing site

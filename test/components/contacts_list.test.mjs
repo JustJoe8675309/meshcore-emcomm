@@ -9,7 +9,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { mount } from "@vue/test-utils";
 import { Constants } from "@liamcottle/meshcore.js";
-import ContactsList from "../../src/components/contacts/ContactsList.vue";
+import StationsList from "../../src/components/stations/StationsList.vue";
 import PathInfo from "../../src/js/PathInfo.js";
 import GlobalState from "../../src/js/GlobalState.js";
 
@@ -26,9 +26,9 @@ function aContact(overrides = {}) {
 
 // the list item subscribes to the message database, which this suite is not about
 function mountList(contacts) {
-    return mount(ContactsList, {
-        props: { contacts },
-        global: { stubs: { ContactListItem: true, DropDownMenu: true, IconButton: true } },
+    return mount(StationsList, {
+        props: { contacts, channels: [] },
+        global: { stubs: { ContactListItem: true, ChannelListItem: true, DropDownMenu: true, IconButton: true } },
     });
 }
 
@@ -110,7 +110,7 @@ describe("ContactsList", () => {
 
     it("lists users", () => {
         const wrapper = mountList([aContact({ advName: "KJ5HBN" })]);
-        expect(wrapper.vm.searchedContacts.map((c) => c.advName)).toEqual(["KJ5HBN"]);
+        expect(wrapper.vm.rows.map((r) => r.name)).toEqual(["KJ5HBN"]);
     });
 
     it("lists every kind the radio knows", () => {
@@ -119,7 +119,7 @@ describe("ContactsList", () => {
             aContact({ advName: "A Room", type: Constants.AdvType.Room }),
             aContact({ advName: "A Repeater", type: Constants.AdvType.Repeater }),
         ]);
-        expect(wrapper.vm.searchedContacts.map((c) => c.advName).sort())
+        expect(wrapper.vm.rows.map((r) => r.name).sort())
             .toEqual(["A Repeater", "A Room", "A User"]);
     });
 
@@ -134,19 +134,19 @@ describe("ContactsList", () => {
         it("narrows to companions", () => {
             const wrapper = mixed();
             wrapper.vm.filter = "companion";
-            expect(wrapper.vm.searchedContacts.map((c) => c.advName)).toEqual(["A User"]);
+            expect(wrapper.vm.rows.map((r) => r.name)).toEqual(["A User"]);
         });
 
         it("narrows to rooms", () => {
             const wrapper = mixed();
             wrapper.vm.filter = "room";
-            expect(wrapper.vm.searchedContacts.map((c) => c.advName)).toEqual(["A Room"]);
+            expect(wrapper.vm.rows.map((r) => r.name)).toEqual(["A Room"]);
         });
 
         it("narrows to repeaters", () => {
             const wrapper = mixed();
             wrapper.vm.filter = "repeater";
-            expect(wrapper.vm.searchedContacts.map((c) => c.advName)).toEqual(["A Repeater"]);
+            expect(wrapper.vm.rows.map((r) => r.name)).toEqual(["A Repeater"]);
         });
 
         it("counts what it is showing, not everything", async () => {
@@ -154,7 +154,8 @@ describe("ContactsList", () => {
             const wrapper = mixed();
             wrapper.vm.filter = "repeater";
             await wrapper.vm.$nextTick();
-            expect(wrapper.find("input").attributes("placeholder")).toMatch(/Search 1 Contact/);
+            // and names the kind, so the number cannot be read as the whole list
+            expect(wrapper.find("input").attributes("placeholder")).toMatch(/Search 1 Repeaters/);
         });
 
     });
@@ -170,7 +171,7 @@ describe("ContactsList", () => {
 
     it("says the tab is empty only when there is nothing at all", () => {
         const wrapper = mountList([]);
-        expect(wrapper.text()).toMatch(/No Contacts/);
+        expect(wrapper.text()).toMatch(/Nothing here yet/);
     });
 
     it("searches by public key prefix as well as name", () => {
@@ -178,8 +179,8 @@ describe("ContactsList", () => {
             aContact({ advName: "One", publicKey: new Uint8Array(32).fill(0xab) }),
             aContact({ advName: "Two", publicKey: new Uint8Array(32).fill(0xcd) }),
         ]);
-        wrapper.vm.contactsSearchTerm = "abab";
-        expect(wrapper.vm.searchedContacts.map((c) => c.advName)).toEqual(["One"]);
+        wrapper.vm.searchTerm = "abab";
+        expect(wrapper.vm.rows.map((r) => r.name)).toEqual(["One"]);
     });
 
     it("says so when the radio sent fewer contacts than it promised", async () => {

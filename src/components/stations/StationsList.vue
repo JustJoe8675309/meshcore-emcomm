@@ -1,10 +1,14 @@
 <template>
     <div class="flex flex-col h-full w-full overflow-hidden">
 
-        <!-- search -->
+        <!-- search, add, and the filter and order menu -->
         <div class="flex bg-white border-b border-gray-300 divide-x">
-            <div v-if="listedContacts.length > 0" class="flex p-1 w-full">
-                <input v-model="contactsSearchTerm" type="text" :placeholder="`Search ${listedContacts.length} ${listedContacts.length === 1 ? 'Contact' : 'Contacts'} by name or key...`" class="h-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+            <div v-if="listed.length > 0" class="flex p-1 w-full">
+                <input
+                    v-model="searchTerm"
+                    type="text"
+                    :placeholder="searchPlaceholder"
+                    class="h-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
             </div>
             <div class="flex text-gray-500 ml-auto">
                 <button
@@ -19,7 +23,7 @@
                     </svg>
                 </button>
             </div>
-            <div v-if="listedContacts.length > 0" class="flex text-gray-500">
+            <div v-if="listed.length > 0" class="flex text-gray-500">
                 <DropDownMenu class="mx-auto my-auto">
                     <template v-slot:button>
                         <IconButton class="mx-1">
@@ -30,21 +34,9 @@
                     </template>
                     <template v-slot:items>
                         <div class="p-2 border-b text-sm font-bold">Show</div>
-                        <DropDownMenuItem @click="filter = 'all'">
-                            <input type="radio" :checked="filter === 'all'"/>
-                            <div class="my-auto" :class="{ 'font-bold': filter === 'all' }">All</div>
-                        </DropDownMenuItem>
-                        <DropDownMenuItem @click="filter = 'companion'">
-                            <input type="radio" :checked="filter === 'companion'"/>
-                            <div class="my-auto" :class="{ 'font-bold': filter === 'companion' }">Companions</div>
-                        </DropDownMenuItem>
-                        <DropDownMenuItem @click="filter = 'room'">
-                            <input type="radio" :checked="filter === 'room'"/>
-                            <div class="my-auto" :class="{ 'font-bold': filter === 'room' }">Rooms</div>
-                        </DropDownMenuItem>
-                        <DropDownMenuItem @click="filter = 'repeater'">
-                            <input type="radio" :checked="filter === 'repeater'"/>
-                            <div class="my-auto" :class="{ 'font-bold': filter === 'repeater' }">Repeaters</div>
+                        <DropDownMenuItem v-for="option of filters" :key="option.value" @click="filter = option.value">
+                            <input type="radio" :checked="filter === option.value"/>
+                            <div class="my-auto" :class="{ 'font-bold': filter === option.value }">{{ option.label }}</div>
                         </DropDownMenuItem>
                         <div class="p-2 border-b text-sm font-bold">Order</div>
                         <DropDownMenuItem @click="order = 'a-z'">
@@ -99,21 +91,27 @@
             Reconnect to load them again.
         </div>
 
-        <!-- contacts -->
-        <div v-if="listedContacts.length > 0" class="h-full overflow-y-auto">
-            <ContactListItem :key="contact.publicKey" v-for="contact of searchedContacts" :contact="contact" @click="onContactClick(contact)"/>
+        <!-- one list: contacts and channels together, in the chosen order -->
+        <div v-if="listed.length > 0" class="h-full overflow-y-auto">
+            <template v-for="row of rows" :key="row.key">
+                <ContactListItem v-if="row.kind === 'contact'" :contact="row.contact" @click="onContactClick(row.contact)"/>
+                <ChannelListItem v-else :channel="row.channel" @click="onChannelClick(row.channel)"/>
+            </template>
+            <div v-if="rows.length === 0" class="p-4 text-center text-sm text-gray-500">
+                Nothing matches that.
+            </div>
         </div>
 
         <!-- empty state -->
-        <div v-if="listedContacts.length === 0" class="mx-auto my-auto">
+        <div v-if="listed.length === 0" class="mx-auto my-auto">
             <div class="flex flex-col mx-auto my-auto text-gray-700 text-center">
                 <div class="mb-2 mx-auto">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-10">
                         <path fill-rule="evenodd" d="M5.636 4.575a.75.75 0 0 1 0 1.061 9 9 0 0 0 0 12.728.75.75 0 1 1-1.06 1.06c-4.101-4.1-4.101-10.748 0-14.849a.75.75 0 0 1 1.06 0Zm12.728 0a.75.75 0 0 1 1.06 0c4.101 4.1 4.101 10.75 0 14.85a.75.75 0 1 1-1.06-1.061 9 9 0 0 0 0-12.728.75.75 0 0 1 0-1.06ZM7.757 6.697a.75.75 0 0 1 0 1.06 6 6 0 0 0 0 8.486.75.75 0 0 1-1.06 1.06 7.5 7.5 0 0 1 0-10.606.75.75 0 0 1 1.06 0Zm8.486 0a.75.75 0 0 1 1.06 0 7.5 7.5 0 0 1 0 10.606.75.75 0 0 1-1.06-1.06 6 6 0 0 0 0-8.486.75.75 0 0 1 0-1.06ZM9.879 8.818a.75.75 0 0 1 0 1.06 3 3 0 0 0 0 4.243.75.75 0 1 1-1.061 1.061 4.5 4.5 0 0 1 0-6.364.75.75 0 0 1 1.06 0Zm4.242 0a.75.75 0 0 1 1.061 0 4.5 4.5 0 0 1 0 6.364.75.75 0 0 1-1.06-1.06 3 3 0 0 0 0-4.243.75.75 0 0 1 0-1.061ZM10.875 12a1.125 1.125 0 1 1 2.25 0 1.125 1.125 0 0 1-2.25 0Z" clip-rule="evenodd" />
                     </svg>
                 </div>
-                <div class="font-semibold">No Contacts</div>
-                <div>If someone Adverts, they will show up here.</div>
+                <div class="font-semibold">Nothing here yet</div>
+                <div>Contacts appear when a station adverts. Channels are set up in Settings.</div>
             </div>
         </div>
 
@@ -121,45 +119,95 @@
 </template>
 
 <script>
+/**
+ * Contacts and channels in one list.
+ *
+ * They were two tabs, which meant the operator had to know which kind of thing
+ * they were looking for before they could look for it. A net is a mix of people,
+ * repeaters, rooms and channels, so it is one list with a filter by kind and a
+ * choice of order.
+ *
+ * A channel has no advert, so "heard recently" uses the newest message on it,
+ * which is what an operator means by a channel having been busy. A channel that
+ * has never carried a message has no time at all and sorts to the end of that
+ * order rather than pretending to be old or new.
+ */
 import { Constants } from "@liamcottle/meshcore.js";
 import GlobalState from "../../js/GlobalState.js";
 import ContactFlags from "../../js/ContactFlags.js";
 import Connection from "../../js/Connection.js";
+import Database from "../../js/Database.js";
 import Utils from "../../js/Utils.js";
 import IconButton from "../IconButton.vue";
 import DropDownMenu from "../DropDownMenu.vue";
 import DropDownMenuItem from "../DropDownMenuItem.vue";
-import ContactListItem from "./ContactListItem.vue";
-import ConnectButtons from "../connect/ConnectButtons.vue";
+import ContactListItem from "../contacts/ContactListItem.vue";
+import ChannelListItem from "../channels/ChannelListItem.vue";
 
 export default {
-    name: 'ContactsList',
+    name: 'StationsList',
     components: {
-        ConnectButtons,
         ContactListItem,
+        ChannelListItem,
         DropDownMenuItem,
         DropDownMenu,
         IconButton,
     },
     emits: [
         "contact-click",
+        "channel-click",
     ],
     props: {
         contacts: Array,
+        channels: Array,
     },
     data() {
         return {
             order: window.localStorage.getItem("contacts_list_order") ?? "heard-recently",
             filter: window.localStorage.getItem("contacts_list_filter") ?? "all",
-            contactsSearchTerm: "",
+            searchTerm: "",
             showImport: false,
             importText: "",
             importError: null,
             importMessage: null,
             isImporting: false,
+            // when anything was last said on each channel, by slot
+            channelActivity: {},
         };
     },
+    mounted() {
+        this.readChannelActivity();
+    },
+    watch: {
+        filter() {
+            window.localStorage.setItem("contacts_list_filter", this.filter);
+        },
+        order() {
+            window.localStorage.setItem("contacts_list_order", this.order);
+        },
+        channels: {
+            handler() {
+                this.readChannelActivity();
+            },
+            deep: false,
+        },
+    },
     methods: {
+        async readChannelActivity() {
+            const activity = {};
+            for(const channel of this.channels ?? []){
+                try {
+                    const latest = await Database.ChannelMessage.getLatestChannelMessage(channel.idx).exec();
+                    if(latest != null){
+                        activity[channel.idx] = latest.timestamp;
+                    }
+                } catch(e) {
+                    // no message history for it, or the database is not open yet.
+                    // The row still shows; it just has no time to sort by
+                }
+            }
+            this.channelActivity = activity;
+        },
         async importContact() {
 
             this.isImporting = true;
@@ -189,102 +237,115 @@ export default {
         onContactClick(contact) {
             this.$emit("contact-click", contact);
         },
-        getContactsOrderedByName(contacts) {
-            // sort contacts by name asc (using a shallow copy to ensure it updates automatically)
-            return contacts.sort((contactA, contactB) => {
-                const contactAName = contactA.advName ?? "";
-                const contactBName = contactB.advName ?? "";
-                return contactAName.localeCompare(contactBName);
-            });
+        onChannelClick(channel) {
+            this.$emit("channel-click", channel);
         },
-        getContactsOrderedByRecentlyHeard(contacts) {
-            // sort contacts by latest advert desc (using a shallow copy to ensure it updates automatically)
-            return contacts.sort((contactA, contactB) => {
-                const contactALastHeard = contactA.lastAdvert;
-                const contactBLastHeard = contactB.lastAdvert;
-                return contactBLastHeard - contactALastHeard;
-            });
-        },
-        getOrderedContacts(contacts) {
-
-            // get ordered contacts
-            var orderedContacts = [];
-            switch(this.order){
-                case "a-z": {
-                    orderedContacts = this.getContactsOrderedByName(contacts);
-                    break;
-                }
-                case "heard-recently": {
-                    orderedContacts = this.getContactsOrderedByRecentlyHeard(contacts);
-                    break;
-                }
+        matchesFilter(row) {
+            if(this.filter === "all"){
+                return true;
             }
-
-            return orderedContacts;
-
+            if(this.filter === "channel"){
+                return row.kind === "channel";
+            }
+            if(row.kind !== "contact"){
+                return false;
+            }
+            const types = {
+                companion: Constants.AdvType.Chat,
+                room: Constants.AdvType.Room,
+                repeater: Constants.AdvType.Repeater,
+            };
+            return row.contact.type === types[this.filter];
         },
-
+        matchesSearch(row) {
+            const search = this.searchTerm.trim().toLowerCase();
+            if(search === ""){
+                return true;
+            }
+            if(row.name.toLowerCase().includes(search)){
+                return true;
+            }
+            // names can be ambiguous or duplicated on a busy mesh, so a public key
+            // prefix pasted from elsewhere identifies a station unambiguously
+            return row.kind === "contact" && Utils.bytesToHex(row.contact.publicKey).includes(search);
+        },
     },
     computed: {
         GlobalState() {
             return GlobalState;
         },
-        // Everything the radio knows: companions, rooms and repeaters. The filter
-        // narrows it; the count and the search follow whatever is showing, so the
-        // number beside "Search" always matches the rows below it.
-        listedContacts() {
-            return this.contacts.filter((contact) => {
-                if(this.filter === "companion"){
-                    return contact.type === Constants.AdvType.Chat;
-                }
-                if(this.filter === "room"){
-                    return contact.type === Constants.AdvType.Room;
-                }
-                if(this.filter === "repeater"){
-                    return contact.type === Constants.AdvType.Repeater;
-                }
-                return true;
-            });
+        filters() {
+            return [
+                { value: "all", label: "All" },
+                { value: "companion", label: "Companions" },
+                { value: "room", label: "Rooms" },
+                { value: "repeater", label: "Repeaters" },
+                { value: "channel", label: "Channels" },
+            ];
         },
-        searchedContacts() {
+        // one row per thing, whichever kind it is
+        allRows() {
+            const contacts = (this.contacts ?? []).map((contact) => ({
+                kind: "contact",
+                key: `contact:${Utils.bytesToHex(contact.publicKey)}`,
+                name: contact.advName ?? "",
+                // the advert time, which is the other node's clock: see PathInfo
+                lastHeard: Number.isInteger(contact.lastAdvert) ? contact.lastAdvert : null,
+                favourite: ContactFlags.isFavourite(contact),
+                contact: contact,
+            }));
+            const channels = (this.channels ?? []).map((channel) => ({
+                kind: "channel",
+                key: `channel:${channel.idx}`,
+                name: channel.name ?? "",
+                // in seconds, as a contact's advert time is, so they sort together
+                lastHeard: this.channelActivity[channel.idx] != null
+                    ? Math.floor(this.channelActivity[channel.idx] / 1000)
+                    : null,
+                favourite: false,
+                channel: channel,
+            }));
+            return [...contacts, ...channels];
+        },
+        // what the filter leaves, which is what the count and the search cover
+        listed() {
+            return this.allRows.filter((row) => this.matchesFilter(row));
+        },
+        rows() {
 
-            // sort, then search
-            var contacts = [...this.listedContacts];
-            contacts = this.getOrderedContacts(contacts);
+            const rows = this.listed.filter((row) => this.matchesSearch(row));
+
+            const byName = (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
+
+            rows.sort((a, b) => {
+                if(this.order === "heard-recently"){
+                    // never heard sorts last: it is not the same as long ago
+                    if(a.lastHeard == null || b.lastHeard == null){
+                        if(a.lastHeard != null){
+                            return -1;
+                        }
+                        if(b.lastHeard != null){
+                            return 1;
+                        }
+                        return byName(a, b);
+                    }
+                    if(a.lastHeard !== b.lastHeard){
+                        return b.lastHeard - a.lastHeard;
+                    }
+                }
+                return byName(a, b);
+            });
+
             // favourites first, keeping the chosen order within each group. sort is
             // stable, so this lifts them without disturbing anything else
-            contacts = contacts.sort((a, b) => ContactFlags.compare(a, b));
-            contacts = contacts.filter((contact) => contact != null);
+            return rows.sort((a, b) => (b.favourite ? 1 : 0) - (a.favourite ? 1 : 0));
 
-            // search contacts by name or public key
-            contacts = contacts.filter((contact) => {
-
-                const search = this.contactsSearchTerm.trim().toLowerCase();
-                if(search === ""){
-                    return true;
-                }
-
-                const matchesName = (contact.advName ?? "").toLowerCase().includes(search);
-
-                // names can be ambiguous or duplicated on a busy mesh, so a public key
-                // prefix pasted from elsewhere identifies a station unambiguously
-                const matchesPublicKey = Utils.bytesToHex(contact.publicKey).includes(search);
-
-                return matchesName || matchesPublicKey;
-
-            });
-
-            return contacts;
-
+        },
+        searchPlaceholder() {
+            const kinds = { channel: "Channels", companion: "Companions", room: "Rooms", repeater: "Repeaters" };
+            const what = kinds[this.filter] ?? (this.listed.length === 1 ? "Contact or Channel" : "Contacts and Channels");
+            return `Search ${this.listed.length} ${what} by name or key...`;
         },
     },
-    watch: {
-        filter() {
-            window.localStorage.setItem("contacts_list_filter", this.filter);
-        },
-        order() {
-            window.localStorage.setItem("contacts_list_order", this.order);
-        },
-    }
 }
 </script>

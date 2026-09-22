@@ -133,6 +133,16 @@ rather than an error.
       go, 6 at the bench settings (SF7, 62.5 kHz). The other node's timestamps should
       agree, and all parts should arrive.
 
+### Contacts and channels
+
+- [ ] **One list.** The first tab lists contacts and channels together. The filter
+      offers All, Companions, Rooms, Repeaters and Channels, and the count beside
+      Search follows it.
+- [ ] **Both orders.** A-Z mixes the two kinds alphabetically. Heard Recently puts
+      the channel messaged most recently among the contacts by advert time, and a
+      channel never used at the end. Favourites stay on top either way.
+- [ ] **The choice sticks** across leaving the tab and reloading the app.
+
 ### Position requests
 
 Needs two radios, each running this app, on a channel ticked under **Position requests**

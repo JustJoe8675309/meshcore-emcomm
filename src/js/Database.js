@@ -382,6 +382,28 @@ class ChannelMessage {
         });
     }
 
+    /**
+     * The newest message on a channel, or null.
+     *
+     * A channel has no advert and so no "last heard" of its own. This is the
+     * nearest thing: when anything was last said on it, which is what an operator
+     * means when sorting a list by what has been busy.
+     */
+    static getLatestChannelMessage(channelIdx) {
+        return database.channel_messages.findOne({
+            selector: {
+                channel_idx: {
+                    $eq: channelIdx,
+                },
+            },
+            sort: [
+                {
+                    timestamp: "desc",
+                },
+            ],
+        });
+    }
+
     // get unread channel messages count for the provided channel idx
     static getChannelMessagesUnreadCount(channelIdx, messagesLastReadTimestamp) {
         return database.channel_messages.count({

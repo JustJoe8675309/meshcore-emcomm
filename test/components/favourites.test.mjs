@@ -14,7 +14,7 @@ import vClickOutside from "click-outside-vue3";
 import ContactFlags from "../../src/js/ContactFlags.js";
 import Connection from "../../src/js/Connection.js";
 import GlobalState from "../../src/js/GlobalState.js";
-import ContactsList from "../../src/components/contacts/ContactsList.vue";
+import StationsList from "../../src/components/stations/StationsList.vue";
 import SearchableSelect from "../../src/components/reports/SearchableSelect.vue";
 
 const KEY_A = new Uint8Array(32).fill(0xaa);
@@ -154,13 +154,13 @@ describe("favourites in the lists", () => {
             aContact({ advName: "A Favourite", lastAdvert: 1000, flags: 1, publicKey: KEY_B }),
         ];
 
-        const wrapper = mount(ContactsList, {
-            props: { contacts },
-            global: { stubs: { ContactListItem: true, DropDownMenu: true, IconButton: true } },
+        const wrapper = mount(StationsList, {
+            props: { contacts, channels: [] },
+            global: { stubs: { ContactListItem: true, ChannelListItem: true, DropDownMenu: true, IconButton: true } },
         });
 
         // even though the other station was heard more recently
-        expect(wrapper.vm.searchedContacts.map((c) => c.advName)).toEqual(["A Favourite", "Heard Last"]);
+        expect(wrapper.vm.rows.map((r) => r.name)).toEqual(["A Favourite", "Heard Last"]);
     });
 
     it("lifts favourites to the top of any picker", () => {
