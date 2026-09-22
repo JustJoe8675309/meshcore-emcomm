@@ -95,7 +95,7 @@ describe("the roll call bytes", () => {
         const heard = Array.from({ length: 40 }, (_, i) => i.toString(16).padStart(6, "0"));
         const text = Protocol.toDirectText(
             { kind: Protocol.KIND.ROLL_CALL, tag: 9, to: Protocol.EVERYONE, from: ME, name: "Ω".repeat(20), heard },
-            "Position roll call from KJ5HBN (answering needs MeshCore-Emcomm)",
+            "Position roll call from KJ5HBN (answering needs Mesh-Emcomm)",
             Protocol.MAX_ROOM_BYTES,
         );
         expect(new TextEncoder().encode(text).length).toBeLessThanOrEqual(151);

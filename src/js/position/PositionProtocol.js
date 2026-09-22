@@ -11,7 +11,7 @@
  * app show that as ordinary text, so the text leads with a readable line saying
  * what it is, and the payload follows a marker this app looks for:
  *
- *     Position request from KJ5HBN (answering needs MeshCore-Emcomm) #mce1:AQE...
+ *     Position request from KJ5HBN (answering needs Mesh-Emcomm) #mce1:AQE...
  *
  * In a room server there are no datagrams, and text type 1 cannot be used: a
  * room runs text type 1 from an admin as a command. So in a room the same text

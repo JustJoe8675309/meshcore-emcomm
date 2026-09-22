@@ -1,5 +1,5 @@
 {
-  "name": "MeshCore-Emcomm",
+  "name": "Mesh-Emcomm",
   "short_name": "Emcomm",
   "description": "A web based MeshCore client with emergency communications report forms.",
   "scope": "/",

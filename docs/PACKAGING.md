@@ -161,6 +161,24 @@ difference and it is mockable.
 4. Play Store, if other operators actually want it from a store.
 5. iPhone, only if someone needs it, since it is the most cost for the least reach.
 
+## The name
+
+**Mesh-Emcomm**, chosen 2026-09-22. It is what the header, the browser tab, the install
+prompt and the line other stations see on a position request all say. Deliberately not
+"MeshCore-Emcomm" any more: the app is not official MeshCore, and a store listing should
+not suggest it is.
+
+Left alone on purpose, because changing them costs something and buys nothing:
+- **The address** `app.meshcore-emcomm.workers.dev`. A PWA install is bound to its
+  origin, so operators who installed from the old address would keep pointing at it and
+  lose their settings and message history.
+- **The repository, the Cloudflare worker and the offline cache prefix.** Internal
+  names nobody reads.
+
+Still to do before publishing: `src/public/privacy-policy.html` came from the original
+project and names Liam Cottle as the service provider. It needs rewriting for this app
+and whoever publishes it, which both stores will ask for anyway.
+
 ## Licence and naming, before publishing anywhere
 
 The project is MIT, forked from Liam Cottle's `meshcore-web`. His copyright and the MIT

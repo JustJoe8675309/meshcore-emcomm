@@ -1,4 +1,4 @@
-# MeshCore Emcomm
+# Mesh-Emcomm
 
 A web based [MeshCore](https://github.com/meshcore-dev/MeshCore) client for the
 [Companion Radio Firmware](https://github.com/meshcore-dev/MeshCore/blob/main/examples/companion_radio/main.cpp),
@@ -785,7 +785,7 @@ menu beside it in Contacts. Everything that comes back is on the **Positions** t
 - **Direct,** there is no datagram, so it goes as a direct message of text type 1, which the
   firmware calls command data. Only the two stations see the answer. A station without this app
   sees a readable line, such as "Position request from KJ5HBN (answering needs
-  MeshCore-Emcomm)", followed by the encoded request. This app reads it and keeps it out of the
+  Mesh-Emcomm)", followed by the encoded request. This app reads it and keeps it out of the
   conversation.
 
 **Asking.** Three modes: once; every N minutes until answered; or up to X times every Y minutes,

@@ -882,7 +882,7 @@ describe("asking", () => {
         PositionService.start(THEM_CONTACT, { kind: "direct" }, { type: "once" });
         await vi.advanceTimersByTimeAsync(0);
         expect(Connection.sendCommandData).toHaveBeenCalledTimes(1);
-        expect(sent[0].text).toMatch(/^Position request from Joe-KJ5HBN-HTv3 \(answering needs MeshCore-Emcomm\) #mce1:/);
+        expect(sent[0].text).toMatch(/^Position request from Joe-KJ5HBN-HTv3 \(answering needs Mesh-Emcomm\) #mce1:/);
     });
 
     it("takes a position from the station's radio when its app does not answer", async () => {

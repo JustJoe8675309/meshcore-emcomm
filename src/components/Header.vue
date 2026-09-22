@@ -4,7 +4,7 @@
             <img src="/icon.png" class="size-12 rounded"/>
         </div>
         <div class="my-auto mr-auto overflow-hidden">
-            <div class="font-bold">MeshCore-Emcomm</div>
+            <div class="font-bold">Mesh-Emcomm</div>
             <div class="text-sm truncate">
 
                 <!-- connected or configured -->

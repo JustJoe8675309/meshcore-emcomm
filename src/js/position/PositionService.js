@@ -483,7 +483,7 @@ class PositionService {
             // asked again, the stations already heard stay silent
             heard: round.answers.map((a) => a.fromPrefixHex.slice(0, Protocol.HEARD_PREFIX_BYTES * 2)),
         };
-        const readable = `Position roll call from ${this.ownName()} (answering needs MeshCore-Emcomm)`;
+        const readable = `Position roll call from ${this.ownName()} (answering needs Mesh-Emcomm)`;
 
         try {
             await this.transmit(request.via, message, readable);
@@ -637,7 +637,7 @@ class PositionService {
         }
         timers.delete(tag);
 
-        const readable = `Position request from ${this.ownName()} (answering needs MeshCore-Emcomm)`;
+        const readable = `Position request from ${this.ownName()} (answering needs Mesh-Emcomm)`;
         const message = {
             kind: Protocol.KIND.REQUEST,
             tag: request.tag,
