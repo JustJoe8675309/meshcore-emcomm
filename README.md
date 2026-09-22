@@ -166,7 +166,18 @@ nothing else. N.E. ELP OBSVR, found on other days, answered neither search.
 The replies were then timed as they arrived, by tapping node 1's serial line. JOE- QTHish
 answered 0.81 s after Discover was pressed. It answered again about a second into the search
 that converting to EMCOMM mode runs. Both are inside the 1.8 s the arithmetic allows a default
-repeater at these settings, so a 10 s listen has plenty in hand.
+repeater at these settings.
+
+From node 2 over Bluetooth, the same 10 s search found two repeaters:
+- WTRA-NMF at 1.54 s. It heard node 2 at -5.25 dB and node 2 heard it at 4.75 dB, and node 1
+  has never found it.
+- JOE- QTHish at 2.62 s. That is past the 1.8 s the arithmetic allows. Part of it is likely
+  Bluetooth delivery, since node 1 over serial heard the same repeater at 0.81 s. The rest may
+  be that repeater's own delay setting, or the request waiting for a clear channel before it went
+  out.
+
+So the arithmetic is a guide, not a bound, and the 10 s floor is what actually matters here: the
+slowest answer seen so far left more than 7 s to spare.
 
 Discovery and ping do not always agree, and both are right when they disagree. Discovery
 proves a repeater is in range and hears you, because it answered. Ping additionally
@@ -932,9 +943,9 @@ happen on demand:
   happens on some connections and not others. On the one recorded since, node 2 read all 183
   contacts in one pass, so the step rightly never appeared.
 - **Discovery's 10 second listen against N.E. ELP OBSVR.** This repeater was found on earlier
-  days and has answered no search since discovery was shortened from 30 seconds. The one that
-  did answer, JOE- QTHish, replied in under a second, so no trouble is expected, but it is not
-  proven for this one.
+  days and has answered no search since discovery was shortened from 30 seconds. Two others
+  have answered, the slowest at 2.6 s, so no trouble is expected, but it is not proven for this
+  one.
 
 ## Tests
 
