@@ -410,7 +410,14 @@ export default {
                 this.backupProgress = "Backing up before any change...";
 
                 const backup = await NodeBackup.capture();
-                const saved = NodeBackup.save(backup, NodeBackup.SLOT_PRE_EMCOMM);
+                // converting again while already in the mode must not replace the
+                // way home with the EMCOMM setup it was meant to undo. The original
+                // stays, and this goes in the ordinary slot
+                const alreadyIn = this.inEmcommMode && this.preEmcommBackup != null;
+                const saved = NodeBackup.save(backup, alreadyIn ? NodeBackup.SLOT_LATEST : NodeBackup.SLOT_PRE_EMCOMM);
+                if(alreadyIn){
+                    this.backupWarnings.push("Already in EMCOMM mode: the backup from before it was kept as the way home, and this one saved as the latest backup.");
+                }
 
                 // at once, not when the conversion finishes: Save to file and Load
                 // last backup read this list, and mid conversion it still named the
@@ -623,15 +630,44 @@ Settings, channels and ${entry.backup.contacts.length} contacts will be restored
             const when = new Date(entry.backup.capturedAt).toLocaleString();
             if(!confirm(`Leave EMCOMM mode, and write the backup from ${when}, taken before this node entered it, back to the node?
 
-Settings, channels and ${entry.backup.contacts.length} contacts will be restored. Nothing will be removed.`)){
+Settings, channels, ${entry.backup.contacts.length} contacts, and this app's advert schedule and position settings for the node will be restored.`)){
                 return;
             }
 
-            await this.runRestore({ ...entry.backup, slot: NodeBackup.SLOT_PRE_EMCOMM }, "Leaving EMCOMM mode");
+            // leaving is meant to put the node back as it was, so what was added
+            // while in the mode is offered for removal, named, rather than left
+            // behind as an ordinary restore would. The operator may want to keep
+            // stations met during the incident, so it is their choice
+            let remove = null;
+            try {
+                const extras = await NodeBackup.extras(entry.backup);
+                const total = extras.contacts.length + extras.channels.length;
+                if(total > 0){
+                    const names = (list, name) => list.slice(0, 5).map(name).join(", ") + (list.length > 5 ? ", ..." : "");
+                    const parts = [];
+                    if(extras.contacts.length > 0){
+                        parts.push(`${extras.contacts.length} contact(s): ${names(extras.contacts, (c) => c.advName || Utils.bytesToHex(c.publicKey).slice(0, 8))}`);
+                    }
+                    if(extras.channels.length > 0){
+                        parts.push(`${extras.channels.length} channel(s): ${names(extras.channels, (c) => c.name)}`);
+                    }
+                    if(confirm(`These were added while in EMCOMM mode and are not in the backup:
+
+${parts.join(". ")}.
+
+OK removes them, so the node is exactly as it was before. Cancel keeps them.`)){
+                        remove = extras;
+                    }
+                }
+            } catch(e) {
+                this.backupWarnings = [`Could not check what was added while in EMCOMM mode, so nothing extra will be removed: ${e?.message ?? e}`];
+            }
+
+            await this.runRestore({ ...entry.backup, slot: NodeBackup.SLOT_PRE_EMCOMM }, "Leaving EMCOMM mode", remove);
 
         },
 
-        async runRestore(backup, title = "Restoring the backup") {
+        async runRestore(backup, title = "Restoring the backup", remove = null) {
 
             this.isRestoring = true;
             this.restoreTitle = title;
@@ -649,10 +685,13 @@ Settings, channels and ${entry.backup.contacts.length} contacts will be restored
                 const result = await NodeBackup.restore(backup, (p) => {
                     this.backupProgress = `Restoring ${p.what}`;
                     this.backupSteps = { done: p.done, total: p.total };
-                });
+                }, { remove });
                 this.backupSteps = null;
 
                 this.backupMessage = `Restored ${backup.contacts.length} contacts and ${backup.channels.length} channels.`;
+                if(remove){
+                    this.backupMessage += ` Removed ${remove.contacts.length} contact(s) and ${remove.channels.length} channel(s) added since.`;
+                }
 
                 if(result.failures.length > 0){
                     // named rather than counted: which one failed decides what to do

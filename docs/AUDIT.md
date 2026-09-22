@@ -319,6 +319,15 @@ one found so far came from a dropped frame, and the link that drops them is BLE.
 - [ ] **The way home stays reachable.** Back up while converted, so the newest backup
       is the converted state, then press **Leave EMCOMM mode**. It must offer the
       pre-EMCOMM backup, not the newest, and restore the node to it.
+- [ ] **Leaving removes what the mode added, when asked.** While converted, let a
+      contact be added automatically, add a test channel in an empty slot, set a
+      repeating advert schedule and tick a channel for position requests. Leave: the
+      second question names that contact and channel. OK: both are gone from the
+      radio, the advert schedule is back to what it was, and the position settings
+      are back as they were. Repeat with Cancel: they are kept, and the mode is still
+      left.
+- [ ] **Converting twice keeps the way home.** Convert again while converted. The
+      Leave button still restores the backup from before the first convert.
 
 Expect a conversion to take a couple of minutes over Bluetooth. Removals run at
 roughly a third the speed of writes, so the trim is the slow half.

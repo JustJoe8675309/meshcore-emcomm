@@ -101,6 +101,54 @@ describe("leaving EMCOMM mode", () => {
         expect(button(wrapper, "Leave EMCOMM mode")).toBeFalsy();
     });
 
+    it("offers to remove what was added in the mode, so the node is exactly as it was", async () => {
+        EmcommMode.markEntered(NODE);
+        const extras = {
+            contacts: [{ publicKey: new Uint8Array(32).fill(9), advName: "Met Since" }],
+            channels: [{ idx: 4, name: "Incident Tac 1" }],
+        };
+        vi.spyOn(NodeBackup, "extras").mockResolvedValue(extras);
+        window.confirm = vi.fn(() => true);
+        const wrapper = mountPage();
+        await flushPromises();
+
+        await button(wrapper, "Leave EMCOMM mode").trigger("click");
+        await flushPromises();
+
+        expect(window.confirm.mock.calls[1][0]).toContain("Met Since");
+        expect(window.confirm.mock.calls[1][0]).toContain("Incident Tac 1");
+        expect(restore.mock.calls[0][2]).toEqual({ remove: extras });
+        expect(wrapper.text()).toContain("Removed 1 contact(s) and 1 channel(s) added since");
+    });
+
+    it("keeps what was added when the operator says so, and still leaves the mode", async () => {
+        EmcommMode.markEntered(NODE);
+        vi.spyOn(NodeBackup, "extras").mockResolvedValue({ contacts: [{ publicKey: new Uint8Array(32).fill(9), advName: "Met Since" }], channels: [] });
+        window.confirm = vi.fn().mockReturnValueOnce(true).mockReturnValueOnce(false);
+        const wrapper = mountPage();
+        await flushPromises();
+
+        await button(wrapper, "Leave EMCOMM mode").trigger("click");
+        await flushPromises();
+
+        expect(restore.mock.calls[0][2]).toEqual({ remove: null });
+        expect(EmcommMode.enteredAt(NODE)).toBe(null);
+    });
+
+    it("converting again while in the mode keeps the way home from before it", async () => {
+        EmcommMode.markEntered(NODE);
+        vi.spyOn(NodeBackup, "capture").mockResolvedValue({ ...backup(Date.UTC(2026, 8, 21, 1, 0), 90, "second convert"), formatVersion: 1 });
+        const wrapper = mountPage();
+        await flushPromises();
+
+        await button(wrapper, "Convert to EMCOMM mode").trigger("click");
+        await flushPromises();
+
+        expect(NodeBackup.load(NODE, NodeBackup.SLOT_PRE_EMCOMM).nodeName).toBe("before");
+        expect(NodeBackup.load(NODE, NodeBackup.SLOT_LATEST).nodeName).toBe("second convert");
+        expect(wrapper.text()).toContain("the backup from before it was kept as the way home");
+    });
+
     it("does nothing if the operator cancels", async () => {
         EmcommMode.markEntered(NODE);
         window.confirm = vi.fn(() => false);

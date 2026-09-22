@@ -9,6 +9,8 @@
 import GlobalState from "./GlobalState.js";
 import Connection from "./Connection.js";
 import Utils from "./Utils.js";
+import AdvertSchedule from "./AdvertSchedule.js";
+import PositionService from "./position/PositionService.js";
 
 const FORMAT_VERSION = 1;
 
@@ -107,9 +109,58 @@ class NodeBackup {
                 };
             }),
             contactsAnnounced: GlobalState.contactsAnnounced,
+            // what this app keeps for the node in the browser rather than on the
+            // radio. EMCOMM mode is where repeating adverts and position answering
+            // are most likely to be turned on, so leaving it puts these back too
+            app: this.captureApp(Utils.bytesToHex(selfInfo.publicKey)),
             warnings: warnings,
         };
 
+    }
+
+    static captureApp(nodePublicKeyHex) {
+        return {
+            advertSchedule: AdvertSchedule.get(nodePublicKeyHex),
+            positionSettings: PositionService.settings(nodePublicKeyHex),
+        };
+    }
+
+    /** Puts back the app's own settings for the node, when the backup has them. */
+    static restoreApp(backup) {
+        const app = backup.app;
+        const key = backup.nodePublicKey;
+        if(app == null || key == null){
+            return false;
+        }
+        if(app.advertSchedule){
+            AdvertSchedule.set(key, app.advertSchedule);
+            // the schedule runs for the connected radio only
+            if(GlobalState.selfInfo && Utils.bytesToHex(GlobalState.selfInfo.publicKey) === key){
+                AdvertSchedule.start(key);
+            }
+        }
+        if(app.positionSettings){
+            PositionService.saveSettings(app.positionSettings, key);
+        }
+        return true;
+    }
+
+    /**
+     * What the node holds now that the backup does not: contacts, and channels in
+     * slots the backup had empty. Read from the device for channels, since the
+     * list shown falls back to defaults when the device does not answer.
+     */
+    static async extras(backup) {
+        const connection = GlobalState.connection;
+        if(connection == null){
+            throw new Error(Connection.DISCONNECTED);
+        }
+        await Connection.loadContacts();
+        const backedUp = new Set(backup.contacts.map((c) => c.publicKey));
+        const contacts = GlobalState.contacts.filter((c) => !backedUp.has(Utils.bytesToHex(c.publicKey)));
+        const channelSlots = new Set(backup.channels.map((c) => c.idx));
+        const channels = (await this.captureChannels(connection, [])).filter((c) => !channelSlots.has(c.idx));
+        return { contacts, channels };
     }
 
     /**
@@ -162,12 +213,15 @@ class NodeBackup {
     /**
      * Writes a backup back to the node.
      *
-     * Additive: it restores settings, channels and contacts, and reports any
-     * contact the node holds that the backup does not. Removing those is the
-     * business of EMCOMM mode's trimming, kept separate so that restoring can
-     * never itself delete anything.
+     * Additive unless told otherwise: it restores settings, channels and
+     * contacts, and reports any contact the node holds that the backup does not.
+     *
+     * Leaving EMCOMM mode is meant to put the node back as it was, so it can pass
+     * `remove`: the contacts and channels found by extras() that the operator has
+     * agreed to remove. Nothing is removed without that list, so an ordinary
+     * restore still never deletes anything.
      */
-    static async restore(backup, onProgress = () => {}) {
+    static async restore(backup, onProgress = () => {}, { remove = null } = {}) {
 
         const connection = GlobalState.connection;
         if(connection == null){
@@ -181,7 +235,9 @@ class NodeBackup {
         const failures = [];
         const settings = backup.settings;
 
-        const steps = 5 + backup.channels.length + backup.contacts.length;
+        const removeContacts = remove?.contacts ?? [];
+        const removeChannels = remove?.channels ?? [];
+        const steps = 5 + backup.channels.length + backup.contacts.length + removeContacts.length + removeChannels.length;
         let done = 0;
         const step = (what) => onProgress({ done: ++done, total: steps, what: what });
 
@@ -234,6 +290,19 @@ class NodeBackup {
             ));
             step(contact.advName || "a contact");
         }
+
+        // what was added since the backup, when the operator chose to remove it
+        for(const contact of removeContacts){
+            const name = contact.advName || Utils.bytesToHex(contact.publicKey).slice(0, 8);
+            await this.attempt(failures, `removing ${name}`, () => Connection.removeContact(contact.publicKey));
+            step(`removing ${name}`);
+        }
+        for(const channel of removeChannels){
+            await this.attempt(failures, `clearing channel ${channel.name}`, () => Connection.deleteChannel(channel.idx));
+            step(`clearing channel ${channel.name}`);
+        }
+
+        this.restoreApp(backup);
 
         // read back rather than assume: the device owns this now
         await Connection.loadContacts();

@@ -1057,6 +1057,11 @@ class Connection {
         await this.withSettingTimeout("channel", () => GlobalState.connection.setChannel(channelIdx, name, secret));
     }
 
+    /** Empties a channel slot: an empty name and a zeroed key, as the library does. */
+    static async deleteChannel(channelIdx) {
+        await this.withSettingTimeout("channel", () => GlobalState.connection.setChannel(channelIdx, "", new Uint8Array(16)));
+    }
+
     static async setOtherParams(manualAddContacts) {
         await this.withSettingTimeout("add contacts mode", () => GlobalState.connection.setOtherParams(manualAddContacts));
     }

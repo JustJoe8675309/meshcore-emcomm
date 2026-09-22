@@ -208,6 +208,87 @@ describe("restoring a backup", () => {
 
 });
 
+describe("putting the node back exactly, when leaving EMCOMM mode", () => {
+
+    const NODE_HEX = Utils.bytesToHex(NODE_KEY);
+    let radio, backup, removed;
+
+    beforeEach(async () => {
+        window.localStorage.clear();
+        radio = fakeRadio({ channels: { 0: { name: "Public", secret: new Uint8Array(16).fill(1) } } });
+        GlobalState.connection = radio;
+        GlobalState.selfInfo = selfInfo();
+        GlobalState.contacts = [aContact(1), aContact(2)];
+        GlobalState.contactsAnnounced = 2;
+        GlobalState.contactsMissing = 0;
+        vi.spyOn(Connection, "loadContacts").mockResolvedValue(undefined);
+        vi.spyOn(Connection, "loadChannels").mockResolvedValue(undefined);
+        removed = [];
+        vi.spyOn(Connection, "removeContact").mockImplementation(async (key) => { removed.push(Utils.bytesToHex(key).slice(0, 2)); });
+        const { default: AdvertSchedule } = await import("../../src/js/AdvertSchedule.js");
+        const { default: PositionService } = await import("../../src/js/position/PositionService.js");
+        AdvertSchedule.set(NODE_HEX, { zeroHopMinutes: 0, floodMinutes: 0 });
+        PositionService.saveSettings({ markedChannels: [], markedRooms: [], autoAnswer: false }, NODE_HEX);
+        backup = await NodeBackup.capture();
+        radio.writes = [];
+    });
+
+    it("keeps this app's advert schedule and position settings for the node in the backup", () => {
+        expect(backup.app.advertSchedule).toEqual({ zeroHopMinutes: 0, floodMinutes: 0 });
+        expect(backup.app.positionSettings).toEqual({ markedChannels: [], markedRooms: [], autoAnswer: false });
+    });
+
+    it("puts them back: repeating adverts and position answering turned on in the mode go off again", async () => {
+        const { default: AdvertSchedule } = await import("../../src/js/AdvertSchedule.js");
+        const { default: PositionService } = await import("../../src/js/position/PositionService.js");
+        vi.spyOn(AdvertSchedule, "start").mockImplementation(() => {});
+        AdvertSchedule.set(NODE_HEX, { zeroHopMinutes: 30, floodMinutes: 240 });
+        PositionService.saveSettings({ markedChannels: [7], markedRooms: [], autoAnswer: true }, NODE_HEX);
+        await NodeBackup.restore(backup);
+        expect(AdvertSchedule.get(NODE_HEX)).toEqual({ zeroHopMinutes: 0, floodMinutes: 0 });
+        expect(PositionService.settings(NODE_HEX)).toEqual({ markedChannels: [], markedRooms: [], autoAnswer: false });
+        expect(AdvertSchedule.start).toHaveBeenCalledWith(NODE_HEX);
+    });
+
+    it("finds the contacts and channels added since, reading channels from the radio", async () => {
+        GlobalState.contacts = [aContact(1), aContact(2), aContact(9, { advName: "Met Since" })];
+        radio.getChannel = async (idx) => {
+            const channels = { 0: "Public", 4: "Incident Tac 1" };
+            if(!(idx in channels)) throw new Error("no such channel");
+            return { channelIdx: idx, name: channels[idx], secret: new Uint8Array(16).fill(3) };
+        };
+        const extras = await NodeBackup.extras(backup);
+        expect(extras.contacts.map((c) => c.advName)).toEqual(["Met Since"]);
+        expect(extras.channels.map((c) => [c.idx, c.name])).toEqual([[4, "Incident Tac 1"]]);
+    });
+
+    it("removes what it was told to, and only that", async () => {
+        const extras = { contacts: [aContact(9, { advName: "Met Since" })], channels: [{ idx: 4, name: "Incident Tac 1" }] };
+        const result = await NodeBackup.restore(backup, () => {}, { remove: extras });
+        expect(result.failures).toEqual([]);
+        expect(removed).toEqual(["09"]);
+        const cleared = radio.writes.find((w) => w[0] === "channel" && w[1] === 4);
+        expect(cleared[2]).toBe("");
+        expect(Array.from(cleared[3])).toEqual(new Array(16).fill(0));
+    });
+
+    it("still removes nothing unless told to", async () => {
+        GlobalState.contacts = [aContact(1), aContact(2), aContact(9)];
+        await NodeBackup.restore(backup);
+        expect(removed).toEqual([]);
+        expect(radio.writes.filter((w) => w[0] === "channel" && w[2] === "")).toEqual([]);
+    });
+
+    it("restores a backup from before the app's settings were kept, leaving them alone", async () => {
+        const { default: AdvertSchedule } = await import("../../src/js/AdvertSchedule.js");
+        AdvertSchedule.set(NODE_HEX, { zeroHopMinutes: 30, floodMinutes: 0 });
+        const { app, ...older } = backup;
+        await NodeBackup.restore(older);
+        expect(AdvertSchedule.get(NODE_HEX).zeroHopMinutes).toBe(30);
+    });
+
+});
+
 describe("storing backups", () => {
 
     let backup;

@@ -609,8 +609,26 @@ replace the way home with the stripped configuration it was meant to undo. They 
 to and read from a file, which is the copy that survives clearing site data, and a file is
 checked against the connected node before it can be restored.
 
-Restoring adds everything back and removes nothing. Trimming is the mode's business, and keeping
-them apart means a restore can never lose anything by itself.
+An ordinary restore, **Load last backup**, adds everything back and removes nothing, so it can
+never lose anything by itself.
+
+**EMCOMM mode takes nothing away.** Every tab, form and feature works the same in the mode as out
+of it; the mode only forces settings suited to emcomm use. Leaving it is meant to put the node
+back exactly as it was:
+- **The radio:** name, position, transmit power, radio settings, location sharing, the add
+  contacts mode, channels and contacts, all from the pre-EMCOMM backup.
+- **This app's own settings for the node,** which live in the browser rather than on the radio:
+  the repeating advert schedule, and which channels and rooms answer position requests, and
+  whether automatically. These are kept in every backup from now on. An older backup without
+  them leaves them as they are.
+- **What was added while in the mode.** Contacts added (automatic contacts is on in the mode)
+  and channels in slots that were empty before are listed by name, and **OK removes them**, so
+  the node is exactly as it was. Cancel keeps them, for stations met during the incident that are
+  worth keeping. Channels are read from the radio for this, not from the list shown, which falls
+  back to defaults when the radio does not answer.
+- **Converting again while in the mode keeps the way home.** The backup from before the mode stays
+  the pre-EMCOMM one, and the new one is saved as the latest. Before this, a second convert saved
+  the EMCOMM setup as the way home.
 
 A restore that changes the node's name sends one zero hop advert and says so. Writing the name
 back announces nothing on its own, and on the bench node 2 went on listing node 1 by its EMCOMM
