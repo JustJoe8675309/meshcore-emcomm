@@ -61,42 +61,17 @@
                         Where you are now. Saved to the radio as its position, and sent marked as entered by hand.
                     </div>
 
-                    <!-- the same position two ways: decimal degrees, or the MGRS reference a
-                         map or a SAR team gives -->
-                    <div class="flex rounded border border-gray-300 overflow-hidden text-xs" role="group" aria-label="Enter as">
-                        <button type="button" @click="setEntryMode('degrees')" :aria-pressed="entryMode === 'degrees'"
-                            class="w-full px-2 py-1" :class="entryMode === 'degrees' ? 'bg-amber-100 font-semibold text-amber-900' : 'bg-white text-gray-600'">Degrees</button>
-                        <button type="button" @click="setEntryMode('mgrs')" :aria-pressed="entryMode === 'mgrs'"
-                            class="w-full px-2 py-1 border-l border-gray-300" :class="entryMode === 'mgrs' ? 'bg-amber-100 font-semibold text-amber-900' : 'bg-white text-gray-600'">MGRS</button>
-                    </div>
-
-                    <template v-if="entryMode === 'degrees'">
-                        <div class="flex space-x-2">
-                            <label class="w-full text-xs text-gray-700">Latitude
-                                <input v-model="entryLatitude" type="number" step="any" inputmode="decimal" placeholder="31.9270" class="mt-0.5 w-full bg-white border border-gray-300 text-sm rounded p-1.5">
-                            </label>
-                            <label class="w-full text-xs text-gray-700">Longitude
-                                <input v-model="entryLongitude" type="number" step="any" inputmode="decimal" placeholder="-106.4001" class="mt-0.5 w-full bg-white border border-gray-300 text-sm rounded p-1.5">
-                            </label>
-                        </div>
-                        <div v-if="entryPosition" class="text-xs text-gray-600"><MapLink :latitude="entryPosition.latitude" :longitude="entryPosition.longitude" :text="entryPositionMgrs" label="Position entered"/></div>
-                        <div v-if="entryInvalid" class="text-xs text-red-600">
-                            Not a position: latitude -90 to 90, longitude -180 to 180, south and west negative.
-                        </div>
-                    </template>
-
-                    <template v-else>
-                        <label class="block text-xs text-gray-700">MGRS reference
-                            <input v-model="entryMgrsText" type="text" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="13R CR 67640 33201" class="mt-0.5 w-full bg-white border border-gray-300 text-sm rounded p-1.5 uppercase">
-                        </label>
-                        <div v-if="entryPosition" class="text-xs text-gray-600">
-                            <MapLink :latitude="entryPosition.latitude" :longitude="entryPosition.longitude" :text="entryPositionDegrees" label="Position entered"/><span v-if="entryPrecision > 1">, to within {{ entryPrecision }} m</span>
-                        </div>
-                        <div v-if="entryInvalid" class="text-xs text-red-600">
-                            Not an MGRS reference. For example 13R CR 67640 33201: zone and band, the two
-                            square letters, then an even number of digits.
-                        </div>
-                    </template>
+                    <PositionEntry
+                        :mode="entryMode"
+                        :latitude="entryLatitude"
+                        :longitude="entryLongitude"
+                        :mgrs-text="entryMgrsText"
+                        :position="entryPosition"
+                        :invalid="entryInvalid"
+                        @mode="setEntryMode"
+                        @latitude="entryLatitude = $event"
+                        @longitude="entryLongitude = $event"
+                        @mgrs-text="entryMgrsText = $event"/>
                     <button @click="cancelEntry" :disabled="busy" type="button" class="w-full text-xs text-gray-500 underline">
                         {{ own.has ? "Send the last known position instead" : "Send without a position" }}
                     </button>
@@ -142,11 +117,13 @@ import PositionService from "../../js/position/PositionService.js";
 import Geo from "../../js/position/Geo.js";
 import Mgrs from "../../js/position/Mgrs.js";
 import MapLink from "./MapLink.vue";
+import PositionEntry from "./PositionEntry.vue";
 
 export default {
     name: 'PositionPrompt',
     components: {
         MapLink,
+        PositionEntry,
     },
     data() {
         return {

@@ -153,6 +153,13 @@ in settings on the one being asked.
       Enter a position and use Save to radio and send. The radio's own position
       (This station) changes to it, and the asker sees "Entered by hand at …, not
       GPS". A position past 90 or 180, or 0, 0, is refused.
+- [ ] **Update position, with a GPS fix.** On the radio with GPS, press Update
+      position on the Positions tab. It says it updated from the GPS, and This
+      station shows the new position. No entry fields appear.
+- [ ] **Update position, without one.** On the radio without GPS, the same button
+      says there is no live fix and opens the entry, prefilled with what the radio
+      holds. Save to radio: This station changes, and the radio agrees when read
+      back. Cancel leaves it alone.
 - [ ] **Enter current position as MGRS.** Switch the entry to MGRS, type a reference,
       and see it shown back in degrees. A shorter reference says how big its square is.
       A reference that cannot be read is refused.

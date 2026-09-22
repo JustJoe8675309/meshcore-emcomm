@@ -1107,6 +1107,40 @@ class PositionService {
     }
 
     /**
+     * Brings this station's own position up to date from the GPS.
+     *
+     * The radio is asked again rather than trusted: a receiver that had no fix at
+     * connect time may have one now, and one that had a fix may have lost it. A
+     * live fix is written back as the advert position, so what this station sends
+     * and adverts is where it is now. Returns { updated, position, reason }, and
+     * the caller offers an entry by hand when it could not be done.
+     */
+    static async updateFromGps() {
+
+        if(GlobalState.connection == null){
+            throw new Error(Connection.DISCONNECTED);
+        }
+
+        await Connection.probeForLiveGps();
+        if(GlobalState.gpsStatus !== "live"){
+            return { updated: false, reason: "no live GPS fix" };
+        }
+
+        const position = await Connection.getPosition();
+        if(position == null){
+            return { updated: false, reason: "the GPS gave no position" };
+        }
+
+        await Connection.setAdvertLatLong(
+            Math.round(position.latitude * 1e6),
+            Math.round(position.longitude * 1e6),
+        );
+        await Connection.loadSelfInfo(Connection.READ_TIMEOUT_MILLIS);
+        return { updated: true, position: position };
+
+    }
+
+    /**
      * Sends this station's position in answer to a request.
      *
      * manualPosition, when given, is one the operator has just typed in because

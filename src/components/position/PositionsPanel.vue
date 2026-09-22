@@ -17,6 +17,46 @@
                     The magnetic model ({{ modelName }}) has passed its end date, so bearings may be a degree
                     or more out. The app needs updating with the next model.
                 </div>
+
+                <!-- bring the position up to date: the GPS first, and where there is
+                     no fix, whatever the operator can say themselves -->
+                <button
+                    v-if="!updating"
+                    @click="updatePosition"
+                    :disabled="busy || notConnected"
+                    type="button"
+                    class="w-full bg-white hover:bg-gray-50 disabled:opacity-60 border border-gray-300 text-gray-700 text-xs font-medium rounded-lg px-3 py-2">
+                    {{ busy ? "Checking the GPS..." : "Update position" }}
+                </button>
+
+                <div v-else class="border border-amber-300 rounded p-2 space-y-2">
+                    <div class="text-xs text-gray-700">
+                        <span class="font-semibold">{{ gpsNote }}</span>
+                        Where you are now, saved to the radio as its position and used until it changes.
+                    </div>
+
+                    <PositionEntry
+                        :mode="entryMode"
+                        :latitude="entryLatitude"
+                        :longitude="entryLongitude"
+                        :mgrs-text="entryMgrsText"
+                        :position="entryPosition"
+                        :invalid="entryInvalid"
+                        @mode="setEntryMode"
+                        @latitude="entryLatitude = $event"
+                        @longitude="entryLongitude = $event"
+                        @mgrs-text="entryMgrsText = $event"/>
+
+                    <div class="flex space-x-2">
+                        <button @click="cancelUpdate" :disabled="busy" type="button"
+                            class="w-full bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 text-xs font-medium rounded-lg px-3 py-2">Cancel</button>
+                        <button @click="saveUpdate" :disabled="busy || entryPosition == null" type="button"
+                            class="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-xs font-medium rounded-lg px-3 py-2">Save to radio</button>
+                    </div>
+                </div>
+
+                <div v-if="updateMessage" role="status" class="text-xs text-gray-600">{{ updateMessage }}</div>
+                <div v-if="updateError" role="status" class="text-xs text-red-600">{{ updateError }}</div>
             </div>
 
             <!-- requests this station is making -->
@@ -140,17 +180,31 @@ import PositionService from "../../js/position/PositionService.js";
 import Geo from "../../js/position/Geo.js";
 import MagneticModel from "../../js/position/MagneticModel.js";
 import MapLink from "./MapLink.vue";
+import PositionEntry from "./PositionEntry.vue";
+import Mgrs from "../../js/position/Mgrs.js";
+import GlobalState from "../../js/GlobalState.js";
 
 export default {
     name: 'PositionsPanel',
     components: {
         MapLink,
+        PositionEntry,
     },
     data() {
         return {
             // distances follow this station's position; a tick keeps fix ages current
             now: Date.now(),
             ticker: null,
+            // updating this station's own position: the GPS first, then by hand
+            busy: false,
+            updating: false,
+            gpsNote: "",
+            updateMessage: null,
+            updateError: null,
+            entryMode: "degrees",
+            entryLatitude: "",
+            entryLongitude: "",
+            entryMgrsText: "",
         };
     },
     mounted() {
@@ -160,6 +214,73 @@ export default {
         clearInterval(this.ticker);
     },
     methods: {
+        /**
+         * Tries the GPS, and falls back to asking the operator.
+         *
+         * The GPS is tried every time rather than trusting what was found at
+         * connect: a receiver with no fix then may have one now, which is the
+         * normal case for one still getting its first lock.
+         */
+        async updatePosition() {
+            this.busy = true;
+            this.updateMessage = null;
+            this.updateError = null;
+            try {
+                const result = await PositionService.updateFromGps();
+                if(result.updated){
+                    this.updateMessage = `Updated from the GPS at ${this.time(Date.now())}.`;
+                    this.now = Date.now();
+                    return;
+                }
+                // no fix, so the operator says where they are. Prefilled with what
+                // the radio holds, which is usually close
+                this.gpsNote = `There is ${result.reason}, so enter the position.`;
+                this.entryMode = "degrees";
+                this.entryLatitude = this.own.has ? this.own.latitude.toFixed(4) : "";
+                this.entryLongitude = this.own.has ? this.own.longitude.toFixed(4) : "";
+                this.entryMgrsText = this.own.has ? (Geo.formatMgrs(this.own.latitude, this.own.longitude) ?? "") : "";
+                this.updating = true;
+            } catch(e) {
+                this.updateError = `Not updated: ${e?.message ?? e}`;
+            } finally {
+                this.busy = false;
+            }
+        },
+        cancelUpdate() {
+            this.updating = false;
+            this.updateMessage = "The position was left as it was.";
+        },
+        async saveUpdate() {
+            const position = this.entryPosition;
+            if(position == null){
+                return;
+            }
+            this.busy = true;
+            this.updateError = null;
+            try {
+                await PositionService.saveManualPosition(position.latitude, position.longitude);
+                this.updating = false;
+                this.updateMessage = `Saved to the radio at ${this.time(Date.now())}. It is sent as entered by hand until the GPS takes over.`;
+                this.now = Date.now();
+            } catch(e) {
+                this.updateError = `Not saved: ${e?.message ?? e}`;
+            } finally {
+                this.busy = false;
+            }
+        },
+        setEntryMode(mode) {
+            // carry the position across, so switching does not lose what was typed
+            const position = this.entryPosition;
+            if(position){
+                if(mode === "mgrs"){
+                    this.entryMgrsText = Geo.formatMgrs(position.latitude, position.longitude) ?? "";
+                } else {
+                    this.entryLatitude = position.latitude.toFixed(5);
+                    this.entryLongitude = position.longitude.toFixed(5);
+                }
+            }
+            this.entryMode = mode;
+        },
         stop(tag) {
             PositionService.stop(tag);
         },
@@ -286,6 +407,32 @@ export default {
         },
     },
     computed: {
+        notConnected() {
+            return GlobalState.connection == null;
+        },
+        // what the fields parse to, in either form, or null
+        entryPosition() {
+            if(!this.updating){
+                return null;
+            }
+            if(this.entryMode === "mgrs"){
+                const parsed = Mgrs.toLatLon(this.entryMgrsText);
+                return parsed && PositionService.isValidEntry(parsed.latitude, parsed.longitude)
+                    ? { latitude: parsed.latitude, longitude: parsed.longitude, precision: parsed.precisionMetres }
+                    : null;
+            }
+            return PositionService.isValidEntry(this.entryLatitude, this.entryLongitude)
+                ? { latitude: Number(this.entryLatitude), longitude: Number(this.entryLongitude), precision: null }
+                : null;
+        },
+        entryTyped() {
+            return this.entryMode === "mgrs"
+                ? this.entryMgrsText.trim() !== ""
+                : this.entryLatitude !== "" || this.entryLongitude !== "";
+        },
+        entryInvalid() {
+            return this.updating && this.entryTyped && this.entryPosition == null;
+        },
         own() {
             void this.now;
             return PositionService.ownPosition();

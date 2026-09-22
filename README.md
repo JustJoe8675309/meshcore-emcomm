@@ -869,6 +869,14 @@ are admins of the test room. Other things differ from a channel:
 - **A position the room replays keeps its own time,** worked out from the room's clock, and goes
   behind anything newer from that station rather than replacing it.
 
+**Updating this station's own position.** The Positions tab's This station card has an **Update
+position** button. It tries the GPS first, every time, since a receiver with no fix when the app
+connected may have one by now. A live fix is written back as the radio's position. With no fix it
+says so and opens the same entry fields the answer prompt uses, degrees or MGRS, prefilled with
+what the radio holds, and Save to radio writes it. A position past 90 or 180, or 0, 0, is refused.
+The fields are one component used in both places, so neither can come to accept what the other
+refuses.
+
 **What is shown.** For each station: its position in **decimal degrees** and as a ten digit
 **MGRS** reference, its distance in **miles and kilometres**, and the bearing to it in **degrees
 magnetic, stated as magnetic**, with the declination used shown beneath.
