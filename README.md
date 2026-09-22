@@ -745,6 +745,15 @@ the tab says so.
 - A position from a radio's telemetry is marked as not saying how current it is, because the
   firmware does not.
 
+On the bench, node 2 with a live GPS answered in 0.95 s. The first re-read had moved, and node 1
+showed it as a current fix. The answer's MGRS reference differed in its last digits from the one
+node 2's prompt had shown a moment before, so it was a fresh reading, not the one held since
+connect.
+
+The first attempt that night was a single request, and it was lost on the air with no answer. The
+same request, repeating every minute, got through first time. Channel datagrams are not
+acknowledged, which is what the repeat modes are for.
+
 **Magnetic bearing.** A bearing an operator walks has to be magnetic, because that is what a
 hand compass reads. The declination comes from the **World Magnetic Model 2025**, worked out on
 the device from NOAA's published coefficients, so it needs no network. It matches all twelve of
