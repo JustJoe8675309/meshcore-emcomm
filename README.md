@@ -176,8 +176,9 @@ From node 2 over Bluetooth, the same 10 s search found two repeaters:
   be that repeater's own delay setting, or the request waiting for a clear channel before it went
   out.
 
-Node 2's transmit power was then raised from 20 to 22 dBm, the maximum its firmware reports,
-and it searched four more times over four minutes:
+Node 2's transmit power was then raised from 20 to 22 dBm, the maximum its firmware reports. It
+was also moved from indoors to the porch outside, and searched four more times over four
+minutes:
 
 | Repeater | Answered | Heard node 2 at | Node 2 heard it at |
 |---|---|---|---|
@@ -186,11 +187,12 @@ and it searched four more times over four minutes:
 | Dorje Solar Tobin Wells | 1 of 4 | 8.75 dB | 2 dB |
 | WTRA-NMF | 0 of 4 | | |
 
-Every reply came within 2.73 s. FEDF MC Repeater answered no search at 20 dBm and hears node 2
-close to the edge of what it can decode, so the extra power may be what brought it in. One
-search at the lower power against four at the higher is not enough to say. WTRA-NMF answered
-once and then not at all, which is also a reminder that links this weak come and go from one
-minute to the next.
+Every reply came within 2.73 s. FEDF MC Repeater and Dorje Solar Tobin Wells answered no search
+from indoors at 20 dBm. The power and the position changed together, so which one brought them
+in cannot be told apart from these results. Of the two, the move outside is likely to count for
+more: 2 dB is modest, and a house wall can cost far more than that. WTRA-NMF answered once from
+indoors and not at all from the porch, which is a reminder that links this weak come and go from
+one minute to the next.
 
 So the arithmetic is a guide, not a bound, and the 10 s floor is what actually matters here: the
 slowest answer seen so far left more than 7 s to spare.
