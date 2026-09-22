@@ -391,11 +391,24 @@ that adverted once at sign-on drifts out of everybody's contact list as paths ch
 Two fields in the EMCOMM settings group take an interval in minutes, one per kind. Blank or zero
 means off. The schedule is stored per node, because it is a property of the station's role: a base
 running flood adverts hourly and a handheld running zero hop adverts every ten minutes are both
-reasonable and are not the same setting. It restarts when that node reconnects.
+reasonable and are not the same setting.
 
-Nothing is sent the moment the schedule is applied. An advert on every page load would put a burst
-on the air each time the app is reopened, which during testing is constantly, and the station has
-adverted at connect anyway.
+**Closing the app stops the adverts; reconnecting starts them again.** Nothing but the app sends
+them, so while it is closed the node sends no scheduled adverts at all. Reopen the app and connect
+the same node, and its schedule starts again by itself, with no need to press Apply. Three things
+to know about that:
+- **It is kept in the browser.** The schedule lives in that browser's own storage on that computer
+  or phone. Connecting the node from another browser or device, or after clearing the site's data,
+  starts with no schedule.
+- **The count starts again.** It does not carry on from before the app closed. The first advert
+  after reconnecting is one full interval later: on an hourly flood schedule, an hour after
+  connecting, however long the app was closed.
+- **It follows the node.** Connecting node 2 in a browser where node 1 had a schedule does not give
+  node 2 that schedule.
+
+Nothing is sent the moment the schedule is applied or restarts. An advert on every page load would
+put a burst on the air each time the app is reopened, which during testing is constantly. To be
+heard at once after reconnecting, send one from the header menu.
 
 **The two kinds cost very different amounts of air.** A zero hop advert is heard only by stations
 in direct range and is repeated by nobody. A flood routed advert is rebroadcast by every repeater
