@@ -95,7 +95,10 @@ rather than an error.
 - [ ] **A run that partly succeeds.** The loss percentage and averages are taken over
       the real replies only.
 - [ ] **Switch tabs mid send.** Transmission stops. Nothing should keep talking to the
-      radio with no display and no way to cancel.
+      radio with no display and no way to cancel. Then go back to Reports: it must say
+      the report was interrupted, how many parts went out and to where, and offer to
+      send the rest. It used to show an empty form, with nothing to say the stations
+      had a report with its end missing.
 
 ### Room servers
 
@@ -212,6 +215,9 @@ one found so far came from a dropped frame, and the link that drops them is BLE.
 - [ ] **Restore from the pre-EMCOMM slot.** Contact counts by type back to what
       they were, name back, no setting different, nothing missing from the backup.
       The mode badge should go back to saying the node is not in EMCOMM mode.
+- [ ] **The other node sees the name come back.** The restore sends one zero hop
+      advert when it changes the name, and says so. The other node should list this
+      one by its restored name within seconds, not by its EMCOMM name.
 - [ ] **The two slots stay apart.** Backing up while converted must not overwrite
       the pre-EMCOMM one. If it does, the way home is gone at the moment it is
       least recoverable.

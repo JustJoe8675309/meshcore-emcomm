@@ -45,6 +45,10 @@ const globalState = reactive({
     // kept that answer: on the bench it said "Not in EMCOMM mode" straight after
     // a conversion, and "In EMCOMM mode" straight after the restore that ended it
     emcommModeRevision: 0,
+    // a report whose send was cut short by leaving the Reports tab. The tab's own
+    // record of it goes with the tab, so without this the operator came back to
+    // an empty form and nothing said the report had gone out incomplete
+    interruptedReport: null,
 });
 
 export default globalState;

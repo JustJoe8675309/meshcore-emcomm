@@ -151,3 +151,74 @@ describe("SettingsPage while reading the radio", () => {
     });
 
 });
+
+describe("SettingsPage position fields", () => {
+
+    let latLong;
+
+    beforeEach(() => {
+        window.localStorage.clear();
+        GlobalState.connection = { on() {}, off() {} };
+        vi.spyOn(Connection, "deviceQuery").mockResolvedValue(null);
+        latLong = vi.spyOn(Connection, "setAdvertLatLong").mockResolvedValue(undefined);
+        vi.spyOn(Connection, "setAdvertName").mockResolvedValue(undefined);
+        vi.spyOn(Connection, "setRadioParams").mockResolvedValue(undefined);
+        vi.spyOn(Connection, "setTxPower").mockResolvedValue(undefined);
+        window.alert = vi.fn();
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        delete window.alert;
+        GlobalState.connection = null;
+        GlobalState.selfInfo = null;
+    });
+
+    const withPosition = (advLat, advLon) => vi.spyOn(Connection, "loadSelfInfo").mockImplementation(async () => {
+        GlobalState.selfInfo = { ...SELF_INFO, advLat, advLon };
+    });
+
+    const field = (wrapper, placeholder) => wrapper.findAll("input").find((i) => i.attributes("placeholder") === placeholder);
+
+    it("shows no position as blank, not as a place in the Gulf of Guinea", async () => {
+        withPosition(0, 0);
+        const wrapper = mountPage();
+        await flushPromises();
+
+        expect(field(wrapper, "e.g: -38.664646").element.value).toBe("");
+        expect(field(wrapper, "e.g: 178.023507").element.value).toBe("");
+    });
+
+    it("still shows a real position", async () => {
+        withPosition(31926949, -106400091);
+        const wrapper = mountPage();
+        await flushPromises();
+
+        expect(field(wrapper, "e.g: -38.664646").element.value).toBe("31.926949");
+        expect(field(wrapper, "e.g: 178.023507").element.value).toBe("-106.400091");
+    });
+
+    it("keeps no position unset when saved blank", async () => {
+        withPosition(0, 0);
+        const wrapper = mountPage();
+        await flushPromises();
+
+        await wrapper.vm.save();
+
+        expect(latLong).toHaveBeenCalledWith(0, 0);
+    });
+
+    it("treats a cleared field the same as an empty one", async () => {
+        // a number box that has been cleared holds "" rather than null
+        withPosition(31926949, -106400091);
+        const wrapper = mountPage();
+        await flushPromises();
+        await field(wrapper, "e.g: -38.664646").setValue("");
+        await field(wrapper, "e.g: 178.023507").setValue("");
+
+        await wrapper.vm.save();
+
+        expect(latLong).toHaveBeenCalledWith(0, 0);
+    });
+
+});

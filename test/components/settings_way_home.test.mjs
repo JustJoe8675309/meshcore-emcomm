@@ -163,3 +163,62 @@ describe("the backup list during a conversion", () => {
     });
 
 });
+
+describe("telling the stations in range after a restore", () => {
+
+    let restore;
+    let advert;
+
+    beforeEach(() => {
+        window.localStorage.clear();
+        GlobalState.connection = { on() {}, off() {} };
+        GlobalState.selfInfo = SELF_INFO;
+        vi.spyOn(Connection, "loadSelfInfo").mockImplementation(async () => { GlobalState.selfInfo = SELF_INFO; });
+        vi.spyOn(Connection, "deviceQuery").mockResolvedValue(null);
+        restore = vi.spyOn(NodeBackup, "restore").mockResolvedValue({ failures: [], notInBackup: [] });
+        advert = vi.spyOn(Connection, "sendZeroHopAdvert").mockResolvedValue(undefined);
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        GlobalState.connection = null;
+        GlobalState.selfInfo = null;
+        window.localStorage.clear();
+    });
+
+    it("adverts once when the restore changes the name", async () => {
+        // on the bench node 2 listed node 1 as KJ5HBN-AUDIT until an advert went out by hand
+        const wrapper = mountPage();
+        await flushPromises();
+
+        await wrapper.vm.runRestore(backup(Date.UTC(2026, 8, 21, 0, 18), 3, "Joe-KJ5HBN-HTv3"));
+        await flushPromises();
+
+        expect(advert).toHaveBeenCalledTimes(1);
+        expect(wrapper.text()).toContain("A zero hop advert went out");
+        expect(wrapper.text()).toContain("Joe-KJ5HBN-HTv3");
+    });
+
+    it("stays quiet when the name is unchanged, since there is nothing to tell anyone", async () => {
+        const wrapper = mountPage();
+        await flushPromises();
+
+        await wrapper.vm.runRestore(backup(Date.UTC(2026, 8, 21, 0, 18), 3, SELF_INFO.name));
+        await flushPromises();
+
+        expect(advert).not.toHaveBeenCalled();
+    });
+
+    it("says so when the advert does not go out, rather than implying it did", async () => {
+        advert.mockRejectedValue(new Error("busy"));
+        const wrapper = mountPage();
+        await flushPromises();
+
+        await wrapper.vm.runRestore(backup(Date.UTC(2026, 8, 21, 0, 18), 3, "Joe-KJ5HBN-HTv3"));
+        await flushPromises();
+
+        expect(wrapper.text()).toContain("did not go out");
+        expect(wrapper.text()).not.toContain("A zero hop advert went out");
+    });
+
+});

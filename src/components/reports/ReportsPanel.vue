@@ -71,48 +71,59 @@
                 :part-delay-seconds="partDelaySeconds"
                 :is-contact="destinationType === 'contact'"/>
 
+            <!-- outside the send section, which needs a form selected: after the tab
+                 was left mid send the form is gone, and this notice with it.
+                 a failure part way through a multi part report leaves the earlier
+                 messages already transmitted, so offer to finish rather than repeat -->
+            <div v-if="sendFailure" role="alert" class="bg-red-50 border border-red-300 rounded-lg p-3 space-y-2">
+
+                <div class="text-sm font-semibold text-red-800">{{ sendFailure.interrupted ? "Report interrupted" : "Transmission failed" }}</div>
+
+                <div v-if="sendFailure.interrupted" class="text-sm text-red-900">
+                    The Reports tab was left while <span class="font-semibold">{{ sendFailure.formName }}</span> was sending, so it stopped.
+                </div>
+
+                <div class="text-sm text-red-900">
+                    <template v-if="sendFailure.totalParts > 1">
+                        {{ sendFailure.sentCount }} of {{ sendFailure.totalParts }} messages were sent to
+                        <span class="font-semibold">{{ sendFailure.destination.name }}</span>.
+                        Message {{ sendFailure.sentCount + 1 }} did not go out.
+                    </template>
+                    <template v-else>
+                        Nothing was sent to <span class="font-semibold">{{ sendFailure.destination.name }}</span>.
+                    </template>
+                </div>
+
+                <div v-if="!canResume" class="text-xs text-red-900">
+                    {{ resumeBlockedReason }}
+                </div>
+
+                <div class="flex space-x-2 pt-1">
+                    <button
+                        @click="dismissFailure"
+                        :disabled="isSending"
+                        type="button"
+                        class="w-full bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg px-5 py-2.5">
+                        Dismiss
+                    </button>
+                    <button
+                        v-if="canResume"
+                        @click="resumeSend"
+                        :disabled="isSending"
+                        type="button"
+                        class="w-full bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg px-5 py-2.5">
+                        {{ resumeButtonLabel }}
+                    </button>
+                </div>
+
+            </div>
+
             <!-- send -->
             <div v-if="selectedForm" class="space-y-2 pb-3">
 
                 <div v-if="validationMessage" role="status" class="text-xs text-red-600">{{ validationMessage }}</div>
 
                 <div v-if="copyMessage" role="status" class="text-xs text-gray-600">{{ copyMessage }}</div>
-
-                <!-- a failure part way through a multi part report leaves the earlier
-                     messages already transmitted, so offer to finish rather than repeat -->
-                <div v-if="sendFailure" role="alert" class="bg-red-50 border border-red-300 rounded-lg p-3 space-y-2">
-
-                    <div class="text-sm font-semibold text-red-800">Transmission failed</div>
-
-                    <div class="text-sm text-red-900">
-                        <template v-if="sendFailure.totalParts > 1">
-                            {{ sendFailure.sentCount }} of {{ sendFailure.totalParts }} messages were sent to
-                            <span class="font-semibold">{{ sendFailure.destination.name }}</span>.
-                            Message {{ sendFailure.sentCount + 1 }} did not go out.
-                        </template>
-                        <template v-else>
-                            Nothing was sent to <span class="font-semibold">{{ sendFailure.destination.name }}</span>.
-                        </template>
-                    </div>
-
-                    <div class="flex space-x-2 pt-1">
-                        <button
-                            @click="dismissFailure"
-                            :disabled="isSending"
-                            type="button"
-                            class="w-full bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg px-5 py-2.5">
-                            Dismiss
-                        </button>
-                        <button
-                            @click="resumeSend"
-                            :disabled="isSending"
-                            type="button"
-                            class="w-full bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg px-5 py-2.5">
-                            {{ resumeButtonLabel }}
-                        </button>
-                    </div>
-
-                </div>
 
                 <!-- a long report can hold the channel for minutes, so it takes a second
                      deliberate press. cancel returns to the form with everything intact. -->
@@ -243,6 +254,10 @@ export default {
     },
     mounted() {
         this.clearChannelIfMissing();
+        if(GlobalState.interruptedReport != null){
+            this.sendFailure = { ...GlobalState.interruptedReport, interrupted: true };
+            GlobalState.interruptedReport = null;
+        }
     },
     watch: {
         selectedFormId() {
@@ -411,7 +426,9 @@ export default {
         async resumeSend() {
 
             const failure = this.sendFailure;
-            if(!failure){
+            // the button is hidden when this is false; checked here as well so no
+            // other way in can send the rest through the wrong radio
+            if(!failure || !this.canResume){
                 return;
             }
 
@@ -438,9 +455,19 @@ export default {
 
                 for(let i = startIndex; i < parts.length; i++){
 
-                    // the panel went away mid send. stop quietly: the parts already
-                    // transmitted are recorded, and resuming is the operator's call
+                    // the panel went away mid send. stop, and keep the record somewhere
+                    // that outlives the panel: this component's own copy goes with it,
+                    // and the operator came back to an empty form with nothing to say
+                    // the report had gone out incomplete. resuming is their call
                     if(this.sendAborted){
+                        GlobalState.interruptedReport = {
+                            allParts: parts,
+                            destination: destination,
+                            sentCount: sentCount,
+                            totalParts: parts.length,
+                            formName: this.selectedForm?.name ?? "A report",
+                            nodePublicKey: this.connectedNodeKey,
+                        };
                         return;
                     }
 
@@ -748,6 +775,32 @@ export default {
             return !this.isSending
                 && this.validationMessage === null
                 && this.prepared?.parts?.length > 0;
+        },
+
+        connectedNodeKey() {
+            const key = GlobalState.selfInfo?.publicKey;
+            return key == null ? null : Utils.bytesToHex(key);
+        },
+
+        // a channel is a slot number on the radio, so the rest of a report must go
+        // out through the radio the start went through, or it could land on
+        // another channel entirely
+        canResume() {
+            const failure = this.sendFailure;
+            if(failure == null || GlobalState.connection == null){
+                return false;
+            }
+            if(failure.nodePublicKey != null && failure.nodePublicKey !== this.connectedNodeKey){
+                return false;
+            }
+            return true;
+        },
+
+        resumeBlockedReason() {
+            if(GlobalState.connection == null){
+                return "No radio is connected, so the rest cannot be sent yet.";
+            }
+            return "A different radio is connected now, so the rest cannot be sent from here. Reconnect the radio it started on to finish it.";
         },
 
         resumeButtonLabel() {

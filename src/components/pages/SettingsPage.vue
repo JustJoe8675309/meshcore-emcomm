@@ -605,6 +605,10 @@ Settings, channels and ${entry.backup.contacts.length} contacts will be restored
             this.backupMessage = null;
             this.backupWarnings = [];
 
+            // what other stations currently know this node as, to tell whether the
+            // restore changes it
+            const nameBefore = GlobalState.selfInfo?.name ?? null;
+
             try {
 
                 const result = await NodeBackup.restore(backup, (p) => {
@@ -625,6 +629,21 @@ Settings, channels and ${entry.backup.contacts.length} contacts will be restored
                 }
 
                 await this.load();
+
+                // A restore writes the name back but announces nothing, so every station
+                // that heard the EMCOMM name went on showing it: on the bench node 2
+                // listed node 1 as KJ5HBN-AUDIT until an advert went out by hand. One
+                // zero hop advert, only when the name changed, tells the stations in
+                // direct range. Stations further out learn it at the next flood advert.
+                const nameAfter = backup.settings?.name ?? null;
+                if(nameAfter != null && nameAfter !== nameBefore){
+                    try {
+                        await Connection.sendZeroHopAdvert();
+                        this.backupMessage += ` A zero hop advert went out, so stations in direct range see it as ${nameAfter} again.`;
+                    } catch(e) {
+                        this.backupWarnings.push(`The name is back to ${nameAfter}, but the advert telling stations in range did not go out. Send one from the header menu.`);
+                    }
+                }
 
                 // putting the node back is how it leaves the mode. only the
                 // pre-EMCOMM backup means that: restoring an ordinary one is just
@@ -743,8 +762,12 @@ Settings, channels and ${backup.contacts.length} contacts will be written to thi
 
             // convert latitude and longitude from integer to decimal
             // e.g: -38664646, 178023507 -> -38.664646, 178.023507
-            this.latitude = GlobalState.selfInfo.advLat / 1000000;
-            this.longitude = GlobalState.selfInfo.advLon / 1000000;
+            // 0, 0 is how a node with no position reports, and it is a real place in
+            // the Gulf of Guinea. Shown as blank, as the EMCOMM group already calls it
+            // "Not set". Saving blank writes 0, 0 again, so the position stays unset
+            const unset = GlobalState.selfInfo.advLat === 0 && GlobalState.selfInfo.advLon === 0;
+            this.latitude = unset ? null : GlobalState.selfInfo.advLat / 1000000;
+            this.longitude = unset ? null : GlobalState.selfInfo.advLon / 1000000;
 
             this.hasLoaded = true;
             this.isLoading = false;
@@ -810,15 +833,10 @@ Settings, channels and ${backup.contacts.length} contacts will be written to thi
                     return;
                 }
 
-                // if user didn't provide latitude, set to zero
-                if(this.latitude == null){
-                    this.latitude = 0;
-                }
-
-                // if user didn't provide longitude, set to zero
-                if(this.longitude == null){
-                    this.longitude = 0;
-                }
+                // a blank field means no position, which the radio stores as zero. A
+                // number box that has been cleared holds "", not null, so both count
+                const latitudeInput = this.latitude == null || this.latitude === "" ? 0 : this.latitude;
+                const longitudeInput = this.longitude == null || this.longitude === "" ? 0 : this.longitude;
 
                 // convert radio frequency from MHz to kHz
                 // e.g: 917.375 -> 917375
@@ -826,8 +844,8 @@ Settings, channels and ${backup.contacts.length} contacts will be written to thi
 
                 // convert latitude and longitude from decimal to integer
                 // e.g: -38.664646, 178.023507 -> -38664646, 178023507
-                const latitude = Math.floor(this.latitude * 1000000);
-                const longitude = Math.floor(this.longitude * 1000000);
+                const latitude = Math.floor(latitudeInput * 1000000);
+                const longitude = Math.floor(longitudeInput * 1000000);
 
                 // save settings
                 await Connection.setAdvertName(this.name);

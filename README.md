@@ -116,6 +116,13 @@ being measured. Cancelling keeps the replies already collected and reports on th
 Averages are hidden when nothing came back, since `avg snr 0dB` would read as a
 measurement of a dead link rather than the absence of one.
 
+A report cut short by leaving the Reports tab stops, as it should, but is not forgotten. The
+panel's own record of how far it got used to go with the panel, so coming back showed an empty
+form while the stations held a report with its end missing. It is now kept, and the tab says
+the report was interrupted, how many parts went out and to where, and offers to send only the
+rest. It will not finish it through a different radio: a channel is a slot number on the radio,
+so the rest could land on another channel entirely.
+
 A dropped link is not packet loss and is not recorded as any. Pulling the cable mid run
 stops the run and says so, keeping the replies already collected, rather than filling the
 remainder with timeouts and reporting a loss figure for requests that were never sent.
@@ -438,6 +445,12 @@ checked against the connected node before it can be restored.
 Restoring adds everything back and removes nothing. Trimming is the mode's business, and keeping
 them apart means a restore can never lose anything by itself.
 
+A restore that changes the node's name sends one zero hop advert and says so. Writing the name
+back announces nothing on its own, and on the bench node 2 went on listing node 1 by its EMCOMM
+name until an advert went out by hand. Zero hop reaches the stations in direct range, which
+are the ones most likely to be talking to it; stations further out learn the name at the next
+flood advert. Nothing is sent when the name is unchanged.
+
 **Leave EMCOMM mode** restores the pre-EMCOMM backup specifically, and appears whenever the node
 is in the mode and that backup exists. The final audit found the way home unreachable without it:
 the two slots stayed apart as designed, but Load last backup restores the newest, so one routine
@@ -754,7 +767,7 @@ timeout behind it, on a link that was otherwise working perfectly.
 npm test
 ```
 
-Six plain node suites and twenty-eight component suites, 431 component tests, no hardware
+Six plain node suites and twenty-nine component suites, 445 component tests, no hardware
 required:
 
 - `test/report_encoder.test.mjs` covers rendering and packet splitting, including a
