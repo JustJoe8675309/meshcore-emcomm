@@ -17,6 +17,7 @@
         <!-- asked for this station's position, and asking another for theirs -->
         <PositionPrompt/>
         <PositionRequestDialog/>
+        <GroupPositionDialog/>
     </div>
 </template>
 
@@ -26,6 +27,7 @@ import Connection from "../js/Connection.js";
 import BusyOverlay from "./BusyOverlay.vue";
 import PositionPrompt from "./position/PositionPrompt.vue";
 import PositionRequestDialog from "./position/PositionRequestDialog.vue";
+import GroupPositionDialog from "./position/GroupPositionDialog.vue";
 
 export default {
     name: 'App',
@@ -33,6 +35,7 @@ export default {
         BusyOverlay,
         PositionPrompt,
         PositionRequestDialog,
+        GroupPositionDialog,
     },
     data() {
         return {

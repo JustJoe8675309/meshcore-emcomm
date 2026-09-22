@@ -28,12 +28,30 @@
                         <div class="text-xs" :class="statusClass(request)">{{ statusLabel(request) }}</div>
                     </div>
                     <div class="text-xs text-gray-600">
-                        {{ request.via.kind === "channel" ? `On ${request.via.name}` : "Direct" }},
-                        {{ modeLabel(request.mode) }}. {{ request.sent }} sent<span v-if="request.lastSentAt">, last at {{ time(request.lastSentAt) }}</span>.
+                        {{ capitalise(viaLabel(request.via)) }},
+                        {{ modeLabel(request) }}. {{ request.sent }} sent<span v-if="request.lastSentAt">, last at {{ time(request.lastSentAt) }}</span>.
                     </div>
                     <div v-if="request.status === 'running' && request.nextAt" class="text-xs text-gray-600">
                         Next at {{ time(request.nextAt) }}.
                     </div>
+                    <div v-else-if="request.group && request.status === 'running' && request.listenUntil" class="text-xs text-gray-600">
+                        Listening for answers until {{ time(request.listenUntil) }}.
+                    </div>
+
+                    <!-- a roll call's answers, in the round being asked -->
+                    <template v-if="request.group">
+                        <div class="text-xs text-gray-600">
+                            <template v-if="request.rounds.length > 1">Round {{ request.rounds.length }}: </template>
+                            {{ roundAnswers(request).length }} answered<template v-if="roundAnswers(request).length > 0">:</template>
+                        </div>
+                        <div v-for="answer of roundAnswers(request)" :key="answer.fromPrefixHex" class="pl-2 border-l-2 border-gray-200 text-xs">
+                            <span class="font-semibold text-gray-900">{{ answer.name }}</span>
+                            <span v-if="answer.nodeName && answer.nodeName !== answer.name" class="ml-1 text-gray-500">· {{ answer.nodeName }}</span>
+                            <span class="ml-1 text-gray-800">{{ answerSummary(answer) }}</span>
+                            <span v-if="answer.late" class="ml-1 text-gray-500">(after it closed)</span>
+                        </div>
+                    </template>
+
                     <div v-if="request.outcome" class="text-xs text-gray-800">{{ request.outcome }}</div>
                     <div v-if="request.radioNote && request.status !== 'answered'" class="text-xs text-gray-600">{{ request.radioNote }}</div>
                     <div v-if="request.error" class="text-xs text-red-600">Last request not sent: {{ request.error }}</div>
@@ -60,8 +78,9 @@
             <div class="bg-white border border-gray-300 rounded-lg divide-y">
                 <div class="p-3 text-sm font-medium text-gray-900">Positions</div>
                 <div v-if="reports.length === 0" class="p-3 text-xs text-gray-500">
-                    None yet. Ask a station for its position from the menu beside it in Contacts. Positions
-                    other stations send on your channels appear here too.
+                    None yet. Ask a station for its position from the menu beside it in Contacts, or everyone
+                    on a channel or in a room from its menu. Positions other stations send on your channels
+                    appear here too.
                 </div>
                 <div v-for="report of reports" :key="report.id" class="p-3 space-y-1">
                     <div class="flex items-center justify-between">
@@ -185,14 +204,55 @@ export default {
             const minutes = Math.max(0, Math.round((this.now / 1000 - report.fixTime) / 60));
             return minutes < 1 ? "Live GPS fix, just now" : `Live GPS fix, ${minutes} min old`;
         },
+        viaLabel: (via) => PositionService.viaLabel(via),
+        capitalise: (text) => text.charAt(0).toUpperCase() + text.slice(1),
         sourceLabel(report) {
-            const where = report.via.kind === "channel" ? `on ${report.via.name}` : "direct";
+            const where = PositionService.viaLabel(report.via);
             if(report.source === "radio"){
                 return `From its radio's telemetry, ${where}. Its app did not answer.`;
             }
+            if(report.shared){
+                return `Sent to everyone ${where}, unasked`;
+            }
             return report.requestedByUs ? `Answer to your request, ${where}` : `Heard ${where}`;
         },
-        modeLabel(mode) {
+        roundAnswers(request) {
+            return PositionService.currentRound(request).answers;
+        },
+        // one line for a roll call answer: where, and how far, or why not
+        answerSummary(answer) {
+            if(answer.kind === "declined"){
+                return "declined";
+            }
+            if(answer.kind === "none"){
+                return "has no position set";
+            }
+            const report = PositionService.lastPositionFrom(answer.fromPrefixHex);
+            if(report == null){
+                return "answered";
+            }
+            const relation = this.relation(report);
+            const where = Geo.formatDegrees(report.latitude, report.longitude);
+            const fix = report.manual ? ", entered by hand" : report.lastKnown ? ", last known" : "";
+            if(relation == null){
+                return `${where}${fix}`;
+            }
+            if(relation.sameLocation){
+                return `${where}${fix}, same location`;
+            }
+            return `${where}${fix}, ${Geo.formatDistance(relation.metres)}, ${Geo.formatMagneticBearing(relation.magneticBearing)}`;
+        },
+        modeLabel(request) {
+            const mode = request.mode;
+            if(request.group){
+                if(mode.type === "again"){
+                    return `up to ${mode.maxCount} times every ${mode.intervalMinutes} min for stations not yet heard`;
+                }
+                if(mode.type === "track"){
+                    return `${mode.maxCount} roll calls every ${mode.intervalMinutes} min`;
+                }
+                return "once";
+            }
             if(mode.type === "until"){
                 return `every ${mode.intervalMinutes} min until answered`;
             }
@@ -202,7 +262,11 @@ export default {
             return "once";
         },
         statusLabel(request) {
+            if(request.group && request.status === "running"){
+                return "Listening";
+            }
             return {
+                done: "Closed",
                 running: "Waiting",
                 answered: "Answered",
                 declined: "Declined",
@@ -212,6 +276,7 @@ export default {
         },
         statusClass(request) {
             return {
+                done: "text-green-700",
                 running: "text-blue-700",
                 answered: "text-green-700",
                 declined: "text-amber-800",

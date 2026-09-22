@@ -159,6 +159,21 @@ in settings on the one being asked.
 - [ ] **Several stations asking.** Needs three radios. With two asking at once, the
       prompt says one more is waiting; answering brings up the second. A station asking
       again keeps its place and its entry becomes its newest request.
+- [ ] **Roll call on a channel.** From node 1's channel menu, Request Positions (Roll
+      Call), once, on Emcomm Testing. Node 2, with the channel ticked, is prompted
+      "asks everyone". Send: node 1's card lists node 2 with distance and magnetic
+      bearing, stays Listening, and closes 5 minutes later with its count.
+- [ ] **Roll call asked again.** Up to 2 times every 5 minutes. Node 2 answers the
+      first and stays silent on the second, which names it as heard.
+- [ ] **Roll call answered automatically.** With node 2 answering automatically, its
+      answer comes a random 10 to 60 s after the roll call, not at once.
+- [ ] **Send My Position** from node 1's channel menu: node 2 lists it as "Sent to
+      everyone on Emcomm Testing, unasked".
+- [ ] **Roll call in a room.** Both nodes logged in to the test room, and the room
+      ticked on node 2. The roll call and the answer arrive, neither appears in the
+      room's conversation on either node, and a stock app in the room would show
+      them as text lines. Log node 2 out for more than 10 minutes, then back in: the
+      replayed roll call is not put to it again.
 - [ ] **Map links.** On an Android phone, tap a position's degrees and its MGRS
       reference: each opens the map app, or asks which one, with a pin named for the
       station. On an iPhone, Apple Maps. On Windows, OpenStreetMap in a new tab.

@@ -770,6 +770,51 @@ came on. The prompt counts how many times it has asked. Before this, a second st
 replaced the first on screen. Settings can switch to answering automatically instead, which
 sends a plain Send with no prompt.
 
+**Roll calls: asking everyone at once.** A channel's menu, and a room's menu once logged in with
+the right to post, has **Request Positions (Roll Call)**. It asks every station there running
+this app at once. The request is addressed to everyone, and it is a message kind of its own, so an
+older copy of the app ignores it rather than misreading it. Answers come back to the asker as
+before, on the same channel or in the same room.
+- **Nobody knows who is on a channel,** so a roll call cannot run "until answered". Its modes:
+  - **once;**
+  - **up to X times every Y minutes, for stations not yet heard.** Each repeat names the stations
+    already heard, by three bytes of their key, and those stay silent. A station whose answer was
+    lost is not named, so it answers again.
+  - **track:** X fresh roll calls every Y minutes, with everyone answering each time.
+- **Five minutes at the least between roll calls,** with a warning under fifteen. Each one brings
+  an answer from every station.
+- **It listens for 5 minutes after the last roll call,** since people answer by hand, then closes
+  with a count such as "3 stations answered: 2 with a position, 1 declined". An answer after
+  that still counts, marked late.
+- **Staggered automatic answers.** A station answering automatically waits a random moment first,
+  so answers from a whole net do not collide. The wait is up to 20 answer airtimes: at least 10 s
+  and at most 60 s. One answering by hand is already spread out, so it sends when pressed.
+- **No radio is asked by telemetry** for a roll call, as a single request does. That goes one
+  contact at a time.
+- **The roll call's card** in Positions lists each station as it answers, with its position,
+  distance and magnetic bearing, or "declined" or "has no position set".
+- **The prompt says it asks everyone.** A station only answers on channels, and in rooms, ticked
+  for it in settings.
+
+**Send My Position,** in the same menus, sends this station's position to everyone there
+unasked. It says first whether it would go as a current fix or a last known position. Others see
+it marked "Sent to everyone, unasked".
+
+**In a room.** A room server relays posts, not datagrams, so there requests and answers go as
+text posts: a readable line and a code after it, which stock apps show as they are. Text type 1
+cannot be used. The room firmware runs type 1 from an admin as a command, and both bench radios
+are admins of the test room. Other things differ from a channel:
+- **A post is capped at 151 bytes,** so a long list of stations already heard is cut to fit,
+  leaving out those heard first.
+- **Rooms keep 32 posts for members who are away** and replay them at login. A roll call or
+  request older than 10 minutes, by the room's clock, is ignored as a replay. A position is
+  still listed.
+- **Each position post takes one of those 32 places,** so a roll call can push older messages
+  out. Answering in a room is off until the room is ticked under Position requests in settings,
+  and the settings say so.
+- **The post's author comes from the room,** not from the code. A post whose code names another
+  author is ignored. These posts are kept out of the room's conversation.
+
 **What is shown.** For each station: its position in **decimal degrees** and as a ten digit
 **MGRS** reference, its distance in **miles and kilometres**, and the bearing to it in **degrees
 magnetic, stated as magnetic**, with the declination used shown beneath.

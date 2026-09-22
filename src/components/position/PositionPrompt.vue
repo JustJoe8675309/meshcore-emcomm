@@ -5,12 +5,17 @@
         <div role="alertdialog" aria-labelledby="position-prompt-heading" class="w-full max-w-sm bg-white rounded-lg shadow-lg p-4 space-y-3">
 
             <div id="position-prompt-heading" class="text-sm font-semibold text-gray-900">
-                {{ prompt.name }} asks for your position
+                <template v-if="prompt.rollCall">{{ prompt.name }} asks everyone for their position</template>
+                <template v-else>{{ prompt.name }} asks for your position</template>
             </div>
 
             <div class="text-xs text-gray-600">
                 <template v-if="prompt.via.kind === 'channel'">
                     On {{ prompt.via.name }}. Your answer is seen by every station on the channel running this app.
+                </template>
+                <template v-else-if="prompt.via.kind === 'room'">
+                    In the room {{ prompt.via.name }}. Your answer is posted in the room, so everyone in it sees
+                    it, stock apps as a line of text.
                 </template>
                 <template v-else>
                     Sent to you directly. Your answer goes only to them.
@@ -248,8 +253,9 @@ export default {
             this.error = null;
             PositionService.dismissPrompt();
         },
-        // the message goes where the request came from: its channel, or the
-        // conversation with the station that asked
+        // the message goes where the request came from: its channel, its room, or
+        // the conversation with the station that asked. A room's conversation is
+        // opened by its key, as a contact's is
         openConversation(request) {
             if(request.via.kind === "channel"){
                 this.$router.push({ name: "channel.messages", params: { channelIdx: String(request.via.idx) } });

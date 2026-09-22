@@ -31,6 +31,22 @@
                 <span>Request Position</span>
             </DropDownMenuItem>
 
+            <!-- a room relays to everyone in it, once logged in with the right to post -->
+            <template v-if="canUseRoomPositions">
+                <DropDownMenuItem @click="openRoomGroup(contact, 'rollcall')">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-5">
+                        <path fill-rule="evenodd" d="m11.54 22.351.07.04.028.016a.76.76 0 0 0 .723 0l.028-.015.071-.041a16.975 16.975 0 0 0 1.144-.742 19.58 19.58 0 0 0 2.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 0 0-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 0 0 2.682 2.282 16.975 16.975 0 0 0 1.145.742ZM12 13.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" clip-rule="evenodd" />
+                    </svg>
+                    <span>Request Positions (Roll Call)</span>
+                </DropDownMenuItem>
+                <DropDownMenuItem @click="openRoomGroup(contact, 'share')">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-5">
+                        <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
+                    </svg>
+                    <span>Send My Position</span>
+                </DropDownMenuItem>
+            </template>
+
             <!-- copy public key button -->
             <DropDownMenuItem @click="copyPublicKey(contact)">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-5">
@@ -135,10 +151,23 @@ export default {
         canRequestPosition() {
             return this.contact?.type === Constants.AdvType.Chat && GlobalState.connection != null;
         },
+        canUseRoomPositions() {
+            if(this.contact?.type !== Constants.AdvType.Room || GlobalState.connection == null){
+                return false;
+            }
+            return GlobalState.roomLogins[Utils.bytesToHex(this.contact.publicKey)]?.canPost === true;
+        },
     },
     methods: {
         requestPosition(contact) {
             PositionService.openRequest(contact);
+        },
+        openRoomGroup(contact, action) {
+            PositionService.openGroup(action, {
+                kind: "room",
+                contactKeyHex: Utils.bytesToHex(contact.publicKey),
+                name: PositionService.contactName(contact),
+            });
         },
         async toggleFavourite(contact) {
             try {

@@ -1858,6 +1858,26 @@ class Connection {
         }
     }
 
+    /**
+     * A post into a room server, as ordinary text, sent once and not kept in the
+     * conversation. Text type 1 cannot be used in a room: the room firmware runs
+     * it as a command when the sender is an admin, and drops it otherwise.
+     */
+    static async sendRoomPost(publicKey, text) {
+        const connection = GlobalState.connection;
+        if(connection == null){
+            throw new Error(this.DISCONNECTED);
+        }
+        const reply = await this.sendAwaiting(
+            connection,
+            () => connection.sendCommandSendTxtMsg(Constants.TxtTypes.Plain, 0, Math.floor(Date.now() / 1000), new Uint8Array(publicKey).subarray(0, 6), text),
+            [Constants.ResponseCodes.Sent, Constants.ResponseCodes.Err],
+        );
+        if(reply.code !== Constants.ResponseCodes.Sent){
+            throw new Error(reply.code == null ? "the radio did not answer" : "the radio would not send it");
+        }
+    }
+
     // how long past the radio's own estimate to wait for a telemetry answer
     static TELEMETRY_EXTRA_MILLIS = 5000;
 
@@ -2040,6 +2060,14 @@ class Connection {
         // raw frame, because the copy the library hands over has had those bytes
         // put through a UTF-8 decoder and any that were not valid UTF-8 are gone.
         const signed = SignedPosts.take(message);
+
+        // a position roll call or answer posted in a room is handled the same
+        // way, and kept out of the room's conversation. The post's time is the
+        // room's, which says whether it is a replay of an old one after a login
+        if(contact.type === Constants.AdvType.Room
+            && PositionService.onRoomText(contact, signed?.authorPrefix ?? null, signed ? signed.text : message.text, message.senderTimestamp)){
+            return;
+        }
 
         // save message to database
         await Database.Message.insert({

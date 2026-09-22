@@ -29,6 +29,25 @@
             </div>
         </div>
 
+        <!-- rooms to answer in. Off unless ticked: an answer there is a post everyone
+             in the room sees, stock apps included, and it takes a place in the room's store -->
+        <div v-if="!notConnected" class="w-full p-2 space-y-1">
+            <div class="text-sm font-medium text-gray-900">Answer in these rooms</div>
+            <div v-if="rooms.length === 0" class="text-xs text-gray-500">This radio has no room servers among its contacts.</div>
+            <label v-for="room of rooms" :key="room.keyHex" class="flex items-center space-x-2 text-sm text-gray-800">
+                <input
+                    type="checkbox"
+                    :checked="markedRooms.includes(room.keyHex)"
+                    @change="toggleRoom(room.keyHex, $event.target.checked)">
+                <span>{{ room.name }}</span>
+            </label>
+            <div class="text-xs text-gray-500">
+                In a room your answer is a post: everyone in the room sees it, and stock apps show it as a
+                line of text with a code after it. The room keeps only 32 posts for members who are away,
+                so position posts can push older messages out.
+            </div>
+        </div>
+
         <!-- answering -->
         <div class="w-full p-2 space-y-1">
             <label class="flex items-start space-x-2 text-sm text-gray-800">
@@ -45,7 +64,9 @@
 </template>
 
 <script>
+import { Constants } from "@liamcottle/meshcore.js";
 import GlobalState from "../../js/GlobalState.js";
+import Utils from "../../js/Utils.js";
 import PositionService from "../../js/position/PositionService.js";
 
 export default {
@@ -60,6 +81,16 @@ export default {
                 marked.delete(idx);
             }
             PositionService.saveSettings({ ...settings, markedChannels: [...marked] });
+        },
+        toggleRoom(keyHex, on) {
+            const settings = PositionService.settings();
+            const marked = new Set(settings.markedRooms);
+            if(on){
+                marked.add(keyHex);
+            } else {
+                marked.delete(keyHex);
+            }
+            PositionService.saveSettings({ ...settings, markedRooms: [...marked] });
         },
         setAutoAnswer(on) {
             PositionService.saveSettings({ ...PositionService.settings(), autoAnswer: on });
@@ -79,6 +110,14 @@ export default {
         },
         markedChannels() {
             return this.settings.markedChannels;
+        },
+        markedRooms() {
+            return this.settings.markedRooms;
+        },
+        rooms() {
+            return GlobalState.contacts
+                .filter((c) => c.type === Constants.AdvType.Room)
+                .map((c) => ({ keyHex: Utils.bytesToHex(c.publicKey), name: PositionService.contactName(c) }));
         },
         autoAnswer() {
             return this.settings.autoAnswer;

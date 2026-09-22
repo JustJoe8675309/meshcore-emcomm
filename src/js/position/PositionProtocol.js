@@ -13,14 +13,23 @@
  *
  *     Position request from KJ5HBN (answering needs MeshCore-Emcomm) #mce1:AQE...
  *
+ * In a room server there are no datagrams, and text type 1 cannot be used: a
+ * room runs text type 1 from an admin as a command. So in a room the same text
+ * goes as an ordinary post, which the room relays to everyone in it, capped at
+ * the room's 151 bytes.
+ *
  * Payload, version 1, little endian:
  *
  *     0     version (1)
- *     1     kind: 1 request, 2 position, 3 declined
+ *     1     kind: 1 request, 2 position, 3 declined, 4 roll call
  *     2-5   tag, chosen by the requester and echoed in the answer
- *     6-11  the station it is for: the one asked, or for an answer, the one that asked
+ *     6-11  the station it is for: the one asked, or for an answer, the one that
+ *           asked. All zeros is everyone: a roll call, or a position sent unasked
  *     12-17 the station it is from
  *     request:  18.. sender's name, UTF-8
+ *     roll call: 18 how many stations are already heard, 19.. the first three
+ *               bytes of each one's key, then the sender's name. Those stations
+ *               stay silent when it is asked again, so only the missed answer
  *     position: 18-21 latitude, 22-25 longitude (millionths of a degree, signed),
  *               26-29 fix time (unix seconds, 0 if not a live fix),
  *               30 flags (1 message to follow, 2 current GPS fix, 4 no position,
@@ -41,6 +50,9 @@ export const KIND = Object.freeze({
     REQUEST: 1,
     POSITION: 2,
     DECLINED: 3,
+    // a request to every station on a channel or in a room at once. A kind of
+    // its own, so an app from before it ignores it rather than misreading it
+    ROLL_CALL: 4,
 });
 
 export const FLAG = Object.freeze({
@@ -56,6 +68,13 @@ export const FLAG = Object.freeze({
 });
 
 export const DIRECT_MARKER = "#mce1:";
+
+// MAX_POST_TEXT_LEN in the room server firmware: 160 less 9
+export const MAX_ROOM_BYTES = 151;
+// kept well inside what a channel datagram carries
+export const MAX_DATAGRAM_BYTES = 120;
+// how much of each heard station's key a roll call carries
+export const HEARD_PREFIX_BYTES = 3;
 
 const PREFIX_BYTES = 6;
 const HEADER_BYTES = 18;
@@ -91,6 +110,27 @@ export function prefixHex(bytes) {
     return Array.from(bytes ?? []).slice(0, PREFIX_BYTES).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+/** Addressed to every station: a roll call, or a position sent unasked. */
+export const EVERYONE = new Uint8Array(PREFIX_BYTES);
+
+export function isEveryone(prefix) {
+    return Array.from(prefix ?? []).slice(0, PREFIX_BYTES).every((b) => b === 0);
+}
+
+function hexToBytes(hex) {
+    const bytes = new Uint8Array(Math.floor((hex ?? "").length / 2));
+    for(let i = 0; i < bytes.length; i++){
+        bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+    }
+    return bytes;
+}
+
+/** Whether a station, by its key, is among a roll call's heard list. */
+export function isHeard(heard, publicKey) {
+    const mine = prefixHex(publicKey).slice(0, HEARD_PREFIX_BYTES * 2);
+    return (heard ?? []).includes(mine);
+}
+
 /** A random tag for a new request, so its answers can be told from others'. */
 export function newTag() {
     const bytes = new Uint32Array(1);
@@ -107,7 +147,10 @@ export function newTag() {
 export function encode(message) {
 
     const name = encodeName(message.name);
-    const bodyBytes = message.kind === KIND.POSITION ? POSITION_BYTES : 0;
+    const heard = message.kind === KIND.ROLL_CALL ? (message.heard ?? []).slice(0, 255) : [];
+    const bodyBytes = message.kind === KIND.POSITION ? POSITION_BYTES
+        : message.kind === KIND.ROLL_CALL ? 1 + heard.length * HEARD_PREFIX_BYTES
+        : 0;
     const bytes = new Uint8Array(HEADER_BYTES + bodyBytes + name.length);
     const view = new DataView(bytes.buffer);
 
@@ -125,6 +168,12 @@ export function encode(message) {
         view.setUint32(offset + 8, (message.fixTime ?? 0) >>> 0, true);
         bytes[offset + 12] = message.flags ?? 0;
         offset += POSITION_BYTES;
+    } else if(message.kind === KIND.ROLL_CALL){
+        bytes[offset++] = heard.length;
+        for(const hex of heard){
+            bytes.set(hexToBytes(hex).slice(0, HEARD_PREFIX_BYTES), offset);
+            offset += HEARD_PREFIX_BYTES;
+        }
     }
 
     bytes.set(name, offset);
@@ -168,6 +217,17 @@ export function decode(payload) {
         message.lastKnown = (message.flags & FLAG.LAST_KNOWN) !== 0;
         message.manual = (message.flags & FLAG.MANUAL) !== 0;
         offset += POSITION_BYTES;
+    } else if(kind === KIND.ROLL_CALL){
+        const count = bytes[offset] ?? 0;
+        if(bytes.length < offset + 1 + count * HEARD_PREFIX_BYTES){
+            return null;
+        }
+        message.heard = [];
+        for(let i = 0; i < count; i++){
+            const start = offset + 1 + i * HEARD_PREFIX_BYTES;
+            message.heard.push(prefixHex(bytes.slice(start, start + HEARD_PREFIX_BYTES)));
+        }
+        offset += 1 + count * HEARD_PREFIX_BYTES;
     }
 
     message.name = decodeName(bytes.slice(offset));
@@ -190,14 +250,44 @@ function fromBase64Url(text) {
 }
 
 /**
- * The text of a direct message carrying a payload. The readable part is for a
- * station without this app, which shows the text as it is.
+ * A roll call cut down to fit, if need be, by leaving out the stations heard
+ * earliest. One left out only answers again, which costs a packet, not an answer.
  */
-export function toDirectText(message, readable) {
-    const payload = ` ${DIRECT_MARKER}${toBase64Url(encode(message))}`;
-    // a direct message holds 160 bytes. The payload is what the other app reads,
-    // so if anything has to give it is the readable line, cut on a character
-    const room = MAX_DIRECT_BYTES - new TextEncoder().encode(payload).length;
+export function fitRollCall(message, maxBytes) {
+    if(message.kind !== KIND.ROLL_CALL){
+        return message;
+    }
+    let heard = [...(message.heard ?? [])];
+    while(heard.length > 0 && encode({ ...message, heard }).length > maxBytes){
+        heard = heard.slice(1);
+    }
+    return { ...message, heard };
+}
+
+// base64 grows the payload by a third, and the marker and a space come before it
+function payloadTextBytes(message) {
+    return 1 + DIRECT_MARKER.length + Math.ceil(encode(message).length * 4 / 3);
+}
+
+/**
+ * The text of a direct message or room post carrying a payload. The readable
+ * part is for a station without this app, which shows the text as it is.
+ * maxBytes is 160 for a direct message and 151 for a room post.
+ */
+export function toDirectText(message, readable, maxBytes = MAX_DIRECT_BYTES) {
+    // keep at least a short readable line, trimming a long heard list to make room
+    let fitted = message;
+    if(message.kind === KIND.ROLL_CALL){
+        let heard = [...(message.heard ?? [])];
+        while(heard.length > 0 && payloadTextBytes({ ...message, heard }) > maxBytes - 24){
+            heard = heard.slice(1);
+        }
+        fitted = { ...message, heard };
+    }
+    const payload = ` ${DIRECT_MARKER}${toBase64Url(encode(fitted))}`;
+    // the payload is what the other app reads, so if anything has to give it is
+    // the readable line, cut on a character
+    const room = maxBytes - new TextEncoder().encode(payload).length;
     let text = readable ?? "";
     while(new TextEncoder().encode(text).length > room){
         text = text.slice(0, -1);

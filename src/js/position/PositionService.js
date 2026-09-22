@@ -23,6 +23,21 @@
  * firmware's telemetry request. The radio answers that with the app closed, but
  * only includes a position if it has a working GPS and its owner allows sharing
  * location. That answer goes only to whoever asked.
+ *
+ * A roll call asks every station on a channel, or in a room, at once. There is
+ * no knowing who is on a channel, so it cannot run until answered. Its modes:
+ *   once:  a single roll call.
+ *   again: up to X times every Y minutes, naming the stations already heard,
+ *          which stay silent, so only those missed answer.
+ *   track: X fresh roll calls every Y minutes, everyone answering each time.
+ * Every roll call brings an answer from every station, so the interval cannot go
+ * under five minutes and the form warns under fifteen. Stations answering
+ * automatically wait a random moment first, so their answers do not collide.
+ * No radio is asked by telemetry: that goes one contact at a time.
+ *
+ * A room relays posts rather than datagrams, so there everything goes as a text
+ * post that stock apps show as it is, and a room replays missed posts to anyone
+ * logging in: requests older than a few minutes are ignored.
  */
 
 import { reactive } from "vue";
@@ -33,8 +48,26 @@ import Utils from "../Utils.js";
 import OperatorSettings from "../reports/OperatorSettings.js";
 import * as Protocol from "./PositionProtocol.js";
 import Geo from "./Geo.js";
+import Airtime from "../reports/Airtime.js";
 
 const MINUTE = 60 * 1000;
+
+// roll calls bring an answer from every station, so they are spaced further apart
+export const GROUP_MIN_INTERVAL_MINUTES = 5;
+export const GROUP_CAUTION_INTERVAL_MINUTES = 15;
+
+// how long a roll call keeps listening after its last round, since people answer by hand
+const ROLL_CALL_LISTEN_MILLIS = 5 * MINUTE;
+
+// automatic answers to a roll call are spread over this many answer airtimes,
+// no less than the floor and no more than the ceiling
+const ROLL_CALL_SPREAD_AIRTIMES = 20;
+const ROLL_CALL_ANSWER_BYTES = 64;
+const ROLL_CALL_SPREAD_FLOOR_MILLIS = 10 * 1000;
+const ROLL_CALL_SPREAD_CEILING_MILLIS = 60 * 1000;
+
+// a room replays posts missed while logged out; a request older than this is a replay
+export const ROOM_STALE_SECONDS = 10 * 60;
 
 // the shortest interval between repeated requests, and below which the form warns
 export const MIN_INTERVAL_MINUTES = 1;
@@ -68,6 +101,9 @@ const state = reactive({
     settingsRevision: 0,
     // the contact the request form is open for, or null
     requestTarget: null,
+    // the channel or room the roll call or share form is open for:
+    // { action: "rollcall" | "share", via }, or null
+    groupTarget: null,
 });
 
 const timers = new Map();
@@ -91,11 +127,11 @@ class PositionService {
         return key ? Utils.bytesToHex(key) : null;
     }
 
-    /** { markedChannels: [slot indices], autoAnswer } for the connected node. */
+    /** { markedChannels: [slot indices], markedRooms: [room keys, hex], autoAnswer } for the connected node. */
     static settings(nodeKeyHex = this.nodeKeyHex()) {
         // read so a caller's computed follows changes
         void state.settingsRevision;
-        const fallback = { markedChannels: [], autoAnswer: false };
+        const fallback = { markedChannels: [], markedRooms: [], autoAnswer: false };
         if(nodeKeyHex == null){
             return fallback;
         }
@@ -103,6 +139,7 @@ class PositionService {
             const stored = JSON.parse(window.localStorage.getItem(this.storageKey(nodeKeyHex)) ?? "null");
             return {
                 markedChannels: Array.isArray(stored?.markedChannels) ? stored.markedChannels.filter(Number.isInteger) : [],
+                markedRooms: Array.isArray(stored?.markedRooms) ? stored.markedRooms.filter((k) => typeof k === "string") : [],
                 autoAnswer: stored?.autoAnswer === true,
             };
         } catch(e) {
@@ -117,6 +154,7 @@ class PositionService {
         try {
             window.localStorage.setItem(this.storageKey(nodeKeyHex), JSON.stringify({
                 markedChannels: [...new Set(settings.markedChannels ?? [])].sort((a, b) => a - b),
+                markedRooms: [...new Set(settings.markedRooms ?? [])].sort(),
                 autoAnswer: settings.autoAnswer === true,
             }));
             state.settingsRevision++;
@@ -129,6 +167,21 @@ class PositionService {
 
     static isChannelMarked(channelIdx) {
         return this.settings().markedChannels.includes(channelIdx);
+    }
+
+    static isRoomMarked(roomKeyHex) {
+        return this.settings().markedRooms.includes(roomKeyHex);
+    }
+
+    /** Whether this station answers requests arriving by this route. Direct ones always are. */
+    static answersOn(via) {
+        if(via.kind === "channel"){
+            return this.isChannelMarked(via.idx);
+        }
+        if(via.kind === "room"){
+            return this.isRoomMarked(via.contactKeyHex);
+        }
+        return true;
     }
 
     /** How this station names itself on a decline: the operator's callsign, or the node's name. */
@@ -208,16 +261,39 @@ class PositionService {
 
     // --- sending ---------------------------------------------------------------
 
-    /** Sends one message by the route given: { kind: "channel", idx } or { kind: "direct", contact }. */
+    /**
+     * Sends one message by the route given: { kind: "channel", idx },
+     * { kind: "direct", contact } or { kind: "room", contactKeyHex }.
+     */
     static async transmit(via, message, readable) {
         if(GlobalState.connection == null){
             throw new Error(Connection.DISCONNECTED);
         }
         if(via.kind === "channel"){
-            await Connection.sendChannelDatagram(via.idx, Protocol.DATA_TYPE, Protocol.encode(message));
+            await Connection.sendChannelDatagram(via.idx, Protocol.DATA_TYPE, Protocol.encode(Protocol.fitRollCall(message, Protocol.MAX_DATAGRAM_BYTES)));
+        } else if(via.kind === "room"){
+            const room = this.roomByKeyHex(via.contactKeyHex);
+            if(room == null){
+                throw new Error("that room is no longer a contact");
+            }
+            await Connection.sendRoomPost(room.publicKey, Protocol.toDirectText(message, readable, Protocol.MAX_ROOM_BYTES));
         } else {
             await Connection.sendCommandData(via.contact.publicKey, Protocol.toDirectText(message, readable));
         }
+    }
+
+    static roomByKeyHex(keyHex) {
+        return GlobalState.contacts.find((c) => Utils.bytesToHex(c.publicKey) === keyHex) ?? null;
+    }
+
+    static viaLabel(via) {
+        if(via.kind === "channel"){
+            return `on ${via.name}`;
+        }
+        if(via.kind === "room"){
+            return `in the room ${via.name}`;
+        }
+        return "direct";
     }
 
     static contactByPrefix(prefixBytes) {
@@ -292,6 +368,237 @@ class PositionService {
         return state.requests.find((r) => r.tag === tag) ?? null;
     }
 
+    // --- roll calls ----------------------------------------------------------
+
+    static groupKey(via) {
+        return via.kind === "channel" ? `channel:${via.idx}` : `room:${via.contactKeyHex}`;
+    }
+
+    static normaliseGroupMode(mode) {
+        const type = ["once", "again", "track"].includes(mode?.type) ? mode.type : "once";
+        if(type === "once"){
+            return { type };
+        }
+        return {
+            type,
+            intervalMinutes: Math.max(GROUP_MIN_INTERVAL_MINUTES, Math.round(Number(mode?.intervalMinutes) || 0)),
+            maxCount: Math.max(1, Math.round(Number(mode?.maxCount) || 1)),
+        };
+    }
+
+    /**
+     * Starts a roll call: every station on a channel, or in a room, asked at once.
+     *
+     * via: { kind: "channel", idx, name } or { kind: "room", contactKeyHex, name }.
+     * mode: { type: "once" } | { type: "again", intervalMinutes, maxCount } |
+     *       { type: "track", intervalMinutes, maxCount }
+     */
+    static startRollCall(via, mode) {
+
+        const route = via.kind === "room"
+            ? { kind: "room", contactKeyHex: via.contactKeyHex, name: via.name ?? "room" }
+            : { kind: "channel", idx: via.idx, name: via.name ?? `channel ${via.idx}` };
+        const tag = Protocol.newTag();
+        const request = {
+            group: true,
+            // the tag of the round being asked; each round keeps its own
+            tag,
+            target: { everyone: true, prefixHex: "", name: route.kind === "room" ? `Everyone in ${route.name}` : `Everyone on ${route.name}` },
+            via: route,
+            mode: this.normaliseGroupMode(mode),
+            nodeKeyHex: this.nodeKeyHex(),
+            sent: 0,
+            rounds: [{ tag, startedAt: Date.now(), sent: 0, answers: [] }],
+            startedAt: Date.now(),
+            lastSentAt: null,
+            nextAt: Date.now(),
+            status: "running",
+            outcome: null,
+            error: null,
+        };
+
+        // a new roll call on the same channel or room replaces one still running
+        for(const other of state.requests){
+            if(other.group && other.status === "running" && this.groupKey(other.via) === this.groupKey(route)){
+                this.finish(other, "stopped", "Replaced by a new roll call.");
+            }
+        }
+
+        state.requests.unshift(request);
+        state.requests.splice(20);
+        this.holdScreen();
+        this.sendRollCall(request);
+        return request;
+
+    }
+
+    static currentRound(request) {
+        return request.rounds[request.rounds.length - 1];
+    }
+
+    static async sendRollCall(request) {
+
+        if(request.status !== "running"){
+            return;
+        }
+        timers.delete(request.tag);
+
+        const round = this.currentRound(request);
+        const message = {
+            kind: Protocol.KIND.ROLL_CALL,
+            tag: round.tag,
+            to: Protocol.EVERYONE,
+            from: GlobalState.selfInfo?.publicKey,
+            name: this.ownName(),
+            // asked again, the stations already heard stay silent
+            heard: round.answers.map((a) => a.fromPrefixHex.slice(0, Protocol.HEARD_PREFIX_BYTES * 2)),
+        };
+        const readable = `Position roll call from ${this.ownName()} (answering needs MeshCore-Emcomm)`;
+
+        try {
+            await this.transmit(request.via, message, readable);
+            request.sent++;
+            round.sent++;
+            request.lastSentAt = Date.now();
+            request.error = null;
+        } catch(e) {
+            console.log("roll call not sent", e);
+            request.error = e?.message ?? String(e);
+            if(GlobalState.connection == null){
+                this.finish(request, "stopped", "The radio disconnected.");
+                return;
+            }
+        }
+
+        if(request.status !== "running"){
+            return;
+        }
+
+        const { mode } = request;
+        if(mode.type === "once" || request.sent >= mode.maxCount){
+            // the last one: listen a while for answers given by hand, then close
+            request.nextAt = null;
+            request.listenUntil = Date.now() + ROLL_CALL_LISTEN_MILLIS;
+            timers.set(request.tag, setTimeout(() => this.closeRollCall(request), ROLL_CALL_LISTEN_MILLIS));
+            return;
+        }
+
+        request.nextAt = Date.now() + mode.intervalMinutes * MINUTE;
+        timers.set(request.tag, setTimeout(() => {
+            if(request.status !== "running"){
+                return;
+            }
+            timers.delete(request.tag);
+            if(mode.type === "track"){
+                // a fresh round: everyone answers again, from where they are now
+                const tag = Protocol.newTag();
+                request.tag = tag;
+                request.rounds.push({ tag, startedAt: Date.now(), sent: 0, answers: [] });
+                request.rounds.splice(0, Math.max(0, request.rounds.length - 10));
+            }
+            this.sendRollCall(request);
+        }, mode.intervalMinutes * MINUTE));
+
+    }
+
+    static closeRollCall(request) {
+        if(request.status !== "running"){
+            return;
+        }
+        this.finish(request, "done", this.rollCallSummary(request));
+    }
+
+    static rollCallSummary(request) {
+        const answers = this.currentRound(request).answers;
+        if(answers.length === 0){
+            return "No station answered.";
+        }
+        const positions = answers.filter((a) => a.kind === "position").length;
+        const none = answers.filter((a) => a.kind === "none").length;
+        const declined = answers.filter((a) => a.kind === "declined").length;
+        const parts = [`${positions} with a position`];
+        if(none > 0) parts.push(`${none} with none set`);
+        if(declined > 0) parts.push(`${declined} declined`);
+        return `${answers.length} ${answers.length === 1 ? "station" : "stations"} answered: ${parts.join(", ")}.`;
+    }
+
+    /**
+     * Adds an answer to the round of one of this station's roll calls it
+     * belongs to. An answer after the roll call closed still counts, marked late.
+     */
+    static noteRollCallAnswer(message, fromHex, name, nodeName) {
+        for(const request of state.requests){
+            if(!request.group){
+                continue;
+            }
+            const round = request.rounds.find((r) => r.tag === message.tag);
+            if(round == null){
+                continue;
+            }
+            const kind = message.kind === Protocol.KIND.DECLINED ? "declined" : (message.hasPosition ? "position" : "none");
+            const answer = { fromPrefixHex: fromHex, name, nodeName, kind, at: Date.now(), late: request.status !== "running" };
+            const at = round.answers.findIndex((a) => a.fromPrefixHex === fromHex);
+            if(at >= 0){
+                round.answers.splice(at, 1, answer);
+            } else {
+                round.answers.push(answer);
+            }
+            if(request.status === "done"){
+                request.outcome = this.rollCallSummary(request);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /** How long an automatic answer to a roll call may wait, at most, so answers do not collide. */
+    static rollCallSpreadMillis() {
+        const radio = Airtime.getRadioFromSelfInfo(GlobalState.selfInfo);
+        if(radio == null){
+            return ROLL_CALL_SPREAD_FLOOR_MILLIS;
+        }
+        const airtime = Airtime.getTimeOnAirMillis(ROLL_CALL_ANSWER_BYTES, radio);
+        return Math.min(ROLL_CALL_SPREAD_CEILING_MILLIS, Math.max(ROLL_CALL_SPREAD_FLOOR_MILLIS, Math.round(airtime * ROLL_CALL_SPREAD_AIRTIMES)));
+    }
+
+    /**
+     * Sends this station's position to everyone on a channel or in a room,
+     * unasked. Returns what was sent.
+     */
+    static async shareOwn(via) {
+        const own = await this.currentPosition();
+        if(!own.has){
+            throw new Error("this radio has no position set");
+        }
+        let flags = 0;
+        if(own.live) flags |= Protocol.FLAG.LIVE_FIX;
+        if(own.lastKnown) flags |= Protocol.FLAG.LAST_KNOWN;
+        const message = {
+            kind: Protocol.KIND.POSITION,
+            tag: 0,
+            to: Protocol.EVERYONE,
+            from: GlobalState.selfInfo?.publicKey,
+            name: this.ownName(),
+            latitude: own.latitude,
+            longitude: own.longitude,
+            fixTime: own.fixTime,
+            flags,
+        };
+        const readable = own.lastKnown
+            ? `Last known position of ${this.ownName()} (not a current fix): ${Geo.formatDegrees(own.latitude, own.longitude)}`
+            : `Position of ${this.ownName()}: ${Geo.formatDegrees(own.latitude, own.longitude)}`;
+        await this.transmit(via, message, readable);
+        return own;
+    }
+
+    static openGroup(action, via) {
+        state.groupTarget = { action, via };
+    }
+
+    static closeGroup() {
+        state.groupTarget = null;
+    }
+
     static async sendAttempt(tag) {
 
         const request = this.find(tag);
@@ -306,7 +613,7 @@ class PositionService {
             tag: request.tag,
             to: request.target.publicKey,
             from: GlobalState.selfInfo?.publicKey,
-            name: request.via.kind === "channel" ? this.ownName() : "",
+            name: request.via.kind === "direct" ? "" : this.ownName(),
         };
 
         try {
@@ -469,6 +776,7 @@ class PositionService {
             }
         }
         state.prompts = [];
+        this.autoPending.clear();
     }
 
     static dismiss(tag) {
@@ -512,10 +820,42 @@ class PositionService {
         return true;
     }
 
+    /**
+     * A post relayed by a room server, with its author's four byte key prefix
+     * when it could be recovered, and the room's time for it. Returns true when
+     * it was one of ours, so the caller keeps it out of the room's conversation.
+     */
+    static onRoomText(room, authorPrefix, text, postedAtSeconds) {
+        const message = Protocol.fromDirectText(text);
+        if(message == null){
+            return false;
+        }
+        // the room says who wrote it. A payload claiming another author is not believed
+        if(authorPrefix != null && authorPrefix.length > 0
+            && Protocol.prefixHex(authorPrefix) !== Protocol.prefixHex(message.from).slice(0, authorPrefix.length * 2)){
+            console.log("room post claims another author; ignored");
+            return true;
+        }
+        const via = { kind: "room", contactKeyHex: Utils.bytesToHex(room.publicKey), name: this.contactName(room) };
+        // a room replays what was missed to anyone logging in, and an old request
+        // must not be answered as if it were new
+        const ageSeconds = Math.floor(Date.now() / 1000) - (postedAtSeconds ?? 0);
+        const isRequest = message.kind === Protocol.KIND.REQUEST || message.kind === Protocol.KIND.ROLL_CALL;
+        if(isRequest && postedAtSeconds && ageSeconds > ROOM_STALE_SECONDS){
+            console.log(`room request ${ageSeconds}s old, a replay; ignored`);
+            return true;
+        }
+        this.receive(message, via);
+        return true;
+    }
+
     static isForMe(prefix) {
         const own = GlobalState.selfInfo?.publicKey;
         return own != null && Protocol.prefixHex(prefix) === Protocol.prefixHex(own);
     }
+
+    /** Whether this station has an automatic answer to this roll call waiting to go. */
+    static autoPending = new Set();
 
     static receive(message, via) {
 
@@ -527,16 +867,26 @@ class PositionService {
         // for both radios, so the list could not tell them apart without this
         const nodeName = this.contactName(known);
 
-        if(message.kind === Protocol.KIND.REQUEST){
-            if(!this.isForMe(message.to)){
+        if(message.kind === Protocol.KIND.REQUEST || message.kind === Protocol.KIND.ROLL_CALL){
+            const rollCall = message.kind === Protocol.KIND.ROLL_CALL;
+            if(rollCall ? !Protocol.isEveryone(message.to) : !this.isForMe(message.to)){
                 return;
             }
-            // on a channel, only where the operator has said to answer
-            if(via.kind === "channel" && !this.isChannelMarked(via.idx)){
+            // this station's own roll call, heard back through a repeater
+            if(this.isForMe(message.from)){
+                return;
+            }
+            // on a channel or in a room, only where the operator has said to answer
+            if(!this.answersOn(via)){
+                return;
+            }
+            // asked again, a station already heard stays silent
+            if(rollCall && Protocol.isHeard(message.heard, GlobalState.selfInfo?.publicKey)){
                 return;
             }
             const request = {
                 tag: message.tag,
+                rollCall,
                 fromPrefix: new Uint8Array(message.from),
                 fromPrefixHex: fromHex,
                 name,
@@ -545,6 +895,25 @@ class PositionService {
                 count: 1,
             };
             if(this.settings().autoAnswer){
+                if(rollCall){
+                    // every station on the channel answers at once otherwise, and
+                    // their answers collide. A person answering by hand is spread
+                    // out already, so only the automatic answer waits
+                    const key = `${fromHex}:${message.tag}`;
+                    if(this.autoPending.has(key)){
+                        return;
+                    }
+                    this.autoPending.add(key);
+                    const delay = Math.floor(Math.random() * this.rollCallSpreadMillis());
+                    setTimeout(() => {
+                        this.autoPending.delete(key);
+                        if(GlobalState.connection == null){
+                            return;
+                        }
+                        this.answer(request, { messageToFollow: false }).catch((e) => console.log("automatic roll call answer failed", e));
+                    }, delay);
+                    return;
+                }
                 this.answer(request, { messageToFollow: false }).catch((e) => console.log("automatic position answer failed", e));
                 return;
             }
@@ -561,9 +930,12 @@ class PositionService {
         }
 
         const answersMine = this.isForMe(message.to);
+        // a position sent to everyone, unasked
+        const shared = Protocol.isEveryone(message.to);
 
         if(message.kind === Protocol.KIND.POSITION){
             this.record({
+                shared,
                 source: "app",
                 fromPrefixHex: fromHex,
                 name,
@@ -594,14 +966,20 @@ class PositionService {
             return;
         }
 
+        // an answer to one of this station's roll calls joins its list; the roll
+        // call runs on, since others are still answering
+        if(this.noteRollCallAnswer(message, fromHex, name, nodeName)){
+            return;
+        }
+
         // an answer to one of ours ends it, matched on the tag, or failing that
         // on the station, since an answer to an earlier round still counts. A
         // request that gave up is still closed by an answer carrying its own tag:
         // a person answers a prompt, and on the bench one answered a single
         // request a minute after it had been marked "No answer"
-        const request = state.requests.find((r) => r.status === "running" && r.tag === message.tag)
-            ?? state.requests.find((r) => r.status === "running" && r.target.prefixHex === fromHex)
-            ?? state.requests.find((r) => r.status === "gave up" && r.tag === message.tag && r.target.prefixHex === fromHex);
+        const request = state.requests.find((r) => !r.group && r.status === "running" && r.tag === message.tag)
+            ?? state.requests.find((r) => !r.group && r.status === "running" && r.target.prefixHex === fromHex)
+            ?? state.requests.find((r) => !r.group && r.status === "gave up" && r.tag === message.tag && r.target.prefixHex === fromHex);
         if(request == null){
             return;
         }
@@ -694,7 +1072,7 @@ class PositionService {
             tag: request.tag,
             to: request.fromPrefix,
             from: GlobalState.selfInfo?.publicKey,
-            name: request.via.kind === "channel" ? this.ownName() : "",
+            name: request.via.kind === "direct" ? "" : this.ownName(),
             latitude: own.latitude,
             longitude: own.longitude,
             fixTime: own.fixTime,
@@ -725,9 +1103,9 @@ class PositionService {
         this.removePrompt(request);
     }
 
-    /** A request is answered the way it came: on its channel, or direct. */
+    /** A request is answered the way it came: on its channel, in its room, or direct. */
     static answerRoute(request) {
-        if(request.via.kind === "channel"){
+        if(request.via.kind === "channel" || request.via.kind === "room"){
             return request.via;
         }
         const contact = GlobalState.contacts.find((c) => Utils.bytesToHex(c.publicKey) === request.via.contactKeyHex);
