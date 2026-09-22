@@ -15,6 +15,15 @@ import Mgrs from "./Mgrs.js";
 
 const EARTH_MEAN_RADIUS_M = 6371008.8;
 const METRES_PER_MILE = 1609.344;
+const FEET_PER_METRE = 3.28084;
+
+// Closer than this is the same place: a GPS wanders a few metres standing
+// still, and on the bench two radios a few feet apart read "0.0 mi, 341°
+// magnetic", a bearing that meant nothing
+export const SAME_LOCATION_METRES = 10;
+
+// under a tenth of a mile, feet and metres say more than "0.1 mi"
+const SHORT_DISTANCE_METRES = METRES_PER_MILE / 10;
 const DEG = Math.PI / 180;
 
 class Geo {
@@ -73,13 +82,23 @@ class Geo {
             declination,
             // true = magnetic + declination, with east declination positive
             magneticBearing: this.normaliseDegrees(trueBearing - declination),
+            sameLocation: metres < SAME_LOCATION_METRES,
             modelCurrent: MagneticModel.isValidOn(date),
         };
 
     }
 
-    /** "3.2 mi (5.1 km)", with a decimal until ten, whole numbers after. */
+    /**
+     * "3.2 mi (5.1 km)", with a decimal until ten, whole numbers after. Under a
+     * tenth of a mile, feet and metres; under ten metres, "Same location".
+     */
     static formatDistance(metres) {
+        if(metres < SAME_LOCATION_METRES){
+            return "Same location";
+        }
+        if(metres < SHORT_DISTANCE_METRES){
+            return `${Math.round(metres * FEET_PER_METRE)} ft (${Math.round(metres)} m)`;
+        }
         const miles = metres / METRES_PER_MILE;
         const km = metres / 1000;
         const format = (value) => value < 10 ? value.toFixed(1) : String(Math.round(value));

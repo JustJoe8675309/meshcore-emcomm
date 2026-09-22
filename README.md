@@ -727,7 +727,13 @@ to answering automatically instead, which sends a plain Send with no prompt.
 
 **What is shown.** For each station: its position in **decimal degrees** and as a ten digit
 **MGRS** reference, its distance in **miles and kilometres**, and the bearing to it in **degrees
-magnetic, stated as magnetic**, with the declination used shown beneath. A fix's age is given
+magnetic, stated as magnetic**, with the declination used shown beneath.
+
+Close in, the distance changes form:
+- **Under a tenth of a mile,** it is given in feet and metres, such as "328 ft (100 m)".
+- **Under ten metres,** it reads **Same location**, with no bearing. On the bench, two radios a
+  few feet apart read "0.0 mi (0.0 km), 341° magnetic", a bearing that meant nothing, and a GPS
+  wanders a few metres standing still. A fix's age is given
 when it is a live GPS fix. Distance and bearing need this station's own position; without one,
 the tab says so.
 
@@ -744,6 +750,19 @@ the tab says so.
   "Last known position of", followed by the name and "(not a current fix)".
 - A position from a radio's telemetry is marked as not saying how current it is, because the
   firmware does not.
+
+**Entering the current position.** When the prompt finds the position would go as last known, or
+that there is none, it offers **Enter current position**. The prompt checks the GPS as soon as it
+opens, not only on Send, so it can offer this first.
+- The operator types where they are now, in decimal degrees, starting from what the radio holds,
+  and the MGRS reference is shown as they type.
+- It is saved to the radio, where it becomes the position the radio holds and adverts, and so the
+  last known position for any later answer.
+- It goes out marked as **entered by hand**, with the time: current by the operator's word, not
+  by a GPS. The receiving app shows "Entered by hand at 12:40 AM, not GPS". A direct answer's
+  readable line says "(entered by hand)".
+- An entry that is not a position is refused: latitude past 90, longitude past 180, or 0, 0.
+- The operator can still go back to sending the last known position.
 
 On the bench, node 2 with a live GPS answered in 0.95 s. The first re-read had moved, and node 1
 showed it as a current fix. The answer's MGRS reference differed in its last digits from the one
@@ -1126,7 +1145,7 @@ happen on demand:
 npm test
 ```
 
-Six plain node suites and thirty-six component suites, 572 component tests, no hardware
+Six plain node suites and thirty-six component suites, 582 component tests, no hardware
 required:
 
 - `test/report_encoder.test.mjs` covers rendering and packet splitting, including a

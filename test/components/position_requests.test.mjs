@@ -345,6 +345,147 @@ describe("current fix or last known position", () => {
 
 });
 
+describe("entering the current position when only a last known one is held", () => {
+
+    let datagrams;
+    let written;
+
+    function mountPrompt() {
+        return mount(PositionPrompt, { global: { mocks: { $router: { push() {} } } } });
+    }
+
+    const button = (wrapper, text) => wrapper.findAll("button").find((b) => b.text() === text);
+
+    beforeEach(() => {
+        window.localStorage.clear();
+        reset();
+        connect();
+        PositionService.saveSettings({ markedChannels: [7], autoAnswer: false });
+        PositionService.FRESHNESS_INTERVAL_MILLIS = 0;
+        datagrams = [];
+        written = [];
+        vi.spyOn(Connection, "sendChannelDatagram").mockImplementation(async (idx, type, payload) => { datagrams.push(Protocol.decode(payload)); });
+        vi.spyOn(Connection, "setAdvertLatLong").mockImplementation(async (lat, lon) => { written.push([lat, lon]); });
+        // the radio reads back what was written to it
+        vi.spyOn(Connection, "loadSelfInfo").mockImplementation(async () => {
+            const last = written[written.length - 1];
+            if(last){
+                GlobalState.selfInfo = { ...GlobalState.selfInfo, advLat: last[0], advLon: last[1] };
+            }
+        });
+    });
+
+    afterEach(() => {
+        PositionService.FRESHNESS_INTERVAL_MILLIS = 1500;
+        vi.restoreAllMocks();
+        reset();
+    });
+
+    it("is offered when the position would go as last known, and says why", async () => {
+        const wrapper = mountPrompt();
+        PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: incomingRequest() });
+        await flushPromises();
+        expect(wrapper.text()).toContain("last known position, not a current fix");
+        expect(button(wrapper, "Enter current position")).toBeTruthy();
+    });
+
+    it("is not offered when the GPS fix is current", async () => {
+        GlobalState.gpsStatus = "live";
+        let n = 0;
+        Connection.loadSelfInfo.mockImplementation(async () => { GlobalState.selfInfo = { ...GlobalState.selfInfo, advLat: 31758700 + (++n) }; });
+        const wrapper = mountPrompt();
+        PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: incomingRequest() });
+        await flushPromises();
+        expect(wrapper.text()).toContain("Current GPS fix");
+        expect(button(wrapper, "Enter current position")).toBeFalsy();
+    });
+
+    it("saves the entry to the radio and sends it marked as entered by hand, with its time", async () => {
+        const wrapper = mountPrompt();
+        PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: incomingRequest() });
+        await flushPromises();
+        await button(wrapper, "Enter current position").trigger("click");
+        // it starts from what the radio holds
+        expect(wrapper.vm.entryLatitude).toBe("31.7587");
+        wrapper.vm.entryLatitude = "31.9270";
+        wrapper.vm.entryLongitude = "-106.4001";
+        await flushPromises();
+        expect(wrapper.text()).toContain("13R CR");
+        await button(wrapper, "Save to radio and send").trigger("click");
+        await flushPromises();
+
+        expect(written).toEqual([[31927000, -106400100]]);
+        const sent = datagrams[0];
+        expect(sent.manual).toBe(true);
+        expect(sent.lastKnown).toBe(false);
+        expect(sent.liveFix).toBe(false);
+        expect(sent.fixTime).toBeGreaterThan(0);
+        expect(sent.latitude).toBeCloseTo(31.927, 6);
+        // and the radio now holds it, as its position for any later answer
+        expect(GlobalState.selfInfo.advLat).toBe(31927000);
+    });
+
+    it("will not send an entry that is not a position", async () => {
+        const wrapper = mountPrompt();
+        PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: incomingRequest() });
+        await flushPromises();
+        await button(wrapper, "Enter current position").trigger("click");
+        wrapper.vm.entryLatitude = "95";
+        wrapper.vm.entryLongitude = "-106.4";
+        await flushPromises();
+        expect(wrapper.text()).toContain("Not a position");
+        expect(button(wrapper, "Save to radio and send").attributes("disabled")).toBeDefined();
+        wrapper.vm.entryLatitude = "0";
+        wrapper.vm.entryLongitude = "0";
+        await flushPromises();
+        expect(button(wrapper, "Save to radio and send").attributes("disabled")).toBeDefined();
+        expect(written).toEqual([]);
+    });
+
+    it("can go back to sending the last known position", async () => {
+        const wrapper = mountPrompt();
+        PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: incomingRequest() });
+        await flushPromises();
+        await button(wrapper, "Enter current position").trigger("click");
+        await wrapper.findAll("button").find((b) => b.text() === "Send the last known position instead").trigger("click");
+        await button(wrapper, "Send").trigger("click");
+        await flushPromises();
+        expect(written).toEqual([]);
+        expect(datagrams[0].lastKnown).toBe(true);
+    });
+
+    it("tells a direct asker it was entered by hand", async () => {
+        PositionService.onDirectText(THEM_CONTACT, Protocol.toDirectText({ kind: Protocol.KIND.REQUEST, tag: 3, to: ME, from: THEM, name: "" }, "x"));
+        const directs = [];
+        vi.spyOn(Connection, "sendCommandData").mockImplementation(async (key, text) => { directs.push(text); });
+        await PositionService.answer(PositionService.state.prompt, { manualPosition: { latitude: 31.927, longitude: -106.4001 } });
+        expect(directs[0]).toMatch(/^Position of Joe-KJ5HBN-HTv3 \(entered by hand\): 31\.9270° N, 106\.4001° W #mce1:/);
+    });
+
+    it("is shown as entered by hand where it is received, not as last known", async () => {
+        PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: Protocol.encode({
+            kind: Protocol.KIND.POSITION, tag: 1, to: ME, from: THEM, name: "KJ5HBN",
+            latitude: 31.788, longitude: -106.497, fixTime: Math.floor(Date.now() / 1000), flags: Protocol.FLAG.MANUAL,
+        }) });
+        const wrapper = mount(PositionsPanel);
+        await flushPromises();
+        expect(wrapper.text()).toMatch(/Entered by hand at .+, not GPS/);
+        expect(wrapper.text()).not.toContain("Last known position, not a current fix");
+    });
+
+    it("shows two stations a few metres apart as the same location, with no bearing", async () => {
+        PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: Protocol.encode({
+            kind: Protocol.KIND.POSITION, tag: 1, to: ME, from: THEM, name: "KJ5HBN",
+            latitude: 31.75871, longitude: -106.48691, fixTime: 0, flags: 0,
+        }) });
+        const wrapper = mount(PositionsPanel);
+        await flushPromises();
+        expect(wrapper.text()).toContain("Same location as this station");
+        expect(wrapper.text()).not.toMatch(/\d{3}° magnetic/);
+    });
+
+});
+
 describe("the prompt", () => {
 
     let pushed;

@@ -556,6 +556,7 @@ class PositionService {
                 hasPosition: message.hasPosition,
                 liveFix: message.liveFix,
                 lastKnown: message.lastKnown,
+                manual: message.manual,
                 fixTime: message.fixTime,
                 messageToFollow: message.messageToFollow,
                 via,
@@ -622,13 +623,48 @@ class PositionService {
 
     // --- answering -------------------------------------------------------------
 
-    /** Sends this station's position in answer to a request. */
-    static async answer(request, { messageToFollow = false } = {}) {
-        const own = await this.currentPosition();
+    /** Whether a position the operator typed in is one the radio can hold. */
+    static isValidEntry(latitude, longitude) {
+        const lat = Number(latitude);
+        const lon = Number(longitude);
+        return latitude !== "" && longitude !== "" && latitude != null && longitude != null
+            && Geo.isPosition(lat, lon);
+    }
+
+    /**
+     * Writes a position the operator has typed in to the radio, where it becomes
+     * the position it holds and adverts, and so the last known one for any later
+     * answer. Read back afterwards rather than assumed.
+     */
+    static async saveManualPosition(latitude, longitude) {
+        if(!this.isValidEntry(latitude, longitude)){
+            throw new Error("that is not a position: latitude -90 to 90, longitude -180 to 180, and not 0, 0");
+        }
+        await Connection.setAdvertLatLong(Math.round(Number(latitude) * 1e6), Math.round(Number(longitude) * 1e6));
+        await Connection.loadSelfInfo(Connection.READ_TIMEOUT_MILLIS);
+    }
+
+    /**
+     * Sends this station's position in answer to a request.
+     *
+     * manualPosition, when given, is one the operator has just typed in because
+     * the radio held only a last known one. It is saved to the radio first, then
+     * sent marked as entered by hand just now: current by their word, not a GPS.
+     */
+    static async answer(request, { messageToFollow = false, manualPosition = null } = {}) {
+        let own;
+        if(manualPosition){
+            await this.saveManualPosition(manualPosition.latitude, manualPosition.longitude);
+            const held = this.ownPosition();
+            own = { ...held, live: false, lastKnown: false, manual: true, fixTime: Math.floor(Date.now() / 1000) };
+        } else {
+            own = await this.currentPosition();
+        }
         let flags = 0;
         if(messageToFollow) flags |= Protocol.FLAG.MESSAGE_TO_FOLLOW;
         if(own.live) flags |= Protocol.FLAG.LIVE_FIX;
         if(own.lastKnown) flags |= Protocol.FLAG.LAST_KNOWN;
+        if(own.manual) flags |= Protocol.FLAG.MANUAL;
         if(!own.has) flags |= Protocol.FLAG.NO_POSITION;
         const message = {
             kind: Protocol.KIND.POSITION,
@@ -644,6 +680,8 @@ class PositionService {
         // stock clients see this line, so it says what kind of position it is too
         const readable = !own.has
             ? `${this.ownName()} has no position set`
+            : own.manual
+                ? `Position of ${this.ownName()} (entered by hand): ${Geo.formatDegrees(own.latitude, own.longitude)}`
             : own.lastKnown
                 ? `Last known position of ${this.ownName()} (not a current fix): ${Geo.formatDegrees(own.latitude, own.longitude)}`
                 : `Position of ${this.ownName()}: ${Geo.formatDegrees(own.latitude, own.longitude)}`;

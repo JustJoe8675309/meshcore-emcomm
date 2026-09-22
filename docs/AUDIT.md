@@ -142,6 +142,13 @@ in settings on the one being asked.
       is a current fix with its time. From a radio without GPS, it reads "Last known
       position, not a current fix" in amber, and a direct answer's text starts "Last
       known position of".
+- [ ] **Enter current position.** On the radio without GPS, the prompt offers it.
+      Enter a position and use Save to radio and send. The radio's own position
+      (This station) changes to it, and the asker sees "Entered by hand at …, not
+      GPS". A position past 90 or 180, or 0, 0, is refused.
+- [ ] **Same location.** Two radios side by side read "Same location as this
+      station", with no bearing. Further apart but under a tenth of a mile, the
+      distance is in feet and metres.
 - [ ] **Direct.** Ask directly: nothing appears in either conversation, and the answer
       reaches only node 1.
 - [ ] **Repeats.** Every 1 minute until answered, then Up to 3 times every 1 minute

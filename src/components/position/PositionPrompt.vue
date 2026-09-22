@@ -22,14 +22,50 @@
                 <template v-if="own.has">
                     <div>{{ ownDegrees }}</div>
                     <div v-if="ownMgrs">{{ ownMgrs }}</div>
-                    <div class="text-gray-500">
-                        {{ own.live
-                            ? "Live GPS fix. Checked again when you send; if it has stopped changing, it goes as a last known position."
-                            : "Sent as a last known position, not a current fix: it is set on the radio, with no live GPS." }}
+                    <div v-if="checking" class="text-gray-500">Checking whether the GPS fix is current...</div>
+                    <div v-else-if="check && check.live" class="text-gray-500">Current GPS fix. Checked again when you send.</div>
+                    <div v-else class="text-amber-800">
+                        This would go as a <span class="font-semibold">last known position, not a current fix</span>:
+                        {{ own.live ? "the GPS position has stopped changing." : "it is set on the radio, with no live GPS." }}
                     </div>
                 </template>
                 <div v-else class="text-amber-800">
                     Your radio has no position set. Sending says so.
+                </div>
+            </div>
+
+            <!-- the radio has only a last known position, or none: the operator can say
+                 where they are now. It is saved to the radio, becomes the position it
+                 holds, and goes out marked as entered by hand -->
+            <div v-if="offerEntry" class="space-y-2">
+                <button
+                    v-if="!entering"
+                    @click="startEntry"
+                    :disabled="busy"
+                    type="button"
+                    class="w-full bg-white hover:bg-gray-50 disabled:opacity-60 border border-amber-600 text-amber-800 text-sm font-medium rounded-lg px-5 py-2">
+                    Enter current position
+                </button>
+                <div v-else class="border border-amber-300 rounded p-2 space-y-2">
+                    <div class="text-xs text-gray-700">
+                        Where you are now, in decimal degrees. Saved to the radio as its position, and sent
+                        marked as entered by hand.
+                    </div>
+                    <div class="flex space-x-2">
+                        <label class="w-full text-xs text-gray-700">Latitude
+                            <input v-model="entryLatitude" type="number" step="any" inputmode="decimal" placeholder="31.9270" class="mt-0.5 w-full bg-white border border-gray-300 text-sm rounded p-1.5">
+                        </label>
+                        <label class="w-full text-xs text-gray-700">Longitude
+                            <input v-model="entryLongitude" type="number" step="any" inputmode="decimal" placeholder="-106.4001" class="mt-0.5 w-full bg-white border border-gray-300 text-sm rounded p-1.5">
+                        </label>
+                    </div>
+                    <div v-if="entryMgrs" class="text-xs text-gray-600">{{ entryMgrs }}</div>
+                    <div v-if="entryInvalid" class="text-xs text-red-600">
+                        Not a position: latitude -90 to 90, longitude -180 to 180, south and west negative.
+                    </div>
+                    <button @click="cancelEntry" :disabled="busy" type="button" class="w-full text-xs text-gray-500 underline">
+                        Send the last known position instead
+                    </button>
                 </div>
             </div>
 
@@ -38,17 +74,17 @@
             <div class="grid grid-cols-1 gap-2">
                 <button
                     @click="send(false)"
-                    :disabled="busy"
+                    :disabled="busy || entryBlocks"
                     type="button"
                     class="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-medium rounded-lg px-5 py-2.5">
-                    Send
+                    {{ entering ? "Save to radio and send" : "Send" }}
                 </button>
                 <button
                     @click="send(true)"
-                    :disabled="busy"
+                    :disabled="busy || entryBlocks"
                     type="button"
                     class="w-full bg-white hover:bg-gray-50 disabled:opacity-60 border border-blue-600 text-blue-700 text-sm font-medium rounded-lg px-5 py-2.5">
-                    Send with message
+                    {{ entering ? "Save to radio and send with message" : "Send with message" }}
                 </button>
                 <button
                     @click="decline"
@@ -77,15 +113,67 @@ export default {
         return {
             busy: false,
             error: null,
+            // whether the position the radio holds is a current fix, found when the
+            // prompt opens so it can say so, and offer an entry, before anything is sent
+            checking: false,
+            check: null,
+            entering: false,
+            entryLatitude: "",
+            entryLongitude: "",
         };
     },
+    watch: {
+        // a new requester, not a repeat of the same one, starts afresh
+        promptKey: {
+            handler(key) {
+                this.entering = false;
+                this.entryLatitude = "";
+                this.entryLongitude = "";
+                this.check = null;
+                if(key != null){
+                    this.runCheck();
+                }
+            },
+            immediate: true,
+        },
+    },
     methods: {
+        async runCheck() {
+            const key = this.promptKey;
+            this.checking = true;
+            try {
+                const result = await PositionService.currentPosition();
+                if(this.promptKey === key){
+                    this.check = result;
+                }
+            } catch(e) {
+                this.check = null;
+            } finally {
+                if(this.promptKey === key){
+                    this.checking = false;
+                }
+            }
+        },
+        startEntry() {
+            this.entering = true;
+            // start from what the radio holds, which is usually close
+            if(this.own.has){
+                this.entryLatitude = this.own.latitude.toFixed(4);
+                this.entryLongitude = this.own.longitude.toFixed(4);
+            }
+        },
+        cancelEntry() {
+            this.entering = false;
+        },
         async send(withMessage) {
             const request = this.prompt;
             this.busy = true;
             this.error = null;
             try {
-                await PositionService.answer(request, { messageToFollow: withMessage });
+                const manualPosition = this.entering
+                    ? { latitude: Number(this.entryLatitude), longitude: Number(this.entryLongitude) }
+                    : null;
+                await PositionService.answer(request, { messageToFollow: withMessage, manualPosition });
                 if(withMessage){
                     this.openConversation(request);
                 }
@@ -123,6 +211,30 @@ export default {
     computed: {
         prompt() {
             return PositionService.state.prompt;
+        },
+        promptKey() {
+            return this.prompt ? `${this.prompt.fromPrefixHex}` : null;
+        },
+        // offered once it is known the position would go as last known, or there
+        // is none at all
+        offerEntry() {
+            if(this.checking){
+                return false;
+            }
+            return !this.own.has || !(this.check && this.check.live);
+        },
+        entryInvalid() {
+            return this.entering && (this.entryLatitude !== "" || this.entryLongitude !== "")
+                && !PositionService.isValidEntry(this.entryLatitude, this.entryLongitude);
+        },
+        entryBlocks() {
+            return this.entering && !PositionService.isValidEntry(this.entryLatitude, this.entryLongitude);
+        },
+        entryMgrs() {
+            if(!this.entering || !PositionService.isValidEntry(this.entryLatitude, this.entryLongitude)){
+                return null;
+            }
+            return Geo.formatMgrs(Number(this.entryLatitude), Number(this.entryLongitude));
         },
         own() {
             // read with the prompt, so it is current when it opens

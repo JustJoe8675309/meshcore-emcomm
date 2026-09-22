@@ -80,10 +80,14 @@
                         <div class="text-xs text-gray-800">{{ formatDegrees(report.latitude, report.longitude) }}</div>
                         <div v-if="formatMgrs(report.latitude, report.longitude)" class="text-xs text-gray-800">{{ formatMgrs(report.latitude, report.longitude) }}</div>
                         <template v-if="relation(report)">
-                            <div class="text-sm text-gray-900">
-                                {{ formatDistance(relation(report).metres) }}, <span class="font-semibold">{{ formatBearing(relation(report).magneticBearing) }}</span>
-                            </div>
-                            <div class="text-xs text-gray-500">{{ formatDeclination(relation(report).declination) }}</div>
+                            <!-- a bearing between two points a few metres apart means nothing -->
+                            <div v-if="relation(report).sameLocation" class="text-sm text-gray-900">Same location as this station</div>
+                            <template v-else>
+                                <div class="text-sm text-gray-900">
+                                    {{ formatDistance(relation(report).metres) }}, <span class="font-semibold">{{ formatBearing(relation(report).magneticBearing) }}</span>
+                                </div>
+                                <div class="text-xs text-gray-500">{{ formatDeclination(relation(report).declination) }}</div>
+                            </template>
                         </template>
                         <div v-else class="text-xs text-gray-500">No distance or bearing: this station has no position.</div>
                         <div class="text-xs" :class="report.lastKnown ? 'font-semibold text-amber-800' : 'text-gray-500'">{{ fixLabel(report) }}</div>
@@ -97,7 +101,8 @@
                         <div class="text-xs text-gray-800">{{ formatDegrees(previous(report).latitude, previous(report).longitude) }}</div>
                         <div v-if="formatMgrs(previous(report).latitude, previous(report).longitude)" class="text-xs text-gray-800">{{ formatMgrs(previous(report).latitude, previous(report).longitude) }}</div>
                         <div v-if="relation(previous(report))" class="text-xs text-gray-900">
-                            {{ formatDistance(relation(previous(report)).metres) }}, {{ formatBearing(relation(previous(report)).magneticBearing) }}
+                            <template v-if="relation(previous(report)).sameLocation">Same location as this station</template>
+                            <template v-else>{{ formatDistance(relation(previous(report)).metres) }}, {{ formatBearing(relation(previous(report)).magneticBearing) }}</template>
                         </div>
                         <div class="text-xs text-gray-500">{{ fixLabel(previous(report)) }}</div>
                     </div>
@@ -159,6 +164,11 @@ export default {
         formatBearing: (degrees) => Geo.formatMagneticBearing(degrees),
         formatDeclination: (degrees) => Geo.formatDeclination(degrees),
         fixLabel(report) {
+            if(report.manual){
+                return report.fixTime
+                    ? `Entered by hand at ${this.time(report.fixTime * 1000)}, not GPS`
+                    : "Entered by hand, not GPS";
+            }
             if(report.lastKnown){
                 return "Last known position, not a current fix";
             }

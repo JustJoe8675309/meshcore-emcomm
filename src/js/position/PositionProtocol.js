@@ -24,7 +24,8 @@
  *     position: 18-21 latitude, 22-25 longitude (millionths of a degree, signed),
  *               26-29 fix time (unix seconds, 0 if not a live fix),
  *               30 flags (1 message to follow, 2 current GPS fix, 4 no position,
- *               8 last known position, not a current fix),
+ *               8 last known position, not a current fix,
+ *               16 entered by hand by the operator just now, with its time),
  *               31.. sender's name
  *     declined: 18.. sender's name
  *
@@ -49,6 +50,9 @@ export const FLAG = Object.freeze({
     // the position is the last one the radio held, not a fix confirmed current:
     // a radio without GPS, or a GPS whose position has stopped changing
     LAST_KNOWN: 8,
+    // the operator has just typed the position in, and it is on the radio now:
+    // current by their word, not by a GPS
+    MANUAL: 16,
 });
 
 export const DIRECT_MARKER = "#mce1:";
@@ -162,6 +166,7 @@ export function decode(payload) {
         message.messageToFollow = (message.flags & FLAG.MESSAGE_TO_FOLLOW) !== 0;
         message.liveFix = (message.flags & FLAG.LIVE_FIX) !== 0;
         message.lastKnown = (message.flags & FLAG.LAST_KNOWN) !== 0;
+        message.manual = (message.flags & FLAG.MANUAL) !== 0;
         offset += POSITION_BYTES;
     }
 

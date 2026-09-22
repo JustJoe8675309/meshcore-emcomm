@@ -130,6 +130,20 @@ describe("how positions are written", () => {
         expect(Geo.formatMagneticBearing(5)).toBe("005° magnetic");
     });
 
+    it("gives feet and metres under a tenth of a mile, and says same location under ten metres", () => {
+        expect(Geo.formatDistance(100)).toBe("328 ft (100 m)");
+        expect(Geo.formatDistance(12)).toBe("39 ft (12 m)");
+        expect(Geo.formatDistance(9.9)).toBe("Same location");
+        expect(Geo.formatDistance(0)).toBe("Same location");
+        expect(Geo.formatDistance(170)).toBe("0.1 mi (0.2 km)");
+    });
+
+    it("marks two points a few metres apart as the same location, where a bearing means nothing", () => {
+        const a = { latitude: 31.9270, longitude: -106.4001 };
+        expect(Geo.relation(a, { latitude: 31.92702, longitude: -106.40011 }).sameLocation).toBe(true);
+        expect(Geo.relation(a, { latitude: 31.9280, longitude: -106.4001 }).sameLocation).toBe(false);
+    });
+
     it("gives distance in miles and kilometres together", () => {
         expect(Geo.formatDistance(5150)).toBe("3.2 mi (5.2 km)");
         expect(Geo.formatDistance(40000)).toBe("25 mi (40 km)");
