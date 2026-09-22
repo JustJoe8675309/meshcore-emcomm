@@ -273,6 +273,8 @@
 
                     <EmcommSettingsGroup/>
 
+                    <PositionSettingsGroup/>
+
                     <!-- commands -->
                     <div class="flex flex-col divide-y bg-white">
 
@@ -345,10 +347,11 @@ import EmcommMode from "../../js/EmcommMode.js";
 import EmcommConvertDialog from "../settings/EmcommConvertDialog.vue";
 import EmcommSettingsGroup from "../settings/EmcommSettingsGroup.vue";
 import BusyOverlay from "../BusyOverlay.vue";
+import PositionSettingsGroup from "../settings/PositionSettingsGroup.vue";
 
 export default {
     name: 'SettingsPage',
-    components: {Page, SaveButton, AppBar, EmcommConvertDialog, EmcommSettingsGroup, BusyOverlay},
+    components: {Page, SaveButton, AppBar, EmcommConvertDialog, EmcommSettingsGroup, BusyOverlay, PositionSettingsGroup},
     data() {
         return {
             isSaving: false,
@@ -506,10 +509,19 @@ Convert anyway?`,
                     );
                 }
 
+                if(choices.shareLocation){
+                    this.backupProgress = "Allowing location sharing...";
+                    try {
+                        await EmcommMode.setLocationSharing(true);
+                    } catch(e) {
+                        this.backupWarnings.push("Location sharing was not turned on: " + (e?.message ?? e));
+                    }
+                }
+
                 // last, so discovery and the advert are not fighting it
-                if(choices.manualAddContacts){
-                    this.backupProgress = "Turning off automatic contacts...";
-                    await EmcommMode.setManualAddContacts(true);
+                if(choices.autoAddContacts){
+                    this.backupProgress = "Turning on automatic contacts...";
+                    await EmcommMode.setManualAddContacts(false);
                 }
 
                 this.backupProgress = "Reading the node back...";

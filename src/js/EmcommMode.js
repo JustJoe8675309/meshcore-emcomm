@@ -174,6 +174,61 @@ class EmcommMode {
         }
     }
 
+    // telemetry permission modes, per the firmware: deny, only contacts whose
+    // flags allow it, or anyone. There are three: base (battery and the chip's
+    // temperature, and the radio answers nothing without it), location, and
+    // environment sensors
+    static TELEMETRY_DENY = 0;
+    static TELEMETRY_FLAGGED = 1;
+    static TELEMETRY_ALL = 2;
+
+    static telemetryModes(byte) {
+        return {
+            base: byte & 0x03,
+            location: (byte >> 2) & 0x03,
+            environment: (byte >> 4) & 0x03,
+        };
+    }
+
+    static telemetryByte(modes) {
+        return ((modes.environment & 0x03) << 4) | ((modes.location & 0x03) << 2) | (modes.base & 0x03);
+    }
+
+    /**
+     * Whether the radio answers anyone's telemetry request with its position:
+     * "all", "flagged" for contacts marked for it, or "off". Both the base and
+     * location permissions are needed, since without base it answers nothing.
+     */
+    static locationSharing(selfInfo = GlobalState.selfInfo) {
+        const modes = this.telemetryModes(Connection.otherParams(selfInfo).telemetryModes);
+        const effective = Math.min(modes.base, modes.location);
+        if(effective === this.TELEMETRY_ALL){
+            return "all";
+        }
+        return effective === this.TELEMETRY_FLAGGED ? "flagged" : "off";
+    }
+
+    /**
+     * Lets any station ask this radio for its position, or stops it. On sets the
+     * base and location permissions to anyone, which also shares the battery
+     * voltage; off denies both. Environment sensors are left as they were. The
+     * radio is read first, so the other settings in the same command go back
+     * exactly as they are.
+     */
+    static async setLocationSharing(on) {
+        if(GlobalState.connection == null){
+            throw new Error(Connection.DISCONNECTED);
+        }
+        await Connection.loadSelfInfo(Connection.READ_TIMEOUT_MILLIS);
+        const params = Connection.otherParams();
+        const modes = this.telemetryModes(params.telemetryModes);
+        const mode = on ? this.TELEMETRY_ALL : this.TELEMETRY_DENY;
+        await Connection.setAllOtherParams({
+            ...params,
+            telemetryModes: this.telemetryByte({ ...modes, base: mode, location: mode }),
+        });
+    }
+
     /** Sets whether the node adds contacts by itself. Done last, after discovery. */
     static async setManualAddContacts(manual) {
         const connection = GlobalState.connection;

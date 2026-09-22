@@ -13,6 +13,10 @@
             :total="GlobalState.connecting.total"
             cancel-label="Disconnect"
             @cancel="disconnect"/>
+
+        <!-- asked for this station's position, and asking another for theirs -->
+        <PositionPrompt/>
+        <PositionRequestDialog/>
     </div>
 </template>
 
@@ -20,11 +24,15 @@
 import GlobalState from "../js/GlobalState.js";
 import Connection from "../js/Connection.js";
 import BusyOverlay from "./BusyOverlay.vue";
+import PositionPrompt from "./position/PositionPrompt.vue";
+import PositionRequestDialog from "./position/PositionRequestDialog.vue";
 
 export default {
     name: 'App',
     components: {
         BusyOverlay,
+        PositionPrompt,
+        PositionRequestDialog,
     },
     data() {
         return {

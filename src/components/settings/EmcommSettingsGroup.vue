@@ -31,6 +31,25 @@
             </div>
         </div>
 
+        <!-- location sharing, which is the radio's telemetry permission -->
+        <div class="w-full p-2 space-y-1">
+            <div class="flex items-center justify-between">
+                <div class="text-sm font-medium text-gray-900">Location sharing</div>
+                <div class="text-xs text-gray-500">{{ sharingLabel }}</div>
+            </div>
+            <button
+                @click="toggleLocationSharing"
+                :disabled="busy || notConnected"
+                type="button"
+                class="w-full text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 disabled:opacity-60 font-medium rounded-lg text-xs px-3 py-2">
+                {{ sharing === "all" ? "Turn off" : "Turn on" }}
+            </button>
+            <div class="text-xs text-gray-500">
+                On, the radio answers any contact's position request itself, even with this app closed,
+                if it has a working GPS. Also shares battery voltage.
+            </div>
+        </div>
+
         <!-- transmit power -->
         <div class="w-full p-2 space-y-1">
             <div class="flex items-center justify-between">
@@ -271,6 +290,15 @@ export default {
             await this.readDrift();
         },
 
+        toggleLocationSharing() {
+            const turningOn = this.sharing !== "all";
+            return this.run(
+                "Location sharing",
+                () => EmcommMode.setLocationSharing(turningOn),
+                turningOn ? "Location is shared with any station that asks." : "Location is no longer shared.",
+            );
+        },
+
         toggleManualAdd() {
             const turningOff = this.current.manualAddContacts !== 1;
             return this.run(
@@ -285,6 +313,14 @@ export default {
 
         current() {
             return GlobalState.selfInfo ?? {};
+        },
+
+        sharing() {
+            return EmcommMode.locationSharing(GlobalState.selfInfo);
+        },
+
+        sharingLabel() {
+            return { all: "On, anyone", flagged: "Flagged contacts only", off: "Off" }[this.sharing];
         },
 
         notConnected() {

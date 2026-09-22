@@ -126,6 +126,30 @@ rather than an error.
       go, 6 at the bench settings (SF7, 62.5 kHz). The other node's timestamps should
       agree, and all parts should arrive.
 
+### Position requests
+
+Needs two radios, each running this app, on a channel ticked under **Position requests**
+in settings on the one being asked.
+
+- [ ] **Once, on the channel.** From node 1, ask node 2 on Emcomm Testing. Node 2 is
+      prompted with Send, Send with message and Decline. **Send**: node 1's Positions
+      tab shows node 2 in degrees and MGRS, with miles, kilometres and a bearing that
+      says *magnetic*, and the declination.
+- [ ] **Send with message** opens the channel on node 2, and node 1 shows "Message to
+      follow".
+- [ ] **Decline** stops node 1's repeats and shows "Declined by" and node 2's callsign.
+- [ ] **Direct.** Ask directly: nothing appears in either conversation, and the answer
+      reaches only node 1.
+- [ ] **Repeats.** Every 1 minute until answered, then Up to 3 times every 1 minute
+      with node 2 not answering: three requests, then "No answer after 3 requests".
+      Repeats stop when either radio disconnects.
+- [ ] **A channel not ticked** is not answered.
+- [ ] **The radio's own answer.** With node 2's app closed and its location sharing on,
+      node 1 gets node 2's GPS position from its radio about 30 s after asking. With
+      sharing off it gets nothing, and says it could be either reason.
+- [ ] **A stock client** on the channel shows nothing for the datagrams. Sent a direct
+      request, it shows the readable line.
+
 ### Room servers
 
 Needs a room you control. Everything here was wrong at some point and none of it
@@ -236,8 +260,11 @@ one found so far came from a dropped frame, and the link that drops them is BLE.
 - [ ] **A node without GPS refuses the position** and says why. It must never
       write 0, 0, which formats perfectly well and points at the Gulf of Guinea.
 - [ ] **Check the radio afterwards, not the screen.** Name, contact counts by
-      type, clock drift, automatic contacts. The app reporting success is not the
-      same as the device agreeing.
+      type, clock drift, automatic contacts (now **on** after a convert), transmit
+      power at the maximum, and location sharing **On, anyone** in the EMCOMM group.
+      The app reporting success is not the same as the device agreeing.
+- [ ] **Leaving puts sharing back.** After Leave EMCOMM mode, location sharing and
+      automatic contacts read as they did before converting.
 - [ ] **Restore from the pre-EMCOMM slot.** Contact counts by type back to what
       they were, name back, no setting different, nothing missing from the backup.
       The mode badge should go back to saying the node is not in EMCOMM mode.

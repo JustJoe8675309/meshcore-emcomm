@@ -21,6 +21,7 @@ the boundary the whole design sits inside, and anything the protocol cannot
 | TX power, and the radio's maximum | yes | yes |
 | Frequency, bandwidth, spreading factor, coding rate | yes | yes |
 | Manual add contacts flag | yes | yes |
+| Telemetry permissions (who may ask for battery, position, sensors), advert location policy, multi acks | yes | yes |
 | Channels: index, name, secret | yes | yes |
 | Contacts: every field, including flags and path | yes | yes |
 | Device clock | yes | yes |
@@ -76,7 +77,8 @@ predate the firmware.
 | TX power | The radio's maximum | Reach matters more than battery during an incident, and it is backed up first. |
 | Position | From a live GPS fix | Position is operationally useful, and the app already proves a fix is live rather than trusting the one cached at connect. |
 | Clock | Synced to the browser | Date time groups, message ordering and the room server's replay check all depend on it. Drift is common and the fix is free. |
-| Manual add contacts | On, after discovery | Stops the list refilling with every station the node hears, so a curated roster stays curated. |
+| Automatic contacts | On, after discovery | Changed on 2026-09-21. Every station heard can be messaged, and the radio only answers position requests from stations in its contacts. The trimmed list refills. |
+| Location sharing | Anyone | Telemetry base and location permissions set to anyone. The radio then answers a position request itself, even with the app closed, if it has a working GPS. Also shares battery voltage. Environment sensors are left as they were. |
 | Frequency, BW, SF, CR | US preset, behind a confirmation | See below. |
 | Channels | Untouched | Their secrets may not be written down anywhere else. |
 | Flood scope | Untouched | Write only. |

@@ -530,7 +530,20 @@ their reasoning are in [docs/EMCOMM-MODE.md](docs/EMCOMM-MODE.md).
 
 **Converting** clears every companion, drops repeaters and rooms quiet for more than 90 days,
 sets the node name, transmit power, position and clock, optionally checks the radio settings,
-then announces the station and looks for repeaters. It is decided in one dialog rather than a
+then announces the station and looks for repeaters. By default it also:
+- raises the transmit power to the radio's maximum;
+- **shares location with any station that asks**, so the radio answers a position request
+  itself, even with this app closed, if it has a working GPS. This also shares battery voltage;
+- **adds contacts automatically**, so every station heard can be messaged and can ask for a
+  position. The radio only answers telemetry from stations in its contacts. The list refills
+  after the trim.
+
+Each is a tick box in the dialog. Location sharing is the radio's telemetry permission, which
+lives in one command with the add contacts mode, the advert location policy and multi acks.
+`meshcore.js` sends only the first of those, so the app writes the whole command itself and
+sends the others back exactly as the radio reported them. Backups now keep all of them, so
+leaving EMCOMM mode puts location sharing back as it was. A backup taken before this change
+restores the add contacts mode alone, as it always did. It is decided in one dialog rather than a
 chain of prompts, because six confirmations under time pressure is how the wrong one gets
 accepted.
 
@@ -678,6 +691,76 @@ stored is the one the insert built and it is consistent with itself. So
 `test/components/message_insert.test.mjs` reads the source and checks that every field a
 schema declares is copied by its insert.
 
+### Position requests
+
+Any station running this app can be asked for its position, from **Request Position** in the
+menu beside it in Contacts. Everything that comes back is on the **Positions** tab.
+
+**How it travels.**
+- **On a channel,** the request and its answer are **channel datagrams**: binary packets that
+  every client on the channel receives but only this app shows. Stock clients show nothing at
+  all. Every station on the channel running this app sees the answer, so a position asked for
+  on the net is shared with the net.
+- **Direct,** there is no datagram, so it goes as a direct message of text type 1, which the
+  firmware calls command data. Only the two stations see the answer. A station without this app
+  sees a readable line, such as "Position request from KJ5HBN (answering needs
+  MeshCore-Emcomm)", followed by the encoded request. This app reads it and keeps it out of the
+  conversation.
+
+**Asking.** Three modes: once; every N minutes until answered; or up to X times every Y minutes,
+stopping early on an answer. Each request floods the whole mesh like a flood advert, so the
+shortest interval is a minute, and the form warns under five. Repeats run on a browser timer,
+so like repeating adverts they need the app on screen, and the screen is kept on while they
+run. The tab shows each request, how many have gone, when the next is due, and a Stop button.
+
+**Being asked.** A request on a channel is only answered on channels ticked under **Position
+requests** in settings. A direct one is always put to the operator, since it is addressed to
+them. The prompt offers three answers:
+- **Send** sends the position and nothing else.
+- **Send with message** sends it straight away, marked "message to follow", then opens the
+  channel or conversation the request came from, so the message can be typed.
+- **Decline** sends "Declined by" and the operator's callsign, or the node name if none is set.
+  It stops the asker's repeats at once.
+
+Repeated requests from one station raise one prompt, not a pile of them. Settings can switch
+to answering automatically instead, which sends a plain Send with no prompt.
+
+**What is shown.** For each station: its position in **decimal degrees** and as a ten digit
+**MGRS** reference, its distance in **miles and kilometres**, and the bearing to it in **degrees
+magnetic, stated as magnetic**, with the declination used shown beneath. A fix's age is given
+when it is a live GPS fix. Distance and bearing need this station's own position; without one,
+the tab says so.
+
+**Magnetic bearing.** A bearing an operator walks has to be magnetic, because that is what a
+hand compass reads. The declination comes from the **World Magnetic Model 2025**, worked out on
+the device from NOAA's published coefficients, so it needs no network. It matches all twelve of
+NOAA's official test values. The model is valid to the end of 2029; after that the tab says the
+bearings may be a degree or more out until the app has the next model. Local magnetic
+anomalies, from iron ore or vehicles, are not in any model.
+
+**When the app does not answer.** Thirty seconds after each request, the station's radio is
+asked directly with the firmware's own telemetry request. The radio answers that itself, with
+its app closed, but only includes a position if it has a working GPS and its owner shares
+location. That answer goes only to whoever asked.
+
+On the bench, node 2's radio stayed silent with sharing off, and answered node 1 in 0.77 s with
+it on. The answer carried its GPS position, battery voltage and chip temperature. A radio that
+does not share says nothing at all, which is the same as being out of range, so the tab says
+it could be either.
+
+**What was proven on air before building.** A channel datagram from node 1 reached node 2 in
+0.44 s, text intact, and repeaters re-flooded it up to three hops. A type 1 direct message
+arrived in 0.58 s. The app before this change filed that direct message in the chat with a
+notification, which is why it is now intercepted.
+
+**Limits.**
+- **Hidden, not secret.** Anyone holding the channel key who writes their own code can read the
+  positions.
+- **Not signed.** Anyone on the channel could send a false one. That was accepted for the first
+  version.
+- **The station's app must be open** to answer, or its radio must have GPS and share location.
+- **MGRS stops at 84° N and 80° S.** The polar grid is not produced.
+
 ### Real channel selection
 
 Upstream hardcoded a single "Public Channel". This fork upgrades `@liamcottle/meshcore.js` from
@@ -730,7 +813,8 @@ Converting node 1 and leaving EMCOMM mode again were recorded the same way.
   - each setting as it was applied;
   - "Removing: N5TMT R51" and 76 more, counted up to 77;
   - announcing the station, then the repeater search;
-  - turning off automatic contacts, then reading the node back.
+  - turning off automatic contacts, then reading the node back. That was before the convert
+    was changed to turn them on.
 
   It stood aside for the 2 seconds the convert dialog was waiting on an answer.
 - **Leave EMCOMM mode, 12.6 s.** Every restore step was counted, out of 231, followed by reading
@@ -987,7 +1071,7 @@ happen on demand:
 npm test
 ```
 
-Six plain node suites and thirty-three component suites, 478 component tests, no hardware
+Six plain node suites and thirty-six component suites, 562 component tests, no hardware
 required:
 
 - `test/report_encoder.test.mjs` covers rendering and packet splitting, including a
@@ -1073,6 +1157,10 @@ Keep tags short. Every byte is airtime.
 
 Original MeshCore web client by [Liam Cottle](https://github.com/liamcottle). MeshCore itself is by
 [the MeshCore project](https://github.com/meshcore-dev/MeshCore).
+
+The World Magnetic Model 2025 coefficients in `src/js/position/wmm2025.js` are from NOAA's
+National Centers for Environmental Information and the British Geological Survey, and are in the
+public domain.
 
 ## License
 

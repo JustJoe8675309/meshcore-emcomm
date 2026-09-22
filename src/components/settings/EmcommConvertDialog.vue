@@ -96,7 +96,12 @@
 
                 <label class="flex items-start space-x-2 text-xs text-gray-700">
                     <input v-model="maxTxPower" type="checkbox" class="mt-0.5">
-                    <span>Raise transmit power to the radio's maximum ({{ current.maxTxPower }} dBm, now {{ current.txPower }})</span>
+                    <span>Raise transmit power to the radio's maximum ({{ current.maxTxPower }} dBm, now {{ current.txPower }}). The EMCOMM default</span>
+                </label>
+
+                <label class="flex items-start space-x-2 text-xs text-gray-700">
+                    <input v-model="shareLocation" type="checkbox" class="mt-0.5">
+                    <span>Share location with stations that ask. Its radio answers a position request itself, even with this app closed, if it has a working GPS. Also shares battery voltage</span>
                 </label>
 
                 <label class="flex items-start space-x-2 text-xs text-gray-700">
@@ -110,8 +115,8 @@
                 </label>
 
                 <label class="flex items-start space-x-2 text-xs text-gray-700">
-                    <input v-model="manualAddContacts" type="checkbox" class="mt-0.5">
-                    <span>Stop adding contacts automatically, once discovery has finished</span>
+                    <input v-model="autoAddContacts" type="checkbox" class="mt-0.5">
+                    <span>Add contacts automatically, so every station heard can be messaged and can ask for a position. The list refills after the trim</span>
                 </label>
             </div>
 
@@ -175,7 +180,11 @@ export default {
             maxTxPower: true,
             setPositionFromGps: true,
             syncClock: true,
-            manualAddContacts: true,
+            // on by default: during an incident the stations that matter are the
+            // ones being heard, and the radio only answers position requests from
+            // stations in its contacts
+            autoAddContacts: true,
+            shareLocation: true,
             advert: "flood",
             discover: true,
         };
@@ -205,7 +214,8 @@ export default {
                 txPower: this.maxTxPower ? this.current.maxTxPower : null,
                 setPositionFromGps: this.setPositionFromGps,
                 syncClock: this.syncClock,
-                manualAddContacts: this.manualAddContacts,
+                autoAddContacts: this.autoAddContacts,
+                shareLocation: this.shareLocation,
                 advert: this.advert,
                 discover: this.discover,
             });

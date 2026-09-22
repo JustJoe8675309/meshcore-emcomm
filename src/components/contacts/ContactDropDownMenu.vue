@@ -22,6 +22,15 @@
                 </div>
             </div>
 
+            <!-- ask a companion for its position. only people carry positions worth
+                 asking for; a repeater's is fixed and in its advert already -->
+            <DropDownMenuItem v-if="canRequestPosition" @click="requestPosition(contact)">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-5">
+                    <path fill-rule="evenodd" d="m11.54 22.351.07.04.028.016a.76.76 0 0 0 .723 0l.028-.015.071-.041a16.975 16.975 0 0 0 1.144-.742 19.58 19.58 0 0 0 2.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 0 0-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 0 0 2.682 2.282 16.975 16.975 0 0 0 1.145.742ZM12 13.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" clip-rule="evenodd" />
+                </svg>
+                <span>Request Position</span>
+            </DropDownMenuItem>
+
             <!-- copy public key button -->
             <DropDownMenuItem @click="copyPublicKey(contact)">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-5">
@@ -95,6 +104,9 @@ import Database from "../../js/Database.js";
 import Utils from "../../js/Utils.js";
 import PathInfo from "../../js/PathInfo.js";
 import ContactFlags from "../../js/ContactFlags.js";
+import PositionService from "../../js/position/PositionService.js";
+import GlobalState from "../../js/GlobalState.js";
+import { Constants } from "@liamcottle/meshcore.js";
 
 export default {
     name: 'ContactDropDownMenu',
@@ -120,8 +132,14 @@ export default {
         pathIsUnknown() {
             return PathInfo.isUnknown(this.contact.outPathLen);
         },
+        canRequestPosition() {
+            return this.contact?.type === Constants.AdvType.Chat && GlobalState.connection != null;
+        },
     },
     methods: {
+        requestPosition(contact) {
+            PositionService.openRequest(contact);
+        },
         async toggleFavourite(contact) {
             try {
                 await Connection.setContactFavourite(contact.publicKey, !this.isFavourite);

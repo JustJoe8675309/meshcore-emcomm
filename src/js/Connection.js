@@ -11,6 +11,7 @@ import AdvertSchedule from "./AdvertSchedule.js";
 import { installResilientSerialReads } from "./SerialResilience.js";
 import { Advert } from "@liamcottle/meshcore.js";
 import Airtime from "./reports/Airtime.js";
+import PositionService from "./position/PositionService.js";
 
 // before any connection exists: the serial read loop starts in its constructor
 installResilientSerialReads();
@@ -223,6 +224,8 @@ class Connection {
         // room sessions live on the radio, so they do not survive it going away
         GlobalState.roomLogins = {};
         SignedPosts.forget();
+        // position requests repeat through the radio that was connected
+        PositionService.onDisconnected();
 
         // repeating adverts belong to the radio that was connected, not to the app
         AdvertSchedule.stop();
@@ -1058,6 +1061,48 @@ class Connection {
         await this.withSettingTimeout("add contacts mode", () => GlobalState.connection.setOtherParams(manualAddContacts));
     }
 
+    // CMD_SET_OTHER_PARAMS. meshcore.js sends only its first setting
+    static CMD_SET_OTHER_PARAMS = 38;
+
+    /**
+     * The settings CMD_SET_OTHER_PARAMS carries, as the radio last reported them.
+     * Self info brings them back as three bytes meshcore.js files under
+     * "reserved": multi acks, advert location policy, then the telemetry modes.
+     */
+    static otherParams(selfInfo = GlobalState.selfInfo) {
+        const reserved = selfInfo?.reserved ?? [];
+        return {
+            manualAddContacts: selfInfo?.manualAddContacts === 1,
+            multiAcks: reserved[0] ?? 0,
+            advertLocPolicy: reserved[1] ?? 0,
+            telemetryModes: reserved[2] ?? 0,
+        };
+    }
+
+    /**
+     * Writes all of CMD_SET_OTHER_PARAMS at once: whether contacts are added by
+     * hand, the telemetry permissions, the advert location policy and multi
+     * acks. The firmware sets every field the frame reaches, so each one not
+     * being changed is sent back as the radio last reported it.
+     */
+    static async setAllOtherParams(params) {
+        const connection = GlobalState.connection;
+        if(connection == null){
+            throw new Error(this.DISCONNECTED);
+        }
+        const frame = new Uint8Array([
+            this.CMD_SET_OTHER_PARAMS,
+            params.manualAddContacts ? 1 : 0,
+            params.telemetryModes & 0x3F,
+            params.advertLocPolicy & 0xFF,
+            params.multiAcks & 0xFF,
+        ]);
+        const reply = await this.sendAwaiting(connection, () => connection.sendToRadioFrame(frame));
+        if(reply.code !== Constants.ResponseCodes.Ok){
+            throw new Error(reply.code == null ? "the radio did not answer" : "the radio refused it");
+        }
+    }
+
     static async addOrUpdateContact(...args) {
         await this.withSettingTimeout("contact", () => GlobalState.connection.addOrUpdateContact(...args));
     }
@@ -1776,6 +1821,97 @@ class Connection {
 
     }
 
+    /**
+     * A binary datagram on a channel, flooded. Every station holding the channel
+     * receives it; clients that do not know the data type show nothing.
+     */
+    static async sendChannelDatagram(channelIdx, dataType, payload) {
+        const connection = GlobalState.connection;
+        if(connection == null){
+            throw new Error(this.DISCONNECTED);
+        }
+        const reply = await this.sendAwaiting(
+            connection,
+            () => connection.sendCommandSendChannelData(channelIdx, 0xFF, [], dataType, payload),
+        );
+        if(reply.code !== Constants.ResponseCodes.Ok){
+            throw new Error(reply.code == null ? "the radio did not answer" : "the radio would not send it");
+        }
+    }
+
+    /**
+     * A direct message of text type 1, which the firmware calls command data. It
+     * is sent once, with no acknowledgement, and is not kept in the conversation.
+     */
+    static async sendCommandData(publicKey, text) {
+        const connection = GlobalState.connection;
+        if(connection == null){
+            throw new Error(this.DISCONNECTED);
+        }
+        const reply = await this.sendAwaiting(
+            connection,
+            () => connection.sendCommandSendTxtMsg(Constants.TxtTypes.CliData, 0, Math.floor(Date.now() / 1000), new Uint8Array(publicKey).subarray(0, 6), text),
+            [Constants.ResponseCodes.Sent, Constants.ResponseCodes.Err],
+        );
+        if(reply.code !== Constants.ResponseCodes.Sent){
+            throw new Error(reply.code == null ? "the radio did not answer" : "the radio would not send it");
+        }
+    }
+
+    // how long past the radio's own estimate to wait for a telemetry answer
+    static TELEMETRY_EXTRA_MILLIS = 5000;
+
+    /**
+     * Asks a contact's radio for its telemetry: battery, and a position if it has
+     * a working GPS and its owner allows it. The firmware answers this itself,
+     * with no app needed at the other end.
+     *
+     * The queue is held only until the radio says it has sent the request, as for
+     * a room login; the answer arrives as a push matched to that contact.
+     */
+    static async requestTelemetry(publicKey) {
+
+        const connection = GlobalState.connection;
+        if(connection == null){
+            throw new Error(this.DISCONNECTED);
+        }
+
+        const prefix = new Uint8Array(publicKey).subarray(0, 6);
+        let onResponse = null;
+        let timer = null;
+        let armTimeout = null;
+
+        const answered = new Promise((resolve, reject) => {
+            onResponse = (response) => {
+                if(Utils.isUint8ArrayEqual(new Uint8Array(response.pubKeyPrefix), prefix)){
+                    resolve(response);
+                }
+            };
+            armTimeout = (millis) => {
+                timer = setTimeout(() => reject(new Error("timeout")), millis);
+            };
+            connection.on(Constants.PushCodes.TelemetryResponse, onResponse);
+        });
+        answered.catch(() => {});
+
+        try {
+            const sent = await this.sendAwaiting(
+                connection,
+                () => connection.sendCommandSendTelemetryReq(new Uint8Array(publicKey)),
+                [Constants.ResponseCodes.Sent, Constants.ResponseCodes.Err],
+            );
+            if(sent.code !== Constants.ResponseCodes.Sent){
+                throw new Error("the radio would not send the telemetry request");
+            }
+            armTimeout((sent.data?.estTimeout ?? 10000) + this.TELEMETRY_EXTRA_MILLIS);
+            return await answered;
+        } finally {
+            clearTimeout(timer);
+            connection.off(Constants.PushCodes.TelemetryResponse, onResponse);
+        }
+
+    }
+
     static async sendChannelMessage(channelIdx, text) {
 
         // send message
@@ -1816,6 +1952,10 @@ class Connection {
                 await this.onContactMessageReceived(message.contactMessage);
             } else if(message.channelMessage) {
                 await this.onChannelMessageReceived(message.channelMessage);
+            } else if(message.channelData) {
+                // binary datagrams on a channel. Only position requests and their
+                // answers are ours; anything else belongs to some other app
+                PositionService.onChannelData(message.channelData);
             }
 
         }
@@ -1886,6 +2026,13 @@ class Connection {
         // however, it could be possible that the contact doesn't exist in javascript memory when the message is received
         if(!contact){
             console.log("couldn't find contact, received message has been dropped");
+            return;
+        }
+
+        // A position request or answer sent direct travels as text type 1 with a
+        // marker. It is handled, and kept out of the conversation: on the bench the
+        // test one landed in the chat as an ordinary message with a notification
+        if(message.txtType === Constants.TxtTypes.CliData && PositionService.onDirectText(contact, message.text)){
             return;
         }
 

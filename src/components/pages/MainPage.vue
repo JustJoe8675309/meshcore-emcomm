@@ -11,6 +11,7 @@
                 <div @click="tab = 'channels'" class="w-full border-b-2 py-3 px-1 text-center text-sm font-medium cursor-pointer" :class="[ tab === 'channels' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700']"><div>Channels</div><div class="invisible" aria-hidden="true">&nbsp;</div></div>
                 <div @click="tab = 'reports'" class="w-full border-b-2 py-3 px-1 text-center text-sm font-medium cursor-pointer" :class="[ tab === 'reports' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700']"><div>Reports</div><div class="invisible" aria-hidden="true">&nbsp;</div></div>
                 <div @click="tab = 'ping'" class="w-full border-b-2 py-3 px-1 text-center text-sm font-medium cursor-pointer" :class="[ tab === 'ping' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700']"><div>Repeater</div><div>Search</div></div>
+                <div @click="tab = 'positions'" class="w-full border-b-2 py-3 px-1 text-center text-sm font-medium cursor-pointer" :class="[ tab === 'positions' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700']"><div>Positions</div><div class="invisible" aria-hidden="true">&nbsp;</div></div>
             </div>
         </div>
 
@@ -20,6 +21,7 @@
             <ChannelsList v-if="tab === 'channels'" :channels="channels" @channel-click="onChannelClick"/>
             <ReportsPanel v-if="tab === 'reports'"/>
             <PingPanel v-if="tab === 'ping'"/>
+            <PositionsPanel v-if="tab === 'positions'"/>
         </div>
 
         <!-- not connected and no content -->
@@ -41,12 +43,14 @@ import Utils from "../../js/Utils.js";
 import ChannelsList from "../channels/ChannelsList.vue";
 import ReportsPanel from "../reports/ReportsPanel.vue";
 import PingPanel from "../ping/PingPanel.vue";
+import PositionsPanel from "../position/PositionsPanel.vue";
 
 export default {
     name: 'MainPage',
     components: {
         ReportsPanel,
         PingPanel,
+        PositionsPanel,
         ChannelsList,
         ContactsList,
         ConnectButtons,

@@ -82,6 +82,15 @@ class NodeBackup {
                 radioSf: selfInfo.radioSf,
                 radioCr: selfInfo.radioCr,
                 manualAddContacts: selfInfo.manualAddContacts,
+                // the rest of the same radio command: telemetry permissions, which
+                // decide who may ask this radio for its position, the advert
+                // location policy and multi acks. EMCOMM mode changes the first,
+                // so leaving it has to be able to put them back
+                ...(Array.isArray(selfInfo.reserved) || ArrayBuffer.isView(selfInfo.reserved) ? {
+                    telemetryModes: selfInfo.reserved[2],
+                    advertLocPolicy: selfInfo.reserved[1],
+                    multiAcks: selfInfo.reserved[0],
+                } : {}),
             },
             channels: channels,
             contacts: contacts.map((contact) => {
@@ -189,8 +198,20 @@ class NodeBackup {
         ));
         step("radio settings");
 
-        await this.attempt(failures, "add contacts mode", () => Connection.setOtherParams(settings.manualAddContacts === 1));
-        step("add contacts mode");
+        // a backup from before these were kept restores the add contacts mode
+        // alone, as it always did
+        if(settings.telemetryModes != null){
+            await this.attempt(failures, "add contacts mode and location sharing", () => Connection.setAllOtherParams({
+                manualAddContacts: settings.manualAddContacts === 1,
+                telemetryModes: settings.telemetryModes,
+                advertLocPolicy: settings.advertLocPolicy ?? 0,
+                multiAcks: settings.multiAcks ?? 0,
+            }));
+            step("add contacts mode and location sharing");
+        } else {
+            await this.attempt(failures, "add contacts mode", () => Connection.setOtherParams(settings.manualAddContacts === 1));
+            step("add contacts mode");
+        }
 
         for(const channel of backup.channels){
             await this.attempt(failures, `channel ${channel.name}`, () => Connection.setChannel(
