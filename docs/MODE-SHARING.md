@@ -58,8 +58,12 @@ nobody can read.
 2. **Which mode to write it into**, defaulting to the mode it was shared as. A
    station can take someone's Live profile into its own Training slot on purpose,
    for a drill that mirrors the real thing.
-3. **Nothing is written to the radio.** The profile is saved, and the banner is
-   where they switch into it, with its own confirmation. Two deliberate steps.
+3. **Nothing is written to the radio, and the import never switches modes.** The
+   profile is saved, the screen lists what was taken in, and closing it returns to
+   the ordinary app screen. The station stays in whatever mode it was already in,
+   which for most operators at a muster point is Normal. Entering the mode is the
+   banner's job, with its own confirmation: two deliberate steps, decided by the
+   operator holding the radio.
 4. If they are already in that mode, it says so plainly: the new profile takes
    effect when they switch into it again.
 
@@ -81,9 +85,9 @@ protecting that channel's traffic.
   about anything older than a day. It does not refuse it: a code printed on a
   briefing sheet the night before is a normal thing to use.
 
-No passphrase in the first version. It is one more thing to get wrong at a muster
-point, and the honest answer is that a QR code is as private as the room it is
-shown in.
+**No passphrase.** Decided, not deferred: it is one more thing to get wrong at a
+muster point, and the honest answer is that a QR code is as private as the room it
+is shown in. The warning about private keys does the work instead.
 
 ## How it is built
 
