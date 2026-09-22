@@ -92,6 +92,37 @@ class Airtime {
 
     }
 
+    // How many airtimes of the longest part to leave between channel parts. The
+    // radio answers Ok when it has queued a part, before it transmits: that takes
+    // one airtime. A repeater then waits a random 0 to 2.5 airtimes before passing a
+    // flood packet on (getRetransmitDelay: 5 x airtime x tx_delay_factor 0.5) and
+    // spends one more sending it, so 3.5 per hop. Two hops of repeats: 1 + 3.5 + 3.5
+    static FLOOD_GAP_AIRTIMES = 8;
+
+    /**
+     * The gap to leave between the parts of a channel report: long enough for the
+     * repeats of one part to clear before the next goes out, and never under
+     * floorMillis. Rounded up to a whole second. The floor alone when the radio
+     * settings are not known.
+     */
+    static channelPartGapMillis(parts, nodeName, selfInfo, floorMillis) {
+
+        const radio = this.getRadioFromSelfInfo(selfInfo);
+        if(!radio || !parts || parts.length === 0){
+            return floorMillis;
+        }
+
+        const encoder = new TextEncoder();
+        const longestMillis = Math.max(...parts.map((part) => {
+            const packetBytes = this.getPacketBytes(encoder.encode(part).length, "channel", nodeName);
+            return this.getTimeOnAirMillis(packetBytes, radio);
+        }));
+
+        const gapMillis = Math.ceil((longestMillis * this.FLOOD_GAP_AIRTIMES) / 1000) * 1000;
+        return Math.max(floorMillis, gapMillis);
+
+    }
+
     /**
      * Total estimate for a whole report, including the gaps between parts.
      * Returns null when the radio settings are not known.

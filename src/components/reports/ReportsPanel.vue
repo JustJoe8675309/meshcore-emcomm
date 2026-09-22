@@ -118,6 +118,54 @@
 
             </div>
 
+            <!-- channel messages are never acknowledged, so a part can be lost with
+                 the sending radio none the wiser. the operator hears about it from the
+                 station that is missing it, and needs to send that part, not the lot -->
+            <div v-if="lastSent" class="bg-white border border-gray-300 rounded-lg p-3 space-y-2">
+
+                <div class="text-sm font-semibold text-gray-900">Last report sent</div>
+
+                <div class="text-sm text-gray-800">
+                    <span class="font-semibold">{{ lastSent.formName }}</span> to
+                    <span class="font-semibold">{{ lastSent.destination.name }}</span>
+                    at {{ lastSentTime }}, {{ lastSent.allParts.length }} {{ lastSent.allParts.length === 1 ? "message" : "messages" }}.
+                </div>
+
+                <div class="text-xs text-gray-600">
+                    Channel messages are not acknowledged, so one can be lost without this radio knowing.
+                    If a station says a part is missing, resend just that part.
+                </div>
+
+                <div v-if="!canResendLast" class="text-xs text-red-900">
+                    {{ resendBlockedReason }}
+                </div>
+
+                <div class="space-y-1">
+                    <div v-for="(part, index) of lastSent.allParts" :key="index" class="flex items-center space-x-2">
+                        <div class="flex-1 min-w-0 truncate text-xs text-gray-700">{{ part }}</div>
+                        <button
+                            @click="resendPart(index)"
+                            :disabled="isSending || !canResendLast"
+                            type="button"
+                            class="shrink-0 bg-white border border-gray-300 text-gray-700 text-xs font-medium rounded-lg px-3 py-1.5"
+                            :class="[ isSending || !canResendLast ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50 cursor-pointer' ]">
+                            {{ resendingPart === index ? "Resending..." : (lastSent.allParts.length === 1 ? "Resend" : `Resend ${index + 1}`) }}
+                        </button>
+                    </div>
+                </div>
+
+                <div v-if="resendNotice" role="status" class="text-xs text-gray-700">{{ resendNotice }}</div>
+
+                <button
+                    @click="dismissLastSent"
+                    :disabled="isSending"
+                    type="button"
+                    class="w-full bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg px-5 py-2.5">
+                    Done
+                </button>
+
+            </div>
+
             <!-- send -->
             <div v-if="selectedForm" class="space-y-2 pb-3">
 
@@ -239,6 +287,9 @@ export default {
             // cleared when the panel goes away, so a send in progress stops rather
             // than transmitting the rest of the report with nothing on screen
             sendAborted: false,
+            // which part of the last report is being sent again, and how that went
+            resendingPart: null,
+            resendNotice: null,
             copyMessage: null,
             copyMessageTimeout: null,
         };
@@ -418,7 +469,7 @@ export default {
 
             this.isConfirming = false;
 
-            await this.transmit(this.prepared.parts, destination, 0);
+            await this.transmit(this.prepared.parts, destination, 0, this.selectedForm.name);
 
         },
 
@@ -432,7 +483,7 @@ export default {
                 return;
             }
 
-            await this.transmit(failure.allParts, failure.destination, failure.sentCount);
+            await this.transmit(failure.allParts, failure.destination, failure.sentCount, failure.formName);
 
         },
 
@@ -440,11 +491,52 @@ export default {
             this.sendFailure = null;
         },
 
+        dismissLastSent() {
+            GlobalState.lastSentReport = null;
+            this.resendNotice = null;
+        },
+
+        // one part of the last report again, exactly as it first went out, to the same
+        // channel through the same radio
+        async resendPart(index) {
+
+            const report = this.lastSent;
+            if(!report || !this.canResendLast || this.isSending){
+                return;
+            }
+
+            const label = report.allParts.length === 1 ? "The report" : `Part ${index + 1} of ${report.allParts.length}`;
+
+            this.isSending = true;
+            this.resendingPart = index;
+            this.resendNotice = null;
+
+            try {
+                await Connection.sendChannelMessage(report.destination.channel.idx, report.allParts[index]);
+                this.resendNotice = `${label} went out again at ${this.formatTime(Date.now())}.`;
+            } catch(e) {
+                console.log(e);
+                this.resendNotice = `${label} did not go out: ${e?.message ?? e}`;
+            } finally {
+                this.isSending = false;
+                this.resendingPart = null;
+            }
+
+        },
+
+        channelGapFor(parts) {
+            return Airtime.channelPartGapMillis(parts, this.nodeName, GlobalState.selfInfo, ReportEncoder.PART_SEND_DELAY_MILLIS);
+        },
+
+        formatTime(millis) {
+            return new Date(millis).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        },
+
         // sends parts from startIndex onwards, recording exactly how many made it so a
         // failure half way through a multi part report can be finished rather than
         // repeated. resending parts that already arrived is not harmless: the receiving
         // operator sees the same numbered fragment twice.
-        async transmit(parts, destination, startIndex) {
+        async transmit(parts, destination, startIndex, formName) {
 
             this.sendFailure = null;
             this.isSending = true;
@@ -465,7 +557,7 @@ export default {
                             destination: destination,
                             sentCount: sentCount,
                             totalParts: parts.length,
-                            formName: this.selectedForm?.name ?? "A report",
+                            formName: formName ?? "A report",
                             nodePublicKey: this.connectedNodeKey,
                         };
                         return;
@@ -530,7 +622,7 @@ export default {
                     // to stop them treading on each other is a gap. direct messages already
                     // waited for the acknowledgement above, which spaces them out for free
                     if(!isLastPart && !destination.isContact){
-                        await Utils.sleep(ReportEncoder.PART_SEND_DELAY_MILLIS);
+                        await Utils.sleep(this.channelGapFor(parts));
                     }
 
                 }
@@ -542,6 +634,8 @@ export default {
                     destination: destination,
                     sentCount: sentCount,
                     totalParts: parts.length,
+                    formName: formName ?? "A report",
+                    nodePublicKey: this.connectedNodeKey,
                 };
             }
 
@@ -551,6 +645,19 @@ export default {
 
             if(this.sendFailure){
                 return;
+            }
+
+            // kept so a part a station never got can be sent again. direct messages
+            // are acknowledged part by part and retransmitted, so only channels need it
+            if(!destination.isContact){
+                GlobalState.lastSentReport = {
+                    allParts: parts,
+                    destination: destination,
+                    formName: formName ?? "A report",
+                    nodePublicKey: this.connectedNodeKey,
+                    sentAt: Date.now(),
+                };
+                this.resendNotice = null;
             }
 
             // show the operator the report landing in the conversation.
@@ -703,7 +810,38 @@ export default {
         },
 
         partDelaySeconds() {
-            return Math.round(ReportEncoder.PART_SEND_DELAY_MILLIS / 1000);
+            return Math.round(this.partGapMillis / 1000);
+        },
+
+        // the gap between parts of this report. Only channel parts use it: direct
+        // parts wait for their acknowledgement instead
+        partGapMillis() {
+            return this.channelGapFor(this.prepared?.parts ?? []);
+        },
+
+        lastSent() {
+            return GlobalState.lastSentReport;
+        },
+
+        lastSentTime() {
+            return this.lastSent ? this.formatTime(this.lastSent.sentAt) : "";
+        },
+
+        // a channel is a slot number on the radio, so a resent part must go through
+        // the radio the report went through, or it could land on another channel
+        canResendLast() {
+            const report = this.lastSent;
+            if(report == null || GlobalState.connection == null){
+                return false;
+            }
+            return report.nodePublicKey == null || report.nodePublicKey === this.connectedNodeKey;
+        },
+
+        resendBlockedReason() {
+            if(GlobalState.connection == null){
+                return "No radio is connected, so nothing can be resent yet.";
+            }
+            return "A different radio is connected now. Reconnect the radio the report went out on to resend a part.";
         },
 
         // estimated time this report will occupy the channel, using the radio
@@ -719,7 +857,7 @@ export default {
                 this.destinationType,
                 this.nodeName,
                 GlobalState.selfInfo,
-                ReportEncoder.PART_SEND_DELAY_MILLIS,
+                this.partGapMillis,
             );
 
         },

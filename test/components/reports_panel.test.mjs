@@ -15,6 +15,7 @@ import ReportsPanel from "../../src/components/reports/ReportsPanel.vue";
 import GlobalState from "../../src/js/GlobalState.js";
 import Connection from "../../src/js/Connection.js";
 import ReportForms from "../../src/js/reports/ReportForms.js";
+import Utils from "../../src/js/Utils.js";
 
 const CONTACT_KEY = new Uint8Array(Array.from({ length: 32 }, (_, i) => i + 1));
 
@@ -64,6 +65,9 @@ describe("ReportsPanel", () => {
     beforeEach(() => {
         connect();
         vi.restoreAllMocks();
+        // the gap between channel parts is at least five seconds on air, which is
+        // what it is for; here it only makes the suite slow
+        vi.spyOn(Utils, "sleep").mockResolvedValue(undefined);
     });
 
     describe("before anything is transmitted", () => {

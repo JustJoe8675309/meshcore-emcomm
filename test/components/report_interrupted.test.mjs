@@ -60,6 +60,9 @@ describe("a report interrupted by leaving the tab", () => {
     beforeEach(() => {
         vi.restoreAllMocks();
         GlobalState.interruptedReport = null;
+        // the gap between channel parts. the tab is left synchronously, before the
+        // first part is even out, so skipping the wait changes nothing but speed
+        vi.spyOn(Utils, "sleep").mockResolvedValue(undefined);
         connect();
     });
 
@@ -92,9 +95,6 @@ describe("a report interrupted by leaving the tab", () => {
     it("sends only the parts that never went out, to the same channel", async () => {
         const { sent, parts } = await startAndLeave();
         const before = sent.length;
-        // the two second gap between channel parts, skipped once the interruption
-        // itself has happened at real speed
-        vi.spyOn(Utils, "sleep").mockResolvedValue(undefined);
 
         const wrapper = mountPanel();
         await wrapper.vm.$nextTick();

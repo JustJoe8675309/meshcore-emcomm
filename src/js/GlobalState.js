@@ -49,6 +49,10 @@ const globalState = reactive({
     // record of it goes with the tab, so without this the operator came back to
     // an empty form and nothing said the report had gone out incomplete
     interruptedReport: null,
+    // the last channel report sent in full, so a part a station says it never got
+    // can be sent again. Channel messages are not acknowledged, so the sending
+    // radio cannot tell a lost part from a delivered one
+    lastSentReport: null,
 });
 
 export default globalState;

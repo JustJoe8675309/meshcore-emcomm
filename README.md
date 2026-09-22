@@ -254,7 +254,25 @@ includes the `<sender name>: ` prefix the firmware prepends in `BaseChatMesh::se
 Anything over the cap is **silently truncated by the firmware**, so this fork enforces the limit
 before transmitting.
 
-Reports that do not fit are split into numbered parts (`[1/3]`, `[2/3]`, ...) sent 2 seconds apart.
+Reports that do not fit are split into numbered parts (`[1/3]`, `[2/3]`, ...), sent with a gap
+between them.
+
+The gap used to be 2 seconds. On the bench a three part report reached node 2 as `[1/3]` and
+`[3/3]`: node 1's radio had answered Ok to `[2/3]` and it was in node 1's own history, so it
+was lost on the air. Channel messages are never acknowledged, so nothing at the sending end can
+tell. The gap is now eight times the airtime of the longest part, rounded up to a whole second
+and never under 5 seconds. The radio answers Ok when it has queued a part, and sending it takes
+one airtime. A repeater then waits a random 0 to 2.5 airtimes before passing a flood packet on
+(`getRetransmitDelay` in the firmware) and one more airtime sending it, so eight airtimes covers
+two hops of repeats. At SF7 and 62.5 kHz a full part takes about 0.6 s, so the gap is 6 s; at
+SF12 and 125 kHz it is nearer a minute. The transmission preview shows the gap in use.
+
+A longer gap makes a loss less likely but cannot rule it out, so the Reports tab keeps the last
+channel report it sent in full, with a Resend button for each part. When a station says it is
+missing `[2/3]`, that part goes out again word for word, to the same channel, and nothing else
+does. As with finishing an interrupted report, it will only go through the radio the report
+went out on. Reports sent to a contact do not get this: each part is acknowledged and
+retransmitted until it is, and the send stops if one never is.
 
 A report is one field per line, so parts break **between fields**: whole lines are packed into each
 part, and a part begins with a field or the form header. An operator copying part 2 onto a paper
@@ -767,7 +785,7 @@ timeout behind it, on a link that was otherwise working perfectly.
 npm test
 ```
 
-Six plain node suites and twenty-nine component suites, 445 component tests, no hardware
+Six plain node suites and thirty component suites, 456 component tests, no hardware
 required:
 
 - `test/report_encoder.test.mjs` covers rendering and packet splitting, including a

@@ -99,6 +99,12 @@ rather than an error.
       the report was interrupted, how many parts went out and to where, and offer to
       send the rest. It used to show an empty form, with nothing to say the stations
       had a report with its end missing.
+- [ ] **Resend one part.** After a multi part channel report, Reports shows "Last
+      report sent" with a Resend button per part. Resend part 2: the other node gets
+      that part again, word for word on the same channel, and no other part.
+- [ ] **The gap between parts.** The preview says how many seconds apart the parts
+      go, 6 at the bench settings (SF7, 62.5 kHz). The other node's timestamps should
+      agree, and all parts should arrive.
 
 ### Room servers
 

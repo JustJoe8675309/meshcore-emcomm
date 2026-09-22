@@ -11,8 +11,12 @@ class ReportEncoder {
     // MAX_TEXT_LEN in src/helpers/BaseChatMesh.h, which is (10 * CIPHER_BLOCK_SIZE)
     static MAX_TEXT_LEN = 160;
 
-    // delay between parts of a multi part report, to avoid hammering the channel
-    static PART_SEND_DELAY_MILLIS = 2000;
+    // the shortest gap between parts of a multi part channel report. It was 2 s,
+    // and on the bench a three part report reached node 2 with its middle part
+    // missing although node 1's radio had accepted it. Channel messages are never
+    // acknowledged, so the gap is all that keeps one part off the repeats of the
+    // one before. Slow radio settings get longer, see Airtime.channelPartGapMillis
+    static PART_SEND_DELAY_MILLIS = 5000;
 
     /**
      * Length of a string in bytes, which is what the firmware actually counts.
