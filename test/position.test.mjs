@@ -77,7 +77,7 @@ console.log("\n=== the fields that offer the button ===");
             check(`${form.id}.${field.id} is a text field`, field.type === "text", `is ${field.type}`);
         }
     }
-    check(`${offering.length} fields offer a position`, offering.length === 10, offering.join(", "));
+    check(`${offering.length} fields offer a position`, offering.length === 15, offering.join(", "));
 
     // a form that reports an observation somewhere needs to be able to say where
     for (const id of ["medevac", "damage", "skywarn", "salute", "position", "checkin", "sitrep", "fivews"]) {

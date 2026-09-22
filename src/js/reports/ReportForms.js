@@ -274,6 +274,21 @@ const ReportForms = [
             },
         ],
     },
+    {
+        id: "ics213reply",
+        name: "ICS-213 Reply",
+        description: "Answer an ICS-213 message, quoting what it was about.",
+        header: "ICS-213 REPLY",
+        fields: [
+            { id: "to", tag: "TO", label: "To (who sent the message)", type: "text", placeholder: "e.g: J. Smith, Ops Chief", required: true },
+            { id: "from", tag: "FM", label: "From", type: "text", placeholder: "e.g: KJ5HBN", required: true, prefillFromCallsign: true },
+            { id: "ref", tag: "REF", label: "Their message (subject or time)", type: "text", placeholder: "e.g: Shelter status, 221830L", required: true },
+            { id: "datetime", tag: "DTG", label: "Date / time", type: "dtg", required: true },
+            { id: "reply", tag: "REPLY", label: "Reply", type: "textarea", placeholder: "Plain language.", required: true },
+            { id: "by", tag: "BY", label: "Replied by (name and position)", type: "text", placeholder: "e.g: R. Jones, Shelter Manager", required: false },
+        ],
+    },
+
     // ---- Net operations ----
 
     {
@@ -348,6 +363,76 @@ const ReportForms = [
             { id: "population", tag: "POP", label: "Current population", type: "text", placeholder: "e.g: 40", required: true },
             { id: "capacity", tag: "CAP", label: "Capacity", type: "text", placeholder: "e.g: 120", required: false },
             { id: "needs", tag: "NEEDS", label: "Needs", type: "textarea", placeholder: "e.g: Cots x20, infant formula", required: false },
+        ],
+    },
+
+    // ---- Public service events ----
+    //
+    // A race net is mostly four messages: how an aid station is doing, what
+    // became of a participant, send a vehicle, and the course behind me is clear.
+    // They are short on purpose: at an event they go out while something else is
+    // happening.
+
+    {
+        id: "aidstation",
+        name: "Aid Station / Checkpoint Status",
+        description: "How a station on the course is doing: participants, supplies and medical.",
+        header: "AID STN",
+        fields: [
+            { id: "station", tag: "STN", label: "Station", type: "text", placeholder: "e.g: Aid 4, mile 12", required: true },
+            { id: "datetime", tag: "DTG", label: "Date / time", type: "dtg", required: true },
+            { id: "status", tag: "STAT", label: "Status", type: "select", required: true, options: ["OPEN", "STANDBY", "CLOSING", "CLOSED"] },
+            { id: "through", tag: "THRU", label: "Participants through", type: "text", placeholder: "e.g: 143", required: false },
+            { id: "onhand", tag: "ONSITE", label: "Still at the station", type: "text", placeholder: "e.g: 6", required: false },
+            { id: "water", tag: "WATER", label: "Water and food", type: "select", required: false, options: ["OK", "LOW", "OUT"] },
+            { id: "medical", tag: "MED", label: "Medical", type: "select", required: false, options: ["NONE", "MINOR", "TREATED", "TRANSPORTED"] },
+            { id: "needs", tag: "NEEDS", label: "Needs", type: "textarea", placeholder: "e.g: Ice, 10 cases water", required: false },
+        ],
+    },
+
+    {
+        id: "participant",
+        name: "Participant Status",
+        description: "What became of one participant, by number: passed, dropped, or taken somewhere.",
+        header: "PARTICIPANT",
+        fields: [
+            { id: "bib", tag: "BIB", label: "Number", type: "text", placeholder: "e.g: 1423", required: true },
+            { id: "datetime", tag: "DTG", label: "Date / time", type: "dtg", required: true },
+            { id: "status", tag: "STAT", label: "Status", type: "select", required: true, options: ["PASSED", "DNF", "WITHDRAWN", "INJURED", "TRANSPORTED", "REJOINED", "NOT SEEN"] },
+            { id: "location", tag: "LOC", label: "Where", type: "text", placeholder: "e.g: Aid 4, mile 12", required: true, offersPosition: true },
+            { id: "name", tag: "NAME", label: "Name, if known", type: "text", placeholder: "Optional", required: false },
+            { id: "destination", tag: "DEST", label: "Taken to / heading for", type: "text", placeholder: "e.g: Finish by SAG 2", required: false },
+            { id: "comments", tag: "CMT", label: "Comments", type: "text", placeholder: "e.g: Walking, declined transport", required: false },
+        ],
+    },
+
+    {
+        id: "sag",
+        name: "SAG / Transport Request",
+        description: "Ask for a vehicle: where, how many, and how urgent.",
+        header: "SAG",
+        fields: [
+            { id: "datetime", tag: "DTG", label: "Date / time", type: "dtg", required: true },
+            { id: "location", tag: "LOC", label: "Pick up at", type: "text", placeholder: "e.g: Mile 14, west side", required: true, offersPosition: true },
+            { id: "count", tag: "NUM", label: "How many participants", type: "text", placeholder: "e.g: 2", required: true },
+            { id: "need", tag: "NEED", label: "What is needed", type: "select", required: true, options: ["RIDE", "RIDE + BIKE", "MECHANICAL", "WATER", "MEDICAL"] },
+            { id: "priority", tag: "PRI", label: "Priority", type: "select", required: true, options: ["ROUTINE", "PRIORITY", "URGENT"] },
+            { id: "bib", tag: "BIB", label: "Number, if known", type: "text", placeholder: "e.g: 1423", required: false },
+            { id: "comments", tag: "CMT", label: "Comments", type: "text", placeholder: "e.g: In shade at the bridge", required: false },
+        ],
+    },
+
+    {
+        id: "sweep",
+        name: "Course Sweep / Last Participant",
+        description: "The last participant is past, or the course behind you is clear.",
+        header: "SWEEP",
+        fields: [
+            { id: "datetime", tag: "DTG", label: "Date / time", type: "dtg", required: true },
+            { id: "point", tag: "PT", label: "Point on the course", type: "text", placeholder: "e.g: Mile 12, Aid 4", required: true, offersPosition: true },
+            { id: "status", tag: "STAT", label: "Status", type: "select", required: true, options: ["LAST PARTICIPANT PASSED", "COURSE CLEAR BEHIND ME", "SWEEPING", "STATION CLOSED"] },
+            { id: "bib", tag: "BIB", label: "Last number seen", type: "text", placeholder: "e.g: 1423", required: false },
+            { id: "comments", tag: "CMT", label: "Comments", type: "text", placeholder: "e.g: Two walkers ahead of sweep", required: false },
         ],
     },
 
@@ -447,6 +532,40 @@ const ReportForms = [
             { id: "unit", tag: "U", label: "Unit or identity", type: "text", placeholder: "e.g: County road crew", required: false },
             { id: "datetime", tag: "T", label: "Time observed", type: "dtg", required: true },
             { id: "equipment", tag: "E", label: "Equipment", type: "text", placeholder: "e.g: 1 backhoe, 1 dump truck", required: false },
+        ],
+    },
+
+    {
+        id: "winterwx",
+        name: "Winter Weather Report",
+        description: "Snow, ice and visibility, in the measurements the NWS asks for.",
+        header: "WINTER WX",
+        fields: [
+            { id: "spotter", tag: "SPTR", label: "Spotter ID", type: "text", placeholder: "e.g: K7ABC or K7ABC/1234", required: true, prefillFromSpotterId: true },
+            { id: "datetime", tag: "DTG", label: "Time measured", type: "dtg", required: true },
+            { id: "location", tag: "LOC", label: "Location", type: "text", placeholder: "e.g: 3 mi NW of Cloudcroft", required: true, offersPosition: true },
+            { id: "newsnow", tag: "NEW", label: "New snow since the last report", type: "text", placeholder: "e.g: 3.0 in since 1200L", required: false },
+            { id: "total", tag: "TOTAL", label: "Storm total", type: "text", placeholder: "e.g: 7.5 in", required: false },
+            { id: "ice", tag: "ICE", label: "Ice accretion", type: "text", placeholder: "e.g: 0.25 in on branches", required: false },
+            { id: "visibility", tag: "VIS", label: "Visibility", type: "text", placeholder: "e.g: 1/4 mi, blowing snow", required: false },
+            { id: "comments", tag: "CMT", label: "Comments", type: "textarea", placeholder: "Measured, not estimated, where you can. Say which.", required: false },
+        ],
+    },
+
+    {
+        id: "flood",
+        name: "Flood / River Stage Report",
+        description: "Water where it should not be, how deep, and whether it is rising.",
+        header: "FLOOD",
+        fields: [
+            { id: "spotter", tag: "SPTR", label: "Spotter ID", type: "text", placeholder: "e.g: K7ABC or K7ABC/1234", required: true, prefillFromSpotterId: true },
+            { id: "datetime", tag: "DTG", label: "Time observed", type: "dtg", required: true },
+            { id: "location", tag: "LOC", label: "Location", type: "text", placeholder: "e.g: Ridge Rd at Salt Creek", required: true, offersPosition: true },
+            { id: "what", tag: "WHAT", label: "What you can see", type: "select", required: true, options: ["WATER OVER ROAD", "STREET FLOODING", "OUT OF BANKS", "STRUCTURE FLOODED", "ROAD WASHED OUT", "GAUGE READING"] },
+            { id: "depth", tag: "DEPTH", label: "Depth or reading", type: "text", placeholder: "e.g: 18 in over the roadway", required: false },
+            { id: "trend", tag: "TREND", label: "Trend", type: "select", required: true, options: ["RISING", "STEADY", "FALLING", "UNKNOWN"] },
+            { id: "closed", tag: "CLSD", label: "Road closed or barricaded", type: "select", required: false, options: ["YES", "NO", "UNKNOWN"] },
+            { id: "comments", tag: "CMT", label: "Comments", type: "textarea", placeholder: "What you can see, not what you infer. Never drive into it to find out.", required: false },
         ],
     },
 

@@ -13,7 +13,7 @@ messaging, settings and the RX log.
 ### Reports tab
 
 A tab alongside Contacts and Channels. Pick the channel to transmit on, choose a report form,
-fill it in, and send. Nineteen forms are included:
+fill it in, and send. Twenty six forms are included:
 
 | Form | Purpose | On the air |
 | ---- | ------- | ---------- |
@@ -21,25 +21,40 @@ fill it in, and send. Nineteen forms are included:
 | ICS-211 ARES/RACES Check-In | Register your station with net control | 115 b, 1 packet |
 | ICS-213 General Message | General message traffic between stations | 192 b, 2 packets |
 | ICS-213RR Resource Request | Request personnel, equipment or supplies | 133 b, 1 packet |
+| ICS-213 Reply | Answer an ICS-213, quoting what it was about | 137 b, 1 packet |
 | 5Ws Briefing | Task a person or team: numbered who, what, when, where and why | 303 b, 3 packets |
 | 9-Line MEDEVAC Request | Medical evacuation request, standard nine lines | 214 b, 2 packets |
+| Aid Station / Checkpoint Status | Participants through, supplies and medical at a station | 112 b, 1 packet |
 | ARRL Radiogram (NTS) | Formal traffic in National Traffic System format | 218 b, 2 packets |
+| Course Sweep / Last Participant | The last participant is past, or the course behind is clear | 103 b, 1 packet |
 | Communications Status | A repeater, mesh node or link up or down | 151 b, 1 packet |
 | Damage Assessment | Observed damage at a location, with severity | 157 b, 1 packet |
+| Flood / River Stage Report | Water depth and whether it is rising, for the NWS | 218 b, 2 packets |
 | Health & Welfare | Enquiry or reply about an individual | 184 b, 2 packets |
 | Net Activation | Announce a net is open and how to check in | 167 b, 2 packets |
 | Net Check-Out | Leave the net and release your station | 114 b, 1 packet |
 | Net Traffic Summary | Net control summary of a session | 113 b, 1 packet |
 | OPORD (5 Paragraph Operations Order) | Army five paragraph order, Hazards in place of enemy forces | 500 b, 4 packets |
+| Participant Status | One participant by number: passed, dropped or transported | 131 b, 1 packet |
 | Position / Station Report | Where a station is and whether it is operational | 141 b, 1 packet |
 | Road / Route Status | Whether a route is passable, and any detour | 134 b, 1 packet |
+| SAG / Transport Request | Send a vehicle: where, how many, how urgent | 103 b, 1 packet |
 | SALUTE Spot Report | Size, activity, location, unit, time, equipment | 161 b, 2 packets |
 | Shelter Status | Population, capacity and needs | 135 b, 1 packet |
 | SKYWARN Spotter Report | Severe weather observation for the NWS | 166 b, 2 packets |
+| Winter Weather Report | Snow, ice and visibility, as the NWS asks for them | 214 b, 2 packets |
 
 The table is in the order the picker shows. The original seventeen have been transmitted between
 two nodes and received whole, the multi part ones in every part, over USB serial and over
-Bluetooth. The two tasking forms, the 5Ws Briefing and the OPORD, were added on 22 September 2026
+Bluetooth.
+
+**Seven were added on 22 September 2026 and are not yet tried on the radios:** the ICS-213 Reply,
+four for public service events (Aid Station, Participant Status, SAG Request, Course Sweep) and
+two for weather nets (Winter Weather, Flood / River Stage). A race net is mostly four messages —
+how a station is doing, what became of a participant, send a vehicle, and the course behind me is
+clear — so those four are written to fit in one packet each. The two weather ones carry the
+measurements the NWS asks for and the spotter report has nowhere to put: new snow against storm
+total, ice accretion, and whether water is rising or falling. The two tasking forms, the 5Ws Briefing and the OPORD, were added on 22 September 2026
 and sent the same day from node 1 (serial) to node 2 (Bluetooth) on Emcomm Testing:
 - **The 5Ws Briefing** went as 3 parts and arrived whole, numbered 1 WHO to 5 WHY under FM and
   DTG, with ACK REQ alone on the last line. The parts left 5.5 and 6.0 s apart, and each reached

@@ -20,7 +20,7 @@ function check(name, condition, detail = "") {
 }
 
 console.log("=== catalogue ===");
-check(`${ReportForms.length} forms defined`, ReportForms.length === 19, `got ${ReportForms.length}`);
+check(`${ReportForms.length} forms defined`, ReportForms.length === 26, `got ${ReportForms.length}`);
 
 const dupes = (values) => values.filter((v, i) => values.indexOf(v) !== i);
 check("form ids are unique", dupes(ReportForms.map((f) => f.id)).length === 0, dupes(ReportForms.map((f) => f.id)).join(","));

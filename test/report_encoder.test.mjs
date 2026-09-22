@@ -105,6 +105,40 @@ const sampleValues = {
         line6: "Fall from roof, head injury, conscious", line7: "SMOKE",
         line8: "1 CIVILIAN", line9: "Open field, power lines N side",
     },
+    ics213reply: {
+        to: "J. Smith, Ops Chief", from: "KJ5HBN", ref: "Shelter status, 221830L",
+        datetime: "221845L SEP", reply: "Ridge St shelter is open, 40 of 120, needs 20 cots",
+        by: "R. Jones, Shelter Manager",
+    },
+    aidstation: {
+        station: "Aid 4, mile 12", datetime: "221030L SEP", status: "OPEN",
+        through: "143", onhand: "6", water: "LOW", medical: "MINOR",
+        needs: "Ice, 10 cases water",
+    },
+    participant: {
+        bib: "1423", datetime: "221042L SEP", status: "TRANSPORTED",
+        location: "Aid 4, mile 12", name: "R. Jones", destination: "Finish by SAG 2",
+        comments: "Heat, declined ambulance",
+    },
+    sag: {
+        datetime: "221050L SEP", location: "Mile 14, west side", count: "2",
+        need: "RIDE + BIKE", priority: "PRIORITY", bib: "1423",
+        comments: "In shade at the bridge",
+    },
+    sweep: {
+        datetime: "221130L SEP", point: "Mile 12, Aid 4", status: "COURSE CLEAR BEHIND ME",
+        bib: "1512", comments: "Two walkers ahead of sweep",
+    },
+    winterwx: {
+        spotter: "K7ABC/1234", datetime: "221500L DEC", location: "3 mi NW of Cloudcroft",
+        newsnow: "3.0 in since 1200L", total: "7.5 in", ice: "0.25 in on branches",
+        visibility: "1/4 mi, blowing snow", comments: "Measured on a board, drifting to 2 ft",
+    },
+    flood: {
+        spotter: "K7ABC/1234", datetime: "221615L SEP", location: "Ridge Rd at Salt Creek",
+        what: "WATER OVER ROAD", depth: "18 in over the roadway", trend: "RISING",
+        closed: "NO", comments: "No barricades up, two cars turned around",
+    },
     fivews: {
         from: "KJ5HBN Net Control", datetime: "221830L SEP", who: "Team 2 (KJ5ABC, KF5XYZ)",
         what: "Check the shelter at Ridge Street school, report capacity and needs",
