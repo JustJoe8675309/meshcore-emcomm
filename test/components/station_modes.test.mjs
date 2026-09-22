@@ -95,7 +95,8 @@ describe("what a mode is", () => {
     });
 
     it("has three, named as the banner names them", () => {
-        expect(MODES).toEqual(["normal", "live", "training"]);
+        // listed in this order, normal first and the real incident last
+        expect(MODES).toEqual(["normal", "training", "live"]);
         expect(MODE_LABELS).toEqual({ normal: "Normal mode", live: "Emcomm-Live", training: "Emcomm-Training" });
     });
 
@@ -535,12 +536,15 @@ describe("the settings tabs", () => {
 
     const tab = (wrapper, mode) => wrapper.findAll("button").find((b) => b.text().includes(MODE_LABELS[mode]));
 
-    // a tab reads the radio for a mode it has never shown, so settling it takes
-    // more than one turn of the loop
+    // a tab reads the radio for a mode it has never shown, through a dynamic
+    // import, so how many turns of the loop that takes is not fixed: wait for the
+    // profile itself rather than guessing a number of ticks
     async function open(wrapper, mode) {
         await tab(wrapper, mode).trigger("click");
-        await flushPromises();
-        await flushPromises();
+        for(let i = 0; i < 50 && wrapper.vm.profile == null; i++){
+            await flushPromises();
+        }
+        expect(wrapper.vm.profile).not.toBe(null);
     }
 
     it("has a tab for each mode, showing the same fields for each", async () => {

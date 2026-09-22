@@ -23,7 +23,9 @@ import EmcommMode from "../EmcommMode.js";
 
 const STORAGE_PREFIX = "station_modes";
 
-export const MODES = ["normal", "live", "training"];
+// the order they are listed in, top to bottom on the switch screen and left to
+// right in settings: normal, then the drill, then the real thing
+export const MODES = ["normal", "training", "live"];
 
 export const MODE_LABELS = {
     normal: "Normal mode",
