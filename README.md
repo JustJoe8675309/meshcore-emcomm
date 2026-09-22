@@ -159,6 +159,10 @@ that is about 2 seconds. The app listens for that, rounded up to a whole second,
 under 10 seconds, which leaves room for a repeater whose owner has raised its delay. So it is
 10 seconds at the bench settings, and about 19 at SF12 and 125 kHz.
 
+Tested side by side on the bench, with one node on each build. Node 2 listened for 10 s and
+found JOE- QTHish at 11 dB. Node 1, still on the 30 s build, found the same repeater and
+nothing else. N.E. ELP OBSVR, found on other days, answered neither search.
+
 Discovery and ping do not always agree, and both are right when they disagree. Discovery
 proves a repeater is in range and hears you, because it answered. Ping additionally
 requires it to answer trace requests, and not every repeater does: one here replies to
@@ -659,6 +663,12 @@ Proven on node 2 over Bluetooth, with every change on the screen timestamped:
 - 24.3 s: channels. The three seconds before this are a second read of the contact list,
   checking that none were dropped. The count sat at 183 of 183 through it and looked stuck,
   so that step now says it is checking for dropped contacts.
+
+Node 1 over USB serial is much quicker, and it confirmed the channel count. The whole screen
+took 5.4 s:
+- 2.9 s: all 213 contacts read in one pass, so the checking step never came up.
+- 3.8 to 5.4 s: channels counted from 0 of 40 to 40 of 40, with 13 found. Both nodes have forty
+  slots and thirteen channels.
 - 29.5 s: the screen was gone and the node was ready.
 
 A backup on node 1 showed its own screen for the 4 seconds it took, and went away with 213
