@@ -132,7 +132,15 @@ being a variable.
       fields are the fault, not the default: saving them writes the emptiness, and
       an empty Name box looks exactly like a node that has no name.
 - [ ] **A failed read says so.** If the radio will not answer, the page must show the
-      warning above the fields rather than a form full of blanks.
+      warning above the fields rather than a form full of blanks, within about ten
+      seconds. One way to get a radio that will not answer while still connected:
+      reboot node 1 from Settings, whose USB bridge keeps the port open, and open
+      settings again at once.
+- [ ] **A serial radio survives its own reboot.** Reboot node 1 from Settings and wait
+      a few seconds. Settings should fill without reconnecting, the console should
+      show "Serial line error, reading on" if the reboot garbled the line, and the
+      device clock should read in step. Before the fix the app went deaf while still
+      saying it was connected, and after a reconnect the clock was minutes out.
 - [ ] **A slow read says so too, and Save waits for it.** If the radio is busy, the
       page must say it is reading, with Save greyed out, and then fill in. Empty
       fields and a live Save button is the fault.
@@ -205,6 +213,9 @@ one found so far came from a dropped frame, and the link that drops them is BLE.
 - [ ] **The two slots stay apart.** Backing up while converted must not overwrite
       the pre-EMCOMM one. If it does, the way home is gone at the moment it is
       least recoverable.
+- [ ] **The way home stays reachable.** Back up while converted, so the newest backup
+      is the converted state, then press **Leave EMCOMM mode**. It must offer the
+      pre-EMCOMM backup, not the newest, and restore the node to it.
 
 Expect a conversion to take a couple of minutes over Bluetooth. Removals run at
 roughly a third the speed of writes, so the trim is the slow half.

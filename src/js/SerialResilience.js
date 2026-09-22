@@ -75,6 +75,11 @@ export async function resilientReadLoop() {
             }
             this.reader = readable.getReader();
 
+            // a line error on this link is nearly always the radio rebooting behind
+            // a bridge that kept the port open, and a reboot costs the radio its
+            // clock. Tell the app, which is the part that can put it right
+            this.emit?.("recovered", error);
+
         }
 
     }

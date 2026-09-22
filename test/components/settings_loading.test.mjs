@@ -85,6 +85,14 @@ describe("SettingsPage while reading the radio", () => {
         expect(nameField(wrapper).element.value).toBe("");
     });
 
+    it("reads with the short bound, so a silent radio is reported in seconds", async () => {
+        // with the general bound, and the EMCOMM group's clock read queued first,
+        // a radio that had stopped answering took 37 seconds to report
+        mountPage();
+        await flushPromises();
+        expect(Connection.loadSelfInfo).toHaveBeenCalledWith(Connection.READ_TIMEOUT_MILLIS);
+    });
+
     it("fills the fields and turns Save on once the radio answers", async () => {
         const wrapper = mountPage();
         read.resolve(SELF_INFO);

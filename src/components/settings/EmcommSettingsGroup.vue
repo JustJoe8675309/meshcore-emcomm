@@ -243,7 +243,7 @@ export default {
             try {
                 await action();
                 // read back rather than assume: the device owns these values
-                await Connection.loadSelfInfo();
+                await Connection.loadSelfInfo(Connection.READ_TIMEOUT_MILLIS);
                 this.message = doneMessage ?? `${what} done.`;
             } catch(e) {
                 const reason = String(e?.message ?? e);

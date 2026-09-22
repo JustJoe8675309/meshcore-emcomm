@@ -1,4 +1,5 @@
 import GlobalState from "./GlobalState.js";
+import { toRaw } from "vue";
 import {Constants, WebBleConnection, WebSerialConnection} from "@liamcottle/meshcore.js";
 import Database from "./Database.js";
 import Utils from "./Utils.js";
@@ -76,6 +77,7 @@ class Connection {
         // update connection and listen for events
         GlobalState.connection = connection;
         this.serialiseFrames(connection);
+        connection.on?.("recovered", () => this.onSerialRecovered(connection));
         GlobalState.connectionTransport = transport;
         GlobalState.connection.on("connected", () => this.onConnected());
         GlobalState.connection.on("disconnected", () => this.onDisconnected());
@@ -89,6 +91,68 @@ class Connection {
 
     // how long to wait for the device to identify itself before giving up
     static CONNECTION_TIMEOUT_MILLIS = 15000;
+
+    // after a serial line error, how often and how many times to ask the radio
+    // whether it is back: a reboot took a few seconds on the bench, so this
+    // allows thirty
+    static RECOVERY_RETRY_MILLIS = 2000;
+    static RECOVERY_ATTEMPTS = 15;
+
+    // one recovery at a time: a reboot can raise more than one line error
+    static recovering = false;
+
+    /**
+     * Puts the radio right after the serial read loop recovered from a line error.
+     *
+     * The loop keeps reading through the error now, so the app no longer needs a
+     * reconnect after the radio reboots, and a reconnect was what used to set the
+     * radio's clock. On the bench node 1 came back from a reboot 656 seconds out,
+     * with nothing in the app about to correct it, and every message it sent
+     * would have carried the wrong time.
+     *
+     * So once the radio answers again, which is a few seconds into its reboot,
+     * the clock is set and self info is read afresh.
+     */
+    static async onSerialRecovered(connection) {
+
+        if(this.recovering){
+            return;
+        }
+        this.recovering = true;
+
+        try {
+            for(let attempt = 0; attempt < this.RECOVERY_ATTEMPTS; attempt++){
+
+                await Utils.sleep(this.RECOVERY_RETRY_MILLIS);
+
+                // gone, or replaced by another radio, while we waited. Compared raw:
+                // GlobalState is reactive, so reading it back gives a proxy that is
+                // never identical to the connection it wraps
+                if(toRaw(GlobalState.connection) !== toRaw(connection)){
+                    return;
+                }
+
+                try {
+                    await this.exclusive(() => connection.getDeviceTime(), this.READ_TIMEOUT_MILLIS);
+                } catch(e) {
+                    // still booting
+                    continue;
+                }
+
+                await this.syncDeviceTime();
+                await this.loadSelfInfo(this.READ_TIMEOUT_MILLIS);
+                console.log("radio answering again after a line error; clock set");
+                return;
+
+            }
+            console.log("radio did not answer after a line error; clock left as it was");
+        } catch(e) {
+            console.log("could not put the radio right after a line error", e);
+        } finally {
+            this.recovering = false;
+        }
+
+    }
 
     static startConnectionWatchdog() {
 
@@ -255,9 +319,14 @@ class Connection {
         await this.disconnect();
     }
 
-    static async loadSelfInfo() {
+    /**
+     * Reads the radio's self info. The default bound is the connect one, which is
+     * generous because a radio can be slow to answer straight after the link
+     * opens; pages reading an already connected radio pass the read bound.
+     */
+    static async loadSelfInfo(timeoutMillis = this.CONNECTION_TIMEOUT_MILLIS) {
 
-        GlobalState.selfInfo = await this.exclusive(() => GlobalState.connection.getSelfInfo(this.CONNECTION_TIMEOUT_MILLIS));
+        GlobalState.selfInfo = await this.exclusive(() => GlobalState.connection.getSelfInfo(timeoutMillis), timeoutMillis);
 
         // device answered, so the watchdog no longer needs to fire
         this.clearConnectionWatchdog();
@@ -605,7 +674,7 @@ class Connection {
     static async updateBatteryPercentage() {
         if(GlobalState.connection){
             try {
-                const response = await this.exclusive(() => GlobalState.connection.getBatteryVoltage());
+                const response = await this.exclusive(() => GlobalState.connection.getBatteryVoltage(), this.READ_TIMEOUT_MILLIS);
                 GlobalState.batteryPercentage = Utils.getBatteryPercentage(response.batteryMilliVolts);
             } catch(e) {
                 // ignore error
@@ -640,6 +709,18 @@ class Connection {
 
     /** Headroom over a trace's own timeout, which only starts once it is sent. */
     static TRACE_QUEUE_TIMEOUT_MILLIS = 30000;
+
+    /**
+     * How long a simple read of the attached radio may take: its clock, its self
+     * info, its firmware details, its battery.
+     *
+     * These are local, not mesh traffic, and answer in well under a second on
+     * either link; 0.2 seconds for self info over Bluetooth on the bench. The
+     * general command bound is 20 seconds, and on a radio that had stopped
+     * answering, the settings page queued its clock read and its self info read
+     * one after the other and took 37 seconds to say it could not read anything.
+     */
+    static READ_TIMEOUT_MILLIS = 5000;
 
     /**
      * Runs one device command at a time, and never for ever.
@@ -745,7 +826,7 @@ class Connection {
     }
 
     static async deviceQuery(appTargetVer = 1) {
-        return await this.exclusive(() => GlobalState.connection.deviceQuery(appTargetVer));
+        return await this.exclusive(() => GlobalState.connection.deviceQuery(appTargetVer), this.READ_TIMEOUT_MILLIS);
     }
 
     /**
@@ -755,7 +836,7 @@ class Connection {
      * while the settings page is reading self info.
      */
     static async getDeviceTime() {
-        return await this.exclusive(() => GlobalState.connection.getDeviceTime());
+        return await this.exclusive(() => GlobalState.connection.getDeviceTime(), this.READ_TIMEOUT_MILLIS);
     }
 
     /**

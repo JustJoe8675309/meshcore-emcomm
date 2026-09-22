@@ -438,6 +438,13 @@ checked against the connected node before it can be restored.
 Restoring adds everything back and removes nothing. Trimming is the mode's business, and keeping
 them apart means a restore can never lose anything by itself.
 
+**Leave EMCOMM mode** restores the pre-EMCOMM backup specifically, and appears whenever the node
+is in the mode and that backup exists. The final audit found the way home unreachable without it:
+the two slots stayed apart as designed, but Load last backup restores the newest, so one routine
+backup taken during the incident, which is exactly what an operator does, put the pre-EMCOMM
+backup beyond every button. The backup list is also refreshed the moment the pre-convert backup
+is saved; mid conversion it still named the one before, and Save to file exported that.
+
 An **EMCOMM Settings** group at the bottom of the settings page shows each setting the mode
 changes, with what it is now, so any of them can be set or put back by hand, and holds the
 repeating advert intervals. Radio settings are not repeated there: the groups above already show
@@ -455,6 +462,7 @@ every setting identical afterwards.
 | `getChannels` stops at the first index it cannot read | One channel with an unusual key would silently truncate the list and take every later one with it |
 | Commands share one emitter and match replies by response code, not by request | The settings page stopped prefilling: the group's clock read and the page's self info read crossed, and every field came up empty |
 | Bluetooth writes that collide are caught and only logged | "GATT operation already in progress" in the console, and a command that never reached the radio waiting for a reply that could not come |
+| The serial read loop returns on any read error, emitting nothing | A radio rebooted behind a CP210x bridge, whose port stays open, raised a FramingError: the app showed it connected while hearing nothing, until disconnected and connected again |
 
 The crossed replies are the same shape as the rest and the worst of them, because it was silent
 and it lied: an empty Name box looks like a node with no name, and saving it would have written
@@ -472,6 +480,19 @@ waits on the mesh, a room login or a repeater discovery, hold the queue only unt
 the packet went out; the answer comes back as a push that only they can match.
 
 A read that fails says so instead of leaving the form blank.
+
+Web Serial treats break, buffer overrun, framing and parity errors as recoverable: the port hands
+out a new stream. The read loop now carries on with it, and a pulled cable is still reported by
+the port's own disconnect event. That also meant a reboot no longer forced the reconnect that used
+to set the radio's clock; node 1 came back 656 seconds out. So a recovered line error now waits
+for the radio to answer, sets its clock and reads it afresh. The first version of that check
+never fired: `GlobalState` is reactive, so the connection read back from it is a proxy and was
+never identical to the one it wraps. The test caught it before the radio did.
+
+Simple local reads, the clock, self info, firmware details and battery, are bounded at five
+seconds instead of the general twenty. They answer in a fraction of a second on either link, and
+a radio that had stopped answering took the settings page 37 seconds to report, two such reads
+each waiting out the general bound in turn.
 
 The first of those is older than EMCOMM mode. `loadContacts` could always have hung at connect;
 re-reading for completeness simply gave it more chances.
@@ -716,7 +737,7 @@ timeout behind it, on a link that was otherwise working perfectly.
 npm test
 ```
 
-Six plain node suites and twenty-four component suites, 394 component tests, no hardware
+Six plain node suites and twenty-seven component suites, 419 component tests, no hardware
 required:
 
 - `test/report_encoder.test.mjs` covers rendering and packet splitting, including a

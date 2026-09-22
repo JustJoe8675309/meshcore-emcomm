@@ -107,6 +107,20 @@
                                 <div class="text-xs font-normal text-gray-500">{{ lastBackupLabel }}</div>
                             </button>
 
+                            <!-- the way home, whatever has been backed up since. Load last
+                                 backup restores the newest, and a routine backup taken during
+                                 the incident is newer than this one: on the bench that left
+                                 the pre-EMCOMM slot intact but unreachable -->
+                            <button
+                                v-if="inEmcommMode && preEmcommBackup"
+                                @click="restorePreEmcomm"
+                                :disabled="isBackingUp || isRestoring || notConnected"
+                                type="button"
+                                class="w-full text-white bg-amber-700 hover:bg-amber-800 disabled:bg-gray-400 font-medium rounded-lg text-sm px-5 py-2.5">
+                                <div>{{ isRestoring ? "Restoring..." : "Leave EMCOMM mode" }}</div>
+                                <div class="text-xs font-normal">Restores the backup from before EMCOMM mode, {{ preEmcommLabel }}</div>
+                            </button>
+
                             <div v-if="backups.length > 0" class="flex space-x-2">
                                 <button
                                     @click="exportBackup"
@@ -379,6 +393,11 @@ export default {
                 const backup = await NodeBackup.capture();
                 const saved = NodeBackup.save(backup, NodeBackup.SLOT_PRE_EMCOMM);
 
+                // at once, not when the conversion finishes: Save to file and Load
+                // last backup read this list, and mid conversion it still named the
+                // backup before this one
+                this.refreshBackups();
+
                 if(!saved){
                     this.backupError = "The backup could not be saved, so nothing was changed. Save one to a file first.";
                     return;
@@ -561,6 +580,24 @@ Settings, channels and ${entry.backup.contacts.length} contacts will be restored
 
         },
 
+        async restorePreEmcomm() {
+
+            const entry = this.preEmcommBackup;
+            if(entry == null){
+                return;
+            }
+
+            const when = new Date(entry.backup.capturedAt).toLocaleString();
+            if(!confirm(`Leave EMCOMM mode, and write the backup from ${when}, taken before this node entered it, back to the node?
+
+Settings, channels and ${entry.backup.contacts.length} contacts will be restored. Nothing will be removed.`)){
+                return;
+            }
+
+            await this.runRestore({ ...entry.backup, slot: NodeBackup.SLOT_PRE_EMCOMM });
+
+        },
+
         async runRestore(backup) {
 
             this.isRestoring = true;
@@ -679,7 +716,7 @@ Settings, channels and ${backup.contacts.length} contacts will be written to thi
             this.isLoading = true;
 
             try {
-                await Connection.loadSelfInfo();
+                await Connection.loadSelfInfo(Connection.READ_TIMEOUT_MILLIS);
             } catch(e) {
                 // every field below is filled from self info, so a failure here used
                 // to leave the whole page blank with nothing said. An empty Name box
@@ -799,7 +836,7 @@ Settings, channels and ${backup.contacts.length} contacts will be written to thi
                 await Connection.setTxPower(this.txPower);
 
                 // reload self info
-                await Connection.loadSelfInfo();
+                await Connection.loadSelfInfo(Connection.READ_TIMEOUT_MILLIS);
 
                 // show success alert
                 alert("Settings saved.");
@@ -860,6 +897,22 @@ Settings, channels and ${backup.contacts.length} contacts will be written to thi
         nodePublicKey() {
             const key = GlobalState.selfInfo?.publicKey;
             return key == null ? null : Utils.bytesToHex(key);
+        },
+
+        inEmcommMode() {
+            // read so this recomputes when the mode changes; the mode itself is
+            // kept in browser storage, which the page cannot watch
+            GlobalState.emcommModeRevision;
+            return this.nodePublicKey != null && EmcommMode.enteredAt(this.nodePublicKey) != null;
+        },
+
+        preEmcommBackup() {
+            return this.backups.find((entry) => entry.slot === NodeBackup.SLOT_PRE_EMCOMM) ?? null;
+        },
+
+        preEmcommLabel() {
+            const entry = this.preEmcommBackup;
+            return entry == null ? "" : new Date(entry.backup.capturedAt).toLocaleString();
         },
 
         lastBackupLabel() {
