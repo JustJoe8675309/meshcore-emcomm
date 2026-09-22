@@ -177,6 +177,38 @@ section("Assumptions about the MeshCore firmware");
                 why: "the bound PathInfo uses to reject a path that could not fit",
             },
             {
+                // position roll calls and answers in a room go as plain posts for
+                // exactly this reason: both bench radios are admins of the test room
+                name: "a room runs text type 1 from an admin as a command",
+                path: "examples/simple_room_server/MyMesh.cpp",
+                pattern: /flags\s*==\s*TXT_TYPE_CLI_DATA\s*\)\s*\{\s*if\s*\(\s*client->isAdmin\(\)\s*\)/,
+                why: "if rooms stop doing this, type 1 could carry room traffic out of stock apps' sight; if they change how, re-check sendRoomPost",
+            },
+            {
+                name: "a room post holds 151 bytes",
+                path: "examples/simple_room_server/MyMesh.h",
+                pattern: /#define\s+MAX_POST_TEXT_LEN\s+\(\s*160\s*-\s*9\s*\)/,
+                why: "position posts in a room are cut to Protocol.MAX_ROOM_BYTES, 151",
+            },
+            {
+                name: "a room keeps 32 posts",
+                path: "examples/simple_room_server/MyMesh.h",
+                pattern: /#define\s+MAX_UNSYNCED_POSTS\s+32\b/,
+                why: "the room settings warn that position posts take one of the room's 32 places",
+            },
+            {
+                name: "a room stamps posts with its own clock",
+                path: "examples/simple_room_server/MyMesh.cpp",
+                pattern: /memcpy\(\s*&reply_data\[len\],\s*&post\.post_timestamp,\s*4\s*\)/,
+                why: "replayed room requests are told from new ones by this time",
+            },
+            {
+                name: "a room login carries the room's clock",
+                path: "examples/companion_radio/MyMesh.cpp",
+                pattern: /memcpy\(\s*&out_frame\[i\],\s*&tag,\s*4\s*\);\s*i\s*\+=\s*4;\s*\/\/\s*NEW:\s*include server timestamp/,
+                why: "readRoomClockOffset reads bytes 8 to 11 of the login success push as the room's time",
+            },
+            {
                 name: "MAX_TEXT_LEN is 160",
                 path: "src/helpers/BaseChatMesh.h",
                 pattern: /MAX_TEXT_LEN\s*\(?\s*(?:160|10\s*\*\s*CIPHER_BLOCK_SIZE)/,

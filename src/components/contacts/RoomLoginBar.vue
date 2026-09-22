@@ -132,7 +132,12 @@ export default {
                 this.canPost = response?.canPost === true;
                 // the composer reads this, so it can refuse to post into a room
                 // that would ignore the post
-                GlobalState.roomLogins[this.contactKey] = { isAdmin: this.isAdmin, canPost: this.canPost };
+                // the room's clock offset lets a replayed post be told from a new one
+                GlobalState.roomLogins[this.contactKey] = {
+                    isAdmin: this.isAdmin,
+                    canPost: this.canPost,
+                    clockOffsetSeconds: response?.clockOffsetSeconds ?? null,
+                };
                 this.$emit("logged-in");
 
             } catch(e) {

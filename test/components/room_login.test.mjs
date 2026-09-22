@@ -381,12 +381,12 @@ describe("RoomLoginBar", () => {
         // a room ignores a post from a client that has not logged in, so the
         // composer needs to know, and it is a different component
         GlobalState.roomLogins = {};
-        vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ isAdmin: true, canPost: true });
+        vi.spyOn(Connection, "loginToRoom").mockResolvedValue({ isAdmin: true, canPost: true, clockOffsetSeconds: -1800 });
         const wrapper = mountBar();
         wrapper.vm.password = "pw";
         await wrapper.vm.logIn();
         const key = Array.from(ROOM_KEY).map((b) => b.toString(16).padStart(2, "0")).join("");
-        expect(GlobalState.roomLogins[key]).toEqual({ isAdmin: true, canPost: true });
+        expect(GlobalState.roomLogins[key]).toEqual({ isAdmin: true, canPost: true, clockOffsetSeconds: -1800 });
     });
 
     it("records nothing when the login failed", async () => {

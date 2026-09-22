@@ -807,8 +807,11 @@ are admins of the test room. Other things differ from a channel:
 - **A post is capped at 151 bytes,** so a long list of stations already heard is cut to fit,
   leaving out those heard first.
 - **Rooms keep 32 posts for members who are away** and replay them at login. A roll call or
-  request older than 10 minutes, by the room's clock, is ignored as a replay. A position is
-  still listed.
+  request older than 10 minutes is ignored as a replay. A position is still listed.
+- **A post's age comes from the room's clock,** which a room without GPS can have well out. The
+  login reply carries the room's time, so the app notes how far the room's clock is from its own
+  and judges age against that. Without it, a room running 10 minutes slow would make every live
+  request look like a replay.
 - **Each position post takes one of those 32 places,** so a roll call can push older messages
   out. Answering in a room is off until the room is ticked under Position requests in settings,
   and the settings say so.

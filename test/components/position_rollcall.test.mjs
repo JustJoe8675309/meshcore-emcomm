@@ -360,6 +360,36 @@ describe("in a room", () => {
         expect(PositionService.state.reports[0].shared).toBe(true);
     });
 
+    it("judges a post's age by the room's own clock, read at login, not this one", () => {
+        PositionService.saveSettings({ markedChannels: [], markedRooms: [ROOM_HEX], autoAnswer: false });
+        // a room without GPS running 30 minutes slow: a roll call posted just now
+        // carries a time 30 minutes ago by this clock
+        const roomNow = now() - 30 * 60;
+        GlobalState.roomLogins[ROOM_HEX] = { isAdmin: true, canPost: true, clockOffsetSeconds: -30 * 60 };
+        PositionService.onRoomText(ROOM_CONTACT, ALPHA.slice(0, 4), rollCall(), roomNow);
+        expect(PositionService.state.prompt?.rollCall).toBe(true);
+        // and one really posted 20 minutes ago, by the room's clock, is still a replay
+        PositionService.state.prompt = null;
+        PositionService.onRoomText(ROOM_CONTACT, ALPHA.slice(0, 4), rollCall(), roomNow - 20 * 60);
+        expect(PositionService.state.prompt).toBe(null);
+    });
+
+    it("reads the room's clock from the login success frame", () => {
+        const roomTime = now() - 1800;
+        const frame = new Uint8Array(14);
+        frame[0] = 0x85;
+        frame[1] = 1;
+        frame.set(ROOM.slice(0, 6), 2);
+        new DataView(frame.buffer).setUint32(8, roomTime, true);
+        frame[12] = 3;
+        frame[13] = 9;
+        const login = Connection.readLoginSuccess(frame);
+        expect(login.canPost).toBe(true);
+        expect(Math.abs(login.clockOffsetSeconds - -1800)).toBeLessThanOrEqual(1);
+        // a frame from before the room sent its time says nothing about its clock
+        expect(Connection.readLoginSuccess(frame.slice(0, 8)).clockOffsetSeconds).toBe(null);
+    });
+
     it("does not believe a post whose code names another author than the room does", () => {
         PositionService.saveSettings({ markedChannels: [], markedRooms: [ROOM_HEX], autoAnswer: false });
         expect(PositionService.onRoomText(ROOM_CONTACT, BRAVO.slice(0, 4), rollCall(), now())).toBe(true);

@@ -1598,10 +1598,11 @@ class Connection {
     static readLoginSuccess(bytes) {
 
         const isAdmin = bytes[1] !== 0;
+        const clockOffsetSeconds = this.readRoomClockOffset(bytes);
 
         // no ACL byte before v7
         if(bytes.length < 13){
-            return { role: null, isAdmin: isAdmin, canPost: true, permissions: null };
+            return { role: null, isAdmin: isAdmin, canPost: true, permissions: null, clockOffsetSeconds };
         }
 
         const role = bytes[12] & 3;
@@ -1610,8 +1611,27 @@ class Connection {
             isAdmin: role === 3,
             canPost: role >= 2,
             permissions: bytes[12],
+            clockOffsetSeconds,
         };
 
+    }
+
+    /**
+     * How far the room's clock is from this one, in seconds, from the room's time
+     * in the login success frame (bytes 8 to 11, little endian), or null when the
+     * frame is too old to carry it. A room stamps each post with its own clock,
+     * and a room without GPS can be well out, so a post's age is only known
+     * against the room's time, not ours.
+     */
+    static readRoomClockOffset(bytes) {
+        if(bytes.length < 12){
+            return null;
+        }
+        const roomTime = (bytes[8] | (bytes[9] << 8) | (bytes[10] << 16) | (bytes[11] << 24)) >>> 0;
+        if(roomTime === 0){
+            return null;
+        }
+        return roomTime - Math.floor(Date.now() / 1000);
     }
 
     static async loginToRoom(publicKey, password) {

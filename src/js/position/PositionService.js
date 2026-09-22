@@ -838,8 +838,12 @@ class PositionService {
         }
         const via = { kind: "room", contactKeyHex: Utils.bytesToHex(room.publicKey), name: this.contactName(room) };
         // a room replays what was missed to anyone logging in, and an old request
-        // must not be answered as if it were new
-        const ageSeconds = Math.floor(Date.now() / 1000) - (postedAtSeconds ?? 0);
+        // must not be answered as if it were new. The post carries the room's time,
+        // and a room's clock can be well out, so the age is taken against the room's
+        // clock as read at login. Without that, a room running ten minutes slow would
+        // make every live request look like a replay
+        const offset = GlobalState.roomLogins?.[via.contactKeyHex]?.clockOffsetSeconds ?? 0;
+        const ageSeconds = Math.floor(Date.now() / 1000) + offset - (postedAtSeconds ?? 0);
         const isRequest = message.kind === Protocol.KIND.REQUEST || message.kind === Protocol.KIND.ROLL_CALL;
         if(isRequest && postedAtSeconds && ageSeconds > ROOM_STALE_SECONDS){
             console.log(`room request ${ageSeconds}s old, a replay; ignored`);
