@@ -20,6 +20,9 @@
                     {{ plan.counts.repeaters }} repeaters and
                     {{ plan.counts.rooms }} rooms quiet over {{ quietDays }} days.
                 </div>
+                <div v-if="plan.keptFavourites > 0" class="text-xs text-gray-700">
+                    {{ plan.keptFavourites }} kept because they are favourites, whatever their type or age.
+                </div>
                 <div v-if="plan.keptForUnreadableAge > 0" class="text-xs text-amber-700">
                     {{ plan.keptForUnreadableAge }} kept because their last heard time could not be read.
                     That time comes from the other node's clock, so it is not always trustworthy.
@@ -115,9 +118,100 @@
                 </label>
 
                 <label class="flex items-start space-x-2 text-xs text-gray-700">
+                    <input v-model="advertPosition" type="checkbox" class="mt-0.5">
+                    <span>Put this station's position in every advert, so other stations plot it without asking. Anyone in range sees where you are</span>
+                </label>
+
+                <label class="flex items-start space-x-2 text-xs text-gray-700">
+                    <input v-model="multiAcks" type="checkbox" class="mt-0.5">
+                    <span>Send each delivery acknowledgement more than once, so fewer messages that arrived are reported as failed. Costs a little airtime</span>
+                </label>
+
+                <label class="flex items-start space-x-2 text-xs text-gray-700">
                     <input v-model="autoAddContacts" type="checkbox" class="mt-0.5">
                     <span>Add contacts automatically, so every station heard can be messaged and can ask for a position. The list refills after the trim</span>
                 </label>
+            </div>
+
+            <!-- the net's channel, and answering on it -->
+            <div class="p-3 space-y-2">
+                <div class="text-sm font-medium text-gray-900">Net channel</div>
+
+                <label class="flex items-start space-x-2 text-xs text-gray-700">
+                    <input v-model="addChannel" type="checkbox" class="mt-0.5">
+                    <span>Add this channel, if the radio does not have it already</span>
+                </label>
+
+                <input
+                    v-model="channelName"
+                    :disabled="!addChannel"
+                    type="text"
+                    aria-label="Net channel name"
+                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2 disabled:opacity-60">
+
+                <div class="text-xs text-gray-500">
+                    A channel beginning with # has a key worked out from its name, so every station
+                    joins it by name alone with nothing to pass around. The spelling and capitals
+                    must match exactly. It is not private: anyone who guesses the name can read it.
+                </div>
+
+                <label class="flex items-start space-x-2 text-xs text-gray-700">
+                    <input v-model="answerPositionsOnChannel" :disabled="!addChannel" type="checkbox" class="mt-0.5">
+                    <span>Answer position requests on this channel, so net control's roll calls reach you</span>
+                </label>
+
+                <label class="flex items-start space-x-2 text-xs text-gray-700">
+                    <input v-model="autoAnswerPositions" type="checkbox" class="mt-0.5">
+                    <span>Answer them automatically, without asking each time</span>
+                </label>
+            </div>
+
+            <!-- repeating adverts, so the net keeps seeing this station -->
+            <div class="p-3 space-y-2">
+                <div class="text-sm font-medium text-gray-900">Keep announcing while in the mode</div>
+
+                <label class="flex items-start space-x-2 text-xs text-gray-700">
+                    <input v-model="repeatAdverts" type="checkbox" class="mt-0.5">
+                    <span>Repeat adverts: zero hop every
+                        <input v-model.number="zeroHopMinutes" :disabled="!repeatAdverts" type="number" min="0" step="1" aria-label="Minutes between zero hop adverts"
+                               class="w-16 mx-1 bg-gray-50 border border-gray-300 text-sm rounded p-1">
+                        minutes, flood every
+                        <input v-model.number="floodMinutes" :disabled="!repeatAdverts" type="number" min="0" step="1" aria-label="Minutes between flood adverts"
+                               class="w-16 mx-1 bg-gray-50 border border-gray-300 text-sm rounded p-1">
+                        minutes. 0 turns one off</span>
+                </label>
+
+                <div class="text-xs text-gray-500">
+                    These run in this app, so they need it open, and the screen is kept on while they
+                    run. A flood advert reaches the whole mesh, so it is the one to keep rare.
+                </div>
+            </div>
+
+            <!-- who is operating: the report forms fill FM and DTG from these -->
+            <div class="p-3 space-y-2">
+                <div class="text-sm font-medium text-gray-900">Operator</div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <div class="text-xs text-gray-500 mb-1">Callsign</div>
+                        <input v-model="callsign" type="text" aria-label="Operator callsign" placeholder="KJ5HBN"
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2">
+                    </div>
+                    <div>
+                        <div class="text-xs text-gray-500 mb-1">Report times</div>
+                        <select v-model="dtgZone" aria-label="Report time zone"
+                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2">
+                            <option value="local">Local (L)</option>
+                            <option value="zulu">Zulu (Z)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div v-if="callsign.trim() === ''" role="status" class="text-xs text-amber-700">
+                    Report forms fill FM from the callsign, and it names you on a position answer.
+                    With none, they use the radio's name.
+                </div>
+                <div class="text-xs text-gray-500">Match the time zone the net runs on.</div>
             </div>
 
             <!-- announcing -->
@@ -185,8 +279,24 @@ export default {
             // stations in its contacts
             autoAddContacts: true,
             shareLocation: true,
+            // every advert carries the position during an incident: other stations
+            // plot the net without asking. Off is one tick away for anyone who
+            // would rather not broadcast where they are
+            advertPosition: true,
+            // fewer messages that arrived reported as failed, for a little airtime
+            multiAcks: true,
             advert: "flood",
             discover: true,
+            addChannel: true,
+            channelName: EmcommMode.EMCOMM_CHANNEL_NAME,
+            answerPositionsOnChannel: true,
+            // off: the operator stays in the loop unless they choose otherwise
+            autoAnswerPositions: false,
+            repeatAdverts: true,
+            zeroHopMinutes: EmcommMode.ADVERT_SCHEDULE.zeroHopMinutes,
+            floodMinutes: EmcommMode.ADVERT_SCHEDULE.floodMinutes,
+            callsign: callsign,
+            dtgZone: OperatorSettings.state.dtgZone,
         };
     },
     watch: {
@@ -216,8 +326,18 @@ export default {
                 syncClock: this.syncClock,
                 autoAddContacts: this.autoAddContacts,
                 shareLocation: this.shareLocation,
+                advertPosition: this.advertPosition,
+                multiAcks: this.multiAcks,
                 advert: this.advert,
                 discover: this.discover,
+                channelName: this.addChannel ? (this.channelName ?? "").trim() : null,
+                answerPositionsOnChannel: this.addChannel && this.answerPositionsOnChannel,
+                autoAnswerPositions: this.autoAnswerPositions,
+                advertSchedule: this.repeatAdverts
+                    ? { zeroHopMinutes: this.zeroHopMinutes, floodMinutes: this.floodMinutes }
+                    : null,
+                callsign: (this.callsign ?? "").trim(),
+                dtgZone: this.dtgZone,
             });
         },
     },

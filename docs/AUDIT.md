@@ -319,6 +319,19 @@ one found so far came from a dropped frame, and the link that drops them is BLE.
 - [ ] **The way home stays reachable.** Back up while converted, so the newest backup
       is the converted state, then press **Leave EMCOMM mode**. It must offer the
       pre-EMCOMM backup, not the newest, and restore the node to it.
+- [ ] **The radio's emcomm settings.** After converting, the radio reads back with
+      extra acknowledgements on, the position in adverts on, and location sharing
+      on. The other node should see this station's position in its advert without
+      asking for it.
+- [ ] **Favourites survive the trim.** Star a companion before converting. It is
+      still there afterwards, and the dialog said how many were kept.
+- [ ] **The net channel.** #Emcomm appears in the channel list after converting, and
+      it is ticked under Position requests. On the other node, convert with the same
+      channel name: the two must be able to message each other on it, which proves
+      both derived the same key. Convert a second time: it says the channel is
+      already there rather than adding it twice.
+- [ ] **Repeating adverts start.** The settings group shows zero hop every 30 min and
+      flood every 60 after converting, and the other node hears one within the hour.
 - [ ] **Leaving removes what the mode added, when asked.** While converted, let a
       contact be added automatically, add a test channel in an empty slot, set a
       repeating advert schedule and tick a channel for position requests. Leave: the

@@ -1057,6 +1057,15 @@ class Connection {
         await this.withSettingTimeout("channel", () => GlobalState.connection.setChannel(channelIdx, name, secret));
     }
 
+    /** One channel slot as the radio holds it, or throws when it cannot be read. */
+    static async getChannel(channelIdx) {
+        const connection = GlobalState.connection;
+        if(connection == null){
+            throw new Error(this.DISCONNECTED);
+        }
+        return await this.exclusive(() => connection.getChannel(channelIdx), 4000);
+    }
+
     /** Empties a channel slot: an empty name and a zeroed key, as the library does. */
     static async deleteChannel(channelIdx) {
         await this.withSettingTimeout("channel", () => GlobalState.connection.setChannel(channelIdx, "", new Uint8Array(16)));

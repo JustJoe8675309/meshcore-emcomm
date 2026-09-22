@@ -16,9 +16,13 @@ import { Constants } from "@liamcottle/meshcore.js";
 import GlobalState from "./GlobalState.js";
 import Connection from "./Connection.js";
 import Utils from "./Utils.js";
+import ContactFlags from "./ContactFlags.js";
 
 const DAY_SECONDS = 24 * 60 * 60;
 const QUIET_DAYS = 90;
+
+// the radio's channel slots, as NodeBackup reads them
+const MAX_CHANNEL_SLOTS = 16;
 
 // A timestamp before this is treated as unreadable rather than as very old.
 // MeshCore did not exist, so it means a clock that was never set, and a node
@@ -229,6 +233,109 @@ class EmcommMode {
         });
     }
 
+    // the firmware's advert location policy: leave the position out of adverts,
+    // or put it in every one
+    static ADVERT_LOC_NONE = 0;
+    static ADVERT_LOC_SHARE = 1;
+
+    /**
+     * The radio settings an incident wants, written in one command so the radio
+     * is read once and nothing else in the same command is disturbed.
+     *
+     *   shareLocation   answer anyone's position request, with the app closed
+     *   advertPosition  put this station's position in every advert, so other
+     *                   stations plot it without asking. Anyone in range sees it
+     *   multiAcks       send each delivery acknowledgement more than once, so
+     *                   fewer messages that arrived are reported as failed
+     */
+    static async applyRadioPolicies({ shareLocation = null, advertPosition = null, multiAcks = null } = {}) {
+
+        if(GlobalState.connection == null){
+            throw new Error(Connection.DISCONNECTED);
+        }
+
+        await Connection.loadSelfInfo(Connection.READ_TIMEOUT_MILLIS);
+        const params = Connection.otherParams();
+        const modes = this.telemetryModes(params.telemetryModes);
+        const telemetryMode = shareLocation === null ? null : (shareLocation ? this.TELEMETRY_ALL : this.TELEMETRY_DENY);
+
+        await Connection.setAllOtherParams({
+            ...params,
+            telemetryModes: telemetryMode === null
+                ? params.telemetryModes
+                : this.telemetryByte({ ...modes, base: telemetryMode, location: telemetryMode }),
+            advertLocPolicy: advertPosition === null
+                ? params.advertLocPolicy
+                : (advertPosition ? this.ADVERT_LOC_SHARE : this.ADVERT_LOC_NONE),
+            multiAcks: multiAcks === null ? params.multiAcks : (multiAcks ? 1 : 0),
+        });
+
+    }
+
+    static advertsCarryPosition(selfInfo = GlobalState.selfInfo) {
+        return Connection.otherParams(selfInfo).advertLocPolicy !== this.ADVERT_LOC_NONE;
+    }
+
+    static multiAcksOn(selfInfo = GlobalState.selfInfo) {
+        return Connection.otherParams(selfInfo).multiAcks > 0;
+    }
+
+    // the channel a net can all be on without passing keys around: a hashtag
+    // channel's key is derived from its name, so every client works it out
+    static EMCOMM_CHANNEL_NAME = "#Emcomm";
+
+    // what repeating adverts default to on entering the mode
+    static ADVERT_SCHEDULE = { zeroHopMinutes: 30, floodMinutes: 60 };
+
+    /**
+     * The key of a hashtag channel: the first 16 bytes of sha256 of its name,
+     * with the # included. From the companion protocol document, where #test
+     * gives 9cd8fcf22a47333b591d96a2b848b73f. The spelling matters: a different
+     * case is a different channel.
+     */
+    static async hashtagChannelKey(name) {
+        const full = name.startsWith("#") ? name : `#${name}`;
+        const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(full));
+        return new Uint8Array(hash).slice(0, 16);
+    }
+
+    /**
+     * Puts a hashtag channel on the radio, in the first free slot, unless it is
+     * already there. Returns { idx, added }, or null when every slot is taken.
+     */
+    static async ensureHashtagChannel(name) {
+
+        if(GlobalState.connection == null){
+            throw new Error(Connection.DISCONNECTED);
+        }
+
+        let free = null;
+        for(let idx = 0; idx < MAX_CHANNEL_SLOTS; idx++){
+            let channel = null;
+            try {
+                channel = await Connection.getChannel(idx);
+            } catch(e) {
+                // an unreadable slot is not known to be free, so it is not used
+                continue;
+            }
+            const existing = (channel?.name ?? "").trim();
+            if(existing === name){
+                return { idx: idx, added: false };
+            }
+            if(existing === "" && free === null){
+                free = idx;
+            }
+        }
+
+        if(free === null){
+            return null;
+        }
+
+        await Connection.setChannel(free, name, await this.hashtagChannelKey(name));
+        return { idx: free, added: true };
+
+    }
+
     /** Sets whether the node adds contacts by itself. Done last, after discovery. */
     static async setManualAddContacts(manual) {
         const connection = GlobalState.connection;
@@ -276,10 +383,20 @@ class EmcommMode {
         const remove = [];
         const keep = [];
         let keptForUnreadableAge = 0;
+        let keptFavourites = 0;
 
         for(const contact of contacts ?? []){
 
             const type = contact.type;
+
+            // a favourite is starred on the radio because the operator wants it:
+            // net control, the EOC, the team. During an incident those are the
+            // last contacts to throw away, whatever their type or age
+            if(ContactFlags.isFavourite(contact)){
+                keptFavourites++;
+                keep.push(contact);
+                continue;
+            }
 
             // companions go regardless of age: a person's node re-adds itself the
             // moment it adverts, so they are the cheapest thing to clear
@@ -315,6 +432,7 @@ class EmcommMode {
             remove: remove,
             keep: keep,
             keptForUnreadableAge: keptForUnreadableAge,
+            keptFavourites: keptFavourites,
             counts: {
                 companions: remove.filter((c) => c.type === Constants.AdvType.Chat).length,
                 rooms: remove.filter((c) => c.type === Constants.AdvType.Room).length,

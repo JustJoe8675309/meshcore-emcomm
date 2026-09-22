@@ -342,6 +342,8 @@ import SaveButton from "../SaveButton.vue";
 import Page from "./Page.vue";
 import Utils from "../../js/Utils.js";
 import OperatorSettings from "../../js/reports/OperatorSettings.js";
+import AdvertSchedule from "../../js/AdvertSchedule.js";
+import PositionService from "../../js/position/PositionService.js";
 import NodeBackup from "../../js/NodeBackup.js";
 import EmcommMode from "../../js/EmcommMode.js";
 import EmcommConvertDialog from "../settings/EmcommConvertDialog.vue";
@@ -516,13 +518,60 @@ Convert anyway?`,
                     );
                 }
 
-                if(choices.shareLocation){
-                    this.backupProgress = "Allowing location sharing...";
+                // the three parts of one radio command, written together
+                this.backupProgress = "Applying the radio's emcomm settings...";
+                try {
+                    await EmcommMode.applyRadioPolicies({
+                        shareLocation: choices.shareLocation,
+                        advertPosition: choices.advertPosition,
+                        multiAcks: choices.multiAcks,
+                    });
+                } catch(e) {
+                    this.backupWarnings.push("Location sharing, adverts carrying the position and extra acknowledgements were not set: " + (e?.message ?? e));
+                }
+
+                // the net's channel, so every station converts onto the same one
+                if(choices.channelName){
+                    this.backupProgress = "Adding the channel " + choices.channelName + "...";
                     try {
-                        await EmcommMode.setLocationSharing(true);
+                        const channel = await EmcommMode.ensureHashtagChannel(choices.channelName);
+                        if(channel == null){
+                            this.backupWarnings.push("No free channel slot, so " + choices.channelName + " was not added.");
+                        } else {
+                            if(!channel.added){
+                                this.backupWarnings.push(choices.channelName + " was already on the radio, in slot " + channel.idx + ".");
+                            }
+                            if(choices.answerPositionsOnChannel){
+                                const settings = PositionService.settings();
+                                PositionService.saveSettings({
+                                    ...settings,
+                                    markedChannels: [...new Set([...settings.markedChannels, channel.idx])],
+                                });
+                            }
+                        }
+                        await Connection.loadChannels();
                     } catch(e) {
-                        this.backupWarnings.push("Location sharing was not turned on: " + (e?.message ?? e));
+                        this.backupWarnings.push(choices.channelName + " was not added: " + (e?.message ?? e));
                     }
+                }
+
+                // answering position requests, and who this station calls itself
+                PositionService.saveSettings({ ...PositionService.settings(), autoAnswer: choices.autoAnswerPositions === true });
+                if(choices.callsign){
+                    OperatorSettings.setCallsign(choices.callsign);
+                }
+                OperatorSettings.setDtgZone(choices.dtgZone);
+
+                if(choices.advertSchedule && this.nodePublicKey != null){
+                    const saved = AdvertSchedule.set(this.nodePublicKey, choices.advertSchedule);
+                    AdvertSchedule.start(this.nodePublicKey);
+                    this.backupWarnings.push(
+                        "Repeating adverts are on: "
+                        + (saved.zeroHopMinutes > 0 ? "zero hop every " + saved.zeroHopMinutes + " min" : "no zero hop")
+                        + ", "
+                        + (saved.floodMinutes > 0 ? "flood every " + saved.floodMinutes + " min" : "no flood")
+                        + ". They need this app open.",
+                    );
                 }
 
                 // last, so discovery and the advert are not fighting it

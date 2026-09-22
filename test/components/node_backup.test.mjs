@@ -233,9 +233,22 @@ describe("putting the node back exactly, when leaving EMCOMM mode", () => {
         radio.writes = [];
     });
 
-    it("keeps this app's advert schedule and position settings for the node in the backup", () => {
+    it("keeps this app's advert schedule, position settings and report time zone in the backup", () => {
         expect(backup.app.advertSchedule).toEqual({ zeroHopMinutes: 0, floodMinutes: 0 });
         expect(backup.app.positionSettings).toEqual({ markedChannels: [], markedRooms: [], autoAnswer: false });
+        expect(backup.app.dtgZone).toBe("local");
+        // the callsign names the person, not the node, so it is not taken back
+        expect(backup.app.callsign).toBeUndefined();
+    });
+
+    it("puts the report time zone back, and leaves the callsign alone", async () => {
+        const { default: OperatorSettings } = await import("../../src/js/reports/OperatorSettings.js");
+        OperatorSettings.setDtgZone("zulu");
+        OperatorSettings.setCallsign("KJ5HBN");
+        await NodeBackup.restore(backup);
+        expect(OperatorSettings.state.dtgZone).toBe("local");
+        expect(OperatorSettings.callsign).toBe("KJ5HBN");
+        OperatorSettings.setCallsign("");
     });
 
     it("puts them back: repeating adverts and position answering turned on in the mode go off again", async () => {

@@ -158,37 +158,39 @@ describe("converting", () => {
         window.localStorage.clear();
     });
 
-    it("turns on location sharing and automatic contacts", async () => {
-        const share = vi.spyOn(EmcommMode, "setLocationSharing").mockResolvedValue(undefined);
+    it("writes sharing, adverts carrying the position and extra acknowledgements in one command", async () => {
+        // one radio command holds all three, so they are written together rather
+        // than read and rewritten three times
+        const policies = vi.spyOn(EmcommMode, "applyRadioPolicies").mockResolvedValue(undefined);
         const manual = vi.spyOn(EmcommMode, "setManualAddContacts").mockResolvedValue(undefined);
         const wrapper = mountPage();
         await flushPromises();
         wrapper.vm.convertPlan = { remove: [], keep: [], keptForUnreadableAge: 0 };
-        await wrapper.vm.runConvert({ name: null, radio: null, txPower: 22, syncClock: false, setPositionFromGps: false, advert: "none", discover: false, autoAddContacts: true, shareLocation: true });
-        expect(share).toHaveBeenCalledWith(true);
+        await wrapper.vm.runConvert({ name: null, radio: null, txPower: 22, syncClock: false, setPositionFromGps: false, advert: "none", discover: false, autoAddContacts: true, shareLocation: true, advertPosition: true, multiAcks: true });
+        expect(policies).toHaveBeenCalledWith({ shareLocation: true, advertPosition: true, multiAcks: true });
         // manual add off, which is automatic contacts on
         expect(manual).toHaveBeenCalledWith(false);
     });
 
-    it("leaves both alone when they are unticked", async () => {
-        const share = vi.spyOn(EmcommMode, "setLocationSharing").mockResolvedValue(undefined);
+    it("writes what was unticked as off, rather than leaving it to chance", async () => {
+        const policies = vi.spyOn(EmcommMode, "applyRadioPolicies").mockResolvedValue(undefined);
         const manual = vi.spyOn(EmcommMode, "setManualAddContacts").mockResolvedValue(undefined);
         const wrapper = mountPage();
         await flushPromises();
         wrapper.vm.convertPlan = { remove: [], keep: [], keptForUnreadableAge: 0 };
-        await wrapper.vm.runConvert({ name: null, radio: null, txPower: null, syncClock: false, setPositionFromGps: false, advert: "none", discover: false, autoAddContacts: false, shareLocation: false });
-        expect(share).not.toHaveBeenCalled();
+        await wrapper.vm.runConvert({ name: null, radio: null, txPower: null, syncClock: false, setPositionFromGps: false, advert: "none", discover: false, autoAddContacts: false, shareLocation: false, advertPosition: false, multiAcks: false });
+        expect(policies).toHaveBeenCalledWith({ shareLocation: false, advertPosition: false, multiAcks: false });
         expect(manual).not.toHaveBeenCalled();
     });
 
-    it("carries on, and says so, if the radio will not share location", async () => {
-        vi.spyOn(EmcommMode, "setLocationSharing").mockRejectedValue(new Error("the radio refused it"));
+    it("carries on, and says so, if the radio will not take them", async () => {
+        vi.spyOn(EmcommMode, "applyRadioPolicies").mockRejectedValue(new Error("the radio refused it"));
         vi.spyOn(EmcommMode, "setManualAddContacts").mockResolvedValue(undefined);
         const wrapper = mountPage();
         await flushPromises();
         wrapper.vm.convertPlan = { remove: [], keep: [], keptForUnreadableAge: 0 };
-        await wrapper.vm.runConvert({ name: null, radio: null, txPower: null, syncClock: false, setPositionFromGps: false, advert: "none", discover: false, autoAddContacts: true, shareLocation: true });
-        expect(wrapper.vm.backupWarnings.join(" ")).toContain("Location sharing was not turned on: the radio refused it");
+        await wrapper.vm.runConvert({ name: null, radio: null, txPower: null, syncClock: false, setPositionFromGps: false, advert: "none", discover: false, autoAddContacts: true, shareLocation: true, advertPosition: true, multiAcks: true });
+        expect(wrapper.vm.backupWarnings.join(" ")).toMatch(/were not set: the radio refused it/);
     });
 
 });

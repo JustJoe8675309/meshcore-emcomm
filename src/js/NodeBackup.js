@@ -11,6 +11,7 @@ import Connection from "./Connection.js";
 import Utils from "./Utils.js";
 import AdvertSchedule from "./AdvertSchedule.js";
 import PositionService from "./position/PositionService.js";
+import OperatorSettings from "./reports/OperatorSettings.js";
 
 const FORMAT_VERSION = 1;
 
@@ -122,6 +123,10 @@ class NodeBackup {
         return {
             advertSchedule: AdvertSchedule.get(nodePublicKeyHex),
             positionSettings: PositionService.settings(nodePublicKeyHex),
+            // the net may run on zulu while this operator does not. The callsign
+            // is not here: it names the person, not the node, and one typed
+            // during an incident should not be taken away on leaving
+            dtgZone: OperatorSettings.state.dtgZone,
         };
     }
 
@@ -141,6 +146,9 @@ class NodeBackup {
         }
         if(app.positionSettings){
             PositionService.saveSettings(app.positionSettings, key);
+        }
+        if(app.dtgZone){
+            OperatorSettings.setDtgZone(app.dtgZone);
         }
         return true;
     }

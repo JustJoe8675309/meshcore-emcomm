@@ -612,15 +612,38 @@ checked against the connected node before it can be restored.
 An ordinary restore, **Load last backup**, adds everything back and removes nothing, so it can
 never lose anything by itself.
 
+**What else the switch-over sets, all of it editable in the dialog and all of it undone on
+leaving:**
+- **Extra delivery acknowledgements on.** The radio sends each acknowledgement more than once, so
+  fewer direct messages and report parts are reported as failed when they arrived. It costs a
+  little airtime.
+- **The position in every advert,** on by default, so other stations plot the net without asking.
+  Anyone in range sees where you are, which is why it is one tick to turn off.
+- **Favourites are kept by the trim.** A starred contact stays whatever its type or age: net
+  control, the EOC and the team are the last contacts to throw away. Before this, every companion
+  went, favourites included.
+- **The net's channel, `#Emcomm` by default.** A channel whose name begins with # has its key
+  worked out from the name (the first 16 bytes of its SHA-256, per the companion protocol
+  document), so a whole net joins by name with nothing to pass around. It goes in the first free
+  slot, or says the radio has it already, or that there is no room. It is not private: anyone who
+  guesses the name can read it. The name is editable, and the whole thing can be unticked.
+- **Answering position requests on that channel,** so net control's roll calls reach you. Answering
+  automatically is offered too, off by default, so the operator stays in the loop.
+- **Repeating adverts: zero hop every 30 minutes, flood every 60,** both editable, 0 for off.
+  They run in the app, so it must stay open, and the screen is kept on.
+- **The operator's callsign and the net's time zone,** shown with the rest so a blank callsign or
+  the wrong zone is caught before the incident rather than in the middle of it. The time zone is
+  restored on leaving; the callsign names the person, not the node, so it stays.
+
 **EMCOMM mode takes nothing away.** Every tab, form and feature works the same in the mode as out
 of it; the mode only forces settings suited to emcomm use. Leaving it is meant to put the node
 back exactly as it was:
 - **The radio:** name, position, transmit power, radio settings, location sharing, the add
   contacts mode, channels and contacts, all from the pre-EMCOMM backup.
 - **This app's own settings for the node,** which live in the browser rather than on the radio:
-  the repeating advert schedule, and which channels and rooms answer position requests, and
-  whether automatically. These are kept in every backup from now on. An older backup without
-  them leaves them as they are.
+  the repeating advert schedule, which channels and rooms answer position requests and whether
+  automatically, and the report time zone. These are kept in every backup from now on. An older
+  backup without them leaves them as they are.
 - **What was added while in the mode.** Contacts added (automatic contacts is on in the mode)
   and channels in slots that were empty before are listed by name, and **OK removes them**, so
   the node is exactly as it was. Cancel keeps them, for stations met during the incident that are
