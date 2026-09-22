@@ -274,6 +274,12 @@ does. As with finishing an interrupted report, it will only go through the radio
 went out on. Reports sent to a contact do not get this: each part is acknowledged and
 retransmitted until it is, and the send stops if one never is.
 
+Both were proven on the bench. A three part DRILL report from node 1 on Emcomm Testing
+reached node 2 whole, with the preview saying about 6 seconds apart. Node 1 started parts 2
+and 3 at 6 and 13 seconds, and node 2 received `[2/3]` and `[3/3]` 7.0 seconds apart. Resend 2
+then put a second, identical `[2/3]` on node 2, and nothing else: `[1/3]` and `[3/3]` stayed at
+one copy each.
+
 A report is one field per line, so parts break **between fields**: whole lines are packed into each
 part, and a part begins with a field or the form header. An operator copying part 2 onto a paper
 form sees whole fields rather than the tail of one.
