@@ -23,7 +23,8 @@
  *     request:  18.. sender's name, UTF-8
  *     position: 18-21 latitude, 22-25 longitude (millionths of a degree, signed),
  *               26-29 fix time (unix seconds, 0 if not a live fix),
- *               30 flags (1 message to follow, 2 live GPS fix, 4 no position),
+ *               30 flags (1 message to follow, 2 current GPS fix, 4 no position,
+ *               8 last known position, not a current fix),
  *               31.. sender's name
  *     declined: 18.. sender's name
  *
@@ -45,6 +46,9 @@ export const FLAG = Object.freeze({
     MESSAGE_TO_FOLLOW: 1,
     LIVE_FIX: 2,
     NO_POSITION: 4,
+    // the position is the last one the radio held, not a fix confirmed current:
+    // a radio without GPS, or a GPS whose position has stopped changing
+    LAST_KNOWN: 8,
 });
 
 export const DIRECT_MARKER = "#mce1:";
@@ -53,6 +57,8 @@ const PREFIX_BYTES = 6;
 const HEADER_BYTES = 18;
 const POSITION_BYTES = 13;
 const MAX_NAME_BYTES = 32;
+// MAX_TEXT_LEN in the firmware; a direct message carries no name prefix
+const MAX_DIRECT_BYTES = 160;
 
 function toPrefix(bytes) {
     const prefix = new Uint8Array(PREFIX_BYTES);
@@ -155,6 +161,7 @@ export function decode(payload) {
         message.fixTime = view.getUint32(offset + 8, true);
         message.messageToFollow = (message.flags & FLAG.MESSAGE_TO_FOLLOW) !== 0;
         message.liveFix = (message.flags & FLAG.LIVE_FIX) !== 0;
+        message.lastKnown = (message.flags & FLAG.LAST_KNOWN) !== 0;
         offset += POSITION_BYTES;
     }
 
@@ -182,7 +189,15 @@ function fromBase64Url(text) {
  * station without this app, which shows the text as it is.
  */
 export function toDirectText(message, readable) {
-    return `${readable} ${DIRECT_MARKER}${toBase64Url(encode(message))}`;
+    const payload = ` ${DIRECT_MARKER}${toBase64Url(encode(message))}`;
+    // a direct message holds 160 bytes. The payload is what the other app reads,
+    // so if anything has to give it is the readable line, cut on a character
+    const room = MAX_DIRECT_BYTES - new TextEncoder().encode(payload).length;
+    let text = readable ?? "";
+    while(new TextEncoder().encode(text).length > room){
+        text = text.slice(0, -1);
+    }
+    return `${text}${payload}`;
 }
 
 /** The payload inside a direct message's text, or null if there is none. */

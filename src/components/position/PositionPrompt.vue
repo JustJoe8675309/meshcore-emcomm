@@ -22,7 +22,11 @@
                 <template v-if="own.has">
                     <div>{{ ownDegrees }}</div>
                     <div v-if="ownMgrs">{{ ownMgrs }}</div>
-                    <div class="text-gray-500">{{ own.live ? "Live GPS fix" : "Position set on the radio, not a live fix" }}</div>
+                    <div class="text-gray-500">
+                        {{ own.live
+                            ? "Live GPS fix. Checked again when you send; if it has stopped changing, it goes as a last known position."
+                            : "Sent as a last known position, not a current fix: it is set on the radio, with no live GPS." }}
+                    </div>
                 </template>
                 <div v-else class="text-amber-800">
                     Your radio has no position set. Sending says so.

@@ -148,6 +148,54 @@ class PositionService {
         };
     }
 
+    // re-reads of the radio's position when answering, to tell a current fix from
+    // a stale one, and how far apart
+    static FRESHNESS_READS = 3;
+    static FRESHNESS_INTERVAL_MILLIS = 1500;
+
+    /**
+     * This station's position as it is now, for an answer, and whether it is a
+     * current fix or only the last one the radio held.
+     *
+     * Whether GPS is live is decided once, at connect, and the position held
+     * since is the one read then. Answering with that and calling it current
+     * would be wrong the moment the fix was lost or the station moved. So the
+     * radio is read again: a live receiver wanders in its last digits even
+     * standing still, so any change means the fix is current. No change over a
+     * few seconds means it is sent as a last known position. A radio without a
+     * confirmed GPS always sends its position as last known.
+     */
+    static async currentPosition() {
+
+        const reading = (self) => `${self?.advLat},${self?.advLon}`;
+        const before = reading(GlobalState.selfInfo);
+        let current = false;
+
+        if(GlobalState.gpsStatus === "live"){
+            for(let i = 0; i < this.FRESHNESS_READS && !current; i++){
+                if(i > 0){
+                    await Utils.sleep(this.FRESHNESS_INTERVAL_MILLIS);
+                }
+                try {
+                    await Connection.loadSelfInfo(Connection.READ_TIMEOUT_MILLIS);
+                } catch(e) {
+                    console.log("could not re-read the position", e);
+                    break;
+                }
+                current = reading(GlobalState.selfInfo) !== before;
+            }
+        }
+
+        const own = this.ownPosition();
+        return {
+            ...own,
+            live: own.has && current,
+            lastKnown: own.has && !current,
+            fixTime: own.has && current ? Math.floor(Date.now() / 1000) : 0,
+        };
+
+    }
+
     // --- sending ---------------------------------------------------------------
 
     /** Sends one message by the route given: { kind: "channel", idx } or { kind: "direct", contact }. */
@@ -335,8 +383,11 @@ class PositionService {
                 latitude: gps.latitude,
                 longitude: gps.longitude,
                 hasPosition: true,
-                liveFix: true,
-                fixTime: Math.floor(Date.now() / 1000),
+                // the firmware adds its GPS position but does not say how current
+                // it is, so it is not claimed as a current fix
+                liveFix: false,
+                lastKnown: false,
+                fixTime: 0,
                 messageToFollow: false,
                 via: request.via,
                 requestedByUs: true,
@@ -504,6 +555,7 @@ class PositionService {
                 longitude: message.longitude,
                 hasPosition: message.hasPosition,
                 liveFix: message.liveFix,
+                lastKnown: message.lastKnown,
                 fixTime: message.fixTime,
                 messageToFollow: message.messageToFollow,
                 via,
@@ -572,10 +624,11 @@ class PositionService {
 
     /** Sends this station's position in answer to a request. */
     static async answer(request, { messageToFollow = false } = {}) {
-        const own = this.ownPosition();
+        const own = await this.currentPosition();
         let flags = 0;
         if(messageToFollow) flags |= Protocol.FLAG.MESSAGE_TO_FOLLOW;
         if(own.live) flags |= Protocol.FLAG.LIVE_FIX;
+        if(own.lastKnown) flags |= Protocol.FLAG.LAST_KNOWN;
         if(!own.has) flags |= Protocol.FLAG.NO_POSITION;
         const message = {
             kind: Protocol.KIND.POSITION,
@@ -588,9 +641,12 @@ class PositionService {
             fixTime: own.fixTime,
             flags,
         };
-        const readable = own.has
-            ? `Position of ${this.ownName()}: ${Geo.formatDegrees(own.latitude, own.longitude)}`
-            : `${this.ownName()} has no position set`;
+        // stock clients see this line, so it says what kind of position it is too
+        const readable = !own.has
+            ? `${this.ownName()} has no position set`
+            : own.lastKnown
+                ? `Last known position of ${this.ownName()} (not a current fix): ${Geo.formatDegrees(own.latitude, own.longitude)}`
+                : `Position of ${this.ownName()}: ${Geo.formatDegrees(own.latitude, own.longitude)}`;
         await this.transmit(this.answerRoute(request), message, readable);
         if(state.prompt === request){
             state.prompt = null;

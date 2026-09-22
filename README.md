@@ -731,6 +731,20 @@ magnetic, stated as magnetic**, with the declination used shown beneath. A fix's
 when it is a live GPS fix. Distance and bearing need this station's own position; without one,
 the tab says so.
 
+**Current fix or last known position.** Every answer says which it is, in the message itself.
+- The app decides whether a radio's GPS is live once, when it connects, and holds the position it
+  read then. Answering with that and calling it current would be wrong the moment the fix was
+  lost or the station moved.
+- So when answering, the app reads the radio's position again, up to three times over about
+  three seconds. A live receiver wanders in its last digit even standing still, so any change
+  means the fix is current, and it goes as a current fix with the time.
+- No change means it goes flagged as a **last known position, not a current fix**. So does
+  every position from a radio without a confirmed GPS, and every answer where the re-read fails.
+- The receiving app shows that in amber. The readable line a station without the app sees starts
+  "Last known position of", followed by the name and "(not a current fix)".
+- A position from a radio's telemetry is marked as not saying how current it is, because the
+  firmware does not.
+
 **Magnetic bearing.** A bearing an operator walks has to be magnetic, because that is what a
 hand compass reads. The declination comes from the **World Magnetic Model 2025**, worked out on
 the device from NOAA's published coefficients, so it needs no network. It matches all twelve of
@@ -1099,7 +1113,7 @@ happen on demand:
 npm test
 ```
 
-Six plain node suites and thirty-six component suites, 565 component tests, no hardware
+Six plain node suites and thirty-six component suites, 572 component tests, no hardware
 required:
 
 - `test/report_encoder.test.mjs` covers rendering and packet splitting, including a

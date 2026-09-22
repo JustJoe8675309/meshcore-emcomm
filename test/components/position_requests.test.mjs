@@ -93,6 +93,16 @@ describe("the bytes", () => {
         expect(decoded.name).toBe("Ω".repeat(16));
     });
 
+    it("never let a long readable line push a direct message past 160 bytes", () => {
+        const text = Protocol.toDirectText(
+            { kind: Protocol.KIND.POSITION, tag: 9, to: THEM, from: ME, name: "", latitude: -33.8568, longitude: 151.2153, fixTime: 0, flags: Protocol.FLAG.LAST_KNOWN },
+            `Last known position of ${"Ω".repeat(40)} (not a current fix): 33.8568° S, 151.2153° E`,
+        );
+        expect(new TextEncoder().encode(text).length).toBeLessThanOrEqual(160);
+        expect(Protocol.fromDirectText(text).latitude).toBe(-33.8568);
+        expect(Protocol.fromDirectText(text).lastKnown).toBe(true);
+    });
+
     it("send direct as a readable line with the payload after it, well inside a message", () => {
         const text = Protocol.toDirectText(
             { kind: Protocol.KIND.POSITION, tag: 9, to: THEM, from: ME, name: "", latitude: 31.7619, longitude: -106.485, fixTime: 0, flags: 0 },
@@ -188,7 +198,9 @@ describe("being asked", () => {
 
         expect(datagrams).toHaveLength(0);
         expect(directs).toHaveLength(1);
-        expect(directs[0].text).toMatch(/^Position of KJ5HBN: 31\.7587° N, 106\.4869° W #mce1:/);
+        // no confirmed GPS on this radio, so it goes as a last known position, and says so
+        expect(directs[0].text).toMatch(/^Last known position of KJ5HBN \(not a current fix\): 31\.7587° N, 106\.4869° W #mce1:/);
+        expect(directs[0].message.lastKnown).toBe(true);
         expect(directs[0].message.messageToFollow).toBe(true);
     });
 
@@ -230,6 +242,105 @@ describe("being asked", () => {
         expect(PositionService.isChannelMarked(7)).toBe(true);
         GlobalState.selfInfo = { ...GlobalState.selfInfo, publicKey: THEM };
         expect(PositionService.isChannelMarked(7)).toBe(false);
+    });
+
+});
+
+describe("current fix or last known position", () => {
+
+    let datagrams;
+    let reads;
+
+    beforeEach(() => {
+        window.localStorage.clear();
+        reset();
+        connect();
+        PositionService.saveSettings({ markedChannels: [7], autoAnswer: false });
+        PositionService.FRESHNESS_INTERVAL_MILLIS = 0;
+        datagrams = [];
+        vi.spyOn(Connection, "sendChannelDatagram").mockImplementation(async (idx, type, payload) => { datagrams.push(Protocol.decode(payload)); });
+        reads = 0;
+    });
+
+    afterEach(() => {
+        PositionService.FRESHNESS_INTERVAL_MILLIS = 1500;
+        vi.restoreAllMocks();
+        reset();
+    });
+
+    // the radio's position on each re-read: a live receiver wanders in the last digit
+    function radioReads(...positions) {
+        vi.spyOn(Connection, "loadSelfInfo").mockImplementation(async () => {
+            const [lat, lon] = positions[Math.min(reads, positions.length - 1)];
+            reads++;
+            GlobalState.selfInfo = { ...GlobalState.selfInfo, advLat: lat, advLon: lon };
+        });
+    }
+
+    async function askAndSend() {
+        PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: incomingRequest() });
+        await PositionService.answer(PositionService.state.prompt);
+        return datagrams[0];
+    }
+
+    it("sends a current fix when the GPS position is still changing", async () => {
+        GlobalState.gpsStatus = "live";
+        radioReads([31758701, -106486900]);
+        const sent = await askAndSend();
+        expect(sent.liveFix).toBe(true);
+        expect(sent.lastKnown).toBe(false);
+        expect(sent.fixTime).toBeGreaterThan(0);
+        expect(sent.latitude).toBeCloseTo(31.758701, 6);
+        expect(reads).toBe(1);
+    });
+
+    it("sends last known when a GPS found live at connect has stopped changing", async () => {
+        GlobalState.gpsStatus = "live";
+        radioReads([31758700, -106486900]);
+        const sent = await askAndSend();
+        expect(reads).toBe(PositionService.FRESHNESS_READS);
+        expect(sent.liveFix).toBe(false);
+        expect(sent.lastKnown).toBe(true);
+        expect(sent.fixTime).toBe(0);
+    });
+
+    it("sends last known from a radio with no confirmed GPS, without re-reading it", async () => {
+        GlobalState.gpsStatus = "unconfirmed";
+        radioReads([31758701, -106486900]);
+        const sent = await askAndSend();
+        expect(reads).toBe(0);
+        expect(sent.lastKnown).toBe(true);
+    });
+
+    it("sends last known if the re-read fails, rather than claim a current fix", async () => {
+        GlobalState.gpsStatus = "live";
+        vi.spyOn(Connection, "loadSelfInfo").mockRejectedValue(new Error("timeout"));
+        vi.spyOn(console, "log").mockImplementation(() => {});
+        const sent = await askAndSend();
+        expect(sent.lastKnown).toBe(true);
+    });
+
+    it("says so, in amber, where the answer is shown", async () => {
+        PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: Protocol.encode({
+            kind: Protocol.KIND.POSITION, tag: 1, to: ME, from: THEM, name: "KJ5HBN",
+            latitude: 31.788, longitude: -106.497, fixTime: 0, flags: Protocol.FLAG.LAST_KNOWN,
+        }) });
+        const wrapper = mount(PositionsPanel);
+        await flushPromises();
+        expect(wrapper.text()).toContain("Last known position, not a current fix");
+    });
+
+    it("does not call a position from a radio's telemetry current", async () => {
+        vi.useFakeTimers();
+        vi.spyOn(Connection, "requestTelemetry").mockResolvedValue({ pubKeyPrefix: THEM.slice(0, 6), lppSensorData: new Uint8Array([1, 136, 4, 223, 37, 239, 195, 192, 1, 220, 194]) });
+        PositionService.start(THEM_CONTACT, { kind: "channel", idx: 7, name: "Emcomm Testing" }, { type: "once" });
+        await vi.advanceTimersByTimeAsync(30000);
+        vi.useRealTimers();
+        const report = PositionService.latestByStation()[0];
+        expect(report.liveFix).toBe(false);
+        const wrapper = mount(PositionsPanel);
+        await flushPromises();
+        expect(wrapper.text()).toContain("From its radio's GPS, which does not say how current it is");
     });
 
 });
@@ -521,7 +632,7 @@ describe("the positions list", () => {
         await flushPromises();
         const text = wrapper.text();
         expect(text).toContain("Declined by KJ5HBN");
-        expect(text).toContain("Last known position");
+        expect(text).toContain("Last position received");
         expect(text).toContain("31.7880° N, 106.4970° W");
         expect(text).toMatch(/\d{3}° magnetic/);
     });
@@ -532,7 +643,7 @@ describe("the positions list", () => {
         }) });
         const wrapper = mount(PositionsPanel);
         await flushPromises();
-        expect(wrapper.text()).not.toContain("Last known position");
+        expect(wrapper.text()).not.toContain("Last position received");
     });
 
     it("says why there is no distance when this radio has no position", async () => {

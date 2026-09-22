@@ -138,6 +138,10 @@ in settings on the one being asked.
 - [ ] **Send with message** opens the channel on node 2, and node 1 shows "Message to
       follow".
 - [ ] **Decline** stops node 1's repeats and shows "Declined by" and node 2's callsign.
+- [ ] **Current or last known.** Answered from a radio with a live GPS fix, the answer
+      is a current fix with its time. From a radio without GPS, it reads "Last known
+      position, not a current fix" in amber, and a direct answer's text starts "Last
+      known position of".
 - [ ] **Direct.** Ask directly: nothing appears in either conversation, and the answer
       reaches only node 1.
 - [ ] **Repeats.** Every 1 minute until answered, then Up to 3 times every 1 minute

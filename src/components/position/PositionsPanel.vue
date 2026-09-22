@@ -86,19 +86,20 @@
                             <div class="text-xs text-gray-500">{{ formatDeclination(relation(report).declination) }}</div>
                         </template>
                         <div v-else class="text-xs text-gray-500">No distance or bearing: this station has no position.</div>
-                        <div class="text-xs text-gray-500">{{ fixLabel(report) }}</div>
+                        <div class="text-xs" :class="report.lastKnown ? 'font-semibold text-amber-800' : 'text-gray-500'">{{ fixLabel(report) }}</div>
                     </template>
 
                     <div v-else class="text-xs text-amber-800">Answered, but has no position set.</div>
 
-                    <!-- the newest word was a decline or no position: keep where it was last known to be -->
-                    <div v-if="lastKnown(report)" class="border-l-2 border-gray-200 pl-2 space-y-0.5">
-                        <div class="text-xs text-gray-600">Last known position, {{ time(lastKnown(report).receivedAt) }}</div>
-                        <div class="text-xs text-gray-800">{{ formatDegrees(lastKnown(report).latitude, lastKnown(report).longitude) }}</div>
-                        <div v-if="formatMgrs(lastKnown(report).latitude, lastKnown(report).longitude)" class="text-xs text-gray-800">{{ formatMgrs(lastKnown(report).latitude, lastKnown(report).longitude) }}</div>
-                        <div v-if="relation(lastKnown(report))" class="text-xs text-gray-900">
-                            {{ formatDistance(relation(lastKnown(report)).metres) }}, {{ formatBearing(relation(lastKnown(report)).magneticBearing) }}
+                    <!-- the newest word was a decline or no position: keep where it last reported being -->
+                    <div v-if="previous(report)" class="border-l-2 border-gray-200 pl-2 space-y-0.5">
+                        <div class="text-xs text-gray-600">Last position received, {{ time(previous(report).receivedAt) }}</div>
+                        <div class="text-xs text-gray-800">{{ formatDegrees(previous(report).latitude, previous(report).longitude) }}</div>
+                        <div v-if="formatMgrs(previous(report).latitude, previous(report).longitude)" class="text-xs text-gray-800">{{ formatMgrs(previous(report).latitude, previous(report).longitude) }}</div>
+                        <div v-if="relation(previous(report))" class="text-xs text-gray-900">
+                            {{ formatDistance(relation(previous(report)).metres) }}, {{ formatBearing(relation(previous(report)).magneticBearing) }}
                         </div>
+                        <div class="text-xs text-gray-500">{{ fixLabel(previous(report)) }}</div>
                     </div>
 
                     <div v-if="report.messageToFollow" class="text-xs font-semibold text-blue-700">Message to follow</div>
@@ -140,7 +141,7 @@ export default {
         time(millis) {
             return new Date(millis).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
         },
-        lastKnown(report) {
+        previous(report) {
             if(report.source !== "declined" && report.hasPosition){
                 return null;
             }
@@ -158,6 +159,12 @@ export default {
         formatBearing: (degrees) => Geo.formatMagneticBearing(degrees),
         formatDeclination: (degrees) => Geo.formatDeclination(degrees),
         fixLabel(report) {
+            if(report.lastKnown){
+                return "Last known position, not a current fix";
+            }
+            if(report.source === "radio"){
+                return "From its radio's GPS, which does not say how current it is";
+            }
             if(!report.liveFix || !report.fixTime){
                 return "Position set on its radio, not a live fix";
             }
