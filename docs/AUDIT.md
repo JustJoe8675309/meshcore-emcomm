@@ -140,7 +140,9 @@ being a variable.
       a few seconds. Settings should fill without reconnecting, the console should
       show "Serial line error, reading on" if the reboot garbled the line, and the
       device clock should read in step. Before the fix the app went deaf while still
-      saying it was connected, and after a reconnect the clock was minutes out.
+      saying it was connected, and after a reconnect the clock was minutes out. Not every
+      reboot garbles the line; after a clean one the clock is set by the Reboot command
+      itself, and any other restart is caught by the minute check within a minute.
 - [ ] **A slow read says so too, and Save waits for it.** If the radio is busy, the
       page must say it is reading, with Save greyed out, and then fill in. Empty
       fields and a live Save button is the fault.

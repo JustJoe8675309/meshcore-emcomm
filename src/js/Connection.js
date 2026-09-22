@@ -102,7 +102,8 @@ class Connection {
     static recovering = false;
 
     /**
-     * Puts the radio right after the serial read loop recovered from a line error.
+     * Puts the radio right after a restart: the serial read loop recovering from
+     * a line error, or the app's own reboot command.
      *
      * The loop keeps reading through the error now, so the app no longer needs a
      * reconnect after the radio reboots, and a reconnect was what used to set the
@@ -141,13 +142,13 @@ class Connection {
 
                 await this.syncDeviceTime();
                 await this.loadSelfInfo(this.READ_TIMEOUT_MILLIS);
-                console.log("radio answering again after a line error; clock set");
+                console.log("radio answering again after a restart; clock set");
                 return;
 
             }
-            console.log("radio did not answer after a line error; clock left as it was");
+            console.log("radio did not answer after a restart; clock left as it was");
         } catch(e) {
-            console.log("could not put the radio right after a line error", e);
+            console.log("could not put the radio right after a restart", e);
         } finally {
             this.recovering = false;
         }
@@ -304,9 +305,9 @@ class Connection {
         await this.syncMessages();
         await this.updateBatteryPercentage();
 
-        // auto update battery percentage once per minute
+        // once a minute: the battery, and the clock
         GlobalState.batteryPercentageInterval = setInterval(async () => {
-            await this.updateBatteryPercentage();
+            await this.periodicCheck();
         }, 60000);
 
         // find out whether the position this device reports is a live fix. deliberately
@@ -1661,7 +1662,51 @@ class Connection {
     }
 
     static async reboot() {
-        await this.exclusive(() => GlobalState.connection.reboot());
+        const connection = GlobalState.connection;
+        await this.exclusive(() => connection.reboot());
+        // over a USB bridge the port stays open through the reboot, so no reconnect
+        // follows to set the clock the reboot has just cost the radio. Over
+        // Bluetooth the link drops and this finds it gone and stops
+        this.onSerialRecovered(connection);
+    }
+
+    /**
+     * The minute timer's work: the battery, and whether the radio's clock has
+     * slipped.
+     *
+     * A reboot costs the radio its clock, and not every reboot says so. One that
+     * garbles the serial line is caught by the read loop, and one the app asks
+     * for is caught by reboot() above, but a reset button, a brownout or a
+     * watchdog restart says nothing at all. On the bench a clean reboot left node
+     * 1 204 seconds out with nothing about to notice. So the clock is read here,
+     * one small local read a minute, and set when it has drifted.
+     */
+    static async periodicCheck() {
+        await this.updateBatteryPercentage();
+        await this.checkClock();
+    }
+
+    // beyond this the clock is set. Date time groups are to the minute, and a
+    // radio that has just rebooted is usually minutes out, not seconds
+    static CLOCK_DRIFT_LIMIT_SECONDS = 30;
+
+    static async checkClock() {
+        if(GlobalState.connection == null){
+            return;
+        }
+        try {
+            const time = await this.getDeviceTime();
+            if(time?.epochSecs == null){
+                return;
+            }
+            const drift = Math.abs(Math.floor(Date.now() / 1000) - time.epochSecs);
+            if(drift > this.CLOCK_DRIFT_LIMIT_SECONDS){
+                await this.syncDeviceTime();
+                console.log(`radio clock was ${drift}s out; set`);
+            }
+        } catch(e) {
+            // a missed check is not worth raising: the next one is a minute away
+        }
     }
 
     static async onContactMessageReceived(message) {

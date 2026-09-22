@@ -489,6 +489,12 @@ for the radio to answer, sets its clock and reads it afresh. The first version o
 never fired: `GlobalState` is reactive, so the connection read back from it is a proxy and was
 never identical to the one it wraps. The test caught it before the radio did.
 
+Not every reboot garbles the line, and a clean one left node 1 204 seconds out with nothing about
+to notice. So the app's own Reboot command runs the same routine, and the minute timer that
+reads the battery now reads the radio's clock as well, setting it once it has drifted more
+than thirty seconds. That covers a reset button, a brownout or a watchdog restart, which say
+nothing at all.
+
 Simple local reads, the clock, self info, firmware details and battery, are bounded at five
 seconds instead of the general twenty. They answer in a fraction of a second on either link, and
 a radio that had stopped answering took the settings page 37 seconds to report, two such reads
@@ -748,7 +754,7 @@ timeout behind it, on a link that was otherwise working perfectly.
 npm test
 ```
 
-Six plain node suites and twenty-eight component suites, 424 component tests, no hardware
+Six plain node suites and twenty-eight component suites, 431 component tests, no hardware
 required:
 
 - `test/report_encoder.test.mjs` covers rendering and packet splitting, including a

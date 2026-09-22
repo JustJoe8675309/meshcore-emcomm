@@ -163,3 +163,73 @@ describe("bounding simple reads", () => {
     });
 
 });
+
+describe("catching a restart that says nothing", () => {
+
+    let sync;
+
+    beforeEach(() => {
+        Connection.commandQueue = Promise.resolve();
+        sync = vi.spyOn(Connection, "syncDeviceTime").mockResolvedValue(undefined);
+        vi.spyOn(console, "log").mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        GlobalState.connection = null;
+    });
+
+    const radioAt = (secondsOut) => ({ getDeviceTime: async () => ({ epochSecs: Math.floor(Date.now() / 1000) - secondsOut }) });
+
+    it("sets a clock that has slipped, as a clean reboot left node 1", async () => {
+        // 204 seconds out on the bench, after a reboot that raised no line error
+        GlobalState.connection = radioAt(204);
+        await Connection.checkClock();
+        expect(sync).toHaveBeenCalledTimes(1);
+    });
+
+    it("leaves a clock that is in step alone", async () => {
+        GlobalState.connection = radioAt(2);
+        await Connection.checkClock();
+        expect(sync).not.toHaveBeenCalled();
+    });
+
+    it("sets a clock that is ahead as well as behind", async () => {
+        GlobalState.connection = radioAt(-120);
+        await Connection.checkClock();
+        expect(sync).toHaveBeenCalledTimes(1);
+    });
+
+    it("says nothing and changes nothing when the radio does not answer", async () => {
+        GlobalState.connection = { getDeviceTime: () => Promise.reject(new Error("no answer")) };
+        await expect(Connection.checkClock()).resolves.toBeUndefined();
+        expect(sync).not.toHaveBeenCalled();
+    });
+
+    it("does nothing with no radio", async () => {
+        GlobalState.connection = null;
+        await Connection.checkClock();
+        expect(sync).not.toHaveBeenCalled();
+    });
+
+    it("runs with the battery check every minute", async () => {
+        const battery = vi.spyOn(Connection, "updateBatteryPercentage").mockResolvedValue(undefined);
+        const clock = vi.spyOn(Connection, "checkClock").mockResolvedValue(undefined);
+        await Connection.periodicCheck();
+        expect(battery).toHaveBeenCalled();
+        expect(clock).toHaveBeenCalled();
+    });
+
+    it("puts the radio right after the app's own reboot command", async () => {
+        // over a USB bridge the port stays open, so no reconnect sets the clock
+        const radio = { reboot: vi.fn().mockResolvedValue(undefined) };
+        GlobalState.connection = radio;
+        const recover = vi.spyOn(Connection, "onSerialRecovered").mockResolvedValue(undefined);
+
+        await Connection.reboot();
+
+        expect(radio.reboot).toHaveBeenCalled();
+        expect(recover).toHaveBeenCalledWith(radio);
+    });
+
+});
