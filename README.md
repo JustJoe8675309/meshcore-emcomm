@@ -13,7 +13,7 @@ messaging, settings and the RX log.
 ### Reports tab
 
 A tab alongside Contacts and Channels. Pick the channel to transmit on, choose a report form,
-fill it in, and send. Seventeen forms are included:
+fill it in, and send. Nineteen forms are included:
 
 | Form | Purpose | On the air |
 | ---- | ------- | ---------- |
@@ -21,6 +21,7 @@ fill it in, and send. Seventeen forms are included:
 | ICS-211 ARES/RACES Check-In | Register your station with net control | 115 b, 1 packet |
 | ICS-213 General Message | General message traffic between stations | 192 b, 2 packets |
 | ICS-213RR Resource Request | Request personnel, equipment or supplies | 133 b, 1 packet |
+| 5Ws Briefing | Task a person or team: numbered who, what, when, where and why | 303 b, 3 packets |
 | 9-Line MEDEVAC Request | Medical evacuation request, standard nine lines | 214 b, 2 packets |
 | ARRL Radiogram (NTS) | Formal traffic in National Traffic System format | 218 b, 2 packets |
 | Communications Status | A repeater, mesh node or link up or down | 151 b, 1 packet |
@@ -29,14 +30,36 @@ fill it in, and send. Seventeen forms are included:
 | Net Activation | Announce a net is open and how to check in | 167 b, 2 packets |
 | Net Check-Out | Leave the net and release your station | 114 b, 1 packet |
 | Net Traffic Summary | Net control summary of a session | 113 b, 1 packet |
+| OPORD (5 Paragraph Operations Order) | Army five paragraph order, Hazards in place of enemy forces | 500 b, 4 packets |
 | Position / Station Report | Where a station is and whether it is operational | 141 b, 1 packet |
 | Road / Route Status | Whether a route is passable, and any detour | 134 b, 1 packet |
 | SALUTE Spot Report | Size, activity, location, unit, time, equipment | 161 b, 2 packets |
 | Shelter Status | Population, capacity and needs | 135 b, 1 packet |
 | SKYWARN Spotter Report | Severe weather observation for the NWS | 166 b, 2 packets |
 
-The table is in the order the picker shows. All seventeen have been transmitted between two
-nodes and received whole, the multi part ones in every part, over USB serial and over Bluetooth.
+The table is in the order the picker shows. The original seventeen have been transmitted between
+two nodes and received whole, the multi part ones in every part, over USB serial and over
+Bluetooth. The two tasking forms, the 5Ws Briefing and the OPORD, were added on 22 September 2026
+and are not yet tried on the radios.
+
+**The tasking forms** differ from the others in three ways:
+- **A blank field is still sent,** as its tag with a hyphen, such as `1A HAZARDS: -`, so the
+  receiver can see a paragraph was left empty on purpose rather than lost. Every other form drops
+  blank fields to save airtime.
+- **The 5Ws Briefing numbers the five W's** 1 to 5, under FM (filled from the operator's
+  callsign) and DTG. All are required. An optional **ACK REQ** tick box adds "ACK REQ" alone on
+  the last line, asking the team to confirm they have the task.
+- **Its WHERE field** takes anything: an address, a description, degrees or MGRS. Its position
+  button fills in degrees with the MGRS reference beside them, such as
+  `31.9270, -106.4001 (13R CR 67640 33201)`, for editing. With no live GPS fix it uses the position
+  stored on the radio, marked "last known". The other forms' position buttons still take only a
+  live fix.
+
+The OPORD keeps the Army paragraph numbering and order: 1 Situation (1a **Hazards**, in place of
+enemy forces; 1b friendly forces and agencies; 1c attachments), 2 Mission, 3 Execution (intent,
+concept, tasks, coordinating instructions), 4 Sustainment (supply, transportation, medical), and 5
+Command and signal. Only the mission is required. A full order runs to many parts, and the
+confirm screen shows its airtime; sent direct to a team leader, each part is acknowledged.
 
 The whole app was run against both radios again after the reliability audit, since that work
 changed the send path itself. A multi part report reached the far node on a channel and, sent
@@ -1181,7 +1204,7 @@ now closed:
 npm test
 ```
 
-Six plain node suites and thirty-six component suites, 603 component tests, no hardware
+Six plain node suites and thirty-seven component suites, 617 component tests, no hardware
 required:
 
 - `test/report_encoder.test.mjs` covers rendering and packet splitting, including a

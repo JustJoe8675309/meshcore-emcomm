@@ -66,6 +66,13 @@ Connect each radio in its own browser tab; a radio can only be held by one page.
       they go out one at a time. The device tracks a single outstanding direct message,
       so a part sent before the previous is acknowledged is simply lost.
 - [ ] **Split points fall between fields**, not mid field, on a report that splits.
+- [ ] **5Ws Briefing.** Send one to the other node on Emcomm Testing with ACK REQ
+      ticked. It arrives numbered 1 WHO to 5 WHY under FM and DTG, ending "ACK REQ".
+      Its WHERE button fills in degrees and MGRS, marked "last known" on a radio
+      without a live fix.
+- [ ] **OPORD.** Send one with only the mission and one other paragraph filled in.
+      Every blank paragraph arrives as its tag with a hyphen, such as "1A HAZARDS: -",
+      in Army order.
 
 ### Position
 

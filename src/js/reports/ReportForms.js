@@ -3,13 +3,21 @@
  *
  * Each form renders to a compact plain text message that is sent over a MeshCore
  * channel. Radio airtime is expensive and the firmware caps a message at 160
- * bytes, so tags are kept short and empty optional fields are omitted entirely.
+ * bytes, so tags are kept short and empty optional fields are omitted entirely,
+ * unless the form sets keepBlankFields: then a blank field is sent as "TAG: -",
+ * so the receiver can see it was left empty on purpose rather than lost.
  *
  * Field types:
  *   text     - single line input
  *   textarea - multi line input
  *   select   - dropdown, requires "options"
  *   dtg      - single line input with a "Now" button, prefilled with the current date time group
+ *   check    - a tick box. Ticked, the tag is sent alone on its line ("ACK REQ"); unticked, nothing
+ *
+ * A text field with offersPosition gets a button that fills in this station's
+ * position; with positionWithMgrs as well, the MGRS reference goes beside the
+ * degrees, and a stored position is used, marked last known, when there is no
+ * live GPS fix.
  */
 
 const ReportForms = [
@@ -461,6 +469,53 @@ const ReportForms = [
             { id: "addressee", tag: "TO", label: "Addressee (name, address, phone)", type: "textarea", placeholder: "e.g: M SMITH, 42 MAIN ST, LAS CRUCES NM 88001", required: true },
             { id: "text", tag: "TEXT", label: "Text (25 words or fewer)", type: "textarea", placeholder: "Plain language, X between sentences. The check must match the word count.", required: true },
             { id: "signature", tag: "SIG", label: "Signature", type: "text", placeholder: "e.g: JOE", required: true },
+        ],
+    },
+
+    // ---- Tasking ----
+
+    {
+        id: "fivews",
+        name: "5Ws Briefing",
+        description: "Assigns a task or mission to a person or team: who, what, when, where and why.",
+        header: "5WS BRIEFING",
+        keepBlankFields: true,
+        // the five W's are numbered, so a reply can say "ref your 3" and be understood
+        fields: [
+            { id: "from", tag: "FM", label: "From (who is tasking)", type: "text", placeholder: "e.g: KJ5HBN Net Control", required: true, prefillFromCallsign: true },
+            { id: "datetime", tag: "DTG", label: "Date / time issued", type: "dtg", required: true },
+            { id: "who", tag: "1 WHO", label: "1. Who (person or team assigned)", type: "text", placeholder: "e.g: Team 2 (KJ5ABC, KF5XYZ)", required: true },
+            { id: "what", tag: "2 WHAT", label: "2. What (the task or mission)", type: "textarea", placeholder: "e.g: Check the shelter at Ridge Street school, report capacity and needs", required: true },
+            { id: "when", tag: "3 WHEN", label: "3. When", type: "dtg", required: true },
+            { id: "where", tag: "4 WHERE", label: "4. Where (address, description, degrees or MGRS)", type: "text", placeholder: "e.g: North gate, Ridge Street school", required: true, offersPosition: true, positionWithMgrs: true },
+            { id: "why", tag: "5 WHY", label: "5. Why (the purpose, so they can adapt)", type: "textarea", placeholder: "e.g: EOC needs shelter status before the 2200 briefing", required: true },
+            { id: "ack", tag: "ACK REQ", label: "Ask them to acknowledge (adds ACK REQ)", type: "check" },
+        ],
+    },
+
+    {
+        id: "opord",
+        name: "OPORD (5 Paragraph Operations Order)",
+        description: "The Army five paragraph operations order, with Hazards in place of enemy forces. Only the mission is required; blank parts are sent as a hyphen.",
+        header: "OPORD",
+        keepBlankFields: true,
+        fields: [
+            { id: "number", tag: "NR", label: "Order number", type: "text", placeholder: "e.g: 01-26" },
+            { id: "datetime", tag: "DTG", label: "Date / time issued", type: "dtg" },
+            { id: "refs", tag: "REF", label: "References (maps, plans)", type: "text", placeholder: "e.g: County EOP annex C" },
+            { id: "hazards", tag: "1A HAZARDS", label: "1. Situation: a. Hazards (weather, flooding, fire, road closures)", type: "textarea" },
+            { id: "friendly", tag: "1B FRIENDLY", label: "1. Situation: b. Friendly forces and other agencies", type: "textarea", placeholder: "e.g: EOC active, Red Cross at Ridge St, FD staging at Station 3" },
+            { id: "attached", tag: "1C ATTACHED", label: "1. Situation: c. Attachments and detachments", type: "text" },
+            { id: "mission", tag: "2 MISSION", label: "2. Mission (who, what, when, where and why, in one sentence)", type: "textarea", required: true },
+            { id: "intent", tag: "3A INTENT", label: "3. Execution: a. Intent (purpose and end state)", type: "textarea" },
+            { id: "concept", tag: "3B CONCEPT", label: "3. Execution: b. Concept of operations", type: "textarea" },
+            { id: "tasks", tag: "3C TASKS", label: "3. Execution: c. Tasks to teams", type: "textarea", placeholder: "e.g: Team 1 shelter comms. Team 2 road status N sector" },
+            { id: "coordinating", tag: "3D COORD", label: "3. Execution: d. Coordinating instructions (timings, check-ins, rules)", type: "textarea" },
+            { id: "supply", tag: "4A SUPPLY", label: "4. Sustainment: a. Supply (fuel, water, batteries)", type: "text" },
+            { id: "transport", tag: "4B TRANS", label: "4. Sustainment: b. Transportation", type: "text" },
+            { id: "medical", tag: "4C MEDICAL", label: "4. Sustainment: c. Medical", type: "text" },
+            { id: "command", tag: "5A COMMAND", label: "5. Command and signal: a. Command (leader's location, succession)", type: "text" },
+            { id: "signal", tag: "5B SIGNAL", label: "5. Command and signal: b. Signal (channels, call signs, check-in times)", type: "textarea" },
         ],
     },
 

@@ -58,10 +58,16 @@ class ReportEncoder {
             : this.getChannelTextBudget(nodeName);
     }
 
+    // what a blank field is sent as, on a form that keeps them
+    static BLANK_VALUE = "-";
+
     /**
      * Renders a filled in form to the plain text that goes over the air.
      * Empty optional fields are dropped entirely rather than sent as empty tags,
-     * since every byte costs airtime.
+     * since every byte costs airtime, unless the form keeps blank fields: then
+     * each is sent as "TAG: -", so a paragraph left empty on purpose is not
+     * mistaken for one lost on the way. A tick box sends its tag alone when
+     * ticked, and nothing when not.
      */
     static renderReport(form, values) {
 
@@ -77,8 +83,19 @@ class ReportEncoder {
 
             const value = (values[field.id] ?? "").toString().trim();
 
-            // skip fields the operator left blank
+            if(field.type === "check"){
+                if(value !== ""){
+                    lines.push(field.tag);
+                }
+                continue;
+            }
+
+            // skip fields the operator left blank, or on a form that keeps them,
+            // say so with a hyphen
             if(value === ""){
+                if(form.keepBlankFields){
+                    lines.push(`${field.tag}: ${this.BLANK_VALUE}`);
+                }
                 continue;
             }
 

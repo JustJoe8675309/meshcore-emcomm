@@ -6,12 +6,12 @@
 import ReportForms from "../src/js/reports/ReportForms.js";
 import ReportEncoder from "../src/js/reports/ReportEncoder.js";
 
-const FIELD_TYPES = ["text", "textarea", "select", "dtg"];
+const FIELD_TYPES = ["text", "textarea", "select", "dtg", "check"];
 const PREFILL_FLAGS = ["prefillFromCallsign", "prefillFromSpotterId"];
 // every key a field is allowed to carry. a flag nothing reads does nothing, silently,
 // so an unknown key is treated as a mistake rather than ignored
 const FIELD_KEYS = ["id", "tag", "label", "type", "placeholder", "required", "options",
-    "offersPosition", ...PREFILL_FLAGS];
+    "offersPosition", "positionWithMgrs", ...PREFILL_FLAGS];
 
 let failures = 0;
 function check(name, condition, detail = "") {
@@ -20,7 +20,7 @@ function check(name, condition, detail = "") {
 }
 
 console.log("=== catalogue ===");
-check(`${ReportForms.length} forms defined`, ReportForms.length === 17, `got ${ReportForms.length}`);
+check(`${ReportForms.length} forms defined`, ReportForms.length === 19, `got ${ReportForms.length}`);
 
 const dupes = (values) => values.filter((v, i) => values.indexOf(v) !== i);
 check("form ids are unique", dupes(ReportForms.map((f) => f.id)).length === 0, dupes(ReportForms.map((f) => f.id)).join(","));
@@ -50,6 +50,8 @@ for (const form of ReportForms) {
         if (!FIELD_TYPES.includes(field.type)) problems.push(`${field.id}: unknown type ${field.type}`);
         if (field.type === "select" && !(field.options ?? []).length) problems.push(`${field.id}: select with no options`);
         if (field.type !== "select" && field.options) problems.push(`${field.id}: options on a non select`);
+        if (field.positionWithMgrs && !field.offersPosition) problems.push(`${field.id}: positionWithMgrs without offersPosition`);
+        if (field.type === "check" && field.required) problems.push(`${field.id}: a required tick box can never be left unticked`);
         // a flag the panel does not know about would silently do nothing
         for (const key of Object.keys(field)) {
             if (!FIELD_KEYS.includes(key)) problems.push(`${field.id}: unknown key ${key}`);
@@ -68,9 +70,13 @@ console.log("\n=== every form renders and encodes ===");
 for (const form of ReportForms) {
     let ok = true, detail = "";
     try {
-        // empty, which is the state a form is in the moment it is selected
+        // empty, which is the state a form is in the moment it is selected. A form
+        // that keeps blank fields shows every one of them as a hyphen
         const empty = ReportEncoder.prepare(form, {}, "Joe-KJ5HBN-HTv3", "channel");
-        if (empty.text !== form.header) { ok = false; detail = `empty form should render just the header, got ${JSON.stringify(empty.text)}`; }
+        const expectedEmpty = form.keepBlankFields
+            ? [form.header, ...form.fields.filter((f) => f.type !== "check").map((f) => `${f.tag}: -`)].join("\n")
+            : form.header;
+        if (empty.text !== expectedEmpty) { ok = false; detail = `empty form rendered ${JSON.stringify(empty.text)}`; }
         if (empty.missingRequiredFields.length === 0) { ok = false; detail += " empty form reports nothing missing"; }
 
         // fully populated, so every field renders
@@ -82,7 +88,8 @@ for (const form of ReportForms) {
         if (filled.missingRequiredFields.length !== 0) { ok = false; detail += " filled form still reports missing fields"; }
         if (filled.parts === null) { ok = false; detail += " filled form could not be split"; }
         for (const field of form.fields) {
-            if (!filled.text.includes(`${field.tag}: `)) { ok = false; detail += ` missing tag ${field.tag}`; }
+            const expected = field.type === "check" ? `\n${field.tag}` : `${field.tag}: `;
+            if (!filled.text.includes(expected)) { ok = false; detail += ` missing tag ${field.tag}`; }
         }
     } catch (e) {
         ok = false; detail = e.message;

@@ -105,6 +105,19 @@ const sampleValues = {
         line6: "Fall from roof, head injury, conscious", line7: "SMOKE",
         line8: "1 CIVILIAN", line9: "Open field, power lines N side",
     },
+    fivews: {
+        from: "KJ5HBN Net Control", datetime: "221830L SEP", who: "Team 2 (KJ5ABC, KF5XYZ)",
+        what: "Check the shelter at Ridge Street school, report capacity and needs",
+        when: "221900L-222100L SEP", where: "31.92702, -106.40012 (13R CR 67640 33201)",
+        why: "EOC needs shelter status before the 2200 briefing", ack: "yes",
+    },
+    opord: {
+        number: "01-26", datetime: "221800L SEP",
+        hazards: "Flash flooding along the Rio Grande, Doniphan Dr closed",
+        mission: "ARES teams provide shelter and road status comms in the north sector from 221900L SEP until relieved, so the EOC can route evacuees",
+        tasks: "Team 1 shelter comms at Ridge St. Team 2 road status N sector",
+        signal: "Emcomm Testing channel, check in on the hour",
+    },
 };
 
 const nodeName = "K7ABC";

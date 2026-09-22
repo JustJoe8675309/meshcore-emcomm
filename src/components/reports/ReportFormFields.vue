@@ -3,7 +3,7 @@
 
         <div v-for="field of fields" :key="field.id" class="space-y-1">
 
-            <label :for="fieldId(field)" class="block text-sm font-medium text-gray-900">
+            <label v-if="field.type !== 'check'" :for="fieldId(field)" class="block text-sm font-medium text-gray-900">
                 {{ field.label }}
                 <span v-if="field.required" class="text-red-600" aria-hidden="true">*</span>
                 <span v-if="field.required" class="sr-only">required</span>
@@ -20,6 +20,17 @@
                 <option value="" disabled>Select...</option>
                 <option v-for="option of field.options" :key="option" :value="option">{{ option }}</option>
             </select>
+
+            <!-- tick box: sends its tag alone when ticked -->
+            <label v-else-if="field.type === 'check'" :for="fieldId(field)" class="flex items-center space-x-2 text-sm font-medium text-gray-900">
+                <input
+                    :id="fieldId(field)"
+                    type="checkbox"
+                    :checked="(values[field.id] ?? '') !== ''"
+                    @change="onInput(field, $event.target.checked ? 'yes' : '')"
+                    class="rounded border-gray-300">
+                <span>{{ field.label }}</span>
+            </label>
 
             <!-- multi line field -->
             <textarea
@@ -120,6 +131,7 @@
 import Dtg from "../../js/reports/Dtg.js";
 import OperatorSettings from "../../js/reports/OperatorSettings.js";
 import Position from "../../js/reports/Position.js";
+import Geo from "../../js/position/Geo.js";
 import Connection from "../../js/Connection.js";
 import GlobalState from "../../js/GlobalState.js";
 
@@ -246,6 +258,15 @@ export default {
 
                     await Connection.probeForLiveGps();
 
+                    // a tasking can go to a stored position, as long as it says so
+                    if(GlobalState.gpsStatus !== "live" && field.positionWithMgrs){
+                        const stored = await Connection.getPosition();
+                        if(stored !== null){
+                            this.onInput(field, this.positionText(stored, true));
+                            return;
+                        }
+                    }
+
                     if(GlobalState.gpsStatus !== "live"){
                         this.positionErrors = {
                             ...this.positionErrors,
@@ -266,7 +287,9 @@ export default {
                     return;
                 }
 
-                this.onInput(field, Position.format(position.latitude, position.longitude));
+                this.onInput(field, field.positionWithMgrs
+                    ? this.positionText(position, false)
+                    : Position.format(position.latitude, position.longitude));
 
             } catch(e) {
                 console.log("failed to read position from device", e);
@@ -280,6 +303,16 @@ export default {
 
         },
 
+
+        // "31.92702, -106.40012 (13R CR 67640 33201)", with "last known" when it is
+        // a stored position rather than a live fix. The operator can edit it or
+        // add a description after it
+        positionText(position, lastKnown) {
+            const degrees = Position.format(position.latitude, position.longitude);
+            const mgrs = Geo.formatMgrs(position.latitude, position.longitude);
+            const grid = mgrs ? ` (${mgrs})` : "";
+            return `${degrees}${grid}${lastKnown ? " last known" : ""}`;
+        },
 
         fieldId(field) {
             return `report-field-${field.id}`;
