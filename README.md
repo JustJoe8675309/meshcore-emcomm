@@ -925,6 +925,17 @@ was the radio link, not a fault in the app, and both changes are proven.
 As before, not one of these failed a test or a build. Every one was found on the radios. Each
 now has a component test, which brings the suite to 456.
 
+Two things built since are proven except for one case each, and neither can be made to
+happen on demand:
+- **The check for dropped contacts.** The loading screen should say "Checking for dropped
+  contacts..." when a Bluetooth connection's first read of the list comes up short. That
+  happens on some connections and not others. On the one recorded since, node 2 read all 183
+  contacts in one pass, so the step rightly never appeared.
+- **Discovery's 10 second listen against N.E. ELP OBSVR.** This repeater was found on earlier
+  days and has answered no search since discovery was shortened from 30 seconds. The one that
+  did answer, JOE- QTHish, replied in under a second, so no trouble is expected, but it is not
+  proven for this one.
+
 ## Tests
 
 ```bash
