@@ -47,7 +47,9 @@ Connect each radio in its own browser tab; a radio can only be held by one page.
 
 - [ ] **Connecting.** A loading screen covers the app from the moment the link opens. It
       names each step, and counts contacts against the number the radio announced. It
-      is gone once the node is read, and the tabs are full when it goes.
+      is gone once the node is read, and the tabs are full when it goes. A second read
+      of the contact list says it is checking for dropped contacts. Channels get a bar
+      and a count too: slots read of the radio's total, with how many were found.
 - [ ] **Disconnect on the loading screen.** Ends the attempt and removes the screen. Nothing
       comes back up as the steps still under way finish.
 - [ ] **Backup and restore.** Back up current info, Load last backup, and Leave EMCOMM mode
@@ -84,7 +86,9 @@ case it refuses.
 
 ### Ping and discovery
 
-- [ ] **Discover** finds the repeaters in direct range, with both signal readings.
+- [ ] **Discover** finds the repeaters in direct range, with both signal readings. It
+      listens for 10 s at the bench settings, not the 30 s it used to, and finds the
+      same repeaters it found at 30.
 - [ ] **Clicking a discovered repeater** selects it in the picker below.
 - [ ] **Ping** a repeater that answers traces. Signal readings should be exact
       multiples of 0.25, which is the sign the quarter dB decoding is right.

@@ -10,6 +10,7 @@ import SignedPosts from "./SignedPosts.js";
 import AdvertSchedule from "./AdvertSchedule.js";
 import { installResilientSerialReads } from "./SerialResilience.js";
 import { Advert } from "@liamcottle/meshcore.js";
+import Airtime from "./reports/Airtime.js";
 
 // before any connection exists: the serial read loop starts in its constructor
 installResilientSerialReads();
@@ -318,10 +319,16 @@ class Connection {
 
             // fetch data after database is ready. the contact list is most of the
             // wait, a couple of hundred frames on a well used node, so it is counted
+            // a pass after the first is making sure none were dropped, and the count
+            // sits at the total while it does, so it says so rather than look stuck
             step("Reading contacts...");
-            await this.loadContacts((received, announced) => step("Reading contacts...", received, announced));
+            await this.loadContacts((received, announced, pass) => {
+                step(pass > 1 ? "Checking for dropped contacts..." : "Reading contacts...", received, announced);
+            });
             step("Reading channels...");
-            await this.loadChannels();
+            await this.loadChannels((slot, slots, found) => {
+                step(`Reading channels... ${found} found`, slot, slots);
+            });
             step("Reading waiting messages...");
             await this.syncMessages();
             step("Reading the battery...");
@@ -611,9 +618,10 @@ class Connection {
         // shortfall below floors at zero, and the next load agrees with the device
         // again.
         let announced = null;
+        let pass = 1;
         const onContactsStart = (start) => {
             announced = start?.count ?? null;
-            onProgress?.(seen.size, announced);
+            onProgress?.(Math.min(seen.size, announced ?? seen.size), announced, pass);
         };
         connection.on(Constants.ResponseCodes.ContactsStart, onContactsStart);
 
@@ -621,7 +629,7 @@ class Connection {
         const seen = new Set();
         const onContactSeen = (contact) => {
             seen.add(Utils.bytesToHex(contact.publicKey));
-            onProgress?.(Math.min(seen.size, announced ?? seen.size), announced);
+            onProgress?.(Math.min(seen.size, announced ?? seen.size), announced, pass);
         };
         if(onProgress){
             connection.on(Constants.ResponseCodes.Contact, onContactSeen);
@@ -634,6 +642,7 @@ class Connection {
 
             for(let attempt = 0; attempt < this.MAX_CONTACT_LOAD_PASSES; attempt++){
 
+                pass = attempt + 1;
                 const before = byPublicKey.size;
                 for(const contact of await this.readContactsOnce(connection)){
                     byPublicKey.set(Utils.bytesToHex(contact.publicKey), contact);
@@ -680,14 +689,55 @@ class Connection {
         ];
     }
 
-    static async loadChannels() {
+    /**
+     * How many channel slots the radio has, or null if it will not say. The
+     * device info reply carries it as its third byte, which meshcore.js files
+     * under "reserved": MAX_CONTACTS / 2, then MAX_GROUP_CHANNELS.
+     */
+    static async channelSlotCount() {
+        try {
+            const info = await this.deviceQuery();
+            const slots = info?.reserved?.[1];
+            return slots > 0 ? slots : null;
+        } catch(e) {
+            return null;
+        }
+    }
+
+    // onProgress, when given, hears the slot being read, how many slots there are
+    // (null if the radio would not say), and how many configured channels so far
+    static async loadChannels(onProgress = null) {
 
         // ask the device which channels it has configured.
         // older firmware doesn't support this command and may never reply,
         // so this is guarded by a timeout and falls back to the public channel.
         try {
 
-            const channels = await this.exclusive(() => GlobalState.connection.getChannels(), 10000);
+            const connection = GlobalState.connection;
+            const slots = onProgress ? await this.channelSlotCount() : null;
+
+            // one slot at a time until the radio says there are no more, which is
+            // what meshcore.js getChannels does, but counted. Every slot is read,
+            // empty ones too, so on a radio with forty slots this is forty reads
+            const channels = await this.exclusive(async () => {
+                const read = [];
+                let found = 0;
+                for(let idx = 0; slots == null || idx < slots; idx++){
+                    onProgress?.(idx, slots, found);
+                    let channel;
+                    try {
+                        channel = await connection.getChannel(idx);
+                    } catch(e) {
+                        break;
+                    }
+                    read.push(channel);
+                    if(channel?.name != null && channel.name.trim() !== ""){
+                        found++;
+                    }
+                }
+                onProgress?.(slots ?? read.length, slots ?? read.length, found);
+                return read;
+            }, 10000);
 
             // unused channel slots come back with an empty name, so skip those.
             // the rest of the app identifies a channel by "idx", so normalise "channelIdx" here.
@@ -1196,7 +1246,17 @@ class Connection {
      * than a ping: the responder reports how well it heard us, and our own radio
      * reports how well we heard the reply.
      */
-    static async discoverRepeaters(listenMillis = 30000) {
+    // Discovery used to listen for a fixed 30 s. At the bench settings every
+    // repeater on default settings has answered within about 2 s, so most of that
+    // was waiting on nothing. 10 s leaves room for a repeater whose owner has
+    // raised its delay, and slower radio settings get longer
+    static DISCOVERY_MIN_LISTEN_MILLIS = 10000;
+
+    static discoveryListenMillis() {
+        return Airtime.discoveryListenMillis(GlobalState.selfInfo, this.DISCOVERY_MIN_LISTEN_MILLIS);
+    }
+
+    static async discoverRepeaters(listenMillis = this.discoveryListenMillis()) {
 
         const connection = GlobalState.connection;
         if(connection == null){

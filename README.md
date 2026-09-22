@@ -150,6 +150,15 @@ already known can be clicked to select it for pinging; one that is new can be sa
 contact, under a name built from its key, because the discovery reply does not carry one.
 The device replaces that name when the repeater next adverts.
 
+**How long it listens** depends on the radio settings. It used to be a fixed 30 seconds. A
+repeater answers after a random wait of up to ten times the airtime of its short reply, so
+that many answering at once do not all collide (`getRetransmitDelay`, widened four times, in
+the repeater firmware). Add the request going out and the last reply coming back, and the
+slowest answer a repeater on default settings can give is twelve airtimes. At SF7 and 62.5 kHz
+that is about 2 seconds. The app listens for that, rounded up to a whole second, and never
+under 10 seconds, which leaves room for a repeater whose owner has raised its delay. So it is
+10 seconds at the bench settings, and about 19 at SF12 and 125 kHz.
+
 Discovery and ping do not always agree, and both are right when they disagree. Discovery
 proves a repeater is in range and hears you, because it answered. Ping additionally
 requires it to answer trace requests, and not every repeater does: one here replies to
@@ -630,7 +639,16 @@ the moment the link opens until the node has been read. It names each step as it
 - setting its clock;
 - opening its messages;
 - reading contacts, counted against the number the radio said it would send;
-- reading channels, waiting messages and the battery.
+- checking for dropped contacts, when a second read of the list is needed;
+- reading channels, counted slot by slot against the number of slots the radio has, with how
+  many configured channels have been found so far;
+- reading waiting messages and the battery.
+
+The channel count is of slots, not channels: every slot is read, empty ones too, so a radio
+with forty slots and thirteen channels shows 40 of 40 and 13 found. That is why the channel
+step took five seconds on the bench. The radio gives its slot count in its device info reply,
+which `meshcore.js` files under a reserved field. A radio that does not give it still has
+every slot read, with a count but no bar.
 
 It has a Disconnect button, and it goes away if the attempt fails, leaving the reason on the
 connect screen.
@@ -639,7 +657,8 @@ Proven on node 2 over Bluetooth, with every change on the screen timestamped:
 - 1.3 s: the radio had answered, its clock was set, and the contacts were being read.
 - 21.2 s: the count had gone up one contact at a time to 183 of 183.
 - 24.3 s: channels. The three seconds before this are a second read of the contact list,
-  checking that none were dropped.
+  checking that none were dropped. The count sat at 183 of 183 through it and looked stuck,
+  so that step now says it is checking for dropped contacts.
 - 29.5 s: the screen was gone and the node was ready.
 
 A backup on node 1 showed its own screen for the 4 seconds it took, and went away with 213
@@ -880,7 +899,7 @@ now has a component test, which brings the suite to 456.
 npm test
 ```
 
-Six plain node suites and thirty-two component suites, 467 component tests, no hardware
+Six plain node suites and thirty-three component suites, 476 component tests, no hardware
 required:
 
 - `test/report_encoder.test.mjs` covers rendering and packet splitting, including a

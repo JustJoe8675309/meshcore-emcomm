@@ -123,6 +123,33 @@ class Airtime {
 
     }
 
+    // A discovery request and its replies are small control packets: 16 bytes on
+    // the air is a little over either
+    static DISCOVERY_PACKET_BYTES = 16;
+
+    // A repeater answers discovery after a random 0 to 10 airtimes of its reply
+    // (getRetransmitDelay, widened four times because many may answer at once:
+    // 4 x 5 x airtime x tx_delay_factor 0.5). Add one airtime for the request
+    // going out and one for the last reply coming back.
+    static DISCOVERY_LISTEN_AIRTIMES = 12;
+
+    /**
+     * How long to listen for answers to a repeater discovery: until the slowest
+     * repeater on default settings could have answered, rounded up to a whole
+     * second and never under floorMillis. The floor alone when the radio settings
+     * are not known. About 2 s at SF7 and 62.5 kHz, so the floor decides it there;
+     * about 19 s at SF12 and 125 kHz.
+     */
+    static discoveryListenMillis(selfInfo, floorMillis) {
+        const radio = this.getRadioFromSelfInfo(selfInfo);
+        if(!radio){
+            return floorMillis;
+        }
+        const airtime = this.getTimeOnAirMillis(this.DISCOVERY_PACKET_BYTES, radio);
+        const listen = Math.ceil((airtime * this.DISCOVERY_LISTEN_AIRTIMES) / 1000) * 1000;
+        return Math.max(floorMillis, listen);
+    }
+
     /**
      * Total estimate for a whole report, including the gaps between parts.
      * Returns null when the radio settings are not known.

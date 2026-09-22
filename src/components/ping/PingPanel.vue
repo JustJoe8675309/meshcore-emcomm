@@ -206,9 +206,6 @@ import ContactFlags from "../../js/ContactFlags.js";
 import TimeUtils from "../../js/TimeUtils.js";
 import SearchableSelect from "../reports/SearchableSelect.vue";
 
-// repeaters answer with a randomised widened delay, since many may reply at once,
-// so this listens for a while rather than waiting on a single response
-const DISCOVER_LISTEN_MILLIS = 30000;
 
 export default {
     name: 'PingPanel',
@@ -447,7 +444,11 @@ export default {
             this.isDiscovering = true;
             this.discoverError = null;
             this.discoverResults = null;
-            this.discoverSecondsLeft = Math.round(DISCOVER_LISTEN_MILLIS / 1000);
+            // repeaters answer after a random, widened delay, since many may reply at
+            // once, so this listens for a while rather than for a single response.
+            // How long depends on the radio settings, see Airtime.discoveryListenMillis
+            const listenMillis = Connection.discoveryListenMillis();
+            this.discoverSecondsLeft = Math.round(listenMillis / 1000);
 
             this.discoverTicker = setInterval(() => {
                 this.discoverSecondsLeft = Math.max(0, this.discoverSecondsLeft - 1);
@@ -455,7 +456,7 @@ export default {
 
             try {
 
-                const found = await Connection.discoverRepeaters(DISCOVER_LISTEN_MILLIS);
+                const found = await Connection.discoverRepeaters(listenMillis);
 
                 const known = new Map(GlobalState.contacts.map((c) => [Utils.bytesToHex(c.publicKey), c.advName]));
 
