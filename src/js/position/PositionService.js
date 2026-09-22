@@ -595,18 +595,24 @@ class PositionService {
         }
 
         // an answer to one of ours ends it, matched on the tag, or failing that
-        // on the station, since an answer to an earlier round still counts
+        // on the station, since an answer to an earlier round still counts. A
+        // request that gave up is still closed by an answer carrying its own tag:
+        // a person answers a prompt, and on the bench one answered a single
+        // request a minute after it had been marked "No answer"
         const request = state.requests.find((r) => r.status === "running" && r.tag === message.tag)
-            ?? state.requests.find((r) => r.status === "running" && r.target.prefixHex === fromHex);
+            ?? state.requests.find((r) => r.status === "running" && r.target.prefixHex === fromHex)
+            ?? state.requests.find((r) => r.status === "gave up" && r.tag === message.tag && r.target.prefixHex === fromHex);
         if(request == null){
             return;
         }
+        const late = request.status === "gave up" ? " The answer came after this app had stopped asking." : "";
+        request.radioNote = null;
         if(message.kind === Protocol.KIND.DECLINED){
-            this.finish(request, "declined", `Declined by ${name}.`);
+            this.finish(request, "declined", `Declined by ${name}.${late}`);
         } else if(!message.hasPosition){
-            this.finish(request, "answered", `${name} answered, but has no position set.`);
+            this.finish(request, "answered", `${name} answered, but has no position set.${late}`);
         } else {
-            this.finish(request, "answered", message.messageToFollow ? `${name} answered, with a message to follow.` : `${name} answered.`);
+            this.finish(request, "answered", (message.messageToFollow ? `${name} answered, with a message to follow.` : `${name} answered.`) + late);
         }
 
     }

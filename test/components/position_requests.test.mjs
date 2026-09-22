@@ -455,6 +455,21 @@ describe("entering the current position when only a last known one is held", () 
         expect(datagrams[0].lastKnown).toBe(true);
     });
 
+    it("offers to send without a position, not a last known one, when the radio has none", async () => {
+        // on the bench node 1 had none, and the button still spoke of a last known position
+        connect({ lat: 0, lon: 0 });
+        const wrapper = mountPrompt();
+        PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: incomingRequest() });
+        await flushPromises();
+        await button(wrapper, "Enter current position").trigger("click");
+        expect(wrapper.text()).not.toContain("Send the last known position instead");
+        await button(wrapper, "Send without a position").trigger("click");
+        await button(wrapper, "Send").trigger("click");
+        await flushPromises();
+        expect(written).toEqual([]);
+        expect(datagrams[0].hasPosition).toBe(false);
+    });
+
     it("tells a direct asker it was entered by hand", async () => {
         PositionService.onDirectText(THEM_CONTACT, Protocol.toDirectText({ kind: Protocol.KIND.REQUEST, tag: 3, to: ME, from: THEM, name: "" }, "x"));
         const directs = [];
@@ -772,6 +787,37 @@ describe("asking", () => {
         expect(request.status).toBe("gave up");
         expect(request.outcome).toBe("No answer after 1 request.");
         expect(sent).toHaveLength(1);
+    });
+
+    it("a request that gave up is still closed by a late answer to it, saying it came late", async () => {
+        // on the bench a person answered a single request a minute after it was sent
+        const request = PositionService.start(THEM_CONTACT, channel, { type: "once" });
+        await vi.advanceTimersByTimeAsync(0);
+        await vi.advanceTimersByTimeAsync(30000);
+        expect(request.status).toBe("gave up");
+        expect(request.radioNote).toMatch(/did not answer either/);
+
+        await vi.advanceTimersByTimeAsync(30000);
+        answer(request.tag, Protocol.KIND.POSITION, { flags: Protocol.FLAG.MANUAL });
+        expect(request.status).toBe("answered");
+        expect(request.outcome).toBe("KJ5HBN-EMCOMM answered. The answer came after this app had stopped asking.");
+        expect(request.radioNote).toBe(null);
+    });
+
+    it("a late answer carrying another tag does not reopen a request that gave up", async () => {
+        const request = PositionService.start(THEM_CONTACT, channel, { type: "once" });
+        await vi.advanceTimersByTimeAsync(0);
+        await vi.advanceTimersByTimeAsync(30000);
+        answer((request.tag + 1) >>> 0);
+        expect(request.status).toBe("gave up");
+    });
+
+    it("a request stopped by the operator stays stopped when an answer comes", async () => {
+        const request = PositionService.start(THEM_CONTACT, channel, { type: "once" });
+        await vi.advanceTimersByTimeAsync(0);
+        PositionService.stop(request.tag);
+        answer(request.tag);
+        expect(request.status).toBe("stopped");
     });
 
     it("until: repeats every interval until the answer comes, then stops", async () => {

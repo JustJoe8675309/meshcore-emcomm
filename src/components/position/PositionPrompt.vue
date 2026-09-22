@@ -93,7 +93,7 @@
                         </div>
                     </template>
                     <button @click="cancelEntry" :disabled="busy" type="button" class="w-full text-xs text-gray-500 underline">
-                        Send the last known position instead
+                        {{ own.has ? "Send the last known position instead" : "Send without a position" }}
                     </button>
                 </div>
             </div>
