@@ -22,9 +22,6 @@
 
             </div>
 
-            <!-- which mode this station is in, under the battery line -->
-            <ModeBanner class="mt-0.5" @open="modeDialogOpen = true"/>
-
         </div>
         <div class="my-auto flex font-semibold">
 
@@ -71,6 +68,13 @@
             </div>
 
         </div>
+    </div>
+
+    <!-- which mode this station is in: its own row, the full width of the header.
+         Inside the name column it was clipped by the row's fixed height and by
+         the column's own width, so it read "Normal mode · tap to" and no more -->
+    <div class="px-2 pb-1">
+        <ModeBanner @open="modeDialogOpen = true"/>
     </div>
 
     <ModeSwitchDialog :open="modeDialogOpen" @close="modeDialogOpen = false"/>

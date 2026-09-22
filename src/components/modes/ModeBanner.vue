@@ -7,7 +7,7 @@
         @click="open"
         type="button"
         :class="classes"
-        class="w-full text-left text-xs font-bold tracking-wide px-2 py-0.5 rounded">
+        class="block w-full text-center text-xs font-bold tracking-wide px-2 py-1 rounded">
         {{ label }}<span class="font-normal"> · tap to change</span>
     </button>
 </template>

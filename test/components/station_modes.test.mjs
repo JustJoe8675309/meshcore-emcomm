@@ -418,6 +418,28 @@ describe("the banner", () => {
         }
     });
 
+    it("goes right across the header, outside the column that clips the node name", async () => {
+        // on a phone it sat inside the name column, under a row of fixed height:
+        // it read "Normal mode · tap to" with the rest cut off
+        const { default: Header } = await import("../../src/components/Header.vue");
+        const wrapper = mount(Header, { global: { stubs: { RouterLink: true, DropDownMenu: true, DropDownMenuItem: true, IconButton: true, ModeSwitchDialog: true } } });
+        const banner = wrapper.findComponent(ModeBanner);
+        expect(banner.exists()).toBe(true);
+
+        const button = banner.find("button");
+        expect(button.classes()).toContain("w-full");
+
+        // nothing between it and the header hides what overflows or fixes a height
+        let parent = button.element.parentElement;
+        while(parent && parent !== wrapper.element.parentElement){
+            const classes = parent.className ?? "";
+            expect(classes).not.toContain("overflow-hidden");
+            expect(classes).not.toContain("truncate");
+            expect(classes).not.toMatch(/h-16/);
+            parent = parent.parentElement;
+        }
+    });
+
     it("asks to be opened when pressed", async () => {
         const wrapper = mount(ModeBanner);
         await wrapper.find("button").trigger("click");
