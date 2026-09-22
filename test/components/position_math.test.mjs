@@ -89,6 +89,35 @@ describe("MGRS", () => {
         expect(sydney.band).toBe("H");
     });
 
+    it("reads a reference back to within a metre, anywhere MGRS reaches", () => {
+        const points = [[0, 0], [48.8582, 2.2945], [31.92702, -106.40012], [-33.8568, 151.2153], [60, 5],
+            [78, 15], [-45.1, -70.3], [38.8895, -77.0353], [0.0001, -0.0001], [-0.5, 33], [71.9, 25.5], [55.99, 10]];
+        for(const [lat, lon] of points){
+            const back = Mgrs.toLatLon(Mgrs.fromLatLon(lat, lon).text);
+            const metres = Geo.distanceMetres(lat, lon, back.latitude, back.longitude);
+            expect(metres).toBeLessThan(1);
+            expect(back.precisionMetres).toBe(1);
+        }
+    });
+
+    it("reads a reference typed any way, at any even number of digits", () => {
+        const spaced = Mgrs.toLatLon("13R CR 67640 33201");
+        const compact = Mgrs.toLatLon("13rcr6764033201");
+        expect(compact.latitude).toBeCloseTo(spaced.latitude, 9);
+        const hundred = Mgrs.toLatLon("13R CR 676 332");
+        expect(hundred.precisionMetres).toBe(100);
+        // a coarser reference names a bigger square, and its centre is given
+        expect(Geo.distanceMetres(spaced.latitude, spaced.longitude, hundred.latitude, hundred.longitude)).toBeLessThan(100);
+    });
+
+    it("refuses a reference it cannot read", () => {
+        expect(Mgrs.toLatLon("")).toBe(null);
+        expect(Mgrs.toLatLon("13R CR 67640 3320")).toBe(null);
+        expect(Mgrs.toLatLon("13I CR 1 1")).toBe(null);
+        expect(Mgrs.toLatLon("99R CR 11")).toBe(null);
+        expect(Mgrs.toLatLon("31.9270, -106.4001")).toBe(null);
+    });
+
     it("has nothing to say beyond 84 north or 80 south, where MGRS stops", () => {
         expect(Mgrs.fromLatLon(85, 0)).toBe(null);
         expect(Mgrs.fromLatLon(-81, 0)).toBe(null);

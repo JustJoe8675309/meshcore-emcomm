@@ -146,6 +146,12 @@ in settings on the one being asked.
       Enter a position and use Save to radio and send. The radio's own position
       (This station) changes to it, and the asker sees "Entered by hand at …, not
       GPS". A position past 90 or 180, or 0, 0, is refused.
+- [ ] **Enter current position as MGRS.** Switch the entry to MGRS, type a reference,
+      and see it shown back in degrees. A shorter reference says how big its square is.
+      A reference that cannot be read is refused.
+- [ ] **Several stations asking.** Needs three radios. With two asking at once, the
+      prompt says one more is waiting; answering brings up the second. A station asking
+      again keeps its place and its entry becomes its newest request.
 - [ ] **Same location.** Two radios side by side read "Same location as this
       station", with no bearing. Further apart but under a tenth of a mile, the
       distance is in feet and metres.

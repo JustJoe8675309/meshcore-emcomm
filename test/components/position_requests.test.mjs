@@ -19,6 +19,7 @@ import Database from "../../src/js/Database.js";
 import NotificationUtils from "../../src/js/NotificationUtils.js";
 import GlobalState from "../../src/js/GlobalState.js";
 import OperatorSettings from "../../src/js/reports/OperatorSettings.js";
+import Geo from "../../src/js/position/Geo.js";
 
 const ME = new Uint8Array(32).fill(0xa7);
 const THEM = new Uint8Array(32).fill(0x39);
@@ -482,6 +483,170 @@ describe("entering the current position when only a last known one is held", () 
         await flushPromises();
         expect(wrapper.text()).toContain("Same location as this station");
         expect(wrapper.text()).not.toMatch(/\d{3}° magnetic/);
+    });
+
+});
+
+describe("the queue of requests", () => {
+
+    const OTHER = new Uint8Array(32).fill(0x55);
+    const THIRD = new Uint8Array(32).fill(0x66);
+
+    function requestFrom(from, name, tag, idx = 7) {
+        PositionService.onChannelData({ channelIdx: idx, dataType: Protocol.DATA_TYPE, data: Protocol.encode({ kind: Protocol.KIND.REQUEST, tag, to: ME, from, name }) });
+    }
+
+    beforeEach(() => {
+        window.localStorage.clear();
+        reset();
+        connect();
+        GlobalState.channels = [{ idx: 7, name: "Emcomm Testing" }, { idx: 3, name: "Net" }];
+        PositionService.saveSettings({ markedChannels: [7, 3], autoAnswer: false });
+        vi.spyOn(Connection, "sendChannelDatagram").mockResolvedValue(undefined);
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        reset();
+    });
+
+    it("keeps every station that asks, and shows them one at a time, first come first", () => {
+        requestFrom(THEM, "KJ5HBN", 1);
+        requestFrom(OTHER, "W5ABC", 2);
+        requestFrom(THIRD, "KF5XYZ", 3);
+        expect(PositionService.state.prompts.map((p) => p.name)).toEqual(["KJ5HBN", "W5ABC", "KF5XYZ"]);
+        expect(PositionService.state.prompt.name).toBe("KJ5HBN");
+    });
+
+    it("keeps only the newest request from a station that asks again, in its place", () => {
+        requestFrom(THEM, "KJ5HBN", 1);
+        requestFrom(OTHER, "W5ABC", 2);
+        requestFrom(THEM, "KJ5HBN", 9, 3);
+        const queue = PositionService.state.prompts;
+        expect(queue).toHaveLength(2);
+        expect(queue[0].name).toBe("KJ5HBN");
+        // the newest: its tag and the channel it came on this time
+        expect(queue[0].tag).toBe(9);
+        expect(queue[0].via.name).toBe("Net");
+        expect(queue[0].count).toBe(2);
+    });
+
+    it("brings up the next once one is answered, declined or put off", async () => {
+        requestFrom(THEM, "KJ5HBN", 1);
+        requestFrom(OTHER, "W5ABC", 2);
+        requestFrom(THIRD, "KF5XYZ", 3);
+        await PositionService.answer(PositionService.state.prompt);
+        expect(PositionService.state.prompt.name).toBe("W5ABC");
+        await PositionService.decline(PositionService.state.prompt);
+        expect(PositionService.state.prompt.name).toBe("KF5XYZ");
+        PositionService.dismissPrompt();
+        expect(PositionService.state.prompt).toBe(null);
+    });
+
+    it("says on the prompt who else is waiting", async () => {
+        const wrapper = mount(PositionPrompt, { global: { mocks: { $router: { push() {} } } } });
+        requestFrom(THEM, "KJ5HBN", 1);
+        requestFrom(OTHER, "W5ABC", 2);
+        requestFrom(THIRD, "KF5XYZ", 3);
+        await flushPromises();
+        expect(wrapper.text()).toContain("KJ5HBN asks for your position");
+        expect(wrapper.text()).toContain("2 more stations are waiting");
+        expect(wrapper.text()).toContain("W5ABC, KF5XYZ");
+    });
+
+    it("empties when the radio disconnects", () => {
+        requestFrom(THEM, "KJ5HBN", 1);
+        requestFrom(OTHER, "W5ABC", 2);
+        PositionService.onDisconnected();
+        expect(PositionService.state.prompts).toEqual([]);
+    });
+
+});
+
+describe("entering the current position as MGRS", () => {
+
+    let datagrams;
+    let written;
+
+    const button = (wrapper, text) => wrapper.findAll("button").find((b) => b.text() === text);
+
+    beforeEach(() => {
+        window.localStorage.clear();
+        reset();
+        connect();
+        PositionService.saveSettings({ markedChannels: [7], autoAnswer: false });
+        datagrams = [];
+        written = [];
+        vi.spyOn(Connection, "sendChannelDatagram").mockImplementation(async (idx, type, payload) => { datagrams.push(Protocol.decode(payload)); });
+        vi.spyOn(Connection, "setAdvertLatLong").mockImplementation(async (lat, lon) => { written.push([lat, lon]); });
+        vi.spyOn(Connection, "loadSelfInfo").mockImplementation(async () => {
+            const last = written[written.length - 1];
+            if(last){
+                GlobalState.selfInfo = { ...GlobalState.selfInfo, advLat: last[0], advLon: last[1] };
+            }
+        });
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        reset();
+    });
+
+    async function openEntry() {
+        const wrapper = mount(PositionPrompt, { global: { mocks: { $router: { push() {} } } } });
+        PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: incomingRequest() });
+        await flushPromises();
+        await button(wrapper, "Enter current position").trigger("click");
+        await button(wrapper, "MGRS").trigger("click");
+        return wrapper;
+    }
+
+    it("starts from the radio's position as a reference, and shows it back in degrees", async () => {
+        const wrapper = await openEntry();
+        expect(wrapper.vm.entryMgrsText).toBe("13R CR 59180 14651");
+        wrapper.vm.entryMgrsText = "13R CR 67640 33201";
+        await flushPromises();
+        expect(wrapper.text()).toContain("31.9270° N, 106.4001° W");
+    });
+
+    it("saves and sends the position the reference names", async () => {
+        const wrapper = await openEntry();
+        wrapper.vm.entryMgrsText = "13R CR 67640 33201";
+        await flushPromises();
+        await button(wrapper, "Save to radio and send").trigger("click");
+        await flushPromises();
+        expect(written).toHaveLength(1);
+        const [lat, lon] = written[0];
+        expect(Geo.distanceMetres(lat / 1e6, lon / 1e6, 31.92702, -106.40012)).toBeLessThan(1);
+        expect(datagrams[0].manual).toBe(true);
+    });
+
+    it("says how big the square is for a shorter reference", async () => {
+        const wrapper = await openEntry();
+        wrapper.vm.entryMgrsText = "13R CR 676 332";
+        await flushPromises();
+        expect(wrapper.text()).toContain("to within 100 m");
+    });
+
+    it("will not send a reference it cannot read", async () => {
+        const wrapper = await openEntry();
+        wrapper.vm.entryMgrsText = "13R CR 6764 332";
+        await flushPromises();
+        expect(wrapper.text()).toContain("Not an MGRS reference");
+        expect(button(wrapper, "Save to radio and send").attributes("disabled")).toBeDefined();
+        wrapper.vm.entryMgrsText = "";
+        await flushPromises();
+        expect(button(wrapper, "Save to radio and send").attributes("disabled")).toBeDefined();
+        expect(written).toEqual([]);
+    });
+
+    it("carries a position across when switching between degrees and MGRS", async () => {
+        const wrapper = await openEntry();
+        wrapper.vm.entryMgrsText = "13R CR 67640 33201";
+        await flushPromises();
+        await button(wrapper, "Degrees").trigger("click");
+        expect(Number(wrapper.vm.entryLatitude)).toBeCloseTo(31.92702, 4);
+        expect(Number(wrapper.vm.entryLongitude)).toBeCloseTo(-106.40012, 4);
     });
 
 });

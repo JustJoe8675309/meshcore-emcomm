@@ -543,9 +543,17 @@ lives in one command with the add contacts mode, the advert location policy and 
 `meshcore.js` sends only the first of those, so the app writes the whole command itself and
 sends the others back exactly as the radio reported them. Backups now keep all of them, so
 leaving EMCOMM mode puts location sharing back as it was. A backup taken before this change
-restores the add contacts mode alone, as it always did. It is decided in one dialog rather than a
-chain of prompts, because six confirmations under time pressure is how the wrong one gets
-accepted.
+restores the add contacts mode alone, as it always did.
+
+The convert is decided in one dialog rather than a chain of prompts, because six confirmations
+under time pressure is how the wrong one gets accepted.
+
+Proven on node 1 on 22 September 2026:
+- Before converting: automatic contacts off, sharing off, 22 of 22 dBm.
+- The convert, with the new boxes left ticked, read back automatic contacts **On** and sharing
+  **On, anyone**, took 46 s, and removed 77 contacts of 213.
+- Leave EMCOMM mode read back automatic contacts **Off** and sharing **Off**, with all 213
+  contacts and 13 channels restored.
 
 Companions go entirely because a person's node re-adds itself the moment it adverts. Repeaters
 and rooms are kept on an age rule because they do not come back so easily: discovery finds
@@ -722,8 +730,13 @@ them. The prompt offers three answers:
 - **Decline** sends "Declined by" and the operator's callsign, or the node name if none is set.
   It stops the asker's repeats at once.
 
-Repeated requests from one station raise one prompt, not a pile of them. Settings can switch
-to answering automatically instead, which sends a plain Send with no prompt.
+**Several stations asking at once** are queued, and put to the operator one at a time, first
+come first. The prompt says how many more are waiting and who. Answering, declining or "Not now"
+brings up the next. A station that asks again keeps its one place in the queue, and its entry is
+replaced by its newest request, so the answer goes to that request, by the channel or route it
+came on. The prompt counts how many times it has asked. Before this, a second station's request
+replaced the first on screen. Settings can switch to answering automatically instead, which
+sends a plain Send with no prompt.
 
 **What is shown.** For each station: its position in **decimal degrees** and as a ten digit
 **MGRS** reference, its distance in **miles and kilometres**, and the bearing to it in **degrees
@@ -754,8 +767,16 @@ the tab says so.
 **Entering the current position.** When the prompt finds the position would go as last known, or
 that there is none, it offers **Enter current position**. The prompt checks the GPS as soon as it
 opens, not only on Send, so it can offer this first.
-- The operator types where they are now, in decimal degrees, starting from what the radio holds,
-  and the MGRS reference is shown as they type.
+- The operator types where they are now, as **decimal degrees or an MGRS reference**, starting
+  from what the radio holds. Each form shows the other as they type, and switching between them
+  carries the position across.
+- An MGRS reference can be typed with or without spaces, in either case, at 2 to 10 digits. It
+  names a square, so the position used is the square's centre, and a shorter reference says how
+  big the square is ("to within 100 m"). Converting a ten digit reference back lands within a
+  metre of where it came from, anywhere MGRS reaches.
+- If nothing valid is entered, the Save buttons stay unavailable and nothing is sent. The
+  operator can type one, go back to sending the last known position, or decline. Left alone, the
+  prompt stays up while the asker's repeats keep it current.
 - It is saved to the radio, where it becomes the position the radio holds and adverts, and so the
   last known position for any later answer.
 - It goes out marked as **entered by hand**, with the time: current by the operator's word, not
@@ -834,8 +855,6 @@ Not yet seen: what a stock client shows. The third node is on the computer's onl
 connection, which node 2 was using.
 
 **Limits.**
-- **A second request replaces the first prompt.** If two stations ask at once, the newer
-  request replaces the older one on screen.
 - **Hidden, not secret.** Anyone holding the channel key who writes their own code can read the
   positions.
 - **Not signed.** Anyone on the channel could send a false one. That was accepted for the first
@@ -1136,16 +1155,14 @@ was the radio link, not a fault in the app, and both changes are proven.
 As before, not one of these failed a test or a build. Every one was found on the radios. Each
 now has a component test, which brings the suite to 456.
 
-Two things built since are proven except for one case each, and neither can be made to
-happen on demand:
-- **The check for dropped contacts.** The loading screen should say "Checking for dropped
-  contacts..." when a Bluetooth connection's first read of the list comes up short. That
-  happens on some connections and not others. On the one recorded since, node 2 read all 183
-  contacts in one pass, so the step rightly never appeared.
-- **Discovery's 10 second listen against N.E. ELP OBSVR.** This repeater was found on earlier
-  days and has answered no search since discovery was shortened from 30 seconds. Four others
-  have answered, the slowest at 2.73 s, so no trouble is expected, but it is not proven for this
-  one.
+Two things built since waited on a case that could not be made to happen on demand. Both are
+now closed:
+- **The check for dropped contacts.** The loading screen says "Checking for dropped
+  contacts..." when a Bluetooth connection's first read of the list comes up short. The operator
+  has since seen it appear and work.
+- **Discovery's 10 second listen.** N.E. ELP OBSVR, which answered on earlier days, has not
+  answered since. The operator knows it for an unreliable repeater, so its silence says nothing
+  about the listen. Four others have answered, the slowest at 2.73 s.
 
 ## Tests
 
@@ -1153,7 +1170,7 @@ happen on demand:
 npm test
 ```
 
-Six plain node suites and thirty-six component suites, 582 component tests, no hardware
+Six plain node suites and thirty-six component suites, 595 component tests, no hardware
 required:
 
 - `test/report_encoder.test.mjs` covers rendering and packet splitting, including a

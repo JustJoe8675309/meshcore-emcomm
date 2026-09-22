@@ -52,8 +52,18 @@ const state = reactive({
     // what has come back, newest first: positions and declines, from anyone this
     // station heard, not only answers to its own requests
     reports: [],
-    // a request waiting on the operator, or null
-    prompt: null,
+    // requests waiting on the operator, oldest first, one per station. Only the
+    // first is shown; answering it, declining it or putting it off brings up the
+    // next. Before this a second station's request replaced the first on screen
+    prompts: [],
+    // the request on screen: the first waiting, or null. Setting it replaces the
+    // whole queue, which is for tests and for clearing
+    get prompt() {
+        return this.prompts[0] ?? null;
+    },
+    set prompt(value) {
+        this.prompts = value ? [value] : [];
+    },
     // per node, see settings()
     settingsRevision: 0,
     // the contact the request form is open for, or null
@@ -458,7 +468,7 @@ class PositionService {
                 this.finish(request, "stopped", "The radio disconnected.");
             }
         }
-        state.prompt = null;
+        state.prompts = [];
     }
 
     static dismiss(tag) {
@@ -532,14 +542,21 @@ class PositionService {
                 name,
                 via,
                 receivedAt: Date.now(),
-                count: (state.prompt?.fromPrefixHex === fromHex ? state.prompt.count : 0) + 1,
+                count: 1,
             };
             if(this.settings().autoAnswer){
                 this.answer(request, { messageToFollow: false }).catch((e) => console.log("automatic position answer failed", e));
                 return;
             }
-            // one prompt per requester: a repeat refreshes it rather than stacking
-            state.prompt = request;
+            // one place in the queue per station: a repeat refreshes its entry,
+            // keeping its place, rather than adding another
+            const waiting = state.prompts.findIndex((p) => p.fromPrefixHex === fromHex);
+            if(waiting >= 0){
+                const earlier = state.prompts[waiting];
+                state.prompts.splice(waiting, 1, { ...request, count: earlier.count + 1 });
+            } else {
+                state.prompts.push(request);
+            }
             return;
         }
 
@@ -686,9 +703,7 @@ class PositionService {
                 ? `Last known position of ${this.ownName()} (not a current fix): ${Geo.formatDegrees(own.latitude, own.longitude)}`
                 : `Position of ${this.ownName()}: ${Geo.formatDegrees(own.latitude, own.longitude)}`;
         await this.transmit(this.answerRoute(request), message, readable);
-        if(state.prompt === request){
-            state.prompt = null;
-        }
+        this.removePrompt(request);
     }
 
     static async decline(request) {
@@ -701,9 +716,7 @@ class PositionService {
             name,
         };
         await this.transmit(this.answerRoute(request), message, `Declined by ${name}`);
-        if(state.prompt === request){
-            state.prompt = null;
-        }
+        this.removePrompt(request);
     }
 
     /** A request is answered the way it came: on its channel, or direct. */
@@ -715,8 +728,20 @@ class PositionService {
         return { kind: "direct", contact };
     }
 
+    /** Takes a station's request out of the queue, once answered or put off. */
+    static removePrompt(request) {
+        const at = state.prompts.findIndex((p) => p.fromPrefixHex === request?.fromPrefixHex);
+        if(at >= 0){
+            state.prompts.splice(at, 1);
+        }
+    }
+
+    /**
+     * Puts off the request on screen, and brings up the next. A station that
+     * asks again comes back to the end of the queue.
+     */
     static dismissPrompt() {
-        state.prompt = null;
+        state.prompts.shift();
     }
 
     // --- screen ----------------------------------------------------------------

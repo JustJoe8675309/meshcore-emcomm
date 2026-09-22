@@ -18,6 +18,11 @@
                 <span v-if="prompt.count > 1"> Asked {{ prompt.count }} times.</span>
             </div>
 
+            <div v-if="waitingAfter > 0" class="text-xs font-semibold text-blue-700">
+                {{ waitingAfter }} more {{ waitingAfter === 1 ? "station is" : "stations are" }} waiting, and will be asked after this one:
+                {{ waitingNames }}.
+            </div>
+
             <div class="bg-gray-50 border border-gray-200 rounded p-2 text-xs text-gray-800 space-y-0.5">
                 <template v-if="own.has">
                     <div>{{ ownDegrees }}</div>
@@ -48,21 +53,45 @@
                 </button>
                 <div v-else class="border border-amber-300 rounded p-2 space-y-2">
                     <div class="text-xs text-gray-700">
-                        Where you are now, in decimal degrees. Saved to the radio as its position, and sent
-                        marked as entered by hand.
+                        Where you are now. Saved to the radio as its position, and sent marked as entered by hand.
                     </div>
-                    <div class="flex space-x-2">
-                        <label class="w-full text-xs text-gray-700">Latitude
-                            <input v-model="entryLatitude" type="number" step="any" inputmode="decimal" placeholder="31.9270" class="mt-0.5 w-full bg-white border border-gray-300 text-sm rounded p-1.5">
+
+                    <!-- the same position two ways: decimal degrees, or the MGRS reference a
+                         map or a SAR team gives -->
+                    <div class="flex rounded border border-gray-300 overflow-hidden text-xs" role="group" aria-label="Enter as">
+                        <button type="button" @click="setEntryMode('degrees')" :aria-pressed="entryMode === 'degrees'"
+                            class="w-full px-2 py-1" :class="entryMode === 'degrees' ? 'bg-amber-100 font-semibold text-amber-900' : 'bg-white text-gray-600'">Degrees</button>
+                        <button type="button" @click="setEntryMode('mgrs')" :aria-pressed="entryMode === 'mgrs'"
+                            class="w-full px-2 py-1 border-l border-gray-300" :class="entryMode === 'mgrs' ? 'bg-amber-100 font-semibold text-amber-900' : 'bg-white text-gray-600'">MGRS</button>
+                    </div>
+
+                    <template v-if="entryMode === 'degrees'">
+                        <div class="flex space-x-2">
+                            <label class="w-full text-xs text-gray-700">Latitude
+                                <input v-model="entryLatitude" type="number" step="any" inputmode="decimal" placeholder="31.9270" class="mt-0.5 w-full bg-white border border-gray-300 text-sm rounded p-1.5">
+                            </label>
+                            <label class="w-full text-xs text-gray-700">Longitude
+                                <input v-model="entryLongitude" type="number" step="any" inputmode="decimal" placeholder="-106.4001" class="mt-0.5 w-full bg-white border border-gray-300 text-sm rounded p-1.5">
+                            </label>
+                        </div>
+                        <div v-if="entryPosition" class="text-xs text-gray-600">{{ entryPositionMgrs }}</div>
+                        <div v-if="entryInvalid" class="text-xs text-red-600">
+                            Not a position: latitude -90 to 90, longitude -180 to 180, south and west negative.
+                        </div>
+                    </template>
+
+                    <template v-else>
+                        <label class="block text-xs text-gray-700">MGRS reference
+                            <input v-model="entryMgrsText" type="text" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="13R CR 67640 33201" class="mt-0.5 w-full bg-white border border-gray-300 text-sm rounded p-1.5 uppercase">
                         </label>
-                        <label class="w-full text-xs text-gray-700">Longitude
-                            <input v-model="entryLongitude" type="number" step="any" inputmode="decimal" placeholder="-106.4001" class="mt-0.5 w-full bg-white border border-gray-300 text-sm rounded p-1.5">
-                        </label>
-                    </div>
-                    <div v-if="entryMgrs" class="text-xs text-gray-600">{{ entryMgrs }}</div>
-                    <div v-if="entryInvalid" class="text-xs text-red-600">
-                        Not a position: latitude -90 to 90, longitude -180 to 180, south and west negative.
-                    </div>
+                        <div v-if="entryPosition" class="text-xs text-gray-600">
+                            {{ entryPositionDegrees }}<span v-if="entryPrecision > 1">, to within {{ entryPrecision }} m</span>
+                        </div>
+                        <div v-if="entryInvalid" class="text-xs text-red-600">
+                            Not an MGRS reference. For example 13R CR 67640 33201: zone and band, the two
+                            square letters, then an even number of digits.
+                        </div>
+                    </template>
                     <button @click="cancelEntry" :disabled="busy" type="button" class="w-full text-xs text-gray-500 underline">
                         Send the last known position instead
                     </button>
@@ -106,6 +135,7 @@
 <script>
 import PositionService from "../../js/position/PositionService.js";
 import Geo from "../../js/position/Geo.js";
+import Mgrs from "../../js/position/Mgrs.js";
 
 export default {
     name: 'PositionPrompt',
@@ -118,8 +148,10 @@ export default {
             checking: false,
             check: null,
             entering: false,
+            entryMode: "degrees",
             entryLatitude: "",
             entryLongitude: "",
+            entryMgrsText: "",
         };
     },
     watch: {
@@ -127,8 +159,10 @@ export default {
         promptKey: {
             handler(key) {
                 this.entering = false;
+                this.entryMode = "degrees";
                 this.entryLatitude = "";
                 this.entryLongitude = "";
+                this.entryMgrsText = "";
                 this.check = null;
                 if(key != null){
                     this.runCheck();
@@ -160,7 +194,21 @@ export default {
             if(this.own.has){
                 this.entryLatitude = this.own.latitude.toFixed(4);
                 this.entryLongitude = this.own.longitude.toFixed(4);
+                this.entryMgrsText = Geo.formatMgrs(this.own.latitude, this.own.longitude) ?? "";
             }
+        },
+        setEntryMode(mode) {
+            // carry the position across, so switching does not lose what was typed
+            const position = this.entryPosition;
+            if(position){
+                if(mode === "mgrs"){
+                    this.entryMgrsText = Geo.formatMgrs(position.latitude, position.longitude) ?? "";
+                } else {
+                    this.entryLatitude = position.latitude.toFixed(5);
+                    this.entryLongitude = position.longitude.toFixed(5);
+                }
+            }
+            this.entryMode = mode;
         },
         cancelEntry() {
             this.entering = false;
@@ -170,9 +218,7 @@ export default {
             this.busy = true;
             this.error = null;
             try {
-                const manualPosition = this.entering
-                    ? { latitude: Number(this.entryLatitude), longitude: Number(this.entryLongitude) }
-                    : null;
+                const manualPosition = this.entering ? this.entryPosition : null;
                 await PositionService.answer(request, { messageToFollow: withMessage, manualPosition });
                 if(withMessage){
                     this.openConversation(request);
@@ -212,6 +258,12 @@ export default {
         prompt() {
             return PositionService.state.prompt;
         },
+        waitingAfter() {
+            return Math.max(0, PositionService.state.prompts.length - 1);
+        },
+        waitingNames() {
+            return PositionService.state.prompts.slice(1).map((p) => p.name).join(", ");
+        },
         promptKey() {
             return this.prompt ? `${this.prompt.fromPrefixHex}` : null;
         },
@@ -223,18 +275,40 @@ export default {
             }
             return !this.own.has || !(this.check && this.check.live);
         },
-        entryInvalid() {
-            return this.entering && (this.entryLatitude !== "" || this.entryLongitude !== "")
-                && !PositionService.isValidEntry(this.entryLatitude, this.entryLongitude);
-        },
-        entryBlocks() {
-            return this.entering && !PositionService.isValidEntry(this.entryLatitude, this.entryLongitude);
-        },
-        entryMgrs() {
-            if(!this.entering || !PositionService.isValidEntry(this.entryLatitude, this.entryLongitude)){
+        // what the operator has typed, as a position, in either form, or null
+        entryPosition() {
+            if(!this.entering){
                 return null;
             }
-            return Geo.formatMgrs(Number(this.entryLatitude), Number(this.entryLongitude));
+            if(this.entryMode === "mgrs"){
+                const parsed = Mgrs.toLatLon(this.entryMgrsText);
+                return parsed && PositionService.isValidEntry(parsed.latitude, parsed.longitude)
+                    ? { latitude: parsed.latitude, longitude: parsed.longitude, precision: parsed.precisionMetres }
+                    : null;
+            }
+            return PositionService.isValidEntry(this.entryLatitude, this.entryLongitude)
+                ? { latitude: Number(this.entryLatitude), longitude: Number(this.entryLongitude), precision: null }
+                : null;
+        },
+        entryTyped() {
+            return this.entryMode === "mgrs"
+                ? this.entryMgrsText.trim() !== ""
+                : this.entryLatitude !== "" || this.entryLongitude !== "";
+        },
+        entryInvalid() {
+            return this.entering && this.entryTyped && this.entryPosition == null;
+        },
+        entryBlocks() {
+            return this.entering && this.entryPosition == null;
+        },
+        entryPositionMgrs() {
+            return this.entryPosition ? Geo.formatMgrs(this.entryPosition.latitude, this.entryPosition.longitude) : null;
+        },
+        entryPositionDegrees() {
+            return this.entryPosition ? Geo.formatDegrees(this.entryPosition.latitude, this.entryPosition.longitude) : null;
+        },
+        entryPrecision() {
+            return this.entryPosition?.precision ?? 1;
         },
         own() {
             // read with the prompt, so it is current when it opens
