@@ -25,8 +25,8 @@
 
             <div class="bg-gray-50 border border-gray-200 rounded p-2 text-xs text-gray-800 space-y-0.5">
                 <template v-if="own.has">
-                    <div>{{ ownDegrees }}</div>
-                    <div v-if="ownMgrs">{{ ownMgrs }}</div>
+                    <div><MapLink :latitude="own.latitude" :longitude="own.longitude" :text="ownDegrees" label="Your position"/></div>
+                    <div v-if="ownMgrs"><MapLink :latitude="own.latitude" :longitude="own.longitude" :text="ownMgrs" label="Your position"/></div>
                     <div v-if="checking" class="text-gray-500">Checking whether the GPS fix is current...</div>
                     <div v-else-if="check && check.live" class="text-gray-500">Current GPS fix. Checked again when you send.</div>
                     <div v-else class="text-amber-800">
@@ -74,7 +74,7 @@
                                 <input v-model="entryLongitude" type="number" step="any" inputmode="decimal" placeholder="-106.4001" class="mt-0.5 w-full bg-white border border-gray-300 text-sm rounded p-1.5">
                             </label>
                         </div>
-                        <div v-if="entryPosition" class="text-xs text-gray-600">{{ entryPositionMgrs }}</div>
+                        <div v-if="entryPosition" class="text-xs text-gray-600"><MapLink :latitude="entryPosition.latitude" :longitude="entryPosition.longitude" :text="entryPositionMgrs" label="Position entered"/></div>
                         <div v-if="entryInvalid" class="text-xs text-red-600">
                             Not a position: latitude -90 to 90, longitude -180 to 180, south and west negative.
                         </div>
@@ -85,7 +85,7 @@
                             <input v-model="entryMgrsText" type="text" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="13R CR 67640 33201" class="mt-0.5 w-full bg-white border border-gray-300 text-sm rounded p-1.5 uppercase">
                         </label>
                         <div v-if="entryPosition" class="text-xs text-gray-600">
-                            {{ entryPositionDegrees }}<span v-if="entryPrecision > 1">, to within {{ entryPrecision }} m</span>
+                            <MapLink :latitude="entryPosition.latitude" :longitude="entryPosition.longitude" :text="entryPositionDegrees" label="Position entered"/><span v-if="entryPrecision > 1">, to within {{ entryPrecision }} m</span>
                         </div>
                         <div v-if="entryInvalid" class="text-xs text-red-600">
                             Not an MGRS reference. For example 13R CR 67640 33201: zone and band, the two
@@ -136,9 +136,13 @@
 import PositionService from "../../js/position/PositionService.js";
 import Geo from "../../js/position/Geo.js";
 import Mgrs from "../../js/position/Mgrs.js";
+import MapLink from "./MapLink.vue";
 
 export default {
     name: 'PositionPrompt',
+    components: {
+        MapLink,
+    },
     data() {
         return {
             busy: false,

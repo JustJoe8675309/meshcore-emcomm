@@ -6,8 +6,8 @@
             <div class="bg-white border border-gray-300 rounded-lg p-3 space-y-1">
                 <div class="text-sm font-medium text-gray-900">This station</div>
                 <template v-if="own.has">
-                    <div class="text-xs text-gray-800">{{ formatDegrees(own.latitude, own.longitude) }}</div>
-                    <div v-if="formatMgrs(own.latitude, own.longitude)" class="text-xs text-gray-800">{{ formatMgrs(own.latitude, own.longitude) }}</div>
+                    <div class="text-xs text-gray-800"><MapLink :latitude="own.latitude" :longitude="own.longitude" :text="formatDegrees(own.latitude, own.longitude)" label="This station"/></div>
+                    <div v-if="formatMgrs(own.latitude, own.longitude)" class="text-xs text-gray-800"><MapLink :latitude="own.latitude" :longitude="own.longitude" :text="formatMgrs(own.latitude, own.longitude)" label="This station"/></div>
                     <div class="text-xs text-gray-500">{{ own.live ? "Live GPS fix" : "Position set on the radio, not a live fix" }}</div>
                 </template>
                 <div v-else class="text-xs text-amber-800">
@@ -77,8 +77,8 @@
                     </div>
 
                     <template v-else-if="report.hasPosition">
-                        <div class="text-xs text-gray-800">{{ formatDegrees(report.latitude, report.longitude) }}</div>
-                        <div v-if="formatMgrs(report.latitude, report.longitude)" class="text-xs text-gray-800">{{ formatMgrs(report.latitude, report.longitude) }}</div>
+                        <div class="text-xs text-gray-800"><MapLink :latitude="report.latitude" :longitude="report.longitude" :text="formatDegrees(report.latitude, report.longitude)" :label="report.name"/></div>
+                        <div v-if="formatMgrs(report.latitude, report.longitude)" class="text-xs text-gray-800"><MapLink :latitude="report.latitude" :longitude="report.longitude" :text="formatMgrs(report.latitude, report.longitude)" :label="report.name"/></div>
                         <template v-if="relation(report)">
                             <!-- a bearing between two points a few metres apart means nothing -->
                             <div v-if="relation(report).sameLocation" class="text-sm text-gray-900">Same location as this station</div>
@@ -98,8 +98,8 @@
                     <!-- the newest word was a decline or no position: keep where it last reported being -->
                     <div v-if="previous(report)" class="border-l-2 border-gray-200 pl-2 space-y-0.5">
                         <div class="text-xs text-gray-600">Last position received, {{ time(previous(report).receivedAt) }}</div>
-                        <div class="text-xs text-gray-800">{{ formatDegrees(previous(report).latitude, previous(report).longitude) }}</div>
-                        <div v-if="formatMgrs(previous(report).latitude, previous(report).longitude)" class="text-xs text-gray-800">{{ formatMgrs(previous(report).latitude, previous(report).longitude) }}</div>
+                        <div class="text-xs text-gray-800"><MapLink :latitude="previous(report).latitude" :longitude="previous(report).longitude" :text="formatDegrees(previous(report).latitude, previous(report).longitude)" :label="report.name"/></div>
+                        <div v-if="formatMgrs(previous(report).latitude, previous(report).longitude)" class="text-xs text-gray-800"><MapLink :latitude="previous(report).latitude" :longitude="previous(report).longitude" :text="formatMgrs(previous(report).latitude, previous(report).longitude)" :label="report.name"/></div>
                         <div v-if="relation(previous(report))" class="text-xs text-gray-900">
                             <template v-if="relation(previous(report)).sameLocation">Same location as this station</template>
                             <template v-else>{{ formatDistance(relation(previous(report)).metres) }}, {{ formatBearing(relation(previous(report)).magneticBearing) }}</template>
@@ -120,9 +120,13 @@
 import PositionService from "../../js/position/PositionService.js";
 import Geo from "../../js/position/Geo.js";
 import MagneticModel from "../../js/position/MagneticModel.js";
+import MapLink from "./MapLink.vue";
 
 export default {
     name: 'PositionsPanel',
+    components: {
+        MapLink,
+    },
     data() {
         return {
             // distances follow this station's position; a tick keeps fix ages current

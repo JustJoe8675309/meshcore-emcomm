@@ -124,6 +124,48 @@ class Geo {
         return `${lat}, ${lon}`;
     }
 
+    /**
+     * Which kind of device this is, for choosing a map link: "android", "apple"
+     * (iPhone, iPad and Mac) or "other".
+     */
+    static platform(nav = typeof navigator === "undefined" ? null : navigator) {
+        const agent = `${nav?.userAgentData?.platform ?? ""} ${nav?.platform ?? ""} ${nav?.userAgent ?? ""}`;
+        if(/android/i.test(agent)){
+            return "android";
+        }
+        // an iPad asking for the desktop site says Macintosh, which lands here too
+        if(/iphone|ipad|ipod|mac/i.test(agent)){
+            return "apple";
+        }
+        return "other";
+    }
+
+    /**
+     * A link that opens a position in the device's own map app, with a pin.
+     *
+     * There is no one link every device honours. Android hands a geo: link to
+     * the default map app, or asks which one, and that includes offline map apps
+     * such as OsmAnd, which matters with no signal. Apple devices open Apple
+     * Maps from its own link. Anything else, Windows included, has no dependable
+     * default map app to hand over to, so the position opens in OpenStreetMap in
+     * the browser, which needs a connection.
+     */
+    static mapLink(latitude, longitude, label = "", platform = this.platform()) {
+        if(!this.isPosition(latitude, longitude)){
+            return null;
+        }
+        const lat = latitude.toFixed(6);
+        const lon = longitude.toFixed(6);
+        const name = encodeURIComponent(label || `${lat},${lon}`);
+        if(platform === "android"){
+            return `geo:${lat},${lon}?q=${lat},${lon}(${name})`;
+        }
+        if(platform === "apple"){
+            return `https://maps.apple.com/?ll=${lat},${lon}&q=${name}`;
+        }
+        return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=16/${lat}/${lon}`;
+    }
+
     /** The ten digit MGRS reference, or null where MGRS does not reach. */
     static formatMgrs(latitude, longitude) {
         return Mgrs.fromLatLon(latitude, longitude, 5)?.text ?? null;

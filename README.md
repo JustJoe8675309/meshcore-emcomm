@@ -742,6 +742,17 @@ sends a plain Send with no prompt.
 **MGRS** reference, its distance in **miles and kilometres**, and the bearing to it in **degrees
 magnetic, stated as magnetic**, with the declination used shown beneath.
 
+**Every position opens in a map.** The degrees and the MGRS reference are both links to the
+same point, with the station's name on the pin. This covers received positions, the last position
+kept under a decline, this station's own, and the answer prompt. There is no one link every
+device honours, so it depends on the device:
+- **Android** gets a `geo:` link, which goes to the default map app or offers a choice. Offline
+  map apps such as OsmAnd and Organic Maps take it, which matters with no signal.
+- **iPhone, iPad and Mac** open Apple Maps.
+- **Anything else,** Windows included, has no dependable default map app, so the position opens
+  in OpenStreetMap in a new browser tab, which needs a connection. That sends the coordinates to
+  that website, and only when the link is tapped.
+
 Close in, the distance changes form:
 - **Under a tenth of a mile,** it is given in feet and metres, such as "328 ft (100 m)".
 - **Under ten metres,** it reads **Same location**, with no bearing. On the bench, two radios a
@@ -1170,7 +1181,7 @@ now closed:
 npm test
 ```
 
-Six plain node suites and thirty-six component suites, 595 component tests, no hardware
+Six plain node suites and thirty-six component suites, 603 component tests, no hardware
 required:
 
 - `test/report_encoder.test.mjs` covers rendering and packet splitting, including a

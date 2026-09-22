@@ -152,6 +152,9 @@ in settings on the one being asked.
 - [ ] **Several stations asking.** Needs three radios. With two asking at once, the
       prompt says one more is waiting; answering brings up the second. A station asking
       again keeps its place and its entry becomes its newest request.
+- [ ] **Map links.** On an Android phone, tap a position's degrees and its MGRS
+      reference: each opens the map app, or asks which one, with a pin named for the
+      station. On an iPhone, Apple Maps. On Windows, OpenStreetMap in a new tab.
 - [ ] **Same location.** Two radios side by side read "Same location as this
       station", with no bearing. Further apart but under a tenth of a mile, the
       distance is in feet and metres.

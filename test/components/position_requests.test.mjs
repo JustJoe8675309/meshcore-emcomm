@@ -918,6 +918,32 @@ describe("the positions list", () => {
         expect(text).toContain("Message to follow");
     });
 
+    it("makes both the degrees and the MGRS reference open the map app on the station", async () => {
+        PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: Protocol.encode({
+            kind: Protocol.KIND.POSITION, tag: 1, to: ME, from: THEM, name: "KJ5HBN", latitude: 31.788, longitude: -106.497, fixTime: 0, flags: 0,
+        }) });
+        const wrapper = mount(PositionsPanel);
+        await flushPromises();
+        const expected = Geo.mapLink(31.788, -106.497, "KJ5HBN");
+        const links = wrapper.findAll("a").filter((a) => a.attributes("href") === expected);
+        expect(links.map((a) => a.text())).toEqual(["31.7880° N, 106.4970° W", expect.stringMatching(/^13R CR /)]);
+        // this station's own position links too
+        expect(wrapper.findAll("a").some((a) => a.attributes("href") === Geo.mapLink(31.7587, -106.4869, "This station"))).toBe(true);
+    });
+
+    it("opens a web map in a new tab, so the app is still there to come back to", async () => {
+        const { default: MapLink } = await import("../../src/components/position/MapLink.vue");
+        const spy = vi.spyOn(Geo, "platform").mockReturnValue("other");
+        const web = mount(MapLink, { props: { latitude: 31.788, longitude: -106.497, text: "x", label: "y" } });
+        expect(web.find("a").attributes("target")).toBe("_blank");
+        expect(web.find("a").attributes("rel")).toBe("noopener noreferrer");
+        spy.mockReturnValue("android");
+        const app = mount(MapLink, { props: { latitude: 31.788, longitude: -106.497, text: "x", label: "y" } });
+        expect(app.find("a").attributes("href")).toMatch(/^geo:/);
+        expect(app.find("a").attributes("target")).toBeUndefined();
+        spy.mockRestore();
+    });
+
     it("names the radio beside the operator's callsign when they differ", async () => {
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: Protocol.encode({
             kind: Protocol.KIND.POSITION, tag: 1, to: ME, from: THEM, name: "KJ5HBN", latitude: 31.788, longitude: -106.497, fixTime: 0, flags: 0,

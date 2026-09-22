@@ -151,6 +151,47 @@ describe("distance and bearing", () => {
 
 });
 
+describe("links to the device's map app", () => {
+
+    const ANDROID = { userAgent: "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 Chrome/128 Mobile Safari/537.36" };
+    const IPHONE = { userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 Version/17.5 Mobile Safari/604.1" };
+    const MAC = { platform: "MacIntel", userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 Safari/605.1.15" };
+    const WINDOWS = { platform: "Win32", userAgentData: { platform: "Windows" }, userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/128 Safari/537.36" };
+
+    it("knows which kind of device it is on", () => {
+        expect(Geo.platform(ANDROID)).toBe("android");
+        expect(Geo.platform(IPHONE)).toBe("apple");
+        expect(Geo.platform(MAC)).toBe("apple");
+        expect(Geo.platform(WINDOWS)).toBe("other");
+        expect(Geo.platform(null)).toBe("other");
+    });
+
+    it("hands Android a geo: link, which any map app can take, offline ones included", () => {
+        expect(Geo.mapLink(31.9270, -106.4001, "KJ5HBN-EMCOMM", "android"))
+            .toBe("geo:31.927000,-106.400100?q=31.927000,-106.400100(KJ5HBN-EMCOMM)");
+    });
+
+    it("opens Apple Maps on an iPhone, iPad or Mac", () => {
+        expect(Geo.mapLink(31.9270, -106.4001, "KJ5HBN-EMCOMM", "apple"))
+            .toBe("https://maps.apple.com/?ll=31.927000,-106.400100&q=KJ5HBN-EMCOMM");
+    });
+
+    it("falls back to OpenStreetMap in the browser anywhere else", () => {
+        expect(Geo.mapLink(-33.8568, 151.2153, "x", "other"))
+            .toBe("https://www.openstreetmap.org/?mlat=-33.856800&mlon=151.215300#map=16/-33.856800/151.215300");
+    });
+
+    it("keeps a label with odd characters from breaking the link", () => {
+        expect(Geo.mapLink(31.927, -106.4001, "Joe (KJ5HBN) & co", "apple")).toContain("q=Joe%20(KJ5HBN)%20%26%20co");
+    });
+
+    it("gives no link where there is no position", () => {
+        expect(Geo.mapLink(0, 0, "x", "android")).toBe(null);
+        expect(Geo.mapLink(null, 10, "x", "android")).toBe(null);
+    });
+
+});
+
 describe("how positions are written", () => {
 
     it("states a bearing as three digits and the word magnetic, always", () => {
