@@ -754,6 +754,10 @@ The first attempt that night was a single request, and it was lost on the air wi
 same request, repeating every minute, got through first time. Channel datagrams are not
 acknowledged, which is what the repeat modes are for.
 
+The other way round, node 1 was given a position by hand, with no GPS, and node 2 asked for it.
+Node 1's prompt warned before sending that it would go as a last known position. Node 2 showed
+the answer in amber as "Last known position, not a current fix".
+
 **Magnetic bearing.** A bearing an operator walks has to be magnetic, because that is what a
 hand compass reads. The declination comes from the **World Magnetic Model 2025**, worked out on
 the device from NOAA's published coefficients, so it needs no network. It matches all twelve of
