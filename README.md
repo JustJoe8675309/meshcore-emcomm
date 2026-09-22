@@ -764,6 +764,14 @@ opens, not only on Send, so it can offer this first.
 - An entry that is not a position is refused: latitude past 90, longitude past 180, or 0, 0.
 - The operator can still go back to sending the last known position.
 
+Proven on the bench:
+- Node 2 asked node 1, which has no GPS. Node 1's prompt said the answer would go as a last known
+  position and offered the entry, prefilled with the position the radio held.
+- A position about two metres away was entered and sent. Node 1's radio then held it (its MGRS
+  reference moved from 67642 33199 to 67640 33201).
+- Node 2 showed "Entered by hand at 12:45 AM, not GPS" and "Same location as this station",
+  with no bearing.
+
 On the bench, node 2 with a live GPS answered in 0.95 s. The first re-read had moved, and node 1
 showed it as a current fix. The answer's MGRS reference differed in its last digits from the one
 node 2's prompt had shown a moment before, so it was a fresh reading, not the one held since
