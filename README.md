@@ -176,6 +176,22 @@ From node 2 over Bluetooth, the same 10 s search found two repeaters:
   be that repeater's own delay setting, or the request waiting for a clear channel before it went
   out.
 
+Node 2's transmit power was then raised from 20 to 22 dBm, the maximum its firmware reports,
+and it searched four more times over four minutes:
+
+| Repeater | Answered | Heard node 2 at | Node 2 heard it at |
+|---|---|---|---|
+| JOE- QTHish | 4 of 4 | 11 to 12 dB | 12 dB |
+| FEDF MC Repeater | 3 of 4 | +3.25 to -2 dB | about 10 dB |
+| Dorje Solar Tobin Wells | 1 of 4 | 8.75 dB | 2 dB |
+| WTRA-NMF | 0 of 4 | | |
+
+Every reply came within 2.73 s. FEDF MC Repeater answered no search at 20 dBm and hears node 2
+close to the edge of what it can decode, so the extra power may be what brought it in. One
+search at the lower power against four at the higher is not enough to say. WTRA-NMF answered
+once and then not at all, which is also a reminder that links this weak come and go from one
+minute to the next.
+
 So the arithmetic is a guide, not a bound, and the 10 s floor is what actually matters here: the
 slowest answer seen so far left more than 7 s to spare.
 
@@ -943,8 +959,8 @@ happen on demand:
   happens on some connections and not others. On the one recorded since, node 2 read all 183
   contacts in one pass, so the step rightly never appeared.
 - **Discovery's 10 second listen against N.E. ELP OBSVR.** This repeater was found on earlier
-  days and has answered no search since discovery was shortened from 30 seconds. Two others
-  have answered, the slowest at 2.6 s, so no trouble is expected, but it is not proven for this
+  days and has answered no search since discovery was shortened from 30 seconds. Four others
+  have answered, the slowest at 2.73 s, so no trouble is expected, but it is not proven for this
   one.
 
 ## Tests
