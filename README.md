@@ -163,6 +163,11 @@ Tested side by side on the bench, with one node on each build. Node 2 listened f
 found JOE- QTHish at 11 dB. Node 1, still on the 30 s build, found the same repeater and
 nothing else. N.E. ELP OBSVR, found on other days, answered neither search.
 
+The replies were then timed as they arrived, by tapping node 1's serial line. JOE- QTHish
+answered 0.81 s after Discover was pressed. It answered again about a second into the search
+that converting to EMCOMM mode runs. Both are inside the 1.8 s the arithmetic allows a default
+repeater at these settings, so a 10 s listen has plenty in hand.
+
 Discovery and ping do not always agree, and both are right when they disagree. Discovery
 proves a repeater is in range and hears you, because it answered. Ping additionally
 requires it to answer trace requests, and not every repeater does: one here replies to
@@ -673,6 +678,23 @@ took 5.4 s:
 
 A backup on node 1 showed its own screen for the 4 seconds it took, and went away with 213
 contacts and 13 channels saved.
+
+Converting node 1 and leaving EMCOMM mode again were recorded the same way.
+- **Convert, 31 s.** The screen stepped through:
+  - backing up before any change;
+  - each setting as it was applied;
+  - "Removing: N5TMT R51" and 76 more, counted up to 77;
+  - announcing the station, then the repeater search;
+  - turning off automatic contacts, then reading the node back.
+
+  It stood aside for the 2 seconds the convert dialog was waiting on an answer.
+- **Leave EMCOMM mode, 12.6 s.** Every restore step was counted, out of 231, followed by reading
+  the node back and announcing the name. Node 1 came back as Joe-KJ5HBN-HTv3, with all 213
+  contacts and 13 channels.
+
+Over Bluetooth, node 2's next connection read all 183 contacts in one pass, in 12.5 s, so the
+check for dropped contacts had nothing to do and rightly did not appear. It shows only when the
+first read comes up short, and that does not happen on every connection.
 
 Backing up, restoring, leaving EMCOMM mode and converting to it get the same screen, with the
 step and a count where there is one. Each is a string of commands to the radio. Before this, the
