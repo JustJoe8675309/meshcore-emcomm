@@ -280,6 +280,20 @@ and 3 at 6 and 13 seconds, and node 2 received `[2/3]` and `[3/3]` 7.0 seconds a
 then put a second, identical `[2/3]` on node 2, and nothing else: `[1/3]` and `[3/3]` stayed at
 one copy each.
 
+Six seconds was a decision, not only a result of the formula. The gap was weighed against
+shorter settings. Three seconds clears one hop of repeats at the bench settings. Four covers one
+hop fully and two hops most of the time, but by the same arithmetic a two hop repeat is still
+on the air about one time in five. Six covers two hops fully. The cost is a few seconds: a three
+part report takes about 13 seconds instead of 10, and a ten part report about 55 instead of 40.
+For emergency traffic a missing part matters more than that, so the gap stays at eight airtimes
+with a 5 second minimum, which is 6 seconds at these settings. A gap can still not rule out:
+- another station keying up;
+- a repeater whose owner has raised `tx_delay_factor` above the default 0.5 that the arithmetic
+  assumes;
+- a weak signal.
+
+That is what Resend is for.
+
 A report is one field per line, so parts break **between fields**: whole lines are packed into each
 part, and a part begins with a field or the form header. An operator copying part 2 onto a paper
 form sees whole fields rather than the tail of one.
