@@ -799,6 +799,35 @@ EMCOMM mode added three more, all in reading from the radio rather than writing 
 found on hardware rather than in a suite. The worst waited for a frame that never came, with no
 timeout behind it, on a link that was otherwise working perfectly.
 
+### Audit status
+
+The last full audit ran on 20 and 21 September 2026, on the two Heltec bench nodes (one
+over USB serial, one over Bluetooth) and an Android phone. **Nothing from it is open.**
+`npm run audit` passes 24 of 24 checks against the live build, and every item on the hardware
+checklist has passed on the radios.
+
+It found ten faults. Each is fixed, deployed and proven on hardware:
+
+| Fault | Fixed in |
+|---|---|
+| The EMCOMM mode badge did not update after a convert or a restore | `51cb050` |
+| The serial read loop stopped silently on a line error, leaving a connected radio deaf | `f8d7327` |
+| The way home was unreachable: a newer backup hid the pre-EMCOMM one | `093a87e` |
+| The backup list did not show the pre-convert backup until reloaded | `093a87e` |
+| Simple reads had no timeout, so a radio that stopped answering took 37 s to report | `093a87e` |
+| An update arriving while offline replaced a complete offline copy with an empty one | `1cc306d` |
+| The radio's clock was left wrong after a restart, off by as much as 370 s | `dc144d5` |
+| A report cut short by leaving the Reports tab left no sign it went out incomplete | `d7a5be1` |
+| A restore changed the name back but did not announce it to other stations | `d7a5be1` |
+| A node with no position showed 0, 0, a real place in the Gulf of Guinea | `d7a5be1` |
+
+A middle part lost on the air while testing the interrupted report led to the longer gap between
+parts and the Resend button (`91e13f8`, see [Packet size handling](#packet-size-handling)). That
+was the radio link, not a fault in the app, and both changes are proven.
+
+As before, not one of these failed a test or a build. Every one was found on the radios. Each
+now has a component test, which brings the suite to 456.
+
 ## Tests
 
 ```bash
