@@ -591,6 +591,19 @@ channels as they are now, which is the only time normal mode is re-read after th
 that routine backups cannot overwrite. Switching back to normal writes it, which is where the
 contacts come from, and puts the station back as it was.
 
+**Nothing a switch cannot give back is destroyed:**
+- **A starred contact stays**, whatever its type or age. Net control, the EOC and the team are
+  the last contacts to throw away, so the trim keeps every favourite.
+- **A channel the new mode does not hold is kept in the mode being left**, and comes back with
+  it. A private channel made during an incident carries a random key that exists on the radio and
+  nowhere else, and clearing its slot would destroy it with no way back. The switch says which
+  channels it kept this way.
+- **A radio that answers no channel at all** is not mistaken for a radio with no channels: the
+  switch says the channels could not be read before writing the new ones. An empty slot and an
+  unreadable one look the same over the wire.
+- Channels themselves cannot be starred: the firmware's favourite flag belongs to contacts, so a
+  channel is protected by being in a mode, not by a star.
+
 **DRILL marking** in Emcomm-Training goes on every part of a report, not just the first, since
 parts can arrive minutes apart and be read on their own. The marking is budgeted for in the
 split, so parts still fit. Typed messages get DRILL in front unless they already say it.

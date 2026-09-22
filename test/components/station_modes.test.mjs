@@ -270,6 +270,109 @@ describe("switching a station's mode", () => {
 
 });
 
+describe("what a switch must never destroy", () => {
+
+    let written, removed;
+
+    beforeEach(async () => {
+        window.localStorage.clear();
+        connect();
+        written = radioChannels({
+            0: { name: "Public", secret: "8b3387e9c5cdea6ac9e5edbaa115cd72" },
+            3: { name: "Emcomm Testing", secret: "11".repeat(16) },
+        });
+        quietRadio();
+        // the trim is the real one here: that is what is being checked
+        EmcommMode.trim.mockRestore();
+        removed = [];
+        GlobalState.connection.removeContact = async (key) => {
+            removed.push(Utils.bytesToHex(key).slice(0, 2));
+            GlobalState.contacts = GlobalState.contacts.filter((c) => Utils.bytesToHex(c.publicKey) !== Utils.bytesToHex(key));
+        };
+        vi.spyOn(NodeBackup, "capture").mockResolvedValue({ formatVersion: 1, nodePublicKey: NODE, nodeName: "before", capturedAt: 1, settings: {}, channels: [], contacts: [], warnings: [] });
+        vi.spyOn(NodeBackup, "restore").mockResolvedValue({ failures: [], notInBackup: [] });
+        await ModeProfiles.captureNormal(NODE);
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        GlobalState.connection = null;
+        GlobalState.selfInfo = null;
+        window.localStorage.clear();
+    });
+
+    function contact(n, { favourite = false, type = Constants.AdvType.Chat, lastAdvert = Math.floor(Date.now() / 1000) } = {}) {
+        const publicKey = new Uint8Array(32);
+        publicKey[0] = n;
+        return {
+            publicKey, type, flags: favourite ? 1 : 0, advName: `Contact ${n}`,
+            lastAdvert, outPathLen: 0, outPath: new Uint8Array(64), advLat: 0, advLon: 0,
+        };
+    }
+
+    it("keeps a favourite companion, and a favourite repeater quiet for years", async () => {
+        const longAgo = Math.floor(Date.now() / 1000) - 400 * 24 * 60 * 60;
+        GlobalState.contacts = [
+            contact(1),
+            contact(2, { favourite: true }),
+            contact(3, { type: Constants.AdvType.Repeater, lastAdvert: longAgo }),
+            contact(4, { type: Constants.AdvType.Repeater, lastAdvert: longAgo, favourite: true }),
+            contact(5, { type: Constants.AdvType.Room, lastAdvert: longAgo, favourite: true }),
+        ];
+
+        await ModeSwitch.apply("live");
+
+        // only the unstarred companion and the unstarred quiet repeater go
+        expect(removed.sort()).toEqual(["01", "03"]);
+    });
+
+    it("keeps a channel the new mode does not hold, rather than losing its key", async () => {
+        // a private channel made during an incident: its key is on the radio and
+        // nowhere else, so clearing the slot would destroy it
+        Connection.getChannel.mockImplementation(async (idx) => {
+            const slots = {
+                0: { name: "Public", secret: "8b3387e9c5cdea6ac9e5edbaa115cd72" },
+                1: { name: "County Tac", secret: "ab".repeat(16) },
+            };
+            if(!(idx in slots)) throw new Error("no such channel");
+            return { channelIdx: idx, name: slots[idx].name, secret: Utils.hexToBytes(slots[idx].secret) };
+        });
+        GlobalState.contacts = [];
+
+        const result = await ModeSwitch.apply("live");
+
+        const normal = ModeProfiles.profile("normal", NODE);
+        const kept = normal.channels.find((c) => c.name === "County Tac");
+        expect(kept.secret).toBe("ab".repeat(16));
+        expect(result.warnings.join(" ")).toContain("County Tac was on the radio but in no mode, so it was kept in Normal mode");
+    });
+
+    it("does not copy a channel the new mode already holds", async () => {
+        Connection.getChannel.mockImplementation(async (idx) => {
+            if(idx !== 0) throw new Error("no such channel");
+            const secret = "8b3387e9c5cdea6ac9e5edbaa115cd72";
+            return { channelIdx: 0, name: "Public", secret: Utils.hexToBytes(secret) };
+        });
+        GlobalState.contacts = [];
+        const live = await ModeProfiles.profileOrDefault("live", NODE);
+        live.channels = [{ name: "Public", secret: "8b3387e9c5cdea6ac9e5edbaa115cd72", answerPositions: false }];
+        ModeProfiles.saveProfile("live", live, NODE);
+
+        const result = await ModeSwitch.apply("live");
+
+        expect(ModeProfiles.profile("normal", NODE).channels.filter((c) => c.name === "Public")).toHaveLength(1);
+        expect(result.warnings.join(" ")).not.toContain("in no mode");
+    });
+
+    it("says so rather than staying quiet if the channels could not be read first", async () => {
+        Connection.getChannel.mockRejectedValue(new Error("the radio did not answer"));
+        GlobalState.contacts = [];
+        const result = await ModeSwitch.apply("live");
+        expect(result.warnings.join(" ")).toContain("any channel in no mode may have been lost");
+    });
+
+});
+
 describe("the banner", () => {
 
     beforeEach(() => {
@@ -390,12 +493,19 @@ describe("the settings tabs", () => {
 
     const tab = (wrapper, mode) => wrapper.findAll("button").find((b) => b.text().includes(MODE_LABELS[mode]));
 
+    // a tab reads the radio for a mode it has never shown, so settling it takes
+    // more than one turn of the loop
+    async function open(wrapper, mode) {
+        await tab(wrapper, mode).trigger("click");
+        await flushPromises();
+        await flushPromises();
+    }
+
     it("has a tab for each mode, showing the same fields for each", async () => {
         const wrapper = mount(ModeSettingsTabs);
         await flushPromises();
         for(const mode of MODES){
-            await tab(wrapper, mode).trigger("click");
-            await flushPromises();
+            await open(wrapper, mode);
             for(const label of ["Node name", "Frequency (kHz)", "Transmit power (dBm)", "Channels", "Rooms", "Zero hop", "Flood"]){
                 expect(wrapper.text()).toContain(label);
             }
@@ -407,8 +517,7 @@ describe("the settings tabs", () => {
         await flushPromises();
         expect(wrapper.text()).toContain("Public");
 
-        await tab(wrapper, "training").trigger("click");
-        await flushPromises();
+        await open(wrapper, "training");
         expect(wrapper.text()).toContain("#Emcomm-Training");
         expect(wrapper.text()).not.toContain("Public");
     });
@@ -416,8 +525,7 @@ describe("the settings tabs", () => {
     it("adds a # channel with the key derived from its name, and a named one with a random key", async () => {
         const wrapper = mount(ModeSettingsTabs);
         await flushPromises();
-        await tab(wrapper, "live").trigger("click");
-        await flushPromises();
+        await open(wrapper, "live");
 
         wrapper.vm.newChannelName = "#Drill-Net";
         await wrapper.vm.addChannel();
@@ -435,8 +543,7 @@ describe("the settings tabs", () => {
     it("saves a mode, and keeps the rooms it uses", async () => {
         const wrapper = mount(ModeSettingsTabs);
         await flushPromises();
-        await tab(wrapper, "live").trigger("click");
-        await flushPromises();
+        await open(wrapper, "live");
 
         wrapper.vm.toggleRoom({ keyHex: ROOM_HEX, name: "N.E. ELP EMCOMM OBSVR" }, true);
         wrapper.vm.profile.adverts.zeroHopMinutes = 45;

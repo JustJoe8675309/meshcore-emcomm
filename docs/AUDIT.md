@@ -339,6 +339,13 @@ one found so far came from a dropped frame, and the link that drops them is BLE.
 - [ ] **Back to Normal mode.** The bar goes green, the radio's own channels and
       contacts come back from the backup, and the other node hears it on the old
       channels again.
+- [ ] **Favourites survive a switch.** Star a companion and a repeater, then switch
+      to Emcomm-Live. Both are still in Contacts afterwards.
+- [ ] **A channel in no mode is kept, not lost.** While in Normal mode, add a
+      channel with a random key from the stock app or the Channels tab. Switch to
+      Emcomm-Live: the switch says it kept that channel in Normal mode. Switch
+      back: the channel is on the radio again with the same key, and the other node
+      can still talk on it.
 - [ ] **The tabs match.** Each of the three tabs in Settings shows the same fields.
       Editing a mode that is not in use changes nothing on the radio until it is
       entered.

@@ -213,8 +213,20 @@ class ModeProfiles {
 
     /** Every channel the radio holds, by slot, name and key. */
     static async readChannels() {
+        return (await this.readChannelsWithFailures()).channels;
+    }
+
+    /**
+     * The same, with a count of the slots that could not be read.
+     *
+     * An empty slot and an unreadable one look the same from here, so a radio
+     * that answers nothing would otherwise read as a radio with no channels.
+     * Anything about to clear slots needs to tell those apart.
+     */
+    static async readChannelsWithFailures() {
         const Connection = (await import("../Connection.js")).default;
         const channels = [];
+        let unreadable = 0;
         for(let idx = 0; idx < 16; idx++){
             try {
                 const channel = await Connection.getChannel(idx);
@@ -223,10 +235,10 @@ class ModeProfiles {
                     channels.push({ idx: idx, name: name, secret: Utils.bytesToHex(channel.secret) });
                 }
             } catch(e) {
-                // an empty slot and an unreadable one look the same from here
+                unreadable++;
             }
         }
-        return channels;
+        return { channels: channels, unreadable: unreadable };
     }
 
     /**
