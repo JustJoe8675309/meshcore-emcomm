@@ -194,6 +194,22 @@ more: 2 dB is modest, and a house wall can cost far more than that. WTRA-NMF ans
 indoors and not at all from the porch, which is a reminder that links this weak come and go from
 one minute to the next.
 
+To tell them apart, node 2 was set back to 20 dBm and searched four more times from the same
+spot on the porch:
+
+| Repeater | Porch, 22 dBm | Porch, 20 dBm |
+|---|---|---|
+| JOE- QTHish | 4 of 4 | 3 of 4 |
+| FEDF MC Repeater | 3 of 4 | 3 of 4 |
+| Dorje Solar Tobin Wells | 1 of 4 | 3 of 4 |
+| WTRA-NMF | 0 of 4 | 0 of 4 |
+
+So it was the move outside, not the power. At 20 dBm on the porch, both newcomers answered at
+least as often as at 22, and FEDF MC Repeater heard node 2 at much the same strength, +1.25 to
+-2.75 dB. Over eight searches, 2 dB made no difference that could be seen; the house wall did.
+The one miss by JOE- QTHish, the strongest link of all, shows that even a good link loses the
+odd reply. The slowest reply at 20 dBm was 2.54 s.
+
 So the arithmetic is a guide, not a bound, and the 10 s floor is what actually matters here: the
 slowest answer seen so far left more than 7 s to spare.
 
