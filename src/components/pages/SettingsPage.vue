@@ -16,7 +16,7 @@
         </AppBar>
 
         <div class="flex h-full w-full overflow-hidden">
-            <div class="w-full overflow-y-auto">
+            <div class="relative w-full overflow-y-auto">
 
                 <!-- node details -->
                 <div class="flex flex-col items-center p-4 leading-tight">
@@ -143,7 +143,18 @@
                                 No radio connected, so there is nothing to back up.
                             </div>
 
-                            <div v-if="backupProgress" role="status" class="text-xs text-gray-600">{{ backupProgress }}</div>
+                            <!-- backing up, restoring and converting each take a while and
+                                 each is a string of commands to the radio. The page is covered
+                                 until they finish: pressing Save or another restore in the
+                                 middle queues behind it, and leaving the page leaves nothing
+                                 on screen to say whether it worked -->
+                            <BusyOverlay
+                                v-if="busyTitle"
+                                :title="busyTitle"
+                                :step="backupProgress"
+                                :done="backupSteps?.done ?? null"
+                                :total="backupSteps?.total ?? null"
+                                note="Keep the radio connected until this finishes."/>
                             <div v-if="backupError" role="status" class="text-xs text-red-600">{{ backupError }}</div>
                             <div v-if="backupMessage" role="status" class="text-xs text-green-700">{{ backupMessage }}</div>
 
@@ -333,10 +344,11 @@ import NodeBackup from "../../js/NodeBackup.js";
 import EmcommMode from "../../js/EmcommMode.js";
 import EmcommConvertDialog from "../settings/EmcommConvertDialog.vue";
 import EmcommSettingsGroup from "../settings/EmcommSettingsGroup.vue";
+import BusyOverlay from "../BusyOverlay.vue";
 
 export default {
     name: 'SettingsPage',
-    components: {Page, SaveButton, AppBar, EmcommConvertDialog, EmcommSettingsGroup},
+    components: {Page, SaveButton, AppBar, EmcommConvertDialog, EmcommSettingsGroup, BusyOverlay},
     data() {
         return {
             isSaving: false,
@@ -360,6 +372,10 @@ export default {
             convertPlan: null,
             convertCurrent: null,
             backupProgress: null,
+            // a count for the loading screen, when the step has one
+            backupSteps: null,
+            // what the restore under way is for, as the loading screen names it
+            restoreTitle: null,
             backupError: null,
             backupMessage: null,
             backupWarnings: [],
@@ -406,6 +422,7 @@ export default {
                 // an incomplete read is the operator's call, not the app's, but it
                 // is shown with real numbers rather than a shrug
                 if(backup.warnings.length > 0){
+                    this.backupProgress = null;
                     const proceed = confirm(
                         `${backup.warnings.join(" ")}
 
@@ -469,8 +486,10 @@ Convert anyway?`,
 
                 const result = await EmcommMode.trim(plan, (p) => {
                     const retry = p.pass > 1 ? " (retry " + (p.pass - 1) + ")" : "";
-                    this.backupProgress = "Removing " + p.done + " of " + p.total + retry + ": " + p.what;
+                    this.backupProgress = "Removing" + retry + ": " + p.what;
+                    this.backupSteps = { done: p.done, total: p.total };
                 });
+                this.backupSteps = null;
 
                 if(choices.advert !== "none"){
                     this.backupProgress = "Announcing the station...";
@@ -493,6 +512,7 @@ Convert anyway?`,
                     await EmcommMode.setManualAddContacts(true);
                 }
 
+                this.backupProgress = "Reading the node back...";
                 await this.load();
 
                 // recorded only now, after the node really changed, so the badge
@@ -524,6 +544,7 @@ Convert anyway?`,
                 this.backupError = this.describeBackupError(e);
             } finally {
                 this.backupProgress = null;
+                this.backupSteps = null;
                 this.isConverting = false;
             }
 
@@ -576,7 +597,7 @@ Settings, channels and ${entry.backup.contacts.length} contacts will be restored
                 return;
             }
 
-            await this.runRestore({ ...entry.backup, slot: entry.slot });
+            await this.runRestore({ ...entry.backup, slot: entry.slot }, "Restoring the backup");
 
         },
 
@@ -594,13 +615,15 @@ Settings, channels and ${entry.backup.contacts.length} contacts will be restored
                 return;
             }
 
-            await this.runRestore({ ...entry.backup, slot: NodeBackup.SLOT_PRE_EMCOMM });
+            await this.runRestore({ ...entry.backup, slot: NodeBackup.SLOT_PRE_EMCOMM }, "Leaving EMCOMM mode");
 
         },
 
-        async runRestore(backup) {
+        async runRestore(backup, title = "Restoring the backup") {
 
             this.isRestoring = true;
+            this.restoreTitle = title;
+            this.backupProgress = "Starting...";
             this.backupError = null;
             this.backupMessage = null;
             this.backupWarnings = [];
@@ -612,8 +635,10 @@ Settings, channels and ${entry.backup.contacts.length} contacts will be restored
             try {
 
                 const result = await NodeBackup.restore(backup, (p) => {
-                    this.backupProgress = `Restoring ${p.done} of ${p.total}: ${p.what}`;
+                    this.backupProgress = `Restoring ${p.what}`;
+                    this.backupSteps = { done: p.done, total: p.total };
                 });
+                this.backupSteps = null;
 
                 this.backupMessage = `Restored ${backup.contacts.length} contacts and ${backup.channels.length} channels.`;
 
@@ -628,6 +653,7 @@ Settings, channels and ${entry.backup.contacts.length} contacts will be restored
                     );
                 }
 
+                this.backupProgress = "Reading the node back...";
                 await this.load();
 
                 // A restore writes the name back but announces nothing, so every station
@@ -637,6 +663,7 @@ Settings, channels and ${entry.backup.contacts.length} contacts will be restored
                 // direct range. Stations further out learn it at the next flood advert.
                 const nameAfter = backup.settings?.name ?? null;
                 if(nameAfter != null && nameAfter !== nameBefore){
+                    this.backupProgress = "Announcing the name to stations in range...";
                     try {
                         await Connection.sendZeroHopAdvert();
                         this.backupMessage += ` A zero hop advert went out, so stations in direct range see it as ${nameAfter} again.`;
@@ -656,7 +683,9 @@ Settings, channels and ${entry.backup.contacts.length} contacts will be restored
                 this.backupError = this.describeBackupError(e);
             } finally {
                 this.backupProgress = null;
+                this.backupSteps = null;
                 this.isRestoring = false;
+                this.restoreTitle = null;
             }
 
         },
@@ -900,6 +929,22 @@ Settings, channels and ${backup.contacts.length} contacts will be written to thi
         },
     },
     computed: {
+
+        // what the loading screen says is under way, or null for no screen. A
+        // conversion waiting on its confirmation dialog has no step and is not
+        // covered, since the operator has a decision to make
+        busyTitle() {
+            if(this.isRestoring){
+                return this.restoreTitle ?? "Restoring the backup";
+            }
+            if(this.isBackingUp){
+                return "Backing up the node";
+            }
+            if(this.isConverting && this.backupProgress){
+                return "Converting to EMCOMM mode";
+            }
+            return null;
+        },
         canSave() {
             return this.hasLoaded && !this.isLoading && !this.isSaving;
         },

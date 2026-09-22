@@ -73,6 +73,7 @@ class Connection {
         GlobalState.contacts = [];
         GlobalState.channels = [];
         GlobalState.batteryPercentage = null;
+        GlobalState.connecting = { step: "Opening the link..." };
 
         // update connection and listen for events
         GlobalState.connection = connection;
@@ -209,6 +210,7 @@ class Connection {
 
         // update ui
         GlobalState.connection = null;
+        GlobalState.connecting = null;
         // room sessions live on the radio, so they do not survive it going away
         GlobalState.roomLogins = {};
         SignedPosts.forget();
@@ -288,22 +290,48 @@ class Connection {
             await Database.Message.setMessageDeliveredByAckCode(event.ackCode, event.roundTrip);
         });
 
-        // initial setup without needing database
-        await this.loadSelfInfo();
-        await this.syncDeviceTime();
+        const connection = GlobalState.connection;
+        // each step says what it is doing, for the loading screen. only while this
+        // connection is still the one being set up: a disconnect part way clears
+        // the screen, and a late step must not bring it back
+        const step = (text, done = null, total = null) => {
+            if(toRaw(GlobalState.connection) === toRaw(connection) && GlobalState.connecting != null){
+                GlobalState.connecting = { step: text, done: done, total: total };
+            }
+        };
 
-        // started once self info is in, because the schedule is stored per node and
-        // until now we did not know which node this is
-        AdvertSchedule.start(Utils.bytesToHex(GlobalState.selfInfo.publicKey));
+        try {
 
-        // wait for database to be ready
-        await databaseToBeReady;
+            // initial setup without needing database
+            step("Waiting for the radio to answer...");
+            await this.loadSelfInfo();
+            step("Setting the radio's clock...");
+            await this.syncDeviceTime();
 
-        // fetch data after database is ready
-        await this.loadContacts();
-        await this.loadChannels();
-        await this.syncMessages();
-        await this.updateBatteryPercentage();
+            // started once self info is in, because the schedule is stored per node and
+            // until now we did not know which node this is
+            AdvertSchedule.start(Utils.bytesToHex(GlobalState.selfInfo.publicKey));
+
+            // wait for database to be ready
+            step("Opening this node's messages...");
+            await databaseToBeReady;
+
+            // fetch data after database is ready. the contact list is most of the
+            // wait, a couple of hundred frames on a well used node, so it is counted
+            step("Reading contacts...");
+            await this.loadContacts((received, announced) => step("Reading contacts...", received, announced));
+            step("Reading channels...");
+            await this.loadChannels();
+            step("Reading waiting messages...");
+            await this.syncMessages();
+            step("Reading the battery...");
+            await this.updateBatteryPercentage();
+
+        } finally {
+            if(toRaw(GlobalState.connection) === toRaw(connection)){
+                GlobalState.connecting = null;
+            }
+        }
 
         // once a minute: the battery, and the clock
         GlobalState.batteryPercentageInterval = setInterval(async () => {
@@ -548,7 +576,9 @@ class Connection {
     // end marker never arrived
     static CONTACT_READ_QUIET_MILLIS = 1500;
 
-    static async loadContacts() {
+    // onProgress, when given, hears how many different contacts have arrived so
+    // far and how many the device said it would send
+    static async loadContacts(onProgress = null) {
 
         const connection = GlobalState.connection;
         if(connection == null){
@@ -583,8 +613,19 @@ class Connection {
         let announced = null;
         const onContactsStart = (start) => {
             announced = start?.count ?? null;
+            onProgress?.(seen.size, announced);
         };
         connection.on(Constants.ResponseCodes.ContactsStart, onContactsStart);
+
+        // counted by key across passes, so a second pass does not count up again
+        const seen = new Set();
+        const onContactSeen = (contact) => {
+            seen.add(Utils.bytesToHex(contact.publicKey));
+            onProgress?.(Math.min(seen.size, announced ?? seen.size), announced);
+        };
+        if(onProgress){
+            connection.on(Constants.ResponseCodes.Contact, onContactSeen);
+        }
 
         const byPublicKey = new Map();
         let passes = 0;
@@ -613,6 +654,7 @@ class Connection {
 
         } finally {
             connection.off(Constants.ResponseCodes.ContactsStart, onContactsStart);
+            connection.off(Constants.ResponseCodes.Contact, onContactSeen);
         }
 
         GlobalState.contacts = [...byPublicKey.values()];

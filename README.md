@@ -621,6 +621,29 @@ Upstream hardcoded a single "Public Channel". This fork upgrades `@liamcottle/me
 1.2.0 to 1.15.0 and enumerates the channels actually configured on the device via `getChannels()`,
 falling back to the public channel if the firmware does not support the command.
 
+### Loading screen
+
+Connecting to a radio takes seconds, most of it reading the contact list, and until now the tabs
+showed a node with nothing on it while that happened. A loading screen now covers the app from
+the moment the link opens until the node has been read. It names each step as it happens:
+- waiting for the radio to answer;
+- setting its clock;
+- opening its messages;
+- reading contacts, counted against the number the radio said it would send;
+- reading channels, waiting messages and the battery.
+
+It has a Disconnect button, and it goes away if the attempt fails, leaving the reason on the
+connect screen.
+
+Backing up, restoring, leaving EMCOMM mode and converting to it get the same screen, with the
+step and a count where there is one. Each is a string of commands to the radio. Before this, the
+only sign was a line of small text under the buttons, and the rest of the page was free to
+press. A command pressed in the middle queued behind the restore and made it longer. It has no
+cancel button, because stopping a restore half way leaves the node half restored, and every
+step has its own timeout, so it always ends. The screen steps aside for a decision: the
+conversion's confirmation dialog, and its question about an incomplete backup, are left
+uncovered.
+
 ### Works offline
 
 An emergency client that only runs while the network is up is not much use in an
@@ -847,7 +870,7 @@ now has a component test, which brings the suite to 456.
 npm test
 ```
 
-Six plain node suites and thirty component suites, 456 component tests, no hardware
+Six plain node suites and thirty-two component suites, 467 component tests, no hardware
 required:
 
 - `test/report_encoder.test.mjs` covers rendering and packet splitting, including a

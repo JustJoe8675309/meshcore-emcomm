@@ -43,6 +43,18 @@ mark every transmission `DRILL`. Roughly 20 to 30 transmissions in total.
 
 Connect each radio in its own browser tab; a radio can only be held by one page.
 
+### Loading screen
+
+- [ ] **Connecting.** A loading screen covers the app from the moment the link opens. It
+      names each step, and counts contacts against the number the radio announced. It
+      is gone once the node is read, and the tabs are full when it goes.
+- [ ] **Disconnect on the loading screen.** Ends the attempt and removes the screen. Nothing
+      comes back up as the steps still under way finish.
+- [ ] **Backup and restore.** Back up current info, Load last backup, and Leave EMCOMM mode
+      each cover the Settings page with their own title and step, counting the steps of a
+      restore. Each screen goes away when it finishes or fails, and the result is left to
+      read.
+
 ### Sending
 
 - [ ] **Multi-part report to a channel.** Every part arrives on the other node, in
@@ -99,6 +111,10 @@ rather than an error.
       the report was interrupted, how many parts went out and to where, and offer to
       send the rest. It used to show an empty form, with nothing to say the stations
       had a report with its end missing.
+- [ ] **Confirm box, short window.** In a browser window a few hundred pixels tall, fill
+      in a report and press Send. The confirmation opens inside the panel. No white band
+      appears below the app, and the page as a whole does not scroll. It used to: the
+      form's hidden "required" labels were positioned against the page, not the panel.
 - [ ] **Resend one part.** After a multi part channel report, Reports shows "Last
       report sent" with a Resend button per part. Resend part 2: the other node gets
       that part again, word for word on the same channel, and no other part.

@@ -53,6 +53,9 @@ const globalState = reactive({
     // can be sent again. Channel messages are not acknowledged, so the sending
     // radio cannot tell a lost part from a delivered one
     lastSentReport: null,
+    // while a radio is first being connected: what is happening, and a count when
+    // there is one ({ step, done, total }). null once it is ready or gone
+    connecting: null,
 });
 
 export default globalState;

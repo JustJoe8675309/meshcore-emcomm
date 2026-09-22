@@ -1,5 +1,5 @@
 <template>
-    <div class="w-full overflow-y-auto">
+    <div class="relative w-full overflow-y-auto">
         <div class="p-3 space-y-3">
 
             <!-- where the report is sent -->
