@@ -232,8 +232,20 @@ export default {
             // the mode in use keeps its app side settings in step at once; the
             // radio side waits for a switch, which is said on screen
             if(this.tab === this.current){
+                // by name against the radio's own slots, not by position in this
+                // list. The two agree inside an emcomm mode, because entering one
+                // writes the channels from slot 0, and they do not agree in normal
+                // mode, whose channels come back from the backup at the slots they
+                // were in. Node 2's Emcomm Testing is seventh in the list and slot
+                // 13 on the radio: by position this marked #joebot, so a request
+                // was answered on the wrong channel and Emcomm Testing ignored it.
+                const answering = new Set(this.profile.channels
+                    .filter((c) => c.answerPositions)
+                    .map((c) => (c.name ?? "").trim().toLowerCase()));
                 PositionService.saveSettings({
-                    markedChannels: this.profile.channels.map((c, i) => c.answerPositions ? i : null).filter((i) => i !== null),
+                    markedChannels: (GlobalState.channels ?? [])
+                        .filter((c) => answering.has((c.name ?? "").trim().toLowerCase()))
+                        .map((c) => c.idx),
                     markedRooms: this.profile.rooms.filter((r) => r.answerPositions).map((r) => r.keyHex),
                     autoAnswer: this.profile.autoAnswerPositions === true,
                 });

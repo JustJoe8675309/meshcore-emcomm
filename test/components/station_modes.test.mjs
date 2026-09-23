@@ -991,3 +991,66 @@ describe("remembering who answers position requests", () => {
     });
 
 });
+
+// Marking a channel that does not sit where it sits in the list.
+//
+// The mode settings tab wrote the live marks from each channel's position in the
+// profile list. Inside an emcomm mode that is also its slot, because entering one
+// writes the channels from slot 0. In normal mode it is not: those channels come
+// back from the backup at the slots they were in. Node 2's Emcomm Testing is
+// seventh in the list and slot 13 on the radio, so by position this marked
+// #joebot — the wrong channel answered position requests, and the right one
+// ignored them.
+describe("marking a channel from the mode settings tab", () => {
+
+    const NODE_KEY = new Uint8Array(32).fill(0x39);
+    const NODE_HEX = Array.from(NODE_KEY).map((b) => b.toString(16).padStart(2, "0")).join("");
+
+    beforeEach(() => {
+        window.localStorage.clear();
+        GlobalState.selfInfo = { name: "KJ5HBN-EMCOMM", publicKey: NODE_KEY };
+        GlobalState.connection = { on() {}, off() {} };
+        // the radio's own layout, which is not contiguous
+        GlobalState.channels = [
+            { idx: 0, name: "Public", secret: new Uint8Array(16) },
+            { idx: 7, name: "#joebot", secret: new Uint8Array(16).fill(2) },
+            { idx: 13, name: "Emcomm Testing", secret: new Uint8Array(16).fill(1) },
+        ];
+        ModeProfiles.setCurrent("normal", NODE_HEX);
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        window.localStorage.clear();
+        GlobalState.selfInfo = null;
+        GlobalState.connection = null;
+        GlobalState.channels = [];
+    });
+
+    it("marks the slot the channel is really in", async () => {
+        const { default: ModeSettingsTabs } = await import("../../src/components/modes/ModeSettingsTabs.vue");
+
+        const vm = {
+            tab: "normal",
+            current: "normal",
+            profile: {
+                ...ModeProfiles.blank(),
+                channels: [
+                    { name: "Public", secret: "00".repeat(16), answerPositions: false },
+                    { name: "#joebot", secret: "02".repeat(16), answerPositions: false },
+                    { name: "Emcomm Testing", secret: "01".repeat(16), answerPositions: true },
+                ],
+                rooms: [],
+            },
+            labelFor: () => "Normal mode",
+            message: null,
+        };
+
+        ModeSettingsTabs.methods.save.call(vm);
+
+        const settings = JSON.parse(window.localStorage.getItem(`position_settings:${NODE_HEX}`));
+        expect(settings.markedChannels).toEqual([13]);
+        expect(settings.markedChannels).not.toContain(7);
+    });
+
+});

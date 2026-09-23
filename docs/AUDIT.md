@@ -275,6 +275,11 @@ being a variable.
       before writing anything and offers "Switch anyway", because the pre-EMCOMM
       backup is taken once and never again while away from normal mode: whatever
       is missing from it is missing for the whole incident.
+- [ ] **The channel that answers is the one that was ticked.** On a radio whose
+      channels are not in slots 0, 1, 2..., tick one low in the list from the mode
+      settings tab, then have the other node run a roll call on it. Node 2's Emcomm
+      Testing is seventh in the list and slot 13 on the radio, and the tab marked
+      by list position: #joebot was marked and Emcomm Testing ignored the roll call.
 - [ ] **A position answering choice survives a round trip.** Tick a channel and a
       room under "who answers position requests" while in Normal, switch to
       Emcomm-Training and back, and both must still be ticked. Node 2 lost both
