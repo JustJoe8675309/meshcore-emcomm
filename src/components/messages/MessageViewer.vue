@@ -251,9 +251,7 @@ export default {
 
             // in a training mode nothing leaves this station without saying so,
             // so an exercise message is never taken for the real thing
-            const outgoing = ModeProfiles.marksDrill() && !/DRILL/i.test(newMessageText)
-                ? `DRILL ${newMessageText}`
-                : newMessageText;
+            const outgoing = ModeProfiles.markText(newMessageText);
 
             // todo validate message max length
 

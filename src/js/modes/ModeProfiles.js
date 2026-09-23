@@ -320,6 +320,22 @@ class ModeProfiles {
         return this.profile(mode, nodeKeyHex)?.markDrill === true;
     }
 
+    /**
+     * The text to actually send, marked DRILL when the mode in use says so.
+     *
+     * An operator who has already written DRILL into the message gets no second
+     * one: "DRILL DRILL SAG needed" reads as a stutter rather than a marking, and
+     * on a 160 byte message the wasted six characters are real. The check is a
+     * whole word, so a message about a drill bit or Drillfield Road is still
+     * marked.
+     */
+    static markText(text, nodeKeyHex = this.nodeKeyHex()) {
+        if(text == null || text === "" || !this.marksDrill(nodeKeyHex)){
+            return text;
+        }
+        return /\bDRILL\b/i.test(text) ? text : `DRILL ${text}`;
+    }
+
     static forget(nodeKeyHex) {
         try {
             window.localStorage.removeItem(this.storageKey(nodeKeyHex));

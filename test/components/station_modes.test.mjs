@@ -436,7 +436,7 @@ describe("the banner", () => {
             const classes = parent.className ?? "";
             expect(classes).not.toContain("overflow-hidden");
             expect(classes).not.toContain("truncate");
-            expect(classes).not.toMatch(/h-16/);
+            expect(classes).not.toMatch(/\bh-16\b/);
             parent = parent.parentElement;
         }
     });
@@ -658,6 +658,58 @@ describe("training marks what it sends", () => {
         const values = { to: "Ops", from: "KJ5HBN", subject: "Real", datetime: "221830L SEP", message: "x".repeat(300) };
         const plain = ReportEncoder.prepare(form, values, "Joe-KJ5HBN-HTv3", "channel");
         expect(plain.parts.every((p) => p.startsWith("["))).toBe(true);
+    });
+
+});
+
+describe("marking a message DRILL", () => {
+
+    const NODE = "aa".repeat(32);
+
+    beforeEach(() => {
+        window.localStorage.clear();
+        GlobalState.selfInfo = { publicKey: new Uint8Array(32).fill(0xaa) };
+    });
+
+    afterEach(() => {
+        window.localStorage.clear();
+        GlobalState.selfInfo = null;
+    });
+
+    function inMode(mode, markDrill) {
+        ModeProfiles.saveProfile(mode, { ...ModeProfiles.blank(), markDrill }, NODE);
+        ModeProfiles.setCurrent(mode, NODE);
+    }
+
+    it("marks traffic in a mode that says to", () => {
+        inMode("training", true);
+        expect(ModeProfiles.markText("SAG needed at mile 4")).toBe("DRILL SAG needed at mile 4");
+    });
+
+    it("leaves traffic alone in a mode that does not", () => {
+        inMode("live", false);
+        expect(ModeProfiles.markText("SAG needed at mile 4")).toBe("SAG needed at mile 4");
+    });
+
+    it("does not mark a message the operator has already marked", () => {
+        // it read "DRILL DRILL SAG needed" on the bench, which is a stutter, not a
+        // marking, and six wasted characters of a 160 byte message
+        inMode("training", true);
+        expect(ModeProfiles.markText("DRILL SAG needed")).toBe("DRILL SAG needed");
+        expect(ModeProfiles.markText("drill: net secure")).toBe("drill: net secure");
+        expect(ModeProfiles.markText("This is a DRILL")).toBe("This is a DRILL");
+    });
+
+    it("still marks a message that merely contains the letters", () => {
+        inMode("training", true);
+        expect(ModeProfiles.markText("Need a drillbit at the aid station"))
+            .toBe("DRILL Need a drillbit at the aid station");
+    });
+
+    it("leaves an empty message as it is, so nothing is sent as a bare DRILL", () => {
+        inMode("training", true);
+        expect(ModeProfiles.markText("")).toBe("");
+        expect(ModeProfiles.markText(null)).toBe(null);
     });
 
 });
