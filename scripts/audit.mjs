@@ -15,7 +15,7 @@
 // in the field should still tell you whether the app works.
 
 import { execSync } from "node:child_process";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
 
 const PASS = "PASS", FAIL = "FAIL", WARN = "WARN", SKIP = "SKIP";
 const results = [];
@@ -44,8 +44,46 @@ function tryRun(command) {
 
 // ---------------------------------------------------------------- the app itself
 
+// Tab, newline and carriage return are the only control characters that belong
+// in source. This class is written with x escapes rather than u escapes on
+// purpose: a u escape does not survive being passed through JSON by a tool, and
+// writing it that way put real NUL and backspace bytes into this very file,
+// which the check then reported against itself.
+const CONTROL_CHARS = /[\x00-\x08\x0B\x0C\x0E-\x1F]/g;
+
 section("Tests and build");
 {
+    // Control characters in the source, which have cost real faults here.
+    //
+    // A patch script wrote the byte 0x08 where a regex meant \b, four times over
+    // two days. None of them failed loudly: one marked a message DRILL twice on
+    // air, one made a test assert nothing at all, one broke a firmware check, and
+    // one made a layout guard match nothing. They are invisible in a terminal,
+    // because a backspace erases the character before it as it prints.
+    const suspect = [];
+    const walk = (dir) => {
+        for(const entry of readdirSync(dir, { withFileTypes: true })){
+            const path = `${dir}/${entry.name}`;
+            if(entry.isDirectory()){
+                if(entry.name !== "node_modules" && entry.name !== ".git"){
+                    walk(path);
+                }
+            } else if(/\.(m?js|vue|json|md|css|html)$/.test(entry.name)){
+                const text = readFileSync(path, "utf8");
+                // tab, newline and carriage return are the only ones that belong
+                const found = text.match(CONTROL_CHARS);
+                if(found){
+                    suspect.push(`${path} (${[...new Set(found)].map((c) => "0x" + c.charCodeAt(0).toString(16).padStart(2, "0")).join(", ")})`);
+                }
+            }
+        }
+    };
+    for(const dir of ["src", "test", "scripts", "docs"]){
+        walk(dir);
+    }
+    record("app", "no control characters in the source", suspect.length === 0 ? PASS : FAIL,
+        suspect.slice(0, 3).join("; "));
+
     const tests = tryRun("npm test");
     const suites = (tests.out.match(/ALL CHECKS PASSED/g) ?? []).length;
     const components = tests.out.match(/Tests\s+(\d+) passed/);

@@ -1,5 +1,5 @@
 <template>
-    <div class="flex bg-white py-2 border-b h-16">
+    <div class="flex bg-white py-2 border-b min-h-16">
 
         <!-- back button -->
         <div class="my-auto px-1">

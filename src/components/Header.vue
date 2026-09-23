@@ -1,6 +1,6 @@
 <template>
     <div class="bg-white border-b">
-    <div class="flex p-2 h-16">
+    <div class="flex p-2 min-h-16">
         <div class="flex-shrink-0 my-auto mr-2">
             <img src="/icon.png" class="size-12 rounded"/>
         </div>
@@ -80,7 +80,12 @@
 
     <!-- which mode this station is in: its own row, the full width of the header.
          Inside the name column it was clipped by the row's fixed height and by
-         the column's own width, so it read "Normal mode · tap to" and no more -->
+         the column's own width, so it read "Normal mode · tap to" and no more.
+         The row above is min-h-16 rather than h-16 for the same family of reason:
+         4rem scales with the root font, and the two text lines inside it grow
+         faster, so on a phone with Android's font size turned up the battery line
+         overflowed the row and painted over this banner. Measured at 375px: 14px
+         of overlap at an 18px root font, 18px at 24px. -->
     <div class="px-2 pb-1">
         <ModeBanner @open="modeDialogOpen = true"/>
     </div>
