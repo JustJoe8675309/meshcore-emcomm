@@ -762,6 +762,25 @@ channel 13 marked, and a round trip through Emcomm-Training left both empty. The
 now record into the mode in use as well: channels by name, because the slot a channel sits in
 differs between modes, and rooms by key, which does not.
 
+**The slot count comes from the radio, not from this app.** Everything that reads, writes or
+clears channel slots used to stop at 16, in four separate places, while both bench radios
+report **40** and the one list reads all of them. A channel the operator put in slot 20 was
+therefore invisible to station modes and missing from the backup, so "the radio exactly as it
+was" quietly did not include it — nothing cleared it either, which is the only reason it never
+lost anybody a channel. `CMD_DEVICE_QUERY` carries `MAX_GROUP_CHANNELS`, so the count is asked
+for once per connection and forgotten with it, with 16 as a floor and 40 as the answer for a
+radio that will not say.
+
+**A station's last-heard time is the other station's clock.** `lastAdvert` is stamped by the
+station that sent the advert, not by the radio that heard it, and a node with no GPS and no app
+to set its clock can be years out: one contact on the bench carried an advert dated four years
+in the future. Since the one list sorts by Heard Recently by default, that station sat
+permanently at the top — the row an operator would most want to trust. A time more than a day
+ahead is now read as **now**: the station was heard, that much is certain, and only its clock
+is wrong. A time from before 2020 is not a clock that is wrong but one that was never set, so
+it shows as Unknown and sorts last. The same thresholds decide which contacts EMCOMM mode may
+trim, so the list and the trim agree about which ages can be believed.
+
 **Coming home, the backup owns the channels.** It records the slot each channel was in, and
 slot numbers are part of "the radio exactly as it was", so the switch clears the slots and the
 restore puts them back where they were. Writing the mode profile's list from slot 0 as well is

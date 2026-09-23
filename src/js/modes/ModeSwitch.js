@@ -23,7 +23,13 @@ import NodeBackup from "../NodeBackup.js";
 import AdvertSchedule from "../AdvertSchedule.js";
 import PositionService from "../position/PositionService.js";
 import ModeProfiles from "./ModeProfiles.js";
+import Slots from "../channels/Slots.js";
 
+// A floor, not the count. The radio is asked for its real one — 40 on the bench
+// radios — because a channel the operator put above slot 16 was invisible to
+// modes and missing from the backup, so "the radio exactly as it was" quietly did
+// not include it. A mode's own channel list is still capped at this, since that is
+// what a mode profile was built to hold and no net needs sixteen tactical channels.
 const MAX_CHANNEL_SLOTS = 16;
 
 class ModeSwitch {
@@ -214,11 +220,16 @@ class ModeSwitch {
         // first, so a channel this app never saw cannot be cleared out from under it
         let channelsRead = false;
 
+        // what this radio actually has, asked once and used for reading, clearing
+        // and the fallback alike: clearing fewer slots than were read would leave
+        // a channel behind that the preview said was going
+        const slotCount = await Slots.count();
+
         try {
 
             const read = await ModeProfiles.readChannelsWithFailures();
             const onRadio = read.channels;
-            if(onRadio.length === 0 && read.unreadable === MAX_CHANNEL_SLOTS){
+            if(onRadio.length === 0 && read.unreadable >= slotCount){
                 throw new Error("the radio answered no channel at all");
             }
             // A read that ran out of time saw only part of the radio. Clearing
@@ -281,7 +292,7 @@ class ModeSwitch {
         const backupOwnsChannels = (homeBackup?.channels?.length ?? 0) > 0;
 
         const marked = [];
-        for(let idx = 0; channelsRead && idx < MAX_CHANNEL_SLOTS; idx++){
+        for(let idx = 0; channelsRead && idx < slotCount; idx++){
             const channel = backupOwnsChannels ? null : profile.channels[idx];
             if(channel){
                 await attempt(`the channel ${channel.name}`, () => Connection.setChannel(idx, channel.name, Utils.hexToBytes(channel.secret)));
@@ -343,7 +354,7 @@ class ModeSwitch {
                     if(backupOwnsChannels){
                         warnings.push("The backup did not write, so the channels were put back from this mode's own list "
                             + "rather than left empty. They may not be in the slots they were in before.");
-                        for(let idx = 0; idx < MAX_CHANNEL_SLOTS; idx++){
+                        for(let idx = 0; idx < slotCount; idx++){
                             const channel = profile.channels[idx];
                             if(channel == null){
                                 break;

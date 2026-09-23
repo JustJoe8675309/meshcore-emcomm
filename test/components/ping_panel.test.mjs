@@ -38,8 +38,11 @@ describe("PingPanel", () => {
     });
 
     it("puts the most recently heard repeater first", () => {
-        const older = { ...aRepeater(), advName: "Older", publicKey: new Uint8Array(32).fill(9), lastAdvert: 100 };
-        const newer = { ...aRepeater(), advName: "Newer", publicKey: new Uint8Array(32).fill(7), lastAdvert: 900 };
+        // real epoch seconds: a lastAdvert below 2020 is read as a clock that was
+        // never set, so 100 and 900 would both rank as never heard
+        const now = Math.floor(Date.now() / 1000);
+        const older = { ...aRepeater(), advName: "Older", publicKey: new Uint8Array(32).fill(9), lastAdvert: now - 9000 };
+        const newer = { ...aRepeater(), advName: "Newer", publicKey: new Uint8Array(32).fill(7), lastAdvert: now - 60 };
         GlobalState.contacts = [older, newer];
         const wrapper = mountPanel();
         expect(wrapper.vm.pingableContacts.map((c) => c.name)).toEqual(["Newer", "Older"]);

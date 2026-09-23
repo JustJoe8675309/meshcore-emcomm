@@ -148,6 +148,7 @@
  */
 import { Constants } from "@liamcottle/meshcore.js";
 import GlobalState from "../../js/GlobalState.js";
+import LastHeard from "../../js/contacts/LastHeard.js";
 import ContactFlags from "../../js/ContactFlags.js";
 import Connection from "../../js/Connection.js";
 import Database from "../../js/Database.js";
@@ -314,7 +315,10 @@ export default {
                 key: `contact:${Utils.bytesToHex(contact.publicKey)}`,
                 name: contact.advName ?? "",
                 // the advert time, which is the other node's clock: see PathInfo
-                lastHeard: Number.isInteger(contact.lastAdvert) ? contact.lastAdvert : null,
+                // clamped: lastAdvert is the other station's clock, and one four
+                // years ahead would otherwise sit at the top of Heard Recently
+                // for ever
+                lastHeard: LastHeard.at(contact.lastAdvert),
                 favourite: ContactFlags.isFavourite(contact),
                 contact: contact,
             }));

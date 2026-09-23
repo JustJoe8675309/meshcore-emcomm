@@ -17,6 +17,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import Connection from "../../src/js/Connection.js";
 import GlobalState from "../../src/js/GlobalState.js";
 import ModeProfiles from "../../src/js/modes/ModeProfiles.js";
+import Slots from "../../src/js/channels/Slots.js";
 
 const KEY = new Uint8Array(32).fill(0x39);
 const NODE = Array.from(KEY).map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -247,7 +248,9 @@ describe("the way home, captured from a read", () => {
         const read = await ModeProfiles.readChannelsWithFailures();
 
         expect(read.channels).toHaveLength(2);
-        expect(read.unreadable).toBe(14);
+        // every slot past the end errors, and the count is the radio's now rather
+        // than a constant 16, so what matters is that none of them is called a hole
+        expect(read.unreadable).toBeGreaterThan(2);
         expect(read.gaps).toEqual([]);
     });
 
@@ -435,6 +438,83 @@ describe("a mode read that cannot finish in time", () => {
 
         expect(read.channels).toHaveLength(3);
         expect(read.gaps).toEqual([]);
+    });
+
+});
+
+// Channels above slot 16.
+//
+// Everything that read, wrote or cleared slots used to stop at 16, in four
+// separate places, while both bench radios report 40 and the one list reads all of
+// them. A channel the operator put in slot 20 was therefore invisible to station
+// modes and missing from the backup, so "the radio exactly as it was" quietly did
+// not include it. Nothing cleared it either, which is the only reason it never
+// lost anybody a channel.
+describe("a radio with more than sixteen slots", () => {
+
+    beforeEach(() => {
+        window.localStorage.clear();
+        GlobalState.selfInfo = SELF_INFO;
+        GlobalState.contacts = [];
+        Slots.forget();
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        Slots.forget();
+        window.localStorage.clear();
+        GlobalState.selfInfo = null;
+        GlobalState.connection = null;
+    });
+
+    function radioWith(names, slots = 40) {
+        GlobalState.connection = {
+            on() {}, off() {},
+            deviceQuery: async () => ({ firmwareVer: 13, reserved: [175, slots, 0] }),
+            getChannel: async (idx) => (idx >= slots
+                ? Promise.reject(new Error("no such slot"))
+                : slot(idx, names[idx] ?? "")),
+        };
+    }
+
+    it("reads a channel that lives in slot 20", async () => {
+        radioWith({ 0: "Public", 20: "#high-slot" });
+
+        const read = await ModeProfiles.readChannelsWithFailures();
+
+        expect(read.channels.map((c) => [c.idx, c.name])).toEqual([[0, "Public"], [20, "#high-slot"]]);
+        expect(read.gaveUp).toBe(false);
+    });
+
+    it("puts it in the way home, where it used to be left out", async () => {
+        radioWith({ 0: "Public", 20: "#high-slot" });
+
+        const profile = await ModeProfiles.captureNormal(NODE);
+
+        expect(profile.channels.map((c) => c.name)).toContain("#high-slot");
+    });
+
+    it("asks the radio how many slots it has, rather than assuming", async () => {
+        radioWith({ 0: "Public" }, 16);
+        expect(await Slots.count()).toBe(16);
+
+        Slots.forget();
+        radioWith({ 0: "Public" }, 40);
+        expect(await Slots.count()).toBe(40);
+    });
+
+    it("falls back rather than stopping when the radio will not say", async () => {
+        GlobalState.connection = {
+            on() {}, off() {},
+            deviceQuery: async () => { throw new Error("no answer"); },
+            getChannel: async (idx) => slot(idx, ""),
+        };
+        expect(await Slots.count()).toBe(Slots.DEFAULT);
+    });
+
+    it("never works to fewer slots than the mode profiles were built on", async () => {
+        radioWith({ 0: "Public" }, 4);
+        expect(await Slots.count()).toBe(Slots.FLOOR);
     });
 
 });

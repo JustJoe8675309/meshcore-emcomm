@@ -307,6 +307,18 @@ size turned up, not just at a narrow window.
       Emcomm-Training and back, and both must still be ticked. Node 2 lost both
       silently: the tick boxes wrote the live settings only, and the switch wrote
       the mode's own (empty) choice over them.
+- [ ] **A channel above slot 16 survives a round trip.** Put one in slot 20 with
+      the stock app or from settings, then switch into a mode and back: it must be
+      in the backup, in the Normal profile, and back on the radio afterwards.
+      Everything used to stop at 16 while the radios report 40, so such a channel
+      was invisible to modes and missing from the way home.
+- [ ] **Favourites survive a round trip.** Favourite a contact and a channel, round
+      trip a mode, and both must still be favourited. Proven by test only so far.
+- [ ] **A room with a real password.** Every login on the bench has used a blank
+      field, which works because both nodes are already in that room's ACL — and
+      that ACL path is exactly what makes the keep-alive necessary. Joining a
+      passworded room for the first time is untested, and the operator has to type
+      the password.
 - [ ] **One of each channel after a round trip.** Read the slots before switching
       and again after coming home: the same channels, at the same slot numbers, and
       no channel twice. Node 2's eight channels at slots 0, 1, 4, 7, 8, 10, 11 and

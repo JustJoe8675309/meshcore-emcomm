@@ -259,6 +259,7 @@ import ReportForms from "../../js/reports/ReportForms.js";
 import ReportEncoder from "../../js/reports/ReportEncoder.js";
 import Airtime from "../../js/reports/Airtime.js";
 import TimeUtils from "../../js/TimeUtils.js";
+import LastHeard from "../../js/contacts/LastHeard.js";
 import OperatorSettings from "../../js/reports/OperatorSettings.js";
 import SearchableSelect from "./SearchableSelect.vue";
 import ReportFormFields from "./ReportFormFields.vue";
@@ -719,7 +720,7 @@ export default {
                     label: contact.name,
                     favorite: contact.favorite,
                     // shown beside the name, not searched
-                    hint: TimeUtils.formatUnixSecondsAgo(contact.lastAdvert),
+                    hint: TimeUtils.formatUnixSecondsAgo(LastHeard.at(contact.lastAdvert) ?? 0),
                 };
             });
         },
@@ -759,7 +760,7 @@ export default {
                 // most recently heard first. a station that adverted minutes ago is far
                 // more likely to still be reachable than one last heard weeks back, and
                 // the picker is searchable now so alphabetical order buys little
-                .sort((a, b) => (b.lastAdvert ?? 0) - (a.lastAdvert ?? 0));
+                .sort((a, b) => (LastHeard.at(b.lastAdvert) ?? 0) - (LastHeard.at(a.lastAdvert) ?? 0));
         },
 
         selectedContact() {

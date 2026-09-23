@@ -24,9 +24,10 @@
                    </svg>
                </span>
 
-                <!-- last heard -->
+                <!-- last heard, by the other station's clock, so a time from the
+                     future is read as now rather than shown as one -->
                 <span class="flex my-auto text-sm text-gray-500 space-x-1">
-                    {{ formatUnixSecondsAgo(contact.lastAdvert) }}
+                    {{ lastHeard }}
                 </span>
 
                 <!-- hops away -->
@@ -57,6 +58,7 @@
 import GlobalState from "../../js/GlobalState.js";
 import IconButton from "../IconButton.vue";
 import TimeUtils from "../../js/TimeUtils.js";
+import LastHeard from "../../js/contacts/LastHeard.js";
 import ContactDropDownMenu from "./ContactDropDownMenu.vue";
 import Database from "../../js/Database.js";
 import ContactIcon from "./ContactIcon.vue";
@@ -117,6 +119,13 @@ export default {
         },
     },
     computed: {
+
+        /** "2 mins ago", from a time this app is willing to believe. */
+        lastHeard() {
+            const heard = LastHeard.at(this.contact?.lastAdvert);
+            return heard == null ? "Unknown" : TimeUtils.formatUnixSecondsAgo(heard);
+        },
+
         GlobalState() {
             return GlobalState;
         },

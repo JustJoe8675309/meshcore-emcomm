@@ -20,6 +20,7 @@ import { reactive } from "vue";
 import GlobalState from "../GlobalState.js";
 import Utils from "../Utils.js";
 import EmcommMode from "../EmcommMode.js";
+import Slots from "../channels/Slots.js";
 
 const STORAGE_PREFIX = "station_modes";
 
@@ -285,7 +286,7 @@ class ModeProfiles {
      * called unreadable. Bounded because the per-slot retries are not: three
      * attempts of four seconds each, sixteen slots.
      */
-    static READ_DEADLINE_MILLIS = 20000;
+    static READ_DEADLINE_MILLIS = 45000;
 
     /** Every channel the radio holds, by slot, name and key. */
     static async readChannels() {
@@ -307,8 +308,9 @@ class ModeProfiles {
         let lastAnswered = -1;
         let gaveUp = false;
         const deadline = Date.now() + deadlineMillis;
+        const slots = await Slots.count();
 
-        for(let idx = 0; idx < 16; idx++){
+        for(let idx = 0; idx < slots; idx++){
 
             // A slot the radio will not answer costs three attempts of four
             // seconds, so sixteen of them is over three minutes, and this is
@@ -317,7 +319,7 @@ class ModeProfiles {
             // "Remembering this radio's own settings" for six minutes rather than
             // saying it could not read them.
             if(Date.now() > deadline){
-                for(let rest = idx; rest < 16; rest++){
+                for(let rest = idx; rest < slots; rest++){
                     failed.push(rest);
                 }
                 console.log(`the channel read gave up after ${Math.round(deadlineMillis / 1000)}s, at slot ${idx}`);

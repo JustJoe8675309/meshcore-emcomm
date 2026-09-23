@@ -15,6 +15,8 @@
 import { Constants } from "@liamcottle/meshcore.js";
 import GlobalState from "./GlobalState.js";
 import Connection from "./Connection.js";
+import LastHeard from "./contacts/LastHeard.js";
+import Slots from "./channels/Slots.js";
 import Utils from "./Utils.js";
 import ContactFlags from "./ContactFlags.js";
 
@@ -22,6 +24,7 @@ const DAY_SECONDS = 24 * 60 * 60;
 const QUIET_DAYS = 90;
 
 // the radio's channel slots, as NodeBackup reads them
+// a floor only: the radio is asked for its real count, which is 40 on the bench
 const MAX_CHANNEL_SLOTS = 16;
 
 // A timestamp before this is treated as unreadable rather than as very old.
@@ -326,7 +329,9 @@ class EmcommMode {
         const expected = Utils.bytesToHex(await this.hashtagChannelKey(name));
         let free = null;
 
-        for(let idx = 0; idx < MAX_CHANNEL_SLOTS; idx++){
+        const slots = Math.max(MAX_CHANNEL_SLOTS, await Slots.count());
+
+        for(let idx = 0; idx < slots; idx++){
 
             let channel = null;
             try {
@@ -392,14 +397,9 @@ class EmcommMode {
 
     /** True when a contact's age cannot be trusted, whichever way it is wrong. */
     static hasUnreadableAge(contact, nowSeconds) {
-        const heard = contact?.lastAdvert;
-        if(!Number.isInteger(heard)){
-            return true;
-        }
-        if(heard < EARLIEST_PLAUSIBLE){
-            return true;
-        }
-        return heard > nowSeconds + FUTURE_TOLERANCE_SECONDS;
+        // the same rule the one list sorts by, so a contact the list calls
+        // untrustworthy is the one the trim refuses to drop
+        return LastHeard.isUnreadable(contact?.lastAdvert, nowSeconds);
     }
 
     /**

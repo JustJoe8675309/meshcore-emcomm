@@ -24,6 +24,10 @@ import Utils from "../../src/js/Utils.js";
 
 const KEY = new Uint8Array(32).fill(0x39);
 const NODE = Utils.bytesToHex(KEY);
+
+// what the fake radio reports, and what the app now works to: the slot count came
+// from the radio once a channel above slot 16 turned out to be invisible to modes
+const RADIO_SLOTS = 40;
 const ROOM = new Uint8Array(32).fill(0x87);
 const ROOM_HEX = Utils.bytesToHex(ROOM);
 
@@ -211,7 +215,7 @@ describe("switching a station's mode", () => {
         expect(written[1]).toMatchObject({ idx: 1, name: "Emcomm Testing" });
         expect(written.slice(2).every((w) => w.secret === "cleared")).toBe(true);
         expect(written.map((w) => w.name)).not.toContain("Public");
-        expect(written).toHaveLength(16);
+        expect(written).toHaveLength(RADIO_SLOTS);
     });
 
     it("carries a channel whose name says emcomm into every mode, and says so", async () => {
@@ -275,7 +279,7 @@ describe("switching a station's mode", () => {
         const result = await ModeSwitch.apply("live");
         expect(result.failures).toEqual([{ what: "transmit power", reason: "the radio refused it" }]);
         // and the rest still happened
-        expect(written).toHaveLength(16);
+        expect(written).toHaveLength(RADIO_SLOTS);
         expect(ModeProfiles.current(NODE)).toBe("live");
     });
 
@@ -888,7 +892,7 @@ describe("the channels on the way home", () => {
 
         // nothing written into a slot by the switch itself: every write is a clear
         expect(written.filter((w) => w.name !== "").map((w) => w.name)).toEqual([]);
-        expect(written.filter((w) => w.name === "")).toHaveLength(16);
+        expect(written.filter((w) => w.name === "")).toHaveLength(RADIO_SLOTS);
         expect(NodeBackup.restore).toHaveBeenCalledTimes(1);
     });
 

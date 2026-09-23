@@ -204,6 +204,7 @@ import Connection from "../../js/Connection.js";
 import Utils from "../../js/Utils.js";
 import ContactFlags from "../../js/ContactFlags.js";
 import TimeUtils from "../../js/TimeUtils.js";
+import LastHeard from "../../js/contacts/LastHeard.js";
 import SearchableSelect from "../reports/SearchableSelect.vue";
 
 
@@ -249,7 +250,7 @@ export default {
             return GlobalState.contacts
                 .filter((contact) => contact.type === Constants.AdvType.Repeater)
                 .slice()
-                .sort((a, b) => (b.lastAdvert ?? 0) - (a.lastAdvert ?? 0))
+                .sort((a, b) => (LastHeard.at(b.lastAdvert) ?? 0) - (LastHeard.at(a.lastAdvert) ?? 0))
                 .map((contact) => {
                     return {
                         name: contact.advName?.trim() || `(unnamed ${Utils.bytesToHex(contact.publicKey).slice(0, 8)})`,
@@ -269,7 +270,7 @@ export default {
                     favorite: contact.favorite,
                     // when they were last heard, which is the best hint at whether a
                     // ping is worth sending at all
-                    hint: TimeUtils.formatUnixSecondsAgo(contact.lastAdvert),
+                    hint: TimeUtils.formatUnixSecondsAgo(LastHeard.at(contact.lastAdvert) ?? 0),
                 };
             });
         },

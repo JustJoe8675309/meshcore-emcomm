@@ -16,7 +16,11 @@ import Database from "../../src/js/Database.js";
 import GlobalState from "../../src/js/GlobalState.js";
 import ContactFlags from "../../src/js/ContactFlags.js";
 
-function aContact(name, { type = Constants.AdvType.Chat, lastAdvert = 1000, favourite = false, key = null } = {}) {
+// somewhere in 2026, because a lastAdvert below 2020 is read as a clock that was
+// never set rather than as an old advert: it is the other station's own stamp
+const RECENT = Math.floor(Date.UTC(2026, 8, 23, 12, 0, 0) / 1000);
+
+function aContact(name, { type = Constants.AdvType.Chat, lastAdvert = RECENT - 3600, favourite = false, key = null } = {}) {
     const publicKey = new Uint8Array(32).fill(key ?? name.charCodeAt(0));
     return {
         publicKey, type, advName: name, lastAdvert, outPathLen: 0,
@@ -72,18 +76,20 @@ describe("one list for contacts and channels", () => {
     });
 
     it("sorts by what was heard most recently, a channel by its newest message", async () => {
-        channelActivity({ 0: 5000 * 1000, 1: 1000 * 1000 });
+        // a channel is ranked by its newest message, in our own clock: busy 30
+        // seconds ago, quiet a day ago, so the two contacts fall between them
+        channelActivity({ 0: (RECENT - 30) * 1000, 1: (RECENT - 90000) * 1000 });
         const wrapper = await mountList(
-            [aContact("Heard at 4000", { lastAdvert: 4000 }), aContact("Heard at 2000", { lastAdvert: 2000 })],
+            [aContact("Heard later", { lastAdvert: RECENT - 60 }), aContact("Heard earlier", { lastAdvert: RECENT - 600 })],
             [{ idx: 0, name: "Busy channel" }, { idx: 1, name: "Quiet channel" }],
         );
-        expect(names(wrapper)).toEqual(["Busy channel", "Heard at 4000", "Heard at 2000", "Quiet channel"]);
+        expect(names(wrapper)).toEqual(["Busy channel", "Heard later", "Heard earlier", "Quiet channel"]);
     });
 
     it("puts a channel nothing was ever said on last, not first", async () => {
         channelActivity({});
         const wrapper = await mountList(
-            [aContact("A User", { lastAdvert: 10 })],
+            [aContact("A User", { lastAdvert: RECENT - 10 })],
             [{ idx: 0, name: "Never used" }],
         );
         expect(names(wrapper)).toEqual(["A User", "Never used"]);
@@ -91,7 +97,7 @@ describe("one list for contacts and channels", () => {
 
     it("keeps favourites at the top of whatever order is chosen", async () => {
         const wrapper = await mountList(
-            [aContact("Heard last", { lastAdvert: 9000 }), aContact("A Favourite", { lastAdvert: 1, favourite: true })],
+            [aContact("Heard last", { lastAdvert: RECENT - 30 }), aContact("A Favourite", { lastAdvert: RECENT - 90000, favourite: true })],
             [{ idx: 0, name: "A Channel" }],
             { order: "a-z" },
         );

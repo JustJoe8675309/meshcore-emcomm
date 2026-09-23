@@ -8,6 +8,7 @@ import Position from "./reports/Position.js";
 import ContactFlags from "./ContactFlags.js";
 import SignedPosts from "./SignedPosts.js";
 import RoomKeepAlive from "./rooms/RoomKeepAlive.js";
+import Slots from "./channels/Slots.js";
 import AdvertSchedule from "./AdvertSchedule.js";
 import { installResilientSerialReads } from "./SerialResilience.js";
 import { Advert } from "@liamcottle/meshcore.js";
@@ -227,6 +228,8 @@ class Connection {
         GlobalState.roomLogins = {};
         // and so do the keep-alives that hold them open
         RoomKeepAlive.stopAll();
+        // the slot count was this radio's, not the next one's
+        Slots.forget();
         SignedPosts.forget();
         // position requests repeat through the radio that was connected
         PositionService.onDisconnected();

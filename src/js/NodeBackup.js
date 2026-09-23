@@ -8,6 +8,7 @@
 
 import GlobalState from "./GlobalState.js";
 import Connection from "./Connection.js";
+import Slots from "./channels/Slots.js";
 import Utils from "./Utils.js";
 import AdvertSchedule from "./AdvertSchedule.js";
 import PositionService from "./position/PositionService.js";
@@ -25,7 +26,8 @@ const STORAGE_PREFIX = "node_backup";
 
 // channels are read by index until one cannot be read. that is also what a real
 // gap looks like, so a bound is needed rather than trusting the loop to end
-const MAX_CHANNELS = 16;
+// the radio's own count, so a channel above slot 16 is in the way home too
+const CHANNEL_SLOTS_FALLBACK = 16;
 
 class NodeBackup {
 
@@ -194,7 +196,9 @@ class NodeBackup {
         let unreadable = 0;
         let lastAnswered = -1;
 
-        for(let idx = 0; idx < MAX_CHANNELS; idx++){
+        const slots = await Slots.count();
+
+        for(let idx = 0; idx < slots; idx++){
 
             let channel = null;
             try {
