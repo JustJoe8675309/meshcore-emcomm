@@ -49,9 +49,19 @@ section("Tests and build");
     const tests = tryRun("npm test");
     const suites = (tests.out.match(/ALL CHECKS PASSED/g) ?? []).length;
     const components = tests.out.match(/Tests\s+(\d+) passed/);
-    record("app", `node suites (${suites} of 6)`, suites === 6 && tests.ok ? PASS : FAIL,
-        tests.ok ? "" : "npm test failed, run it directly for the output");
-    record("app", `component tests (${components?.[1] ?? "?"})`, components && tests.ok ? PASS : FAIL);
+
+    // Say which test failed, rather than "run it directly". A run under this
+    // script has failed twice with everything passing on its own, and an audit
+    // that cannot tell a real failure from its own flake is worth nothing in the
+    // hour before a deployment.
+    const named = tests.out.match(/^\s*FAIL\s+(.+)$/m)?.[1]?.trim();
+    const why = tests.ok ? ""
+        : named ? named
+        : `npm test exited ${tests.error?.status ?? "?"}${tests.error?.signal ? " on " + tests.error.signal : ""}`
+            + ", with no FAIL line: the run itself did not finish";
+
+    record("app", `node suites (${suites} of 6)`, suites === 6 && tests.ok ? PASS : FAIL, tests.ok ? "" : why);
+    record("app", `component tests (${components?.[1] ?? "?"})`, components && tests.ok ? PASS : FAIL, tests.ok ? "" : why);
 
     // npm run build, not vite directly: the real build also stamps the service
     // worker, and auditing a build nobody ships is worse than not auditing one
