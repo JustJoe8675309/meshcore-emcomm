@@ -730,6 +730,13 @@ with a training channel left behind in it, and a drill never ends up holding the
 channel. Nothing is lost either way — a channel not carried is written into the mode being
 left, key and all, so switching back restores it.
 
+**Coming home, the backup owns the channels.** It records the slot each channel was in, and
+slot numbers are part of "the radio exactly as it was", so the switch clears the slots and the
+restore puts them back where they were. Writing the mode profile's list from slot 0 as well is
+how node 2 came back from a round trip with twelve occupied slots and four channels in two
+places each. When a backup holds no channels at all — an older one, or one taken from a radio
+that would not answer — the profile's list is written as before.
+
 **Converting** clears every companion, drops repeaters and rooms quiet for more than 90 days,
 sets the node name, transmit power, position and clock, optionally checks the radio settings,
 then announces the station and looks for repeaters. By default it also:

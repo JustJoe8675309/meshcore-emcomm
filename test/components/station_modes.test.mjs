@@ -820,3 +820,87 @@ describe("marking a message DRILL", () => {
     });
 
 });
+
+// Coming home without two of everything.
+//
+// Node 2's eight channels sat at slots 0, 1, 4, 7, 8, 10, 11 and 13. A round trip
+// through Emcomm-Training brought them home as twelve occupied slots, with
+// #elp-mesh, #joebot, #silvercity and #elp-test each in two places: the switch
+// wrote the Normal profile's list from slot 0, and then the backup restore wrote
+// the same channels back at the slots it had recorded.
+describe("the channels on the way home", () => {
+
+    const NODE_KEY = new Uint8Array(32).fill(0x39);
+    const NODE_HEX = Array.from(NODE_KEY).map((b) => b.toString(16).padStart(2, "0")).join("");
+
+    let written;
+
+    beforeEach(async () => {
+        window.localStorage.clear();
+        connect();
+        written = radioChannels({
+            0: { name: "#Emcomm-Training", secret: "aa".repeat(16) },
+            1: { name: "Emcomm Testing", secret: "11".repeat(16) },
+        });
+        quietRadio();
+        vi.spyOn(NodeBackup, "restore").mockResolvedValue({ failures: [], notInBackup: [] });
+
+        // the way home, with the slots the channels came from
+        NodeBackup.save({
+            formatVersion: 1, nodePublicKey: NODE_HEX, nodeName: "KJ5HBN-EMCOMM", capturedAt: 1,
+            settings: {}, contacts: [], warnings: [],
+            channels: [
+                { idx: 0, name: "Public", secret: "8b3387e9c5cdea6ac9e5edbaa115cd72" },
+                { idx: 4, name: "#elp-mesh", secret: "cc".repeat(16) },
+                { idx: 13, name: "Emcomm Testing", secret: "11".repeat(16) },
+            ],
+        }, NodeBackup.SLOT_PRE_EMCOMM);
+
+        ModeProfiles.saveProfile("normal", {
+            ...ModeProfiles.blank(),
+            radio: { name: "KJ5HBN-EMCOMM" },
+            channels: [
+                { name: "Public", secret: "8b3387e9c5cdea6ac9e5edbaa115cd72", answerPositions: false },
+                { name: "#elp-mesh", secret: "cc".repeat(16), answerPositions: false },
+                { name: "Emcomm Testing", secret: "11".repeat(16), answerPositions: true },
+            ],
+        }, NODE_HEX);
+        ModeProfiles.setCurrent("training", NODE_HEX);
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        GlobalState.connection = null;
+        GlobalState.selfInfo = null;
+        window.localStorage.clear();
+    });
+
+    it("leaves the channels to the backup, which knows the slot each was in", async () => {
+        await ModeSwitch.apply("normal");
+
+        // nothing written into a slot by the switch itself: every write is a clear
+        expect(written.filter((w) => w.name !== "").map((w) => w.name)).toEqual([]);
+        expect(written.filter((w) => w.name === "")).toHaveLength(16);
+        expect(NodeBackup.restore).toHaveBeenCalledTimes(1);
+    });
+
+    it("still writes the profile's channels when the backup holds none", async () => {
+        // an older backup, or one taken from a radio that would not answer
+        const backup = NodeBackup.load(NODE_HEX, NodeBackup.SLOT_PRE_EMCOMM);
+        NodeBackup.save({ ...backup, channels: [] }, NodeBackup.SLOT_PRE_EMCOMM);
+
+        await ModeSwitch.apply("normal");
+
+        expect(written.filter((w) => w.name !== "").map((w) => w.name))
+            .toEqual(["Public", "#elp-mesh", "Emcomm Testing"]);
+    });
+
+    it("keeps a channel answering position requests at the slot it comes back in", async () => {
+        await ModeSwitch.apply("normal");
+
+        // Emcomm Testing answers, and the backup puts it at slot 13
+        const settings = JSON.parse(window.localStorage.getItem(`position_settings:${NODE_HEX}`));
+        expect(settings.markedChannels).toContain(13);
+    });
+
+});

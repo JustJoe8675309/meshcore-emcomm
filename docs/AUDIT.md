@@ -275,6 +275,12 @@ being a variable.
       before writing anything and offers "Switch anyway", because the pre-EMCOMM
       backup is taken once and never again while away from normal mode: whatever
       is missing from it is missing for the whole incident.
+- [ ] **One of each channel after a round trip.** Read the slots before switching
+      and again after coming home: the same channels, at the same slot numbers, and
+      no channel twice. Node 2's eight channels at slots 0, 1, 4, 7, 8, 10, 11 and
+      13 came home as twelve occupied slots, four of them duplicates, because the
+      switch wrote the profile's list from slot 0 and the backup restore then wrote
+      the same channels back at their recorded slots. The backup owns them now.
 - [ ] **Normal mode comes back without the mode's own channel.** Switch into
       Emcomm-Training, then back to Normal: `#Emcomm-Training` must not be in
       Normal's channels, while an emcomm channel the operator made, such as Emcomm

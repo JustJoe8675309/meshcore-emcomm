@@ -252,9 +252,21 @@ class ModeSwitch {
             warnings.push(`The radio's channels could not be read before writing the new ones, so any channel in no mode may have been lost: ${e?.message ?? e}`);
         }
 
+        // Going home, the backup owns the channels. It records the slot each one
+        // was in, and the restore below writes them back there; writing the
+        // profile's list from slot 0 as well leaves the radio holding both copies.
+        //
+        // Node 2 proved it on the bench: eight channels at slots 0, 1, 4, 7, 8,
+        // 10, 11 and 13 came home as twelve occupied slots, with #elp-mesh,
+        // #joebot, #silvercity and #elp-test each in two places. Slot numbers are
+        // part of "the radio exactly as it was", so the backup's layout wins and
+        // this only clears the way for it.
+        const homeBackup = mode === "normal" ? NodeBackup.load(nodeKeyHex, NodeBackup.SLOT_PRE_EMCOMM) : null;
+        const backupOwnsChannels = (homeBackup?.channels?.length ?? 0) > 0;
+
         const marked = [];
         for(let idx = 0; idx < MAX_CHANNEL_SLOTS; idx++){
-            const channel = profile.channels[idx];
+            const channel = backupOwnsChannels ? null : profile.channels[idx];
             if(channel){
                 await attempt(`the channel ${channel.name}`, () => Connection.setChannel(idx, channel.name, Utils.hexToBytes(channel.secret)));
                 if(channel.answerPositions){
@@ -264,6 +276,17 @@ class ModeSwitch {
                 // clearing a slot that is already empty costs one write and keeps
                 // this simple; the radio does not mind
                 await attempt(`clearing channel slot ${idx}`, () => Connection.deleteChannel(idx));
+            }
+        }
+
+        // the marks follow the slots the backup will write, so a channel answering
+        // position requests keeps doing it at the slot it comes back in
+        if(backupOwnsChannels){
+            const answering = new Set(profile.channels.filter((c) => c.answerPositions).map((c) => c.name));
+            for(const channel of homeBackup.channels){
+                if(answering.has(channel.name) && channel.idx != null){
+                    marked.push(channel.idx);
+                }
             }
         }
 
@@ -281,7 +304,7 @@ class ModeSwitch {
         // --- contacts: back from the backup, or trimmed for an incident
 
         if(mode === "normal"){
-            const backup = NodeBackup.load(nodeKeyHex, NodeBackup.SLOT_PRE_EMCOMM);
+            const backup = homeBackup;
             if(backup == null){
                 warnings.push("There was no backup from before this station left normal mode, so contacts were left as they are.");
             } else {
