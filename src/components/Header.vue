@@ -8,12 +8,13 @@
             <div class="font-bold">Mesh-Emcomm</div>
             <div class="text-sm truncate">
 
-                <!-- connected or configured -->
+                <!-- connected or configured. The battery lives in its own badge to
+                     the right rather than in front of the name: on a phone with
+                     Android's font size turned up, "Battery 100% - " wanted 285px
+                     of a line that had 38px, so the operator could read neither
+                     the charge nor the station they were logged in as -->
                 <span v-if="GlobalState.connection != null">
-                    <span v-if="GlobalState.selfInfo">
-                        <span v-if="GlobalState.batteryPercentage">Battery {{ GlobalState.batteryPercentage }}% - </span>
-                        <span>{{ GlobalState.selfInfo.name }}</span>
-                    </span>
+                    <span v-if="GlobalState.selfInfo">{{ GlobalState.selfInfo.name }}</span>
                     <span v-else>Connecting...</span>
                 </span>
 
@@ -37,6 +38,22 @@
                  neither belongs, and a v-else here offered Disconnect on an app
                  that plainly said it was not connected -->
             <div v-else-if="GlobalState.connection != null" class="flex space-x-1">
+
+                <!-- the charge, at a glance. A number an operator checks without
+                     reading anything else, so it sits with the buttons where it
+                     cannot be squeezed out by a long station name, and turns red
+                     with a fifth of the battery left -->
+                <div v-if="GlobalState.batteryPercentage" class="my-auto flex items-center pr-1 text-sm font-semibold whitespace-nowrap"
+                     :class="batteryLow ? 'text-red-600' : 'text-gray-700'"
+                     :title="`Battery ${GlobalState.batteryPercentage}%`">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="size-5 mr-0.5" aria-hidden="true">
+                        <rect x="1.5" y="7" width="17" height="10" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                        <rect x="20" y="10.25" width="2.5" height="3.5" rx="1" fill="currentColor"/>
+                        <rect x="3.25" y="8.75" :width="batteryFill" height="6.5" rx="1" fill="currentColor"/>
+                    </svg>
+                    {{ GlobalState.batteryPercentage }}%
+                </div>
+
                 <DropDownMenu>
                     <template v-slot:button>
                         <button type="button" class="my-auto bg-gray-500 text-white px-2 py-1 p-1 rounded shadow hover:bg-gray-400">
@@ -48,17 +65,22 @@
                     <template v-slot:items>
                         <DropDownMenuItem @click="sendZeroHopAdvert">Advert (Zero Hop)</DropDownMenuItem>
                         <DropDownMenuItem @click="sendFloodAdvert">Advert (Flood Routed)</DropDownMenuItem>
+                        <!-- on a narrow screen these two lose their own buttons, so
+                             they live here instead. Four icon buttons wanted 237px
+                             of a 375px row once the text scaled up -->
+                        <DropDownMenuItem class="sm:hidden" @click="sharingOpen = true">Share a station mode</DropDownMenuItem>
+                        <DropDownMenuItem class="sm:hidden" @click="$router.push({ name: 'settings' })">Settings</DropDownMenuItem>
                     </template>
                 </DropDownMenu>
                 <button @click="sharingOpen = true" type="button" aria-label="Share a station mode"
                         title="Share a station mode"
-                        class="my-auto bg-gray-500 text-white px-2 py-1 p-1 rounded shadow hover:bg-gray-400">
+                        class="hidden sm:block my-auto bg-gray-500 text-white px-2 py-1 p-1 rounded shadow hover:bg-gray-400">
                     <!-- a QR code, which is what this does -->
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
                         <path fill-rule="evenodd" d="M3 4.5A1.5 1.5 0 0 1 4.5 3h4A1.5 1.5 0 0 1 10 4.5v4A1.5 1.5 0 0 1 8.5 10h-4A1.5 1.5 0 0 1 3 8.5v-4Zm2 .5v3h3V5H5Zm-2 10.5A1.5 1.5 0 0 1 4.5 14h4a1.5 1.5 0 0 1 1.5 1.5v4A1.5 1.5 0 0 1 8.5 21h-4A1.5 1.5 0 0 1 3 19.5v-4Zm2 .5v3h3v-3H5ZM14 4.5A1.5 1.5 0 0 1 15.5 3h4A1.5 1.5 0 0 1 21 4.5v4A1.5 1.5 0 0 1 19.5 10h-4A1.5 1.5 0 0 1 14 8.5v-4Zm2 .5v3h3V5h-3Zm-2 9.25a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1-.75-.75v-1.5Zm5 0a.75.75 0 0 1 .75-.75h.5a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-.75.75h-.5a.75.75 0 0 1-.75-.75v-1.5ZM14 19.75a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 .75.75v.5a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1-.75-.75v-.5Zm5 0a.75.75 0 0 1 .75-.75h.5a.75.75 0 0 1 .75.75v.5a.75.75 0 0 1-.75.75h-.5a.75.75 0 0 1-.75-.75v-.5Z" clip-rule="evenodd" />
                     </svg>
                 </button>
-                <RouterLink :to="{ name: 'settings' }">
+                <RouterLink :to="{ name: 'settings' }" class="hidden sm:block">
                     <button type="button" class="my-auto bg-gray-500 text-white px-2 py-1 p-1 rounded shadow hover:bg-gray-400">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
                             <path fill-rule="evenodd" d="M11.078 2.25c-.917 0-1.699.663-1.85 1.567L9.05 4.889c-.02.12-.115.26-.297.348a7.493 7.493 0 0 0-.986.57c-.166.115-.334.126-.45.083L6.3 5.508a1.875 1.875 0 0 0-2.282.819l-.922 1.597a1.875 1.875 0 0 0 .432 2.385l.84.692c.095.078.17.229.154.43a7.598 7.598 0 0 0 0 1.139c.015.2-.059.352-.153.43l-.841.692a1.875 1.875 0 0 0-.432 2.385l.922 1.597a1.875 1.875 0 0 0 2.282.818l1.019-.382c.115-.043.283-.031.45.082.312.214.641.405.985.57.182.088.277.228.297.35l.178 1.071c.151.904.933 1.567 1.85 1.567h1.844c.916 0 1.699-.663 1.85-1.567l.178-1.072c.02-.12.114-.26.297-.349.344-.165.673-.356.985-.57.167-.114.335-.125.45-.082l1.02.382a1.875 1.875 0 0 0 2.28-.819l.923-1.597a1.875 1.875 0 0 0-.432-2.385l-.84-.692c-.095-.078-.17-.229-.154-.43a7.614 7.614 0 0 0 0-1.139c-.016-.2.059-.352.153-.43l.84-.692c.708-.582.891-1.59.433-2.385l-.922-1.597a1.875 1.875 0 0 0-2.282-.818l-1.02.382c-.114.043-.282.031-.449-.083a7.49 7.49 0 0 0-.985-.57c-.183-.087-.277-.227-.297-.348l-.179-1.072a1.875 1.875 0 0 0-1.85-1.567h-1.843ZM12 15.75a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Z" clip-rule="evenodd" />
@@ -157,6 +179,19 @@ export default {
     computed: {
         GlobalState() {
             return GlobalState;
+        },
+
+        /** How much of the battery outline to fill, in the icon's own units. */
+        batteryFill() {
+            const percent = Math.min(100, Math.max(0, GlobalState.batteryPercentage ?? 0));
+            // a sliver rather than nothing at all, so the icon still reads as a
+            // battery when it is nearly flat
+            return Math.max(1, (percent / 100) * 14).toFixed(2);
+        },
+
+        /** A fifth left, which is when an operator should be looking for a cable. */
+        batteryLow() {
+            return (GlobalState.batteryPercentage ?? 100) <= 20;
         },
 
         /**

@@ -211,12 +211,20 @@ describe("the sharing screen", () => {
     async function open(props = {}) {
         const wrapper = mount(ModeSharing, { props: { open: true, ...props } });
         // both the link and the drawn code, because the QR encoder is a dynamic
-        // import of its own: waiting for the link alone left qrCells null about
-        // one full-suite run in three, where everything loads at once
-        const ready = () => wrapper.vm.link !== ""
-            && (wrapper.vm.view !== "share" || wrapper.vm.qrCells != null);
-        for(let i = 0; i < 100 && !ready(); i++){
+        // import of its own. Waiting on microtasks alone is not enough: a module
+        // still loading needs real time, so this waits on the clock too. Flushing
+        // promises a hundred times still failed about one full-suite run in three,
+        // with 45 files loading at once
+        // what "loaded" means depends on which view it opened in: a scanned code
+        // goes straight to the take view and never builds a share link at all, so
+        // waiting for one there burnt the whole test budget
+        const ready = () => wrapper.vm.view === "take"
+            ? wrapper.vm.incoming != null
+            : wrapper.vm.link !== "" && wrapper.vm.qrCells != null;
+        const deadline = Date.now() + 3000;
+        while(Date.now() < deadline && !ready()){
             await flushPromises();
+            await new Promise((resolve) => setTimeout(resolve, 10));
         }
         return wrapper;
     }
