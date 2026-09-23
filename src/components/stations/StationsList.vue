@@ -91,6 +91,12 @@
             Reconnect to load them again.
         </div>
 
+        <!-- the read produced nothing at all, so anything listed was not read here -->
+        <div v-if="GlobalState.channelsReadFailed" role="status" class="bg-amber-50 border-b border-amber-300 px-3 py-2 text-xs text-amber-800">
+            The radio's channels could not be read, so any channel listed here was assumed rather
+            than read from it. Reconnect the radio before relying on this list or switching mode.
+        </div>
+
         <!-- a slot that would not answer is a channel the operator cannot see, and
              a channel a captured mode would not write back -->
         <div v-if="GlobalState.channelsMissing > 0" role="status" class="bg-amber-50 border-b border-amber-300 px-3 py-2 text-xs text-amber-800">

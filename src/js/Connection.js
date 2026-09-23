@@ -773,13 +773,23 @@ class Connection {
      * under "reserved": MAX_CONTACTS / 2, then MAX_GROUP_CHANNELS.
      */
     static async channelSlotCount() {
-        try {
-            const info = await this.deviceQuery();
-            const slots = info?.reserved?.[1];
-            return slots > 0 ? slots : null;
-        } catch(e) {
-            return null;
+        // asked twice, because losing this answer changes how the whole channel
+        // read behaves: with no count, the end of the list can only be found by
+        // an error, so one lost reply turns a busy radio into a radio with no
+        // channels. On the bench node 2 lost it right after a 198 contact read
+        // over Bluetooth and came up showing one channel it had never read.
+        for(let attempt = 0; attempt < 2; attempt++){
+            try {
+                const info = await this.deviceQuery();
+                const slots = info?.reserved?.[1];
+                if(slots > 0){
+                    return slots;
+                }
+            } catch(e) {
+                // and again
+            }
         }
+        return null;
     }
 
     // onProgress, when given, hears the slot being read, how many slots there are
@@ -794,6 +804,7 @@ class Connection {
             const connection = GlobalState.connection;
             const slots = onProgress ? await this.channelSlotCount() : null;
             GlobalState.channelsMissing = 0;
+            GlobalState.channelsReadFailed = false;
 
             // one slot at a time until the radio says there are no more, which is
             // what meshcore.js getChannels does, but counted. Every slot is read,
@@ -841,8 +852,13 @@ class Connection {
                         // with no slot count from the radio, an error is the only
                         // way the end of the list is known: that is how
                         // meshcore.js finds it, and it must stay that way for
-                        // firmware that does not report a count
+                        // firmware that does not report a count. Slot 0 is the
+                        // exception: every radio has one, so a failure there is a
+                        // failed read and not an empty list
                         if(slots == null){
+                            if(idx === 0){
+                                missing.push(0);
+                            }
                             break;
                         }
                         missing.push(idx);
@@ -875,14 +891,34 @@ class Connection {
                 });
 
             if(configuredChannels.length > 0){
+                GlobalState.channelsReadFailed = false;
                 GlobalState.channels = configuredChannels;
                 return;
             }
+
+            // No channels and nothing failed is a radio with no channels, which
+            // is a real state. No channels with a slot that would not read is a
+            // failed read, and falling back to a made up Public row there tells
+            // the operator the radio holds one channel when it holds eight. That
+            // is what node 2 showed on the bench.
+            if(missing.length > 0){
+                GlobalState.channelsReadFailed = true;
+                GlobalState.channels = [];
+                return;
+            }
+
+            GlobalState.channelsReadFailed = false;
+            GlobalState.channels = [];
+            return;
 
         } catch(e) {
             console.log("failed to load channels from device, falling back to default channels", e);
         }
 
+        // the command itself went unanswered, which is how firmware without it
+        // behaves: the public channel is assumed so the operator can still use
+        // it, and the flag makes the list say so rather than implying it was read
+        GlobalState.channelsReadFailed = true;
         GlobalState.channels = this.defaultChannels;
 
     }

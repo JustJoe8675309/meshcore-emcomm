@@ -264,3 +264,75 @@ describe("the way home, captured from a read", () => {
     });
 
 });
+
+describe("a read that produced nothing", () => {
+
+    beforeEach(() => {
+        GlobalState.channels = [];
+        GlobalState.channelsMissing = 0;
+        GlobalState.channelsReadFailed = false;
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        GlobalState.connection = null;
+        GlobalState.channels = [];
+        GlobalState.channelsReadFailed = false;
+    });
+
+    it("does not pass a made up Public channel off as one that was read", async () => {
+        // node 2 came up listing one channel it had never read, on a radio holding
+        // eight, after the slot count was lost on a busy Bluetooth link
+        GlobalState.connection = {
+            on() {}, once() {}, off() {},
+            deviceQuery: async () => { throw new Error("busy"); },
+            getChannel: async () => { throw new Error("timeout"); },
+        };
+
+        await Connection.loadChannels(() => {});
+
+        expect(GlobalState.channelsReadFailed).toBe(true);
+        expect(GlobalState.channels.map((c) => c.name)).not.toContain("Public Channel");
+    });
+
+    it("asks for the slot count twice before giving up on it", async () => {
+        let queries = 0;
+        GlobalState.connection = {
+            on() {}, once() {}, off() {},
+            deviceQuery: async () => {
+                queries++;
+                if(queries === 1) throw new Error("busy");
+                return { firmwareVer: 13, reserved: [175, 40, 0] };
+            },
+            getChannel: async (idx) => (idx >= 40 ? Promise.reject(new Error("no such slot")) : slot(idx, idx === 0 ? "Public" : "")),
+        };
+
+        await Connection.loadChannels(() => {});
+
+        expect(queries).toBe(2);
+        expect(GlobalState.channelSlots).toBe(40);
+        expect(GlobalState.channels.map((c) => c.name)).toEqual(["Public"]);
+    });
+
+    it("says a radio with no channels has no channels, without crying failure", async () => {
+        GlobalState.connection = radio({ slots: 8, names: {} });
+
+        await Connection.loadChannels(() => {});
+
+        expect(GlobalState.channels).toEqual([]);
+        expect(GlobalState.channelsReadFailed).toBe(false);
+    });
+
+    it("treats slot 0 failing as a failed read, not as the end of the list", async () => {
+        GlobalState.connection = {
+            on() {}, once() {}, off() {},
+            deviceQuery: async () => ({ firmwareVer: 13, reserved: [175, 0, 0] }),
+            getChannel: async () => { throw new Error("timeout"); },
+        };
+
+        await Connection.loadChannels(() => {});
+
+        expect(GlobalState.channelsReadFailed).toBe(true);
+    });
+
+});

@@ -17,6 +17,9 @@ const globalState = reactive({
     // loses a channel without anything failing
     channelsMissing: 0,
     channelSlots: null,
+    // the read produced nothing and something failed, so whatever is listed was
+    // not read from this radio
+    channelsReadFailed: false,
     // rooms logged in to this session, by public key hex. in memory only: the
     // session belongs to the radio, so reconnecting means logging in again
     roomLogins: {},
