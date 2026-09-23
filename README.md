@@ -864,9 +864,25 @@ granted read access only, and when no login has been made at all, because a room
 post it will not accept rather than refusing it: the send would time out and read as a range
 problem. Posts show who wrote them, resolved against the contact list.
 
+**A room session is held open.** While a room is logged in, the app sends it a keep-alive
+request every two minutes. This is not politeness, it is the only way back from a fault that
+otherwise lasts forever: a room counts a push nobody acknowledges as a failure, and after
+three of them it stops pushing that client's posts altogether. Nothing in the message path
+clears the count — posting refreshes the session's activity and leaves it alone — and logging
+in again does not either, because a blank password takes the ACL check path, which for a
+client the room already knows skips the whole block that resets it. So the operator's obvious
+remedy changes nothing, and the station sits there logged in, able to post, hearing silence.
+A client request is what resets the count, and the keep-alive is that request. It also carries
+the time of the newest post actually received, so a session that recovers is sent what it
+missed rather than only what comes next.
+
+Found on the bench: a position roll call posted into a room from node 1 was acknowledged by
+the room in 794 ms and never reached node 2, which had been logged in the whole time. One
+keep-alive and it arrived in seconds.
+
 #### What this cost to get right
 
-Eight faults, seven of which failed silently, and most only visible against a real room:
+Nine faults, eight of which failed silently, and most only visible against a real room:
 
 | Fault | What the operator saw |
 | ----- | --------------------- |
@@ -878,6 +894,7 @@ Eight faults, seven of which failed silently, and most only visible against a re
 | `txt_type` was tested in the form the room packs for the mesh | Every author stayed mojibake; the companion unpacks it first, so it arrives as 2, not 8 |
 | A room post's author prefix is UTF-8 decoded with the text by `meshcore.js` | Four bytes of mojibake in front of every post, unrecoverable afterwards |
 | `Database.Message.insert` copies fields one by one and never copied the author | Text came through clean and the author vanished on the way to storage |
+| Nothing ever sent the room a request, so three unacknowledged pushes stopped its posts for good | A station logged in as admin, able to post, that received nothing and could not be fixed by logging in again |
 
 Three of those were declared fixed on the strength of reading the firmware source and were
 still wrong. What worked was capturing the actual frames and writing the tests against those

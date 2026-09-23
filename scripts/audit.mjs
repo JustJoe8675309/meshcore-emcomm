@@ -203,6 +203,30 @@ section("Assumptions about the MeshCore firmware");
                 why: "replayed room requests are told from new ones by this time",
             },
             {
+                name: "a room stops pushing after three failed pushes",
+                path: "examples/simple_room_server/MyMesh.cpp",
+                pattern: /push_failures\s*<\s*3/,
+                why: "RoomKeepAlive exists to clear this count; if the rule goes, the keep-alive interval can be reconsidered",
+            },
+            {
+                name: "a client request resets the push failure count",
+                path: "examples/simple_room_server/MyMesh.cpp",
+                pattern: /extra\.room\.push_failures\s*=\s*0;\s*\/\/\s*reset so push can resume/,
+                why: "the keep-alive request is the only thing that gets a cut-off station's posts flowing again",
+            },
+            {
+                name: "a keep-alive request is type 2",
+                path: "src/helpers/BaseChatMesh.h",
+                pattern: /#define\s+REQ_TYPE_KEEP_ALIVE\s+0x02\b/,
+                why: "RoomKeepAlive.REQ_TYPE_KEEP_ALIVE sends this byte",
+            },
+            {
+                name: "a blank password login skips the reset block",
+                path: "examples/simple_room_server/MyMesh.cpp",
+                pattern: /if\s*\(\s*data\[8\]\s*==\s*0\s*\)\s*\{\s*\/\/\s*blank password/,
+                why: "why logging in again does not restart a room's pushes, which is what the keep-alive is for",
+            },
+            {
                 name: "a room login carries the room's clock",
                 path: "examples/companion_radio/MyMesh.cpp",
                 pattern: /memcpy\(\s*&out_frame\[i\],\s*&tag,\s*4\s*\);\s*i\s*\+=\s*4;\s*\/\/\s*NEW:\s*include server timestamp/,

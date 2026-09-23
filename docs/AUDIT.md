@@ -231,6 +231,19 @@ being a variable.
       says "no response. Client will timeout". The message must not blame the range.
 - [ ] **Post.** It should read Delivered, and it should appear in the room on
       another client. Delivered alone is not proof the room accepted it.
+- [ ] **Posts keep arriving an hour later.** Log both nodes in, leave them alone for
+      an hour with the tabs in the background, then post from node 1. It must reach
+      node 2 without anyone logging in again. This is the check that found the worst
+      room fault so far: the room stops pushing to a client after three pushes go
+      unacknowledged, and **logging in again does not clear it** because a blank
+      password takes the ACL path, which resets nothing. A station in that state is
+      logged in, can post, and silently hears nothing. The app now sends a
+      keep-alive request every two minutes, which is the only thing that resets the
+      count.
+- [ ] **A post sent while the other node was asleep still arrives.** Put node 2's tab
+      in the background or disconnect it briefly, post from node 1, bring node 2
+      back. The keep-alive carries the newest post it actually received, so the room
+      re-pushes what was missed rather than only what comes next.
 - [ ] **A post from somebody else is attributed by name**, not by four bytes of
       mojibake. Rows stored before that fix keep theirs: the bytes were destroyed
       by UTF-8 decoding before they were saved and cannot be recovered, so check a

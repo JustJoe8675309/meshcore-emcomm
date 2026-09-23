@@ -65,6 +65,7 @@
 import { Constants } from "@liamcottle/meshcore.js";
 import GlobalState from "../../js/GlobalState.js";
 import Connection from "../../js/Connection.js";
+import RoomKeepAlive from "../../js/rooms/RoomKeepAlive.js";
 import Utils from "../../js/Utils.js";
 
 // The firmware's stock room password, -D ROOM_PASSWORD='"hello"' in the MeshCore
@@ -111,6 +112,11 @@ export default {
             this.loggedIn = true;
             this.isAdmin = existing.isAdmin;
             this.canPost = existing.canPost === true;
+            // a session logged in before this bar was shown, or before a reload of
+            // the view, still needs its keep-alive running
+            if(!RoomKeepAlive.isRunning(this.contact.publicKey)){
+                RoomKeepAlive.start(this.contact.publicKey);
+            }
         }
     },
     methods: {
@@ -138,6 +144,10 @@ export default {
                     canPost: this.canPost,
                     clockOffsetSeconds: response?.clockOffsetSeconds ?? null,
                 };
+                // a room stops pushing posts to a client after three failed
+                // pushes, and only a request from the client clears that. Logging
+                // in again does not, so this has to run for the whole session
+                RoomKeepAlive.start(this.contact.publicKey);
                 this.$emit("logged-in");
 
             } catch(e) {

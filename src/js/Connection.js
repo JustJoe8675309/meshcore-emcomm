@@ -7,6 +7,7 @@ import NotificationUtils from "./NotificationUtils.js";
 import Position from "./reports/Position.js";
 import ContactFlags from "./ContactFlags.js";
 import SignedPosts from "./SignedPosts.js";
+import RoomKeepAlive from "./rooms/RoomKeepAlive.js";
 import AdvertSchedule from "./AdvertSchedule.js";
 import { installResilientSerialReads } from "./SerialResilience.js";
 import { Advert } from "@liamcottle/meshcore.js";
@@ -224,6 +225,8 @@ class Connection {
         this.abandonConnect = null;
         // room sessions live on the radio, so they do not survive it going away
         GlobalState.roomLogins = {};
+        // and so do the keep-alives that hold them open
+        RoomKeepAlive.stopAll();
         SignedPosts.forget();
         // position requests repeat through the radio that was connected
         PositionService.onDisconnected();
@@ -2112,6 +2115,12 @@ class Connection {
         // a position roll call or answer posted in a room is handled the same
         // way, and kept out of the room's conversation. The post's time is the
         // room's, which says whether it is a replay of an old one after a login
+        // every post the room sends moves the keep-alive's since stamp on, so a
+        // session that recovers asks only for what it actually missed
+        if(contact.type === Constants.AdvType.Room){
+            RoomKeepAlive.notePost(contact.publicKey, message.senderTimestamp);
+        }
+
         if(contact.type === Constants.AdvType.Room
             && PositionService.onRoomText(contact, signed?.authorPrefix ?? null, signed ? signed.text : message.text, message.senderTimestamp)){
             return;
