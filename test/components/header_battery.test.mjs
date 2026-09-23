@@ -166,6 +166,14 @@ describe("the badge holds still while the text grows", () => {
         expect(badge).not.toMatch(/\bsize-5\b/);
     });
 
+    it("hides the app icon on a phone, which is what finally fits the station name", () => {
+        // measured on the live build at a 22px root font on 375px: the icon took
+        // 74px of width and 28px of height, and the name column went from 101px
+        // to 161px without it, against the 154px the name wants
+        const logo = source.match(/<div class="([^"]*)">\s*<img src="\/icon\.png"/);
+        expect(logo?.[1]).toContain("hidden sm:block");
+    });
+
     it("leaves the buttons scaling, since a touch target should grow with the text", () => {
         const buttons = source.match(/<button @click="disconnect"[\s\S]{0,200}?class="([^"]*)"/);
         expect(buttons?.[1]).not.toMatch(/\[\d+px\]/);

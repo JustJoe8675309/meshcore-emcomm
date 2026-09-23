@@ -1,7 +1,12 @@
 <template>
     <div class="bg-white border-b">
     <div class="flex p-2 min-h-16">
-        <div class="flex-shrink-0 my-auto mr-2">
+        <!-- The icon is decoration, and on a phone it is decoration that costs the
+             station name. Hidden below the sm breakpoint: at a 22px root font on
+             375px it took 74px of width and 28px of height, and the name column
+             went from 101px to 161px without it, which is the 154px the name
+             wants. Nothing is lost that the operator needs on their own screen -->
+        <div class="hidden sm:block flex-shrink-0 my-auto mr-2">
             <img src="/icon.png" class="size-12 rounded"/>
         </div>
         <div class="my-auto mr-auto overflow-hidden">
