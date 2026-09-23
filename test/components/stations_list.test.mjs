@@ -32,8 +32,8 @@ function channelActivity(byIdx) {
 }
 
 async function mountList(contacts, channels, { order = "heard-recently", filter = "all" } = {}) {
-    window.localStorage.setItem("contacts_list_order", order);
-    window.localStorage.setItem("contacts_list_filter", filter);
+    window.localStorage.setItem("stations_list_order", order);
+    window.localStorage.setItem("stations_list_filter", filter);
     const wrapper = mount(StationsList, {
         props: { contacts, channels },
         global: { stubs: { ContactListItem: true, ChannelListItem: true, DropDownMenu: true, IconButton: true } },
@@ -140,8 +140,8 @@ describe("one list for contacts and channels", () => {
         wrapper.vm.filter = "repeater";
         wrapper.vm.order = "a-z";
         await flushPromises();
-        expect(window.localStorage.getItem("contacts_list_filter")).toBe("repeater");
-        expect(window.localStorage.getItem("contacts_list_order")).toBe("a-z");
+        expect(window.localStorage.getItem("stations_list_filter")).toBe("repeater");
+        expect(window.localStorage.getItem("stations_list_order")).toBe("a-z");
     });
 
     it("carries on when a channel's messages cannot be read", async () => {
@@ -169,4 +169,24 @@ describe("the one tab", () => {
         expect(tab).toBe("contacts");
     });
 
+
+    it("opens on everything, most recently heard first, for a browser that used the old separate tabs", async () => {
+        // the old tabs kept their choices under contacts_list_*, and reading those
+        // brought an A-Z, companions-only view across and the default never applied
+        window.localStorage.clear();
+        channelActivity({});
+        window.localStorage.setItem("contacts_list_order", "a-z");
+        window.localStorage.setItem("contacts_list_filter", "contact");
+        GlobalState.contacts = [];
+        GlobalState.contactsMissing = 0;
+
+        const wrapper = mount(StationsList, {
+            props: { contacts: [], channels: [] },
+            global: { stubs: { ContactListItem: true, ChannelListItem: true, DropDownMenu: true, IconButton: true } },
+        });
+        await flushPromises();
+
+        expect(wrapper.vm.order).toBe("heard-recently");
+        expect(wrapper.vm.filter).toBe("all");
+    });
 });

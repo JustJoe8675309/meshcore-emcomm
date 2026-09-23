@@ -163,8 +163,14 @@ export default {
     },
     data() {
         return {
-            order: window.localStorage.getItem("contacts_list_order") ?? "heard-recently",
-            filter: window.localStorage.getItem("contacts_list_filter") ?? "all",
+            // Its own keys, not the old contacts tab's. The merged list defaults
+            // to everything, most recently heard first, which is what an operator
+            // wants on opening a net: who is out there and who has just spoken.
+            // Read from the old keys and a browser that used the separate tabs
+            // brings an A-Z or a companions-only choice across and the default
+            // never applies, which is how the bench node came up sorted A-Z.
+            order: window.localStorage.getItem("stations_list_order") ?? "heard-recently",
+            filter: window.localStorage.getItem("stations_list_filter") ?? "all",
             searchTerm: "",
             showImport: false,
             importText: "",
@@ -180,10 +186,10 @@ export default {
     },
     watch: {
         filter() {
-            window.localStorage.setItem("contacts_list_filter", this.filter);
+            window.localStorage.setItem("stations_list_filter", this.filter);
         },
         order() {
-            window.localStorage.setItem("contacts_list_order", this.order);
+            window.localStorage.setItem("stations_list_order", this.order);
         },
         channels: {
             handler() {
