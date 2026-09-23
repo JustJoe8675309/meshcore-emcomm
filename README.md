@@ -137,7 +137,8 @@ they are prose that gets revised after a net while the definitions are the on-ai
 refuses a field with no note, a note for a field that no longer exists, a dropdown option that
 nothing explains, and a note that says no more than its label already did.
 
-**Crib sheet.** The same notes on paper, from the link beside the form's description: the form's
+**Crib sheet.** The same notes on paper, from the link beside the form's description, and from a
+link under the connect buttons so it can be printed with no radio attached: the form's
 fields with what goes in each, or all 26 as a booklet with a page each, and a Print button. A
 binder is what gets read at a muster point, by people whose phone is in a pocket or being used as
 the radio's screen. Printing hides the rest of the app rather than printing the tabs and the

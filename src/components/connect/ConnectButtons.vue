@@ -51,15 +51,36 @@
             <span>Connect via Serial</span>
         </button>
 
+        <!-- The one thing here worth doing with no radio. Printing the notes is a
+             desk job the night before, and the operator had to connect a node to
+             reach them: the tabs, and so the Reports panel, only exist once a
+             radio does. -->
+        <div class="text-center pt-2">
+            <button @click="cribSheetOpen = true" type="button"
+                class="text-sm text-blue-700 hover:text-blue-900 underline">Report crib sheet</button>
+            <div class="text-xs text-gray-500 mt-0.5">What goes in each field of every report. Print it before you need it.</div>
+        </div>
+
+        <ReportCribSheet :open="cribSheetOpen" @close="cribSheetOpen = false"/>
+
     </div>
 </template>
 
 <script>
 import Connection from "../../js/Connection.js";
 import GlobalState from "../../js/GlobalState.js";
+import ReportCribSheet from "../reports/ReportCribSheet.vue";
 
 export default {
     name: 'ConnectButtons',
+    components: {
+        ReportCribSheet,
+    },
+    data() {
+        return {
+            cribSheetOpen: false,
+        };
+    },
     computed: {
         GlobalState() {
             return GlobalState;

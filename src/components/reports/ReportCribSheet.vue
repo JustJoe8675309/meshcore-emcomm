@@ -6,7 +6,7 @@
 
                 <div class="space-y-1">
                     <div id="crib-sheet-heading" class="text-lg font-semibold text-gray-900">
-                        {{ showAll ? "Report crib sheet" : (form?.name ?? "Report crib sheet") }}
+                        {{ isBooklet ? "Report crib sheet" : form.name }}
                     </div>
                     <div class="text-xs text-gray-600">
                         What goes in each field. Nothing here is transmitted.
@@ -15,7 +15,7 @@
 
                 <div v-for="sheet of sheets" :key="sheet.id" class="crib-form space-y-3">
 
-                    <div v-if="showAll" class="border-b border-gray-300 pb-1">
+                    <div v-if="isBooklet" class="border-b border-gray-300 pb-1">
                         <div class="font-semibold text-gray-900">{{ sheet.name }}</div>
                         <div class="text-xs text-gray-600">{{ sheet.description }}</div>
                     </div>
@@ -39,7 +39,7 @@
             </div>
 
             <div class="print-hide sticky bottom-0 bg-white rounded-b-lg border-t border-gray-200 p-3 flex space-x-2">
-                <button @click="showAll = !showAll" type="button"
+                <button v-if="form" @click="showAll = !showAll" type="button"
                     class="w-full text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 font-medium rounded-lg text-sm px-4 py-2.5">
                     {{ showAll ? "This form only" : `All ${forms.length} forms` }}
                 </button>
@@ -109,6 +109,10 @@ export default {
                 return ReportForms;
             }
             return this.form ? [this.form] : ReportForms;
+        },
+        /** Reached with no radio, so with no form open: the booklet is all there is. */
+        isBooklet() {
+            return this.showAll || this.form == null;
         },
     },
     methods: {

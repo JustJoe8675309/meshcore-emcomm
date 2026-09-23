@@ -19,6 +19,7 @@ import ReportFieldHelp from "../../src/js/reports/ReportFieldHelp.js";
 import ReportEncoder from "../../src/js/reports/ReportEncoder.js";
 import ReportFormFields from "../../src/components/reports/ReportFormFields.vue";
 import ReportCribSheet from "../../src/components/reports/ReportCribSheet.vue";
+import ConnectButtons from "../../src/components/connect/ConnectButtons.vue";
 import GlobalState from "../../src/js/GlobalState.js";
 
 const formById = (id) => ReportForms.find((form) => form.id === id);
@@ -290,6 +291,53 @@ describe("the crib sheet", () => {
         expect(footer.exists()).toBe(true);
         expect(footer.text()).toContain("Print");
         expect(footer.text()).toContain("Close");
+    });
+
+});
+
+// The binder is printed with nothing plugged in.
+//
+// Reported by the operator: they had to connect a node before they could reach
+// the crib sheet. The tabs, and so the Reports panel, only exist once a radio
+// does — which is the opposite of when a binder gets printed. So the connect
+// screen offers it too, where there is no form open and the booklet is all there
+// is to show.
+describe("the crib sheet with no radio", () => {
+
+    function mountConnect() {
+        return mount(ConnectButtons, {
+            global: { mocks: { $router: { push() {} } } },
+        });
+    }
+
+    it("is offered on the connect screen", () => {
+        const wrapper = mountConnect();
+        const link = wrapper.findAll("button").find((b) => b.text().trim() === "Report crib sheet");
+
+        expect(link).toBeTruthy();
+        expect(wrapper.text()).toContain("Print it before you need it");
+    });
+
+    it("opens the booklet, since no form is open to start from", async () => {
+        const wrapper = mountConnect();
+        await wrapper.findAll("button").find((b) => b.text().trim() === "Report crib sheet").trigger("click");
+
+        expect(wrapper.findAll(".crib-form").length).toBe(ReportForms.length);
+        expect(wrapper.text()).toContain("9-Line MEDEVAC Request");
+    });
+
+    it("does not offer to show what is already on screen", () => {
+        // with no form there is nothing for "All 26 forms" to switch to
+        const wrapper = mount(ReportCribSheet, { props: { open: true, form: null } });
+        expect(wrapper.findAll("button").some((b) => b.text().includes("All "))).toBe(false);
+        expect(wrapper.text()).toContain("Report crib sheet");
+    });
+
+    it("still connects a radio, which is what that screen is for", () => {
+        const wrapper = mountConnect();
+        const labels = wrapper.findAll("button").map((b) => b.text().trim());
+        expect(labels).toContain("Connect via Bluetooth");
+        expect(labels).toContain("Connect via Serial");
     });
 
 });

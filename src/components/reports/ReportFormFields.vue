@@ -12,7 +12,7 @@
                     :aria-controls="helpId(field)"
                     :aria-label="`What to put in ${field.label}`"
                     :title="`What to put in ${field.label}`"
-                    class="ml-1 align-middle w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold leading-none hover:bg-blue-200">i</button>
+                    class="ml-1 align-middle w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-xs font-bold leading-none hover:bg-blue-200">i</button>
             </label>
 
             <!-- What the field is for, between its label and the box, so it is read
@@ -51,7 +51,7 @@
                     :aria-controls="helpId(field)"
                     :aria-label="`What ${field.label} does`"
                     :title="`What ${field.label} does`"
-                    class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold leading-none hover:bg-blue-200">i</button>
+                    class="w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-xs font-bold leading-none hover:bg-blue-200">i</button>
                 <p v-if="isHelpOpen(field)" :id="helpId(field)"
                    class="text-xs text-blue-900 bg-blue-50 border border-blue-200 rounded p-2">{{ field.help }}</p>
             </div>

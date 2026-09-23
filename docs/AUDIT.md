@@ -155,10 +155,18 @@ rather than an error.
 - [ ] **On a phone with the text turned up**, the note is readable, the i is big
       enough to hit with a glove, and the form does not scroll sideways. The i
       scales with the text on purpose — it is a touch target, unlike the battery
-      readout in the header.
+      readout in the header. Measured on a built app at 375px with every note of the
+      OPORD, flood and 9-line open at once, at root fonts of 16, 22 and 24px: no
+      sideways scroll, nothing past the right edge, the crib sheet's footer pinned in
+      view at all three, and the i 28, 39 and 42px square. It was 24px at the default
+      font before this measurement, which is small for a gloved hand.
 - [ ] **The crib sheet prints** from a computer: the form's fields and notes only,
       without the app's header, tabs or the sheet's own buttons, and a field is not
-      split across two pages. Print to PDF is enough to check it.
+      split across two pages. Print to PDF is enough to check it. **Printed to PDF
+      23 Sep** for one form; worth a glance at that PDF for the two details above.
+- [ ] **The crib sheet is reachable with no radio**, from the link under the connect
+      buttons, and opens as the booklet. The operator had to connect a node to reach
+      it, which is backwards: printing a binder is a desk job the night before.
 - [ ] **The booklet prints a page per form**, all 26, each starting on a fresh page.
 
 ### Position requests
@@ -571,6 +579,10 @@ all offline.
 - [ ] Take the tab offline and reload. The app still starts, routes, and talks to the
       radio. The app is deployed to Cloudflare rather than run locally, so there is no
       server to stop; see below for how to cut the network and how to prove it was cut.
+      **Proven 23 Sep** on build `9a9476d`: the operator took their own device offline,
+      the app opened, and it worked once a node was connected. Note that this cannot be
+      checked from the app's built-in browser pane, which refuses to register a service
+      worker at all — the script serves correctly, so it is the pane and not the app.
 - [ ] Put the tab back online and reload. It picks up the current build.
 
 ## The firmware source is not what arrives
