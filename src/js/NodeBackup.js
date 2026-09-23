@@ -67,11 +67,19 @@ class NodeBackup {
             warnings.push(`${GlobalState.contactsMissing} of ${GlobalState.contactsAnnounced} contacts could not be read.`);
         }
 
-        const channels = await this.captureChannels(connection, warnings);
+        const read = await this.captureChannels(connection, warnings);
+        const channels = read.channels;
 
         return {
             formatVersion: FORMAT_VERSION,
             capturedAt: Date.now(),
+            // what this backup knows it is missing, so a caller can refuse to
+            // rely on it rather than reading the warnings as prose
+            missing: {
+                contacts: GlobalState.contactsMissing ?? 0,
+                contactsAnnounced: GlobalState.contactsAnnounced ?? null,
+                channelSlots: read.missingSlots,
+            },
             nodeName: selfInfo.name,
             nodePublicKey: Utils.bytesToHex(selfInfo.publicKey),
             settings: {
@@ -167,7 +175,7 @@ class NodeBackup {
         const backedUp = new Set(backup.contacts.map((c) => c.publicKey));
         const contacts = GlobalState.contacts.filter((c) => !backedUp.has(Utils.bytesToHex(c.publicKey)));
         const channelSlots = new Set(backup.channels.map((c) => c.idx));
-        const channels = (await this.captureChannels(connection, [])).filter((c) => !channelSlots.has(c.idx));
+        const channels = (await this.captureChannels(connection, [])).channels.filter((c) => !channelSlots.has(c.idx));
         return { contacts, channels };
     }
 
@@ -182,17 +190,24 @@ class NodeBackup {
     static async captureChannels(connection, warnings) {
 
         const channels = [];
+        const failed = [];
         let unreadable = 0;
+        let lastAnswered = -1;
 
         for(let idx = 0; idx < MAX_CHANNELS; idx++){
 
             let channel = null;
             try {
-                channel = await Connection.exclusive(() => connection.getChannel(idx), 4000);
+                // through Connection, which checks the answer belongs to the slot
+                // asked for: the library resolves a read with whatever channel
+                // info arrives next, so a late reply lands on the following slot
+                channel = await Connection.getChannel(idx);
+                lastAnswered = idx;
             } catch(e) {
                 // an empty slot and an unreadable one look the same from here, so
                 // keep going rather than assuming the list has ended
                 unreadable++;
+                failed.push(idx);
                 continue;
             }
 
@@ -214,7 +229,48 @@ class NodeBackup {
             warnings.push("No channels could be read from this device, so none are in this backup.");
         }
 
-        return channels;
+        // A radio with fewer slots than this asks for errors on the ones past its
+        // end, so a failure on its own means nothing. A failure with a slot after
+        // it that answered is a hole, and a hole in a backup is a channel the
+        // radio does not get back.
+        const gaps = failed.filter((idx) => idx < lastAnswered);
+        if(gaps.length > 0){
+            warnings.push(`Channel slot${gaps.length === 1 ? "" : "s"} ${gaps.join(", ")} would not read, `
+                + `so ${gaps.length === 1 ? "a channel" : "channels"} may be missing from this backup.`);
+        }
+        return { channels: channels, missingSlots: gaps };
+
+    }
+
+    /**
+     * What this backup is missing, in the operator's words, or null when it is
+     * whole.
+     *
+     * The pre-EMCOMM backup is the way home and is never replaced while the
+     * station is away from normal mode, so anything missing from it is missing
+     * for the whole incident. On the bench node 2's read was 13 contacts short
+     * and the switch was held back by hand; the app should be the one holding it
+     * back.
+     */
+    static shortfall(backup) {
+
+        if(backup == null){
+            return "there is no backup at all";
+        }
+
+        const missing = backup.missing ?? {};
+        const parts = [];
+
+        if(missing.contacts > 0){
+            parts.push(`${missing.contacts}`
+                + `${missing.contactsAnnounced ? " of " + missing.contactsAnnounced : ""} contacts could not be read`);
+        }
+        const slots = missing.channelSlots ?? [];
+        if(slots.length > 0){
+            parts.push(`channel slot${slots.length === 1 ? "" : "s"} ${slots.join(", ")} would not read`);
+        }
+
+        return parts.length === 0 ? null : parts.join(", and ");
 
     }
 

@@ -13,6 +13,10 @@ const globalState = reactive({
     // how many the device said it would send, and how many never arrived
     contactsAnnounced: null,
     contactsMissing: 0,
+    // channel slots the radio would not read, which is how a captured mode
+    // loses a channel without anything failing
+    channelsMissing: 0,
+    channelSlots: null,
     // rooms logged in to this session, by public key hex. in memory only: the
     // session belongs to the radio, so reconnecting means logging in again
     roomLogins: {},

@@ -249,6 +249,25 @@ being a variable.
       by UTF-8 decoding before they were saved and cannot be recovered, so check a
       post that arrives during the test rather than scrollback.
 
+### Channels, and the way home
+
+- [ ] **Every channel the radio holds is in the list**, and the count matches what
+      the stock app shows. On the bench node 2's connect read came back with 7
+      channels for 8 slots and one channel listed twice, because `meshcore.js`
+      resolves a channel read with whatever channel info arrives next: a reply that
+      came late was handed to the following slot, and everything after it was one
+      out. Nothing warned, and the Normal profile captured from that read was short
+      the Emcomm Testing channel it would never have written back.
+- [ ] **A short read says so.** If a slot will not answer, an amber line above the
+      list says how many slots would not read. Reconnecting is the remedy.
+- [ ] **Switching mode with an incomplete backup is refused.** The switch stops
+      before writing anything and offers "Switch anyway", because the pre-EMCOMM
+      backup is taken once and never again while away from normal mode: whatever
+      is missing from it is missing for the whole incident.
+- [ ] **The switch preview says what happens to the channels it is not keeping**,
+      not just that the slots are cleared: an emcomm-named channel is carried over,
+      and anything else is kept in the mode being left, with its key.
+
 ### Settings, and repeating adverts
 
 - [ ] **Open settings on a connected node and look before touching anything.** Name,

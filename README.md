@@ -467,6 +467,21 @@ the record, changes bit 0, and sends every other field back untouched. Favourite
 the top of the contacts tab and of every picker, with the lifting done inside
 `SearchableSelect` so no picker can be forgotten.
 
+**A channel read is checked against the slot it asked for.** `meshcore.js` resolves a
+channel read with whatever channel info arrives next, whichever slot it belongs to, so a read
+that times out and answers late hands its reply to the following read and every slot after it
+is one out. On the bench that produced 7 channels for 8 slots with one listed twice, the
+Emcomm Testing row absent, and a Normal profile short a channel it would never have written
+back. Each answer's index is now checked and a mismatch read again, which also consumes the
+stale reply and puts the sequence back in step.
+
+The firmware answers every slot below `MAX_GROUP_CHANNELS`, with an empty name for an unused
+one, and errors only past the end — which is how `meshcore.js` finds the end of the list at
+all. So a failed slot on its own means nothing, and a failed slot with a slot after it that
+answered is a hole. A hole is counted, shown above the list, and refused outright by the
+capture of Normal mode: better no way home than a confident wrong one, and the next connect
+takes it properly.
+
 **Contacts can be added from a `meshcore://` link.** This is the only way to add a room
 server: the room firmware does not implement the discovery control packet at all, so a room
 is invisible until it adverts within earshot, however close it is. The link is parsed before

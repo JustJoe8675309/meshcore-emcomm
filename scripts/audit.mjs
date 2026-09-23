@@ -213,6 +213,12 @@ section("Assumptions about the MeshCore firmware");
                 why: "replayed room requests are told from new ones by this time",
             },
             {
+                name: "every channel slot answers, and only the ones past the end error",
+                path: "src/helpers/BaseChatMesh.cpp",
+                pattern: /getChannel\(int idx, ChannelDetails& dest\)\s*\{\s*if\s*\(\s*idx >= 0 && idx < MAX_GROUP_CHANNELS\s*\)/,
+                why: "an unused slot answers with an empty name, which is what lets a read failure with an answered slot after it be called a hole",
+            },
+            {
                 name: "a room stops pushing after three failed pushes",
                 path: "examples/simple_room_server/MyMesh.cpp",
                 pattern: /push_failures\s*<\s*3/,

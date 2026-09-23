@@ -202,8 +202,25 @@ class ModeProfiles {
 
         const Connection = (await import("../Connection.js")).default;
         const params = Connection.otherParams(selfInfo);
+
+        // Normal mode is the way home: it is what gets written back when the
+        // operator leaves an emcomm mode, and a channel missing from it is a
+        // channel the radio never gets back. A slot that would not read is not
+        // an empty slot, and the two are indistinguishable once this is saved,
+        // so a short read is read again and then refused outright. Better no
+        // normal profile, which the next connect will take, than a confident
+        // wrong one.
+        let read = await this.readChannelsWithFailures();
+        if(read.gaps.length > 0){
+            read = await this.readChannelsWithFailures();
+        }
+        if(read.gaps.length > 0){
+            throw new Error(`channel slot${read.gaps.length === 1 ? " " + read.gaps[0] : "s " + read.gaps.join(", ")} `
+                + "would not read, so this radio's own settings were not recorded");
+        }
+
         const channels = [];
-        for(const channel of await this.readChannels()){
+        for(const channel of read.channels){
             channels.push({ name: channel.name, secret: channel.secret, answerPositions: false });
         }
 
@@ -243,21 +260,34 @@ class ModeProfiles {
      * Anything about to clear slots needs to tell those apart.
      */
     static async readChannelsWithFailures() {
+
         const Connection = (await import("../Connection.js")).default;
         const channels = [];
-        let unreadable = 0;
+        const failed = [];
+        let lastAnswered = -1;
+
         for(let idx = 0; idx < 16; idx++){
             try {
                 const channel = await Connection.getChannel(idx);
+                lastAnswered = idx;
                 const name = (channel?.name ?? "").trim();
                 if(name !== ""){
                     channels.push({ idx: idx, name: name, secret: Utils.bytesToHex(channel.secret) });
                 }
             } catch(e) {
-                unreadable++;
+                failed.push(idx);
             }
         }
-        return { channels: channels, unreadable: unreadable };
+
+        // A radio with fewer slots than this asks for answers the ones past its
+        // end with an error — that is how `meshcore.js` finds the end of the list
+        // at all — so a failure on its own means nothing. A failure with a slot
+        // after it that answered is a hole in the middle, and that is the one that
+        // loses a channel silently.
+        const gaps = failed.filter((idx) => idx < lastAnswered);
+
+        return { channels: channels, unreadable: failed.length, gaps: gaps };
+
     }
 
     /**

@@ -91,6 +91,14 @@
             Reconnect to load them again.
         </div>
 
+        <!-- a slot that would not answer is a channel the operator cannot see, and
+             a channel a captured mode would not write back -->
+        <div v-if="GlobalState.channelsMissing > 0" role="status" class="bg-amber-50 border-b border-amber-300 px-3 py-2 text-xs text-amber-800">
+            {{ GlobalState.channelsMissing }} of the radio's
+            {{ GlobalState.channelSlots ?? (GlobalState.channelsMissing + listedChannelCount) }} channel slots
+            would not read, so a channel may be missing from this list. Reconnect to read them again.
+        </div>
+
         <!-- one list: contacts and channels together, in the chosen order -->
         <div v-if="listed.length > 0" class="h-full overflow-y-auto">
             <template v-for="row of rows" :key="row.key">
@@ -277,6 +285,10 @@ export default {
         },
     },
     computed: {
+        // channels actually in the list, so the warning can say "2 of 16"
+        listedChannelCount() {
+            return (this.channels ?? []).length;
+        },
         GlobalState() {
             return GlobalState;
         },

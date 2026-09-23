@@ -793,29 +793,74 @@ class Connection {
 
             const connection = GlobalState.connection;
             const slots = onProgress ? await this.channelSlotCount() : null;
+            GlobalState.channelsMissing = 0;
 
             // one slot at a time until the radio says there are no more, which is
             // what meshcore.js getChannels does, but counted. Every slot is read,
             // empty ones too, so on a radio with forty slots this is forty reads
-            const channels = await this.exclusive(async () => {
+            // Every slot's answer is checked against the slot asked for, and a
+            // slot that will not answer is retried and then counted rather than
+            // ending the read. `meshcore.js` resolves a channel read with
+            // whatever channel info arrives next, whichever slot it is for, so a
+            // reply that arrives late is handed to the following read and every
+            // slot after it is one out.
+            //
+            // Node 2 came back from a connect with 7 channels for 8 slots and
+            // `#joebot` twice. Nothing warned: the Emcomm Testing row was simply
+            // absent, and the Normal profile captured from that read was short a
+            // channel it would never have written back on the way home.
+            const { channels, missing } = await this.exclusive(async () => {
                 const read = [];
+                const missing = [];
                 let found = 0;
                 for(let idx = 0; slots == null || idx < slots; idx++){
+
                     onProgress?.(idx, slots, found);
-                    let channel;
-                    try {
-                        channel = await connection.getChannel(idx);
-                    } catch(e) {
-                        break;
+
+                    let channel = null;
+                    let failure = null;
+                    for(let attempt = 0; attempt < 2; attempt++){
+                        try {
+                            const answer = await connection.getChannel(idx);
+                            if(answer == null || answer.channelIdx === idx){
+                                channel = answer;
+                                failure = null;
+                                break;
+                            }
+                            // the reply belongs to another slot, so a previous read
+                            // answered late. Asking again consumes it and puts the
+                            // sequence back in step
+                            failure = new Error(`slot ${idx} answered as ${answer.channelIdx}`);
+                            console.log(`channel ${failure.message}, reading it again`);
+                        } catch(e) {
+                            failure = e;
+                        }
                     }
+
+                    if(failure != null){
+                        // with no slot count from the radio, an error is the only
+                        // way the end of the list is known: that is how
+                        // meshcore.js finds it, and it must stay that way for
+                        // firmware that does not report a count
+                        if(slots == null){
+                            break;
+                        }
+                        missing.push(idx);
+                        continue;
+                    }
+
                     read.push(channel);
                     if(channel?.name != null && channel.name.trim() !== ""){
                         found++;
                     }
+
                 }
                 onProgress?.(slots ?? read.length, slots ?? read.length, found);
-                return read;
+                return { channels: read, missing: missing };
             }, 10000);
+
+            GlobalState.channelsMissing = missing.length;
+            GlobalState.channelSlots = slots;
 
             // unused channel slots come back with an empty name, so skip those.
             // the rest of the app identifies a channel by "idx", so normalise "channelIdx" here.
@@ -1075,12 +1120,57 @@ class Connection {
     }
 
     /** One channel slot as the radio holds it, or throws when it cannot be read. */
+    /**
+     * Reads one channel slot, and proves the answer is that slot's.
+     *
+     * `meshcore.js` resolves a channel read with whatever channel info arrives
+     * next, whichever slot it is for. So a read that times out and answers late
+     * hands its reply to the *following* read, and every slot after it is one
+     * out. On the bench node 2 came back with 7 channels for 8 slots and
+     * `#joebot` listed twice, which is what that looks like: the Emcomm Testing
+     * row was simply absent, and the captured Normal profile was short by a
+     * channel it would never have written back.
+     *
+     * Nothing warned, because an empty slot and a wrong answer read the same. So
+     * the index is checked here, and a mismatch is retried rather than trusted:
+     * the retry also consumes the stale reply, which puts the sequence back in
+     * step for every slot after it.
+     */
+    static CHANNEL_READ_ATTEMPTS = 3;
+
     static async getChannel(channelIdx) {
+
         const connection = GlobalState.connection;
         if(connection == null){
             throw new Error(this.DISCONNECTED);
         }
-        return await this.exclusive(() => connection.getChannel(channelIdx), 4000);
+
+        let lastError = null;
+
+        for(let attempt = 0; attempt < this.CHANNEL_READ_ATTEMPTS; attempt++){
+
+            let channel;
+            try {
+                channel = await this.exclusive(() => connection.getChannel(channelIdx), 4000);
+            } catch(e) {
+                // a timeout is worth another go: the slot may be readable and the
+                // radio merely busy, and the reply that arrives late is taken by
+                // the next attempt's own check rather than by the next slot
+                lastError = e;
+                continue;
+            }
+
+            if(channel == null || channel.channelIdx === channelIdx){
+                return channel;
+            }
+
+            console.log(`channel slot ${channelIdx} answered as ${channel.channelIdx}, reading it again`);
+            lastError = new Error(`slot ${channelIdx} answered as ${channel.channelIdx}`);
+
+        }
+
+        throw lastError ?? new Error(`slot ${channelIdx} could not be read`);
+
     }
 
     /** Empties a channel slot: an empty name and a zeroed key, as the library does. */
