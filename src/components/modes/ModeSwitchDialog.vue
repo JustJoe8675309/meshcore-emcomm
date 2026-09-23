@@ -44,6 +44,24 @@
                 <div v-for="(failure, i) of failures" :key="i" class="text-xs text-red-600">{{ failure }}</div>
             </div>
 
+            <!-- the backup that would be the way home is short, so nothing has
+                 been written and the operator decides -->
+            <div v-if="shortfall" class="mx-3 mb-3 rounded-lg bg-amber-50 border border-amber-300 p-3 space-y-2">
+                <div class="text-xs text-amber-900">
+                    Nothing has been changed. The backup this station would come home by is incomplete:
+                    {{ shortfall }}. It is taken once and never again until this station is back in
+                    {{ labelFor("normal") }}, so anything missing from it stays missing for the whole incident.
+                </div>
+                <div class="text-xs text-amber-900">
+                    Reconnecting the radio and switching again is usually enough. Going ahead means those
+                    contacts and channels are not written back when you leave this mode.
+                </div>
+                <button @click="switchAnyway" :disabled="busy" type="button"
+                        class="w-full text-white bg-amber-700 hover:bg-amber-800 disabled:bg-gray-400 font-medium rounded-lg text-sm px-4 py-2">
+                    Switch anyway, without a complete way home
+                </button>
+            </div>
+
             <div v-if="done" class="p-3 text-xs text-gray-800">{{ done }}</div>
 
             <div class="p-3 flex space-x-2">
@@ -52,7 +70,7 @@
                     {{ done ? "Close" : "Cancel" }}
                 </button>
                 <button
-                    @click="switchMode"
+                    @click="switchMode()"
                     :disabled="busy || chosen === current"
                     type="button"
                     class="w-full text-white bg-amber-700 hover:bg-amber-800 disabled:bg-gray-400 font-medium rounded-lg text-sm px-5 py-2.5">
@@ -85,6 +103,8 @@ export default {
             warnings: [],
             failures: [],
             done: null,
+            // set when a switch was refused because the way home would be short
+            shortfall: null,
             descriptions: {
                 normal: "The radio as it was when this app first saw it: its own settings, channels and contacts.",
                 live: "A real incident: the net's channels and rooms, and the settings an incident wants.",
@@ -100,6 +120,7 @@ export default {
                     this.changes = [];
                     this.warnings = [];
                     this.failures = [];
+                    this.shortfall = null;
                     this.done = null;
                     this.progress = null;
                 }
@@ -139,23 +160,33 @@ export default {
                 this.loading = false;
             }
         },
-        async switchMode() {
+        async switchMode(acceptIncompleteBackup = false) {
             const mode = this.chosen;
             this.busy = true;
             this.warnings = [];
             this.failures = [];
+            this.shortfall = null;
             this.done = null;
             try {
-                const result = await ModeSwitch.apply(mode, (p) => { this.progress = p; });
+                const result = await ModeSwitch.apply(mode, (p) => { this.progress = p; }, { acceptIncompleteBackup });
                 this.warnings = result.warnings;
                 this.failures = result.failures.map((f) => `${f.what} was not set: ${f.reason}`);
                 this.done = `This station is now in ${this.labelFor(mode)}.`;
             } catch(e) {
-                this.failures = [`Not switched: ${e?.message ?? e}`];
+                // a short backup is not a failure to report and forget: it is a
+                // decision for the operator, so it gets its own block and button
+                if(e?.incompleteBackup === true){
+                    this.shortfall = e.shortfall;
+                } else {
+                    this.failures = [`Not switched: ${e?.message ?? e}`];
+                }
             } finally {
                 this.busy = false;
                 this.progress = null;
             }
+        },
+        async switchAnyway() {
+            await this.switchMode(true);
         },
     },
     computed: {

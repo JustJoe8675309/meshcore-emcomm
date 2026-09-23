@@ -48,10 +48,33 @@ class ModeSwitch {
             changes.push(`Transmit power becomes ${profile.radio.txPower} dBm, from ${current?.txPower ?? "unknown"}.`);
         }
 
+        // "Any other channel is cleared from the radio" was true of the slots and
+        // wrong about the consequence, which is what an operator reads it for.
+        // A channel whose name says emcomm is carried into the mode being
+        // entered, and any other channel the new mode does not hold is written
+        // into the mode being left, keys and all, so nothing is destroyed.
+        // Reading the radio here would cost sixteen reads in front of a dialog,
+        // so this uses the channel list already loaded.
         const channels = profile.channels.map((c) => c.name);
         changes.push(channels.length === 0
             ? "Every channel is cleared from the radio."
-            : `Channels become: ${channels.join(", ")}. Any other channel is cleared from the radio.`);
+            : `Channels become: ${channels.join(", ")}.`);
+
+        const held = new Set(profile.channels.map((c) => (c.name ?? "").trim().toLowerCase()));
+        const onRadio = (GlobalState.channels ?? []).filter((c) => (c.name ?? "").trim() !== "");
+        const carried = onRadio.filter((c) => ModeProfiles.keepsAcrossModes(c.name) && !held.has(c.name.trim().toLowerCase()));
+        const archived = onRadio.filter((c) => !ModeProfiles.keepsAcrossModes(c.name) && !held.has(c.name.trim().toLowerCase()));
+
+        if(carried.length > 0){
+            changes.push(`${carried.map((c) => c.name).join(", ")} `
+                + `${carried.length === 1 ? "is an emcomm channel, so it is carried over as well" : "are emcomm channels, so they are carried over as well"}.`);
+        }
+        if(archived.length > 0){
+            changes.push(`${archived.map((c) => c.name).join(", ")} `
+                + `${archived.length === 1 ? "leaves the radio's slots but is kept" : "leave the radio's slots but are kept"} `
+                + `in ${ModeProfiles.label(ModeProfiles.current(nodeKeyHex))}, with ${archived.length === 1 ? "its key" : "their keys"}, `
+                + "so switching back restores it.");
+        }
 
         if(mode === "normal"){
             changes.push("Contacts are written back from the backup taken before this station left normal mode.");
@@ -85,7 +108,14 @@ class ModeSwitch {
      * halfway leaves a radio that is in neither mode, which is worse than one
      * that is in the new mode with a named setting that would not take.
      */
-    static async apply(mode, onProgress = () => {}) {
+    /**
+     * Thrown when the backup that would be the way home is short of what the
+     * radio holds. The caller can ask the operator and call again with
+     * `{ acceptIncompleteBackup: true }`.
+     */
+    static INCOMPLETE_BACKUP = "the way home would be incomplete";
+
+    static async apply(mode, onProgress = () => {}, { acceptIncompleteBackup = false } = {}) {
 
         if(GlobalState.connection == null){
             throw new Error(Connection.DISCONNECTED);
@@ -104,11 +134,30 @@ class ModeSwitch {
         if(from === "normal" && mode !== "normal" && NodeBackup.load(nodeKeyHex, NodeBackup.SLOT_PRE_EMCOMM) == null){
             onProgress({ what: "Backing up before any change" });
             const backup = await NodeBackup.capture();
+
+            // This backup is never replaced while the station is away from normal
+            // mode, so whatever is missing from it is missing for the whole
+            // incident: contacts that will not come back, channels whose keys are
+            // gone. On the bench node 2's read was 13 contacts short and the
+            // switch was held back by hand. The app holds it back now, and
+            // nothing is written or saved until the operator says to go anyway.
+            const shortfall = NodeBackup.shortfall(backup);
+            if(shortfall != null && !acceptIncompleteBackup){
+                const refusal = new Error(`${this.INCOMPLETE_BACKUP}: ${shortfall}`);
+                refusal.shortfall = shortfall;
+                refusal.incompleteBackup = true;
+                throw refusal;
+            }
+
             if(!NodeBackup.save(backup, NodeBackup.SLOT_PRE_EMCOMM)){
                 throw new Error("the backup could not be saved, so nothing was changed");
             }
             for(const warning of backup.warnings){
                 warnings.push(warning);
+            }
+            if(shortfall != null){
+                warnings.push(`The way home is incomplete and will not be taken again while this station is `
+                    + `away from normal mode: ${shortfall}.`);
             }
         }
 

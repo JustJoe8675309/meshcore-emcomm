@@ -210,7 +210,12 @@ describe("the sharing screen", () => {
 
     async function open(props = {}) {
         const wrapper = mount(ModeSharing, { props: { open: true, ...props } });
-        for(let i = 0; i < 50 && wrapper.vm.link === ""; i++){
+        // both the link and the drawn code, because the QR encoder is a dynamic
+        // import of its own: waiting for the link alone left qrCells null about
+        // one full-suite run in three, where everything loads at once
+        const ready = () => wrapper.vm.link !== ""
+            && (wrapper.vm.view !== "share" || wrapper.vm.qrCells != null);
+        for(let i = 0; i < 100 && !ready(); i++){
             await flushPromises();
         }
         return wrapper;
@@ -262,14 +267,19 @@ describe("the sharing screen", () => {
         await flushPromises();
 
         expect(wrapper.vm.view).toBe("take");
-        expect(await waitForText(wrapper, "Emcomm-Live from KJ5HBN")).toContain("Emcomm-Live from KJ5HBN");
-        expect(wrapper.text()).toContain("Channels: #Emcomm, County Tac");
-        expect(wrapper.text()).toContain("keeps its own name");
+        // the last line the take view renders, waited for so the three
+        // assertions below are read from a finished render rather than a
+        // half-finished one. Under the whole suite this raced and read the share
+        // view's text while vm.view already said take
+        const shown = await waitForText(wrapper, "keeps its own name");
+        expect(shown).toContain("Emcomm-Live from KJ5HBN");
+        expect(shown).toContain("Channels: #Emcomm, County Tac");
+        expect(shown).toContain("keeps its own name");
 
         await wrapper.findAll("button").find((b) => b.text() === "Save the mode").trigger("click");
         await flushPromises();
 
-        expect(wrapper.text()).toContain("Nothing on the radio has changed");
+        expect(await waitForText(wrapper, "Nothing on the radio has changed")).toContain("Nothing on the radio has changed");
         expect(ModeProfiles.profile("live", NODE).channels).toHaveLength(2);
         expect(ModeProfiles.current(NODE)).toBe("normal");
     });

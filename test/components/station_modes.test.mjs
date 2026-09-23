@@ -45,13 +45,25 @@ function connect(overrides = {}) {
     GlobalState.gpsStatus = "unconfirmed";
 }
 
-// the radio's channel slots, as the app reads and writes them
+// the radio's channel slots, as the app reads and writes them.
+//
+// An unused slot answers with an empty name: the firmware's getChannel returns
+// true for every idx below MAX_GROUP_CHANNELS and false only past the end, so a
+// fake that errors on an unused slot in the middle is not a radio, and it hides
+// the one fault worth catching — a hole in the middle of the list.
+const SLOT_COUNT = 16;
+
+function answerFor(slots, idx) {
+    if(idx >= SLOT_COUNT) throw new Error("no such channel");
+    const slot = slots[idx];
+    return slot == null
+        ? { channelIdx: idx, name: "", secret: new Uint8Array(16) }
+        : { channelIdx: idx, name: slot.name, secret: Utils.hexToBytes(slot.secret) };
+}
+
 function radioChannels(slots) {
     const written = [];
-    vi.spyOn(Connection, "getChannel").mockImplementation(async (idx) => {
-        if(!(idx in slots)) throw new Error("no such channel");
-        return { channelIdx: idx, name: slots[idx].name, secret: Utils.hexToBytes(slots[idx].secret) };
-    });
+    vi.spyOn(Connection, "getChannel").mockImplementation(async (idx) => answerFor(slots, idx));
     vi.spyOn(Connection, "setChannel").mockImplementation(async (idx, name, secret) => {
         written.push({ idx, name, secret: Utils.bytesToHex(secret) });
     });
@@ -283,6 +295,24 @@ describe("switching a station's mode", () => {
         expect(Connection.setAdvertName).not.toHaveBeenCalled();
     });
 
+    it("says what happens to the channels it is not keeping, not just that they go", async () => {
+        // it used to read "Any other channel is cleared from the radio", which is
+        // true of the slots and wrong about the consequence: an emcomm channel is
+        // carried over, and anything else is kept in the mode being left with its
+        // key. An operator reading the old line would reasonably not switch at all
+        GlobalState.channels = [
+            { idx: 0, name: "Public", secret: new Uint8Array(16) },
+            { idx: 3, name: "Emcomm Testing", secret: new Uint8Array(16).fill(1) },
+            { idx: 4, name: "County Tac", secret: new Uint8Array(16).fill(2) },
+        ];
+
+        const text = (await ModeSwitch.describe("live")).changes.join(" ");
+
+        expect(text).toContain("Emcomm Testing is an emcomm channel, so it is carried over as well");
+        expect(text).toMatch(/Public, County Tac leave the radio's slots but are kept in Normal mode, with their keys/);
+        expect(text).not.toContain("Any other channel is cleared");
+    });
+
     it("warns going back to normal with no backup to write", async () => {
         ModeProfiles.setCurrent("live", NODE);
         const result = await ModeSwitch.apply("normal");
@@ -350,14 +380,10 @@ describe("what a switch must never destroy", () => {
     it("keeps a channel the new mode does not hold, rather than losing its key", async () => {
         // a private channel made during an incident: its key is on the radio and
         // nowhere else, so clearing the slot would destroy it
-        Connection.getChannel.mockImplementation(async (idx) => {
-            const slots = {
-                0: { name: "Public", secret: "8b3387e9c5cdea6ac9e5edbaa115cd72" },
-                1: { name: "County Tac", secret: "ab".repeat(16) },
-            };
-            if(!(idx in slots)) throw new Error("no such channel");
-            return { channelIdx: idx, name: slots[idx].name, secret: Utils.hexToBytes(slots[idx].secret) };
-        });
+        Connection.getChannel.mockImplementation(async (idx) => answerFor({
+            0: { name: "Public", secret: "8b3387e9c5cdea6ac9e5edbaa115cd72" },
+            1: { name: "County Tac", secret: "ab".repeat(16) },
+        }, idx));
         GlobalState.contacts = [];
 
         const result = await ModeSwitch.apply("live");
@@ -494,9 +520,44 @@ describe("the mode switch dialog", () => {
         await wrapper.findAll("button").find((b) => b.text().includes("Switch to Emcomm-Live")).trigger("click");
         await flushPromises();
 
-        expect(apply).toHaveBeenCalledWith("live", expect.any(Function));
+        // pressing Switch must never accept an incomplete way home: the button
+        // used to hand its own click event through as that flag, which is truthy
+        expect(apply).toHaveBeenCalledWith("live", expect.any(Function), { acceptIncompleteBackup: false });
         expect(wrapper.text()).toContain("This station is now in Emcomm-Live");
         expect(wrapper.text()).toContain("3 contact(s) removed");
+    });
+
+    it("stops and asks when the way home would be incomplete, and writes nothing", async () => {
+        // node 2's read was 13 contacts short on the bench and the switch was held
+        // back by hand. Those contacts would not have come back on the way home,
+        // because the backup is taken once and never again while away from normal
+        const refusal = new Error(`${ModeSwitch.INCOMPLETE_BACKUP}: 13 of 186 contacts could not be read`);
+        refusal.incompleteBackup = true;
+        refusal.shortfall = "13 of 186 contacts could not be read";
+        const apply = vi.spyOn(ModeSwitch, "apply")
+            .mockRejectedValueOnce(refusal)
+            .mockResolvedValue({ mode: "live", from: "normal", failures: [], warnings: [] });
+
+        const wrapper = mount(ModeSwitchDialog, { props: { open: true } });
+        await flushPromises();
+        wrapper.vm.chosen = "live";
+        await flushPromises();
+
+        await wrapper.findAll("button").find((b) => b.text().includes("Switch to Emcomm-Live")).trigger("click");
+        await flushPromises();
+
+        expect(wrapper.text()).toContain("Nothing has been changed");
+        expect(wrapper.text()).toContain("13 of 186 contacts could not be read");
+        expect(wrapper.text()).not.toContain("This station is now in");
+
+        // and going ahead is a second, deliberate press
+        const anyway = wrapper.findAll("button").find((b) => b.text().includes("Switch anyway"));
+        expect(anyway).toBeTruthy();
+        await anyway.trigger("click");
+        await flushPromises();
+
+        expect(apply).toHaveBeenLastCalledWith("live", expect.any(Function), { acceptIncompleteBackup: true });
+        expect(wrapper.text()).toContain("This station is now in Emcomm-Live");
     });
 
     it("cannot switch to the mode it is already in", async () => {
