@@ -15,9 +15,11 @@
 //
 // So neither shortening the text nor shrinking the icons could fix it on its own:
 // the space had to come from the four icon buttons, which wanted 237px of a 375px
-// row. The battery moved to its own badge beside the buttons, and below the sm
-// breakpoint the sharing and settings buttons fold into the menu that already
-// holds the advert commands.
+// row. The battery moved to its own badge beside the buttons, the app icon is
+// hidden on a phone, and the sharing button folds into the menu that already holds
+// the advert commands. Settings keeps its own button at every width, between the
+// advert menu and the close button, at the operator's request: it is where they go
+// mid incident.
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mount } from "@vue/test-utils";
@@ -116,29 +118,41 @@ describe("what folds away on a narrow screen", () => {
         GlobalState.batteryPercentage = null;
     });
 
-    it("offers sharing and settings in the menu, for the screens that lose their buttons", () => {
+    it("offers sharing in the menu, for the screens that lose its button", () => {
         const wrapper = mountHeader();
         const items = menuItems(wrapper);
 
         expect(items).toContain("Share a station mode");
-        expect(items).toContain("Settings");
         // and the advert commands the menu already had
         expect(items).toContain("Advert (Zero Hop)");
+        // settings has its own button at every width now, so it is not in here
+        expect(items).not.toContain("Settings");
     });
 
-    it("hides those two buttons below the breakpoint, and keeps them above it", () => {
+    it("folds the sharing button away below the breakpoint, and keeps it above", () => {
         // checked in the source: happy-dom applies no stylesheet, so a Tailwind
         // breakpoint cannot be observed by mounting at all
         const qr = source.match(/<button[^>]*aria-label="Share a station mode"[\s\S]{0,220}?class="([^"]*)"/);
         expect(qr?.[1]).toContain("hidden sm:block");
-
-        const settings = source.match(/<RouterLink :to="\{ name: 'settings' \}"([^>]*)>/);
-        expect(settings?.[1]).toContain("hidden sm:block");
     });
 
-    it("keeps those menu items off the wide screens that still have the buttons", () => {
+    it("keeps settings one press away at every width", () => {
+        // the operator's choice: settings is where they go mid incident, for the
+        // channels, the position answering and the advert schedule
+        const settings = source.match(/<RouterLink :to="\{ name: 'settings' \}"([^>]*)>/);
+        expect(settings?.[1]).not.toContain("hidden");
+    });
+
+    it("puts settings between the advert menu and the close button", () => {
+        const menu = source.indexOf("<DropDownMenu>");
+        const settings = source.indexOf("name: 'settings' }\">");
+        const disconnect = source.indexOf('@click="disconnect"');
+        expect(menu).toBeLessThan(settings);
+        expect(settings).toBeLessThan(disconnect);
+    });
+
+    it("keeps the sharing menu item off the wide screens that still have the button", () => {
         expect(source).toMatch(/class="sm:hidden"[^>]*>Share a station mode/);
-        expect(source).toMatch(/class="sm:hidden"[^>]*>Settings/);
     });
 
     it("leaves Disconnect one press away at every width", () => {
