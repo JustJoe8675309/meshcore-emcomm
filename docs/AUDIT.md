@@ -253,6 +253,24 @@ being a variable.
       by UTF-8 decoding before they were saved and cannot be recovered, so check a
       post that arrives during the test rather than scrollback.
 
+### The header on a phone
+
+Everything in the header row except the battery badge scales with the root font,
+and Android's own font-size setting is what moves it. Test with the phone's text
+size turned up, not just at a narrow window.
+
+- [ ] **The mode banner is not covered.** With the font enlarged, the battery and
+      station name must stay inside their row. This was reported from the field:
+      the battery line painted over the green bar, because the row had a fixed
+      4rem height while its two lines of text grew past it.
+- [ ] **The station name is readable**, not "Joe-KJ5H...". On a 375px screen with a
+      22px root font the name wants 154px; it gets 161px with the app icon hidden,
+      which is why the icon is hidden below the `sm` breakpoint.
+- [ ] **The charge is readable** in its badge, and turns red at 20% or less.
+- [ ] **Sharing and settings are in the menu** on a phone, since their buttons
+      fold away there, and Disconnect is still one press.
+- [ ] **A computer is unchanged**: app icon, four buttons, battery badge.
+
 ### Contacts, on a big roster
 
 - [ ] **The whole roster arrives.** Connect the node with the most contacts and

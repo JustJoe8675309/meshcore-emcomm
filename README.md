@@ -494,6 +494,30 @@ saw one. A build that inferred the opposite — listening instead of asking — 
 radio does refuse a request while its iterator really is running, with `ERR_CODE_BAD_STATE`,
 and that refusal is now the only thing that makes the next pass listen.
 
+**The header is built for a phone with its font turned up.** Reported from the field: the
+battery line painted over the green mode banner. The row had a fixed 4rem height while the two
+lines of text inside it grew with the root font, so Android's font-size setting pushed the text
+straight through the bottom of the row. Measured at 375x812: 10px of clearance at a 16px root
+font, then 14px of overlap at 18px and 18px at 24px.
+
+Fixing the overlap was one line — a height floor instead of a fixed height — but it left the
+name unreadable, because the four icon buttons scale too and wanted 237px of a 375px row. What
+the line needed against what it had, at a 22px root font:
+
+| | wants | gets |
+| --- | --- | --- |
+| "Battery 100% - Joe-KJ5HBN-HTv3" | 285px | 38px |
+| "100% - Joe-KJ5HBN-HTv3" | 220px | 38px |
+| "Joe-KJ5HBN-HTv3" | 154px | 161px, as it now stands |
+
+So the charge moved out of the line into its own badge beside the buttons, where a long station
+name cannot squeeze it out, sized in pixels rather than rem so it holds still while the text
+grows — a readout is not a touch target. The sharing and settings buttons fold into the menu
+that already held the advert commands below the `sm` breakpoint, and the app icon is hidden
+there too: it is decoration, and on a phone it was decoration that cost 74px of the station
+name. The buttons themselves were left scaling on purpose, because an operator who turned the
+font up wants a bigger thing to press.
+
 **A contact read lasts as long as the radio keeps answering.** It used to be capped at 20
 seconds from the moment it started, whether contacts were arriving or not. Node 2's roster
 grew to 198 and its reads stopped dead at 131, twice in a row and at the same point every
