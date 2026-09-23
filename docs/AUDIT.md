@@ -341,6 +341,12 @@ size turned up, not just at a narrow window.
 - [ ] **The switch preview says what happens to the channels it is not keeping**,
       not just that the slots are cleared: an emcomm-named channel is carried over,
       and anything else is kept in the mode being left, with its key.
+- [ ] **The history a station already had is still there** after the first
+      connect on this build. Channel messages moved to a new schema version, and
+      RxDB runs that migration on open: each old row keeps its text and gets an
+      empty channel key, so it is still shown by slot. Checked on a radio because
+      the migration needs a leader election across tabs, which the test
+      environment cannot provide.
 - [ ] **A new channel opens empty.** Send a few messages on a channel in Normal,
       switch to Emcomm-Training, and open `#Emcomm-Training`: it must have no
       conversation at all. Reported from the operator's radio, which showed the

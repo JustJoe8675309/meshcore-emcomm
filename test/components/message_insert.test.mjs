@@ -16,20 +16,18 @@
 
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
+import { COLLECTIONS } from "../../src/js/Database.js";
 
 const source = readFileSync("src/js/Database.js", "utf8");
 
 /** The property names declared by a collection's schema. */
 function schemaProperties(collection) {
-    const start = source.indexOf(`${collection}: {`);
-    expect(start).toBeGreaterThan(-1);
-
-    const propertiesAt = source.indexOf("properties: {", start);
-    const migrationsAt = source.indexOf("migrationStrategies", start);
-    const end = migrationsAt > -1 ? migrationsAt : source.indexOf("\n        },", propertiesAt);
-
-    const block = source.slice(propertiesAt, end);
-    return [...block.matchAll(/^\s{20}(\w+):\s*\{/gm)].map((m) => m[1]);
+    // the schemas themselves, not the shape of the file: this was reading them
+    // back out of the source with a fixed indentation, and a refactor that moved
+    // them four spaces left made three tests pass on empty lists
+    const properties = COLLECTIONS[collection]?.schema?.properties;
+    expect(properties, `there is no ${collection} collection`).toBeTruthy();
+    return Object.keys(properties);
 }
 
 /** The field names the insert for a collection writes. */
@@ -67,16 +65,29 @@ describe("the database insert keeps every field the schema declares", () => {
         }
     });
 
-    it("keeps the schema version ahead of its migrations", () => {
+    it("keeps every schema's version ahead of its migrations", () => {
         // a field added without bumping the version is stored against the old
         // schema and dropped the same silent way
-        const messages = source.slice(source.indexOf("messages: {"));
-        const version = Number(messages.match(/version:\s*(\d+)/)[1]);
-        const migrations = [...messages.slice(0, messages.indexOf("contact_messages_read_state"))
-            .matchAll(/^\s{16}(\d+):\s*\(/gm)].map((m) => Number(m[1]));
+        for(const [name, collection] of Object.entries(COLLECTIONS)){
+            const version = collection.schema.version;
+            const migrations = Object.keys(collection.migrationStrategies ?? {}).map(Number);
 
-        expect(migrations.length).toBeGreaterThan(0);
-        expect(Math.max(...migrations)).toBe(version);
+            if(version === 0){
+                expect(migrations, `${name} is at version 0 and needs no migrations`).toEqual([]);
+                continue;
+            }
+            expect(migrations.length, `${name} is at version ${version} with no migrations`).toBeGreaterThan(0);
+            expect(Math.max(...migrations), `${name}'s newest migration does not reach version ${version}`).toBe(version);
+            // and every step from the version before it, or a document from an
+            // older build has no route forward
+            expect(migrations.sort((a, b) => a - b)).toEqual(Array.from({ length: version }, (_, i) => i + 1));
+        }
+    });
+
+    it("has a migration for the channel key, since the rows that predate it have none", () => {
+        expect(COLLECTIONS.channel_messages.schema.version).toBeGreaterThan(0);
+        expect(COLLECTIONS.channel_messages.migrationStrategies[1]({ channel_idx: 3 }))
+            .toEqual({ channel_idx: 3, channel_key: null });
     });
 
 });

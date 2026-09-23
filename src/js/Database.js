@@ -9,6 +9,177 @@ import ChannelKeys from "./channels/ChannelKeys.js";
 import { RxDBMigrationSchemaPlugin } from 'rxdb/plugins/migration-schema';
 addRxPlugin(RxDBMigrationSchemaPlugin);
 
+/**
+ * Every collection this app keeps, and the schema of each.
+ *
+ * Out here rather than inline so a test can open the real schemas against an
+ * in-memory storage. A schema that will not take the documents the app writes, or
+ * a query the storage will not run, is otherwise only discovered on a radio.
+ */
+export const COLLECTIONS = {
+    messages: {
+        schema: {
+            version: 2,
+            primaryKey: 'id',
+            type: 'object',
+            properties: {
+                id: {
+                    type: 'string',
+                    maxLength: 36,
+                },
+                status: {
+                    type: 'string',
+                },
+                to: {
+                    type: 'string',
+                },
+                from: {
+                    type: 'string',
+                },
+                path_len: {
+                    type: 'integer',
+                },
+                txt_type: {
+                    type: 'integer',
+                },
+                sender_timestamp: {
+                    type: 'integer',
+                },
+                text: {
+                    type: 'string',
+                },
+                timestamp: {
+                    type: 'integer',
+                },
+                expected_ack_crc: {
+                    type: 'integer',
+                },
+                send_type: {
+                    type: 'integer',
+                },
+                rtt: {
+                    type: 'integer',
+                },
+                error: {
+                    type: 'string',
+                },
+                // who wrote a room post: the first four bytes of their public
+                // key, as hex. a room relays other people's posts, so the
+                // contact a post arrives from is the room, not the author
+                author_prefix: {
+                    type: 'string',
+                },
+            },
+        },
+        migrationStrategies: {
+            // add rtt integer property in v1
+            1: (oldMessage) => {
+                oldMessage.rtt = null;
+                return oldMessage;
+            },
+            // add author_prefix in v2, for room posts. older rows kept theirs
+            // inside the text, where it rendered as mojibake, and the bytes
+            // cannot be recovered from that, so they stay as they are
+            2: (oldMessage) => {
+                oldMessage.author_prefix = null;
+                return oldMessage;
+            },
+        }
+    },
+    contact_messages_read_state: {
+        schema: {
+            version: 0,
+            primaryKey: 'id',
+            type: 'object',
+            properties: {
+                id: {
+                    type: 'string',
+                    maxLength: 36,
+                },
+                timestamp: {
+                    type: 'integer',
+                },
+            },
+        }
+    },
+    channel_messages: {
+        schema: {
+            version: 1,
+            primaryKey: 'id',
+            type: 'object',
+            properties: {
+                id: {
+                    type: 'string',
+                    maxLength: 36,
+                },
+                channel_idx: {
+                    type: 'integer',
+                },
+                // Which channel this was, not merely which slot it arrived in.
+                //
+                // Stored by slot alone, a channel written into a used slot
+                // inherited every message the old one had: converting to
+                // Emcomm-Training put the whole of Public's traffic in the
+                // #Emcomm-Training conversation, and the one list showed a
+                // brand new channel as recently active. In a drill that is the
+                // confusion DRILL marking exists to prevent.
+                //
+                // A channel's identity is its key, so that is what is kept. It
+                // also means a channel's history follows it when it comes back
+                // in a different slot. Null on rows written before this, where
+                // the app cannot know which channel the slot held.
+                channel_key: {
+                    type: ['string', 'null'],
+                },
+                from: {
+                    type: 'string',
+                },
+                path_len: {
+                    type: 'integer',
+                },
+                txt_type: {
+                    type: 'integer',
+                },
+                sender_timestamp: {
+                    type: 'integer',
+                },
+                text: {
+                    type: 'string',
+                },
+                timestamp: {
+                    type: 'integer',
+                },
+            },
+        },
+        migrationStrategies: {
+            // v1 adds the channel's key. Old rows get null rather than a
+            // guess: nothing in the data says which channel occupied that slot
+            // when they arrived, and attributing them to whatever is there now
+            // would be wrong for exactly the slots that changed.
+            1: (oldMessage) => {
+                oldMessage.channel_key = null;
+                return oldMessage;
+            },
+        },
+    },
+    channel_messages_read_state: {
+        schema: {
+            version: 0,
+            primaryKey: 'id',
+            type: 'object',
+            properties: {
+                id: {
+                    type: 'string',
+                    maxLength: 36,
+                },
+                timestamp: {
+                    type: 'integer',
+                },
+            },
+        }
+    },
+};
+
 var database = null;
 async function initDatabase(publicKeyHex) {
 
@@ -25,169 +196,7 @@ async function initDatabase(publicKeyHex) {
     });
 
     // add database schemas
-    await database.addCollections({
-        messages: {
-            schema: {
-                version: 2,
-                primaryKey: 'id',
-                type: 'object',
-                properties: {
-                    id: {
-                        type: 'string',
-                        maxLength: 36,
-                    },
-                    status: {
-                        type: 'string',
-                    },
-                    to: {
-                        type: 'string',
-                    },
-                    from: {
-                        type: 'string',
-                    },
-                    path_len: {
-                        type: 'integer',
-                    },
-                    txt_type: {
-                        type: 'integer',
-                    },
-                    sender_timestamp: {
-                        type: 'integer',
-                    },
-                    text: {
-                        type: 'string',
-                    },
-                    timestamp: {
-                        type: 'integer',
-                    },
-                    expected_ack_crc: {
-                        type: 'integer',
-                    },
-                    send_type: {
-                        type: 'integer',
-                    },
-                    rtt: {
-                        type: 'integer',
-                    },
-                    error: {
-                        type: 'string',
-                    },
-                    // who wrote a room post: the first four bytes of their public
-                    // key, as hex. a room relays other people's posts, so the
-                    // contact a post arrives from is the room, not the author
-                    author_prefix: {
-                        type: 'string',
-                    },
-                },
-            },
-            migrationStrategies: {
-                // add rtt integer property in v1
-                1: (oldMessage) => {
-                    oldMessage.rtt = null;
-                    return oldMessage;
-                },
-                // add author_prefix in v2, for room posts. older rows kept theirs
-                // inside the text, where it rendered as mojibake, and the bytes
-                // cannot be recovered from that, so they stay as they are
-                2: (oldMessage) => {
-                    oldMessage.author_prefix = null;
-                    return oldMessage;
-                },
-            }
-        },
-        contact_messages_read_state: {
-            schema: {
-                version: 0,
-                primaryKey: 'id',
-                type: 'object',
-                properties: {
-                    id: {
-                        type: 'string',
-                        maxLength: 36,
-                    },
-                    timestamp: {
-                        type: 'integer',
-                    },
-                },
-            }
-        },
-        channel_messages: {
-            schema: {
-                version: 1,
-                primaryKey: 'id',
-                type: 'object',
-                properties: {
-                    id: {
-                        type: 'string',
-                        maxLength: 36,
-                    },
-                    channel_idx: {
-                        type: 'integer',
-                    },
-                    // Which channel this was, not merely which slot it arrived in.
-                    //
-                    // Stored by slot alone, a channel written into a used slot
-                    // inherited every message the old one had: converting to
-                    // Emcomm-Training put the whole of Public's traffic in the
-                    // #Emcomm-Training conversation, and the one list showed a
-                    // brand new channel as recently active. In a drill that is the
-                    // confusion DRILL marking exists to prevent.
-                    //
-                    // A channel's identity is its key, so that is what is kept. It
-                    // also means a channel's history follows it when it comes back
-                    // in a different slot. Null on rows written before this, where
-                    // the app cannot know which channel the slot held.
-                    channel_key: {
-                        type: ['string', 'null'],
-                    },
-                    from: {
-                        type: 'string',
-                    },
-                    path_len: {
-                        type: 'integer',
-                    },
-                    txt_type: {
-                        type: 'integer',
-                    },
-                    sender_timestamp: {
-                        type: 'integer',
-                    },
-                    text: {
-                        type: 'string',
-                    },
-                    timestamp: {
-                        type: 'integer',
-                    },
-                },
-            },
-            migrationStrategies: {
-                // v1 adds the channel's key. Old rows get null rather than a
-                // guess: nothing in the data says which channel occupied that slot
-                // when they arrived, and attributing them to whatever is there now
-                // would be wrong for exactly the slots that changed.
-                1: (oldMessage) => {
-                    oldMessage.channel_key = null;
-                    return oldMessage;
-                },
-            },
-        },
-        channel_messages_read_state: {
-            schema: {
-                version: 0,
-                primaryKey: 'id',
-                type: 'object',
-                properties: {
-                    id: {
-                        type: 'string',
-                        maxLength: 36,
-                    },
-                    timestamp: {
-                        type: 'integer',
-                    },
-                },
-            }
-        },
-    });
+    await database.addCollections(COLLECTIONS);
 
     // database is now ready
     GlobalState.isDatabaseReady = true;
