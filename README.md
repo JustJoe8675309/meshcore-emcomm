@@ -688,6 +688,17 @@ search for repeaters on entering; and whether everything sent is marked DRILL.
 **What does not:** the operator's callsign, the report time zone, message history, and contacts.
 Contacts come from the backup rather than from a mode, since they are not a setting.
 
+**A channel's messages belong to the channel, not to the slot.** A radio holds channels in
+numbered slots, and a mode writes its own channels into them, so the channel in slot 3 today is
+not the one that was there yesterday. Saved messages are filed under the channel's shared secret,
+which is what makes two radios the same channel, so a conversation follows its channel between
+slots and a channel entered for the first time opens empty. It used to be filed under the slot
+number: converting a station to Emcomm-Training opened `#Emcomm-Training` on the previous
+occupant's traffic, and the station list called a brand new channel the busiest thing on the
+radio. Messages saved before this build have no key; a switch attributes them to whichever
+channel is in their slot at the time, which the preview says before it happens, and a conversation
+that is already mixed is cleared with Delete Message History on that channel.
+
 **Settings has a tab for each mode**, identical in layout: only what is in them differs. A tab
 edits that mode without touching the radio, and says so: the radio changes when the mode is
 entered from the banner. Normal mode's tab also has a button to take the radio's settings and

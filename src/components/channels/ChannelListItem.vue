@@ -26,6 +26,7 @@
 <script>
 import ChannelDropDownMenu from "./ChannelDropDownMenu.vue";
 import Database from "../../js/Database.js";
+import ChannelKeys from "../../js/channels/ChannelKeys.js";
 
 export default {
     name: 'ChannelListItem',
@@ -43,7 +44,7 @@ export default {
     mounted() {
 
         // listen for new messages so we can update read state
-        this.channelMessagesSubscription = Database.ChannelMessage.getChannelMessages(this.channel.idx).$.subscribe(async () => {
+        this.channelMessagesSubscription = Database.ChannelMessage.getChannelMessages(this.channel.idx, this.channelKey).$.subscribe(async () => {
             await this.onMessagesUpdated();
         });
 
@@ -57,13 +58,19 @@ export default {
         this.channelMessagesSubscription?.unsubscribe();
         this.channelMessagesReadStateSubscription?.unsubscribe();
     },
+    computed: {
+        /** This channel, rather than the slot it happens to sit in. */
+        channelKey() {
+            return ChannelKeys.of(this.channel);
+        },
+    },
     methods: {
         async onMessagesUpdated() {
             const channelMessagesReadState = await Database.ChannelMessagesReadState.get(this.channel.idx).exec();
             await this.onChannelMessagesReadStateChange(channelMessagesReadState);
         },
         async updateUnreadMessagesCount(lastReadTimestamp) {
-            this.unreadMessagesCount = await Database.ChannelMessage.getChannelMessagesUnreadCount(this.channel.idx, lastReadTimestamp).exec();
+            this.unreadMessagesCount = await Database.ChannelMessage.getChannelMessagesUnreadCount(this.channel.idx, lastReadTimestamp, this.channelKey).exec();
         },
         async onChannelMessagesReadStateChange(channelMessagesReadState) {
             const messagesLastReadTimestamp = channelMessagesReadState?.timestamp ?? 0;

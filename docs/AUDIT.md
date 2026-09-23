@@ -333,6 +333,21 @@ size turned up, not just at a narrow window.
 - [ ] **The switch preview says what happens to the channels it is not keeping**,
       not just that the slots are cleared: an emcomm-named channel is carried over,
       and anything else is kept in the mode being left, with its key.
+- [ ] **A new channel opens empty.** Send a few messages on a channel in Normal,
+      switch to Emcomm-Training, and open `#Emcomm-Training`: it must have no
+      conversation at all. Reported from the operator's radio, which showed the
+      messages of whatever channel had been in that slot — channel history was
+      filed under the slot number. It is filed under the channel's key now.
+- [ ] **The channel that moved keeps its history.** Come home from the mode and
+      open that same channel again: its messages are still there, even if the
+      backup put it back in a different slot.
+- [ ] **The one list does not call a new channel busy.** In the station list,
+      ordered by heard recently, a channel entered for the first time must not sort
+      as though it had the old channel's traffic.
+- [ ] **The preview counts the messages with no channel key**, once, on a station
+      that has history from before this build, and names Delete Message History as
+      the way to clear a conversation that is already mixed. After one switch the
+      count should be zero for the slots that were read.
 
 ### Settings, and repeating adverts
 

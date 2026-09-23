@@ -141,6 +141,7 @@
 <script>
 import { Constants } from "@liamcottle/meshcore.js";
 import Database from "../../js/Database.js";
+import ChannelKeys from "../../js/channels/ChannelKeys.js";
 import GlobalState from "../../js/GlobalState.js";
 import Connection from "../../js/Connection.js";
 import MessageUtils from "../../js/MessageUtils.js";
@@ -222,7 +223,7 @@ export default {
             if(this.type === "contact"){
                 this.messagesSubscription = Database.Message.getContactMessages(this.contact.publicKey).$.subscribe(this.onMessagesUpdated);
             } else if(this.type === "channel") {
-                this.messagesSubscription = Database.ChannelMessage.getChannelMessages(this.channel.idx).$.subscribe(this.onMessagesUpdated);
+                this.messagesSubscription = Database.ChannelMessage.getChannelMessages(this.channel.idx, ChannelKeys.of(this.channel)).$.subscribe(this.onMessagesUpdated);
             }
 
             // update read state

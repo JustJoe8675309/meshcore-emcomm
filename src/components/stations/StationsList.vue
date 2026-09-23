@@ -153,6 +153,7 @@ import ContactFlags from "../../js/ContactFlags.js";
 import Connection from "../../js/Connection.js";
 import Database from "../../js/Database.js";
 import Utils from "../../js/Utils.js";
+import ChannelKeys from "../../js/channels/ChannelKeys.js";
 import IconButton from "../IconButton.vue";
 import DropDownMenu from "../DropDownMenu.vue";
 import DropDownMenuItem from "../DropDownMenuItem.vue";
@@ -218,7 +219,7 @@ export default {
             const activity = {};
             for(const channel of this.channels ?? []){
                 try {
-                    const latest = await Database.ChannelMessage.getLatestChannelMessage(channel.idx).exec();
+                    const latest = await Database.ChannelMessage.getLatestChannelMessage(channel.idx, ChannelKeys.of(channel)).exec();
                     if(latest != null){
                         activity[channel.idx] = latest.timestamp;
                     }

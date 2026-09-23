@@ -42,6 +42,7 @@ import IconButton from "../IconButton.vue";
 import DropDownMenu from "../DropDownMenu.vue";
 import DropDownMenuItem from "../DropDownMenuItem.vue";
 import Database from "../../js/Database.js";
+import ChannelKeys from "../../js/channels/ChannelKeys.js";
 import GlobalState from "../../js/GlobalState.js";
 import PositionService from "../../js/position/PositionService.js";
 
@@ -72,7 +73,7 @@ export default {
             }
 
             // delete message history
-            await Database.ChannelMessage.deleteChannelMessages(this.channel.idx);
+            await Database.ChannelMessage.deleteChannelMessages(this.channel.idx, ChannelKeys.of(this.channel));
 
         },
     },

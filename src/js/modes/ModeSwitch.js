@@ -24,6 +24,8 @@ import AdvertSchedule from "../AdvertSchedule.js";
 import PositionService from "../position/PositionService.js";
 import ModeProfiles from "./ModeProfiles.js";
 import Slots from "../channels/Slots.js";
+import ChannelKeys from "../channels/ChannelKeys.js";
+import Database from "../Database.js";
 
 // A floor, not the count. The radio is asked for its real one — 40 on the bench
 // radios — because a channel the operator put above slot 16 was invisible to
@@ -80,6 +82,23 @@ class ModeSwitch {
                 + `${archived.length === 1 ? "leaves the radio's slots but is kept" : "leave the radio's slots but are kept"} `
                 + `in ${ModeProfiles.label(ModeProfiles.current(nodeKeyHex))}, with ${archived.length === 1 ? "its key" : "their keys"}, `
                 + "so switching back restores it.");
+        }
+
+        // Saved messages from before this app kept the channel's key have to be
+        // attributed by slot, and doing it is what stops the next channel in that
+        // slot inheriting them. Said out loud because it cannot be undone, and
+        // because a conversation that is already mixed should be cleared first.
+        try {
+            const unattributed = await Database.ChannelMessage.countUnattributed();
+            if(unattributed > 0){
+                changes.push(`${unattributed} saved ${unattributed === 1 ? "message is" : "messages are"} filed under `
+                    + "a channel slot rather than a channel, and will be attributed to whichever channel is in that "
+                    + "slot now. If a conversation already holds another channel's traffic, clear it first with "
+                    + "Delete Message History on that channel.");
+            }
+        } catch(e) {
+            // nothing here is worth stopping a switch being described
+            console.log("could not count the messages with no channel key", e);
         }
 
         if(mode === "normal"){
@@ -269,6 +288,25 @@ class ModeSwitch {
                     ].slice(0, MAX_CHANNEL_SLOTS);
                     ModeProfiles.saveProfile(from, leaving, nodeKeyHex);
                     warnings.push(`${kept.map((c) => c.name).join(", ")} ${kept.length === 1 ? "was" : "were"} on the radio but in no mode, so ${kept.length === 1 ? "it was" : "they were"} kept in ${ModeProfiles.label(from)} rather than lost.`);
+                }
+            }
+
+            // The last moment this station knows whose traffic sits in each
+            // slot. Anything already filed under a channel's key is fine; what
+            // predates the key is claimed now, so the channel about to be
+            // overwritten keeps its history and the one taking the slot does not
+            // open holding it. This is what put Public's messages in
+            // #Emcomm-Training on the operator's own radio.
+            for(const channel of onRadio){
+                const channelKey = ChannelKeys.of(channel);
+                if(channelKey == null){
+                    continue;
+                }
+                try {
+                    await Database.ChannelMessage.attributeSlot(channel.idx, channelKey);
+                } catch(e) {
+                    // history is worth keeping but not worth refusing a switch for
+                    console.log(`could not file slot ${channel.idx}'s messages under ${channel.name}`, e);
                 }
             }
 

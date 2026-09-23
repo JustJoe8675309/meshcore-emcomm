@@ -3,6 +3,7 @@ import {addRxPlugin, createRxDatabase} from 'rxdb/plugins/core';
 import {getRxStorageDexie} from 'rxdb/plugins/storage-dexie';
 import GlobalState from "./GlobalState.js";
 import Utils from "./Utils.js";
+import ChannelKeys from "./channels/ChannelKeys.js";
 
 // add rxdb migration plugin
 import { RxDBMigrationSchemaPlugin } from 'rxdb/plugins/migration-schema';
@@ -112,7 +113,7 @@ async function initDatabase(publicKeyHex) {
         },
         channel_messages: {
             schema: {
-                version: 0,
+                version: 1,
                 primaryKey: 'id',
                 type: 'object',
                 properties: {
@@ -122,6 +123,22 @@ async function initDatabase(publicKeyHex) {
                     },
                     channel_idx: {
                         type: 'integer',
+                    },
+                    // Which channel this was, not merely which slot it arrived in.
+                    //
+                    // Stored by slot alone, a channel written into a used slot
+                    // inherited every message the old one had: converting to
+                    // Emcomm-Training put the whole of Public's traffic in the
+                    // #Emcomm-Training conversation, and the one list showed a
+                    // brand new channel as recently active. In a drill that is the
+                    // confusion DRILL marking exists to prevent.
+                    //
+                    // A channel's identity is its key, so that is what is kept. It
+                    // also means a channel's history follows it when it comes back
+                    // in a different slot. Null on rows written before this, where
+                    // the app cannot know which channel the slot held.
+                    channel_key: {
+                        type: ['string', 'null'],
                     },
                     from: {
                         type: 'string',
@@ -142,7 +159,17 @@ async function initDatabase(publicKeyHex) {
                         type: 'integer',
                     },
                 },
-            }
+            },
+            migrationStrategies: {
+                // v1 adds the channel's key. Old rows get null rather than a
+                // guess: nothing in the data says which channel occupied that slot
+                // when they arrived, and attributing them to whatever is there now
+                // would be wrong for exactly the slots that changed.
+                1: (oldMessage) => {
+                    oldMessage.channel_key = null;
+                    return oldMessage;
+                },
+            },
         },
         channel_messages_read_state: {
             schema: {
@@ -352,11 +379,60 @@ class ContactMessagesReadState {
 
 class ChannelMessage {
 
+    /**
+     * Which rows belong to a channel.
+     *
+     * Keyed by the channel's secret, so its history follows it: the same channel
+     * in a different slot keeps its traffic, and a different channel written into
+     * the slot does not inherit it.
+     *
+     * Rows from before the key was recorded have none. Those are matched by slot,
+     * which is the best the data allows and is what the app did for all of them
+     * until now, so nobody loses history by upgrading. A mode switch stamps the
+     * outgoing channel's key onto its own unkeyed rows before overwriting the
+     * slot, so the guessing shrinks each time rather than repeating.
+     */
+    static belongsTo(channelIdx, channelKey) {
+        if(channelKey == null){
+            return {
+                channel_idx: {
+                    $eq: channelIdx,
+                },
+            };
+        }
+        return {
+            $or: [
+                {
+                    channel_key: {
+                        $eq: channelKey,
+                    },
+                },
+                {
+                    $and: [
+                        {
+                            channel_key: {
+                                $eq: null,
+                            },
+                        },
+                        {
+                            channel_idx: {
+                                $eq: channelIdx,
+                            },
+                        },
+                    ],
+                },
+            ],
+        };
+    }
+
     // insert a channel message into the database
     static async insert(data) {
         return await database.channel_messages.insert({
             id: v4(),
             channel_idx: data.channel_idx,
+            // which channel this is, asked of the radio's slots now rather than
+            // worked out later, when the slot may hold something else
+            channel_key: data.channel_key ?? ChannelKeys.forSlot(data.channel_idx) ?? null,
             from: data.from != null ? Utils.bytesToHex(data.from) : null,
             path_len: data.path_len,
             txt_type: data.txt_type,
@@ -366,14 +442,10 @@ class ChannelMessage {
         });
     }
 
-    // get channel messages for the provided channel idx
-    static getChannelMessages(channelIdx) {
+    // get channel messages for the provided channel
+    static getChannelMessages(channelIdx, channelKey = null) {
         return database.channel_messages.find({
-            selector: {
-                channel_idx: {
-                    $eq: channelIdx,
-                },
-            },
+            selector: this.belongsTo(channelIdx, channelKey),
             sort: [
                 {
                     timestamp: "asc",
@@ -389,13 +461,9 @@ class ChannelMessage {
      * nearest thing: when anything was last said on it, which is what an operator
      * means when sorting a list by what has been busy.
      */
-    static getLatestChannelMessage(channelIdx) {
+    static getLatestChannelMessage(channelIdx, channelKey = null) {
         return database.channel_messages.findOne({
-            selector: {
-                channel_idx: {
-                    $eq: channelIdx,
-                },
-            },
+            selector: this.belongsTo(channelIdx, channelKey),
             sort: [
                 {
                     timestamp: "desc",
@@ -404,28 +472,98 @@ class ChannelMessage {
         });
     }
 
-    // get unread channel messages count for the provided channel idx
-    static getChannelMessagesUnreadCount(channelIdx, messagesLastReadTimestamp) {
+    // get unread channel messages count for the provided channel
+    static getChannelMessagesUnreadCount(channelIdx, messagesLastReadTimestamp, channelKey = null) {
         return database.channel_messages.count({
             selector: {
-                timestamp: {
-                    $gt: messagesLastReadTimestamp,
-                },
-                channel_idx: {
-                    $eq: channelIdx,
-                },
+                $and: [
+                    {
+                        timestamp: {
+                            $gt: messagesLastReadTimestamp,
+                        },
+                    },
+                    this.belongsTo(channelIdx, channelKey),
+                ],
             },
         });
     }
 
-    // delete channel messages for the provided channel idx
-    static async deleteChannelMessages(channelIdx) {
-        await this.getChannelMessages(channelIdx).remove();
+    // delete channel messages for the provided channel
+    static async deleteChannelMessages(channelIdx, channelKey = null) {
+        await this.getChannelMessages(channelIdx, channelKey).remove();
+    }
+
+    /**
+     * How many saved messages do not yet say which channel they came from.
+     *
+     * All of them predate this app keeping the channel's key, so a switch has to
+     * attribute them by slot. Worth telling the operator about first: on a station
+     * whose conversation is already mixed, attributing by slot makes the mixing
+     * permanent, and the way out is to clear that channel's history before
+     * switching.
+     */
+    static async countUnattributed() {
+        return await database.channel_messages.count({
+            selector: {
+                channel_key: {
+                    $eq: null,
+                },
+            },
+        }).exec();
+    }
+
+    /**
+     * Claim a slot's unattributed rows for the channel that is leaving it.
+     *
+     * Called before a slot is overwritten, which is the last moment the app knows
+     * whose traffic that is. Afterwards the rows stay with that channel wherever
+     * it turns up next, and the channel taking the slot starts empty.
+     */
+    static async attributeSlot(channelIdx, channelKey) {
+        if(channelKey == null){
+            return 0;
+        }
+        const rows = await database.channel_messages.find({
+            selector: {
+                $and: [
+                    {
+                        channel_idx: {
+                            $eq: channelIdx,
+                        },
+                    },
+                    {
+                        channel_key: {
+                            $eq: null,
+                        },
+                    },
+                ],
+            },
+        }).exec();
+        for(const row of rows){
+            await row.patch({
+                channel_key: channelKey,
+            });
+        }
+        return rows.length;
     }
 
 }
 
 class ChannelMessagesReadState {
+
+    /**
+     * When this slot was last looked at.
+     *
+     * Deliberately by slot, where the messages themselves are by channel. The mark
+     * means "the operator had this open at time T", and an unread count is only
+     * ever messages newer than that, so a channel arriving in a slot someone has
+     * been watching still shows everything it receives from then on.
+     *
+     * Keying it by channel instead was tried and undone: every channel already on
+     * a station would have had no mark under its new name and so have shown its
+     * whole history as unread the first time this build ran, which is a badge
+     * storm in exchange for nothing an operator would notice.
+     */
 
     // update the read state of messages for the provided channel idx
     static async touch(channelIdx) {
