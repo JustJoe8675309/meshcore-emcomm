@@ -8,6 +8,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
 import { Constants } from "@liamcottle/meshcore.js";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import ModeProfiles from "../../src/js/modes/ModeProfiles.js";
 import ModeShare from "../../src/js/modes/ModeShare.js";
 import ModeSharing from "../../src/components/modes/ModeSharing.vue";
@@ -350,6 +352,34 @@ describe("the header", () => {
         expect(wrapper.vm.incomingLink).toContain("#/mode?v=1&d=abc");
         // spent: it must not reopen on the next reload
         expect(window.location.hash).toBe("#/");
+    });
+
+});
+
+// The way out of a dialog should not be something to scroll for.
+//
+// Measured in the live app at 375x812 with a 22px root font: this dialog is
+// 1370px tall with a code on screen, because the QR image, the link, the key
+// warning and the mode buttons all want to be visible at once. The backdrop
+// scrolls, so Close was reachable — at the end of three screens of scrolling,
+// which is not where an operator looks for it mid incident.
+//
+// Checked in the source: happy-dom applies no stylesheet and gives every box zero
+// height, so a sticky footer cannot be observed by mounting.
+describe("the sharing dialog on a phone", () => {
+
+    const source = readFileSync(resolve("src/components/modes/ModeSharing.vue"), "utf8");
+
+    it("pins Close to the bottom of the scroll", () => {
+        const footer = source.match(/<div class="([^"]*)">\s*<button @click="close"/);
+        expect(footer?.[1]).toContain("sticky bottom-0");
+        // it overlaps what is behind it, so it needs its own background
+        expect(footer?.[1]).toContain("bg-white");
+    });
+
+    it("scrolls the dialog rather than trapping it", () => {
+        // the backdrop is the scroll container the footer sticks inside
+        expect(source).toMatch(/fixed inset-0[^"]*overflow-y-auto/);
     });
 
 });

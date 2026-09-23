@@ -150,7 +150,12 @@
 
             </template>
 
-            <div class="p-3">
+            <!-- pinned to the bottom of the scroll, because this dialog is taller
+                 than a phone: measured at 1370px with a 22px root font, where the
+                 QR code, the link, the key warning and the mode buttons all want
+                 to be on screen at once. The way out of a dialog should not be
+                 something to scroll for. -->
+            <div class="sticky bottom-0 bg-white rounded-b-lg p-3">
                 <button @click="close" type="button"
                     class="w-full bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 text-sm font-medium rounded-lg px-5 py-2.5">Close</button>
             </div>

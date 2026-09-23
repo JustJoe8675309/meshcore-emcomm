@@ -34,3 +34,36 @@ describe("scrolling panels", () => {
     }
 
 });
+
+// A dialog's buttons must be reachable without scrolling to find them.
+//
+// Measured in the live app at 375x812 with a 22px root font: the sharing dialog is
+// 1370px tall with a code showing, and the first run wizard puts a whole settings
+// form in each of its three mode steps. The backdrop scrolls, so nothing was
+// unreachable — but Close, Next and "Switch mode" were all below the fold, which
+// mid incident reads as a dialog with no way out.
+//
+// happy-dom gives every box zero height, so this checks the classes that pin them.
+describe("dialog footers", () => {
+
+    const buttonRow = (file, marker) => {
+        const source = readFileSync(join(process.cwd(), file), "utf-8");
+        const at = source.indexOf(marker);
+        expect(at).toBeGreaterThan(-1);
+        return source.slice(0, at).match(/<div class="([^"]*)">\s*(<!--[\s\S]*?-->\s*)?$/)?.[1] ?? "";
+    };
+
+    for(const [file, marker] of [
+        ["src/components/modes/ModeSharing.vue", '<button @click="close"'],
+        ["src/components/modes/FirstRunSetup.vue", `<button v-if="step !== 'done'" @click="skip"`],
+        ["src/components/modes/ModeSwitchDialog.vue", '<button @click="close"'],
+    ]){
+        it(`${file} keeps its buttons on screen`, () => {
+            const classes = buttonRow(file, marker);
+            expect(classes).toContain("sticky bottom-0");
+            // it sits over the content behind it, so it needs its own background
+            expect(classes).toContain("bg-white");
+        });
+    }
+
+});

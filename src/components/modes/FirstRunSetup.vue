@@ -43,7 +43,9 @@
                 </p>
             </div>
 
-            <div class="p-3 flex space-x-2">
+            <!-- pinned: each mode's step is a whole settings form, so Next would
+                 otherwise be a screen or three below the fold on a phone -->
+            <div class="sticky bottom-0 bg-white rounded-b-lg p-3 flex space-x-2">
                 <button v-if="step !== 'done'" @click="skip" type="button"
                         class="w-full text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 font-medium rounded-lg text-sm px-4 py-2.5">
                     Not now

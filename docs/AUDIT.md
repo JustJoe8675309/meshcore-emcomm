@@ -267,9 +267,17 @@ size turned up, not just at a narrow window.
       22px root font the name wants 154px; it gets 161px with the app icon hidden,
       which is why the icon is hidden below the `sm` breakpoint.
 - [ ] **The charge is readable** in its badge, and turns red at 20% or less.
-- [ ] **Sharing and settings are in the menu** on a phone, since their buttons
-      fold away there, and Disconnect is still one press.
+- [ ] **Sharing is in the menu** on a phone, since its button folds away there.
+      Settings keeps its own button at every width, between the advert menu and the
+      close button, and Disconnect is still one press.
 - [ ] **A computer is unchanged**: app icon, four buttons, battery badge.
+- [ ] **Every dialog's buttons are on screen** without scrolling for them: sharing
+      (Close), the first run wizard (Not now, Back, Next) and the mode switch
+      (Close, Switch mode). Each is taller than a phone — sharing measured 1370px
+      at a 22px root font, and a wizard step holds a whole settings form — so the
+      button rows are pinned to the bottom of the scroll. Note that the pinning is
+      a Tailwind class, which means it exists only if it was in the source when the
+      build ran: check it on a real build, not a dev server.
 
 ### Contacts, on a big roster
 

@@ -64,7 +64,9 @@
 
             <div v-if="done" class="p-3 text-xs text-gray-800">{{ done }}</div>
 
-            <div class="p-3 flex space-x-2">
+            <!-- pinned: the list of what a switch will do grows with the radio's
+                 channels, and this is where the operator either agrees or does not -->
+            <div class="sticky bottom-0 bg-white rounded-b-lg p-3 flex space-x-2">
                 <button @click="close" :disabled="busy" type="button"
                         class="w-full text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 disabled:opacity-60 font-medium rounded-lg text-sm px-5 py-2.5">
                     {{ done ? "Close" : "Cancel" }}
