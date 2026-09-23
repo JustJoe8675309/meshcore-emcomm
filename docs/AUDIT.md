@@ -249,6 +249,17 @@ being a variable.
       by UTF-8 decoding before they were saved and cannot be recovered, so check a
       post that arrives during the test rather than scrollback.
 
+### Contacts, on a big roster
+
+- [ ] **The whole roster arrives.** Connect the node with the most contacts and
+      compare the count with what the radio announces: the amber line above the
+      list says when any are missing. Node 2 at 198 contacts came up 57 short,
+      twice, because the read gave up on a quiet gap while the radio was still
+      mid list and every later pass was refused with `ERR_CODE_BAD_STATE`.
+- [ ] **A big read does not block the connect for ever.** It should finish within
+      a minute or so; the read has a 90 second cap and ends four seconds after the
+      frames stop.
+
 ### Channels, and the way home
 
 - [ ] **Every channel the radio holds is in the list**, and the count matches what

@@ -433,18 +433,31 @@ class Connection {
      * marker returns what it did get, and the caller's merge loop asks again,
      * which is what it was already built to do for dropped contacts.
      */
-    static async readContactsOnce(connection) {
+    static async readContactsOnce(connection, options = {}) {
         // the whole stream is one command: a contact frame arriving mid read is
         // exactly as much a reply as the end marker
         return await this.exclusive(
-            () => this.readContactsStream(connection),
+            () => this.readContactsStream(connection, options),
             // the queue must not pull the rug from under a read that is still
             // getting answers: the stream decides when it is done
             this.CONTACT_READ_MAX_MILLIS + this.ACK_TIMEOUT_MILLIS,
         );
     }
 
-    static async readContactsStream(connection) {
+    /**
+     * One pass over the device's contact list.
+     *
+     * `send: false` asks for nothing and only listens. The firmware streams a
+     * contact per pass of its serial loop from an iterator it holds, and refuses
+     * a fresh `CMD_GET_CONTACTS` with `ERR_CODE_BAD_STATE` while that iterator is
+     * still running. So a read that stops early leaves the radio mid list and
+     * every later request bounces off it: node 2 reported "141 of 198 after 4
+     * passes", which was one pass of 141 and three refusals adding nobody.
+     *
+     * Listening without asking picks up the rest of that same iteration instead,
+     * which is both faster and the only thing the radio will allow.
+     */
+    static async readContactsStream(connection, { send = true } = {}) {
 
         const contacts = new Map();
         let ended = false;
@@ -457,7 +470,9 @@ class Connection {
 
         try {
 
-            await connection.sendCommandGetContacts();
+            if(send){
+                await connection.sendCommandGetContacts();
+            }
 
             const hardDeadline = Date.now() + this.CONTACT_READ_MAX_MILLIS;
             let lastCount = -1;
@@ -496,7 +511,7 @@ class Connection {
             connection.off(Constants.ResponseCodes.EndOfContacts, onEnd);
         }
 
-        return [...contacts.values()];
+        return { contacts: [...contacts.values()], ended: ended };
 
     }
 
@@ -676,9 +691,12 @@ class Connection {
      */
     static CONTACT_READ_MAX_MILLIS = 90000;
 
-    // how long without a new contact counts as the list having finished, when the
-    // end marker never arrived
-    static CONTACT_READ_QUIET_MILLIS = 1500;
+    // How long without a new contact counts as the list having finished, when the
+    // end marker never arrived. The firmware sends one contact per pass of its
+    // serial loop and only when the link is not busy writing, so mid stream gaps
+    // on a busy radio are longer than they look: at 1.5s node 2's read stopped at
+    // 141 of 198 with the radio still mid list.
+    static CONTACT_READ_QUIET_MILLIS = 4000;
 
     // onProgress, when given, hears how many different contacts have arrived so
     // far and how many the device said it would send
@@ -748,11 +766,14 @@ class Connection {
 
         try {
 
+            let ask = true;
+
             for(let attempt = 0; attempt < this.MAX_CONTACT_LOAD_PASSES; attempt++){
 
                 pass = attempt + 1;
                 const before = byPublicKey.size;
-                for(const contact of await this.readContactsOnce(connection)){
+                const result = await this.readContactsOnce(connection, { send: ask });
+                for(const contact of result.contacts){
                     byPublicKey.set(Utils.bytesToHex(contact.publicKey), contact);
                 }
                 passes++;
@@ -762,8 +783,15 @@ class Connection {
                     break;
                 }
 
-                // a pass that added nobody will not be improved on by another
-                if(byPublicKey.size === before){
+                // The radio is still working through its own iterator, and will
+                // refuse a new request until it finishes. The next pass listens
+                // for the rest of this one instead of asking for a new list
+                ask = result.ended;
+
+                // a pass that added nobody will not be improved on by another,
+                // unless it was cut off mid list, in which case the rest of that
+                // list is still on its way
+                if(byPublicKey.size === before && result.ended){
                     break;
                 }
 

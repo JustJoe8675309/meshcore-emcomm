@@ -467,6 +467,15 @@ the record, changes bit 0, and sends every other field back untouched. Favourite
 the top of the contacts tab and of every picker, with the lifting done inside
 `SearchableSelect` so no picker can be forgotten.
 
+**The radio owns the contact iterator, so a read that stops early cannot be retried.** The
+firmware streams one contact per pass of its serial loop, from an iterator it holds, and
+answers a fresh `CMD_GET_CONTACTS` with `ERR_CODE_BAD_STATE` while that iterator is still
+running. Node 2 reported "141 of 198 after 4 passes", which was one pass of 141 and three
+refusals adding nobody: the read had given up on a quiet gap while the radio was still working
+through the list. A pass that ends without the end marker is now followed by a pass that only
+listens, picking up the rest of that same iteration rather than asking for a list the radio
+will not start.
+
 **A contact read lasts as long as the radio keeps answering.** It used to be capped at 20
 seconds from the moment it started, whether contacts were arriving or not. Node 2's roster
 grew to 198 and its reads stopped dead at 131, twice in a row and at the same point every

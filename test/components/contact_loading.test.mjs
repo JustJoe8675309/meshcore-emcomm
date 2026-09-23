@@ -274,3 +274,90 @@ describe("a read the radio is still answering", () => {
     });
 
 });
+
+// The radio holds the iterator, not the app.
+//
+// The firmware streams one contact per pass of its serial loop, from an iterator
+// it keeps, and answers a fresh CMD_GET_CONTACTS with ERR_CODE_BAD_STATE while
+// that iterator is still running. Node 2 reported "141 of 198 after 4 passes",
+// which was one pass of 141 and three refusals that added nobody: the read had
+// stopped on a quiet gap while the radio was still working through the list.
+describe("a radio still working through its own list", () => {
+
+    // a radio that streams slowly, pauses mid list, and refuses a new request
+    // while its iterator is running, exactly as the firmware does
+    function iteratingRadio(total, { pauseAfter, pauseMillis, perTick = 4, tickMillis = 10 } = {}) {
+        const all = Array.from({ length: total }, (_, i) => contact(i));
+        const listeners = {};
+        const emit = (code, value) => (listeners[code] ?? []).slice().forEach((cb) => cb(value));
+        const radio = {
+            requests: 0,
+            refusals: 0,
+            iterating: false,
+            on(event, cb) { (listeners[event] ??= []).push(cb); },
+            off(event, cb) { listeners[event] = (listeners[event] ?? []).filter((f) => f !== cb); },
+            async sendCommandGetContacts() {
+                radio.requests++;
+                if(radio.iterating){
+                    radio.refusals++;
+                    return; // ERR_CODE_BAD_STATE: nothing is sent, the iterator carries on
+                }
+                radio.iterating = true;
+                emit(2, { count: total });
+                let sent = 0;
+                const tick = () => {
+                    for(let i = 0; i < perTick && sent < total; i++){
+                        emit(3, all[sent++]);
+                    }
+                    if(sent >= total){
+                        radio.iterating = false;
+                        emit(4, {});
+                        return;
+                    }
+                    setTimeout(tick, sent === pauseAfter ? pauseMillis : tickMillis);
+                };
+                setTimeout(tick, tickMillis);
+            },
+        };
+        return radio;
+    }
+
+    beforeEach(() => {
+        GlobalState.contacts = [];
+        GlobalState.contactsAnnounced = null;
+        GlobalState.contactsMissing = 0;
+    });
+
+    afterEach(() => {
+        Connection.CONTACT_READ_QUIET_MILLIS = 4000;
+        Connection.CONTACT_READ_MAX_MILLIS = 90000;
+        GlobalState.connection = null;
+    });
+
+    it("listens for the rest of the list instead of asking for one it will not get", async () => {
+        // the pause is longer than the quiet window, so the first pass ends with
+        // the radio still mid list
+        Connection.CONTACT_READ_QUIET_MILLIS = 60;
+        const radio = iteratingRadio(40, { pauseAfter: 20, pauseMillis: 200 });
+        GlobalState.connection = radio;
+
+        await Connection.loadContacts();
+
+        expect(GlobalState.contacts).toHaveLength(40);
+        expect(GlobalState.contactsMissing).toBe(0);
+        // asked once, and never refused, because it stopped asking
+        expect(radio.refusals).toBe(0);
+        expect(radio.requests).toBe(1);
+    });
+
+    it("does not stop early just because a listening pass added nobody", async () => {
+        Connection.CONTACT_READ_QUIET_MILLIS = 60;
+        const radio = iteratingRadio(30, { pauseAfter: 12, pauseMillis: 260 });
+        GlobalState.connection = radio;
+
+        await Connection.loadContacts();
+
+        expect(GlobalState.contacts).toHaveLength(30);
+    });
+
+});
