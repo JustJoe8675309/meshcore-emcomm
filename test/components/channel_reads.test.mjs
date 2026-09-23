@@ -336,3 +336,42 @@ describe("a read that produced nothing", () => {
     });
 
 });
+
+describe("a read that cannot finish in time", () => {
+
+    beforeEach(() => {
+        GlobalState.channels = [];
+        GlobalState.channelsMissing = 0;
+        GlobalState.channelsReadFailed = false;
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        Connection.CHANNEL_READ_DEADLINE_MILLIS = 60000;
+        GlobalState.connection = null;
+        GlobalState.channels = [];
+        GlobalState.channelsReadFailed = false;
+    });
+
+    it("keeps what it read and calls the rest missing, rather than throwing the lot away", async () => {
+        // the whole forty slot loop used to share one ten second budget. Over
+        // Bluetooth it ran out, the read threw, and the list fell back to an
+        // assumed public channel: the silent failure the retries were meant to end
+        Connection.CHANNEL_READ_DEADLINE_MILLIS = 5;
+        GlobalState.connection = {
+            on() {}, once() {}, off() {},
+            deviceQuery: async () => ({ firmwareVer: 13, reserved: [175, 40, 0] }),
+            getChannel: async (idx) => {
+                await new Promise((r) => setTimeout(r, 2));
+                return slot(idx, idx === 0 ? "Public" : idx === 1 ? "Emcomm Testing" : "");
+            },
+        };
+
+        await Connection.loadChannels(() => {});
+
+        expect(GlobalState.channels.map((c) => c.name)).toContain("Public");
+        expect(GlobalState.channelsMissing).toBeGreaterThan(0);
+        expect(GlobalState.channelsReadFailed).toBe(false);
+    });
+
+});

@@ -801,7 +801,6 @@ class Connection {
         // so this is guarded by a timeout and falls back to the public channel.
         try {
 
-            const connection = GlobalState.connection;
             const slots = onProgress ? await this.channelSlotCount() : null;
             GlobalState.channelsMissing = 0;
             GlobalState.channelsReadFailed = false;
@@ -820,32 +819,39 @@ class Connection {
             // `#joebot` twice. Nothing warned: the Emcomm Testing row was simply
             // absent, and the Normal profile captured from that read was short a
             // channel it would never have written back on the way home.
-            const { channels, missing } = await this.exclusive(async () => {
+            // Each slot is its own read with its own timeout, rather than the
+            // whole loop sharing one. Forty slots plus a retry apiece cannot
+            // finish inside ten seconds over Bluetooth, and when the budget ran
+            // out the read threw and the list fell back to an assumed public
+            // channel: exactly the silent failure the retries were added to stop.
+            const { channels, missing } = await (async () => {
                 const read = [];
                 const missing = [];
                 let found = 0;
+                // a slot that will not answer costs three attempts, so a sick
+                // radio with forty slots could hold the connect for minutes. The
+                // rest are counted as missing, which the list already warns about
+                const deadline = Date.now() + this.CHANNEL_READ_DEADLINE_MILLIS;
                 for(let idx = 0; slots == null || idx < slots; idx++){
+
+                    if(Date.now() > deadline){
+                        for(let rest = idx; slots != null && rest < slots; rest++){
+                            missing.push(rest);
+                        }
+                        console.log(`the channel read gave up after ${this.CHANNEL_READ_DEADLINE_MILLIS / 1000}s, at slot ${idx}`);
+                        break;
+                    }
 
                     onProgress?.(idx, slots, found);
 
                     let channel = null;
                     let failure = null;
-                    for(let attempt = 0; attempt < 2; attempt++){
-                        try {
-                            const answer = await connection.getChannel(idx);
-                            if(answer == null || answer.channelIdx === idx){
-                                channel = answer;
-                                failure = null;
-                                break;
-                            }
-                            // the reply belongs to another slot, so a previous read
-                            // answered late. Asking again consumes it and puts the
-                            // sequence back in step
-                            failure = new Error(`slot ${idx} answered as ${answer.channelIdx}`);
-                            console.log(`channel ${failure.message}, reading it again`);
-                        } catch(e) {
-                            failure = e;
-                        }
+                    try {
+                        // getChannel checks the answer belongs to this slot and
+                        // reads again if it does not
+                        channel = await this.getChannel(idx);
+                    } catch(e) {
+                        failure = e;
                     }
 
                     if(failure != null){
@@ -873,7 +879,7 @@ class Connection {
                 }
                 onProgress?.(slots ?? read.length, slots ?? read.length, found);
                 return { channels: read, missing: missing };
-            }, 10000);
+            })();
 
             GlobalState.channelsMissing = missing.length;
             GlobalState.channelSlots = slots;
@@ -1173,6 +1179,9 @@ class Connection {
      * step for every slot after it.
      */
     static CHANNEL_READ_ATTEMPTS = 3;
+
+    /** How long the whole channel read may take before the rest are called missing. */
+    static CHANNEL_READ_DEADLINE_MILLIS = 60000;
 
     static async getChannel(channelIdx) {
 
