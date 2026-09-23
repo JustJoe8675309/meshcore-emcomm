@@ -195,6 +195,18 @@ section("Assumptions about the MeshCore firmware");
                 why: "if rooms stop doing this, type 1 could carry room traffic out of stock apps' sight; if they change how, re-check sendRoomPost",
             },
             {
+                name: "the Bluetooth send queue drops what will not fit",
+                path: "src/helpers/esp32/SerialBLEInterface.cpp",
+                pattern: /send_queue_len\s*>=\s*FRAME_QUEUE_SIZE\s*\)\s*\{[\s\S]{0,160}?return\s+0;/,
+                why: "why a contact read over Bluetooth loses a different few every pass, and why the app reads the list up to 8 times",
+            },
+            {
+                name: "that queue is four frames deep",
+                path: "src/helpers/esp32/SerialBLEInterface.h",
+                pattern: /#define\s+FRAME_QUEUE_SIZE\s+4\b/,
+                why: "four frames is what a burst of adverts fills, which is what costs the contacts",
+            },
+            {
                 name: "a room post holds 151 bytes",
                 path: "examples/simple_room_server/MyMesh.h",
                 pattern: /#define\s+MAX_POST_TEXT_LEN\s+\(\s*160\s*-\s*9\s*\)/,

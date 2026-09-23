@@ -100,14 +100,17 @@ describe("loading contacts from a lossy link", () => {
         expect(GlobalState.contacts).toHaveLength(10);
     });
 
-    it("gives up rather than looping when a pass adds nobody", async () => {
-        // the same contact withheld every time, so retrying cannot help
+    it("gives up rather than looping when passes stop adding anybody", async () => {
+        // the same contact withheld every time, so retrying cannot help.
+        // One barren pass is not enough to conclude that: over Bluetooth a
+        // different few are dropped each pass, so a pass that happens to add
+        // nobody sits between passes that do. Two in a row is the signal.
         const radio = fakeRadio(10, [[5], [5], [5], [5], [5], [5]]);
         GlobalState.connection = radio;
 
         await Connection.loadContacts();
 
-        expect(radio.passes).toBe(2);
+        expect(radio.passes).toBe(3);
         expect(GlobalState.contacts).toHaveLength(9);
         // and it still says somebody is missing rather than quietly settling
         expect(GlobalState.contactsMissing).toBe(1);
@@ -334,9 +337,10 @@ describe("a radio still working through its own list", () => {
         GlobalState.connection = null;
     });
 
-    it("listens for the rest of the list instead of asking for one it will not get", async () => {
+    it("takes a refusal as its cue to listen, and still gets the whole list", async () => {
         // the pause is longer than the quiet window, so the first pass ends with
-        // the radio still mid list
+        // the radio still mid list. Asking again is refused, and the pass after a
+        // refusal listens for the rest of that iteration rather than asking again
         Connection.CONTACT_READ_QUIET_MILLIS = 60;
         const radio = iteratingRadio(40, { pauseAfter: 20, pauseMillis: 200 });
         GlobalState.connection = radio;
@@ -345,9 +349,9 @@ describe("a radio still working through its own list", () => {
 
         expect(GlobalState.contacts).toHaveLength(40);
         expect(GlobalState.contactsMissing).toBe(0);
-        // asked once, and never refused, because it stopped asking
-        expect(radio.refusals).toBe(0);
-        expect(radio.requests).toBe(1);
+        // a refusal is expected and harmless; what matters is that it stops
+        // asking once it has been refused
+        expect(radio.refusals).toBeLessThanOrEqual(1);
     });
 
     it("does not stop early just because a listening pass added nobody", async () => {
@@ -358,6 +362,84 @@ describe("a radio still working through its own list", () => {
         await Connection.loadContacts();
 
         expect(GlobalState.contacts).toHaveLength(30);
+    });
+
+});
+
+// The Bluetooth send queue is four frames deep and drops what will not fit:
+//
+//     if (send_queue_len >= FRAME_QUEUE_SIZE) {      // FRAME_QUEUE_SIZE 4
+//       BLE_DEBUG_PRINTLN("writeFrame(), send_queue is full!");
+//       return 0;
+//     }
+//
+// Adverts, channel messages and acks share that queue, so on a busy mesh a burst
+// costs a few contacts, and the end of list marker goes the same way. A different
+// few are lost each pass, which is exactly what makes merging work — but halving
+// the shortfall each time needs six or seven passes, not four. Node 2 at 198
+// contacts delivered 94 to 141 per pass.
+describe("a link that drops a different few every pass", () => {
+
+    const quiet = Connection.CONTACT_READ_QUIET_MILLIS;
+
+    beforeEach(() => {
+        GlobalState.contacts = [];
+        GlobalState.contactsAnnounced = null;
+        GlobalState.contactsMissing = 0;
+        // every pass here ends on the quiet rule, since the end marker is dropped,
+        // so the real four seconds would make this suite crawl
+        Connection.CONTACT_READ_QUIET_MILLIS = 40;
+    });
+
+    afterEach(() => {
+        Connection.CONTACT_READ_QUIET_MILLIS = quiet;
+        GlobalState.connection = null;
+    });
+
+    // half the list per pass, a different half each time, and the end marker lost
+    // with it, which is what the radio actually does
+    function lossyRadio(total) {
+        const all = Array.from({ length: total }, (_, i) => contact(i));
+        const listeners = {};
+        const emit = (code, value) => (listeners[code] ?? []).slice().forEach((cb) => cb(value));
+        let pass = 0;
+        return {
+            passes: 0,
+            on(event, cb) { (listeners[event] ??= []).push(cb); },
+            off(event, cb) { listeners[event] = (listeners[event] ?? []).filter((f) => f !== cb); },
+            async sendCommandGetContacts() {
+                const n = pass++;
+                this.passes = pass;
+                emit(2, { count: total });
+                // a deterministic but shifting half, as timing-dependent loss looks
+                all.forEach((c, i) => { if((i + n) % 2 === 0) emit(3, c); });
+                // no end marker: it is dropped with the rest
+            },
+        };
+    }
+
+    it("converges on the whole roster over several passes", async () => {
+        const radio = lossyRadio(198);
+        GlobalState.connection = radio;
+
+        await Connection.loadContacts();
+
+        expect(GlobalState.contacts).toHaveLength(198);
+        expect(GlobalState.contactsMissing).toBe(0);
+        expect(radio.passes).toBeGreaterThan(1);
+    });
+
+    it("keeps asking rather than listening when no end marker arrived", async () => {
+        // the firmware clears its iterator when it queues the end marker, so a
+        // marker that was dropped does not mean the radio is still mid list. The
+        // build that listened instead of asking made node 2 worse: 141 became 107
+        const radio = lossyRadio(40);
+        GlobalState.connection = radio;
+
+        await Connection.loadContacts();
+
+        expect(radio.passes).toBeGreaterThan(1);
+        expect(GlobalState.contacts).toHaveLength(40);
     });
 
 });

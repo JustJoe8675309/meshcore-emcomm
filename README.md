@@ -467,14 +467,32 @@ the record, changes bit 0, and sends every other field back untouched. Favourite
 the top of the contacts tab and of every picker, with the lifting done inside
 `SearchableSelect` so no picker can be forgotten.
 
-**The radio owns the contact iterator, so a read that stops early cannot be retried.** The
-firmware streams one contact per pass of its serial loop, from an iterator it holds, and
-answers a fresh `CMD_GET_CONTACTS` with `ERR_CODE_BAD_STATE` while that iterator is still
-running. Node 2 reported "141 of 198 after 4 passes", which was one pass of 141 and three
-refusals adding nobody: the read had given up on a quiet gap while the radio was still working
-through the list. A pass that ends without the end marker is now followed by a pass that only
-listens, picking up the rest of that same iteration rather than asking for a list the radio
-will not start.
+**Bluetooth loses contacts because the radio's send queue is four frames deep and drops what
+will not fit.** From `SerialBLEInterface::writeFrame`:
+
+```cpp
+if (send_queue_len >= FRAME_QUEUE_SIZE) {      // FRAME_QUEUE_SIZE is 4
+  BLE_DEBUG_PRINTLN("writeFrame(), send_queue is full!");
+  return 0;                                    // dropped, and never retried
+}
+```
+
+Adverts, channel messages and acks share that queue, so on a busy mesh a burst of them costs
+a few contacts — and the end of list marker goes the same way. Node 2 at 198 contacts
+delivered between 94 and 141 per pass, a different few missing each time, with no marker to
+say the list had finished.
+
+A different few each pass is what makes merging work, so the list is read up to eight times
+and merged by public key, within a two minute budget, stopping early when the count is complete
+or when two passes running add nobody. Two, because a barren pass between useful ones is
+normal.
+
+**A missing end marker does not mean the radio is still sending.** The firmware clears its
+iterator when it *queues* the marker, so a fresh request is accepted even though the app never
+saw one. A build that inferred the opposite — listening instead of asking — made node 2 worse,
+141 down to 107, because three passes waited for an iteration that had already finished. The
+radio does refuse a request while its iterator really is running, with `ERR_CODE_BAD_STATE`,
+and that refusal is now the only thing that makes the next pass listen.
 
 **A contact read lasts as long as the radio keeps answering.** It used to be capped at 20
 seconds from the moment it started, whether contacts were arriving or not. Node 2's roster

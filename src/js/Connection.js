@@ -461,12 +461,17 @@ class Connection {
 
         const contacts = new Map();
         let ended = false;
+        let refused = false;
 
         const onContact = (contact) => contacts.set(Utils.bytesToHex(contact.publicKey), contact);
         const onEnd = () => ended = true;
+        // the radio refuses a new list while its own iterator is still running,
+        // which is the one case where the next pass should listen rather than ask
+        const onErr = () => refused = true;
 
         connection.on(Constants.ResponseCodes.Contact, onContact);
         connection.on(Constants.ResponseCodes.EndOfContacts, onEnd);
+        connection.on(Constants.ResponseCodes.Err, onErr);
 
         try {
 
@@ -509,9 +514,10 @@ class Connection {
         } finally {
             connection.off(Constants.ResponseCodes.Contact, onContact);
             connection.off(Constants.ResponseCodes.EndOfContacts, onEnd);
+            connection.off(Constants.ResponseCodes.Err, onErr);
         }
 
-        return { contacts: [...contacts.values()], ended: ended };
+        return { contacts: [...contacts.values()], ended: ended, refused: refused };
 
     }
 
@@ -767,6 +773,9 @@ class Connection {
         try {
 
             let ask = true;
+            let barren = 0;
+            const startedAt = Date.now();
+            const budget = startedAt + this.CONTACT_LOAD_BUDGET_MILLIS;
 
             for(let attempt = 0; attempt < this.MAX_CONTACT_LOAD_PASSES; attempt++){
 
@@ -783,15 +792,25 @@ class Connection {
                     break;
                 }
 
-                // The radio is still working through its own iterator, and will
-                // refuse a new request until it finishes. The next pass listens
-                // for the rest of this one instead of asking for a new list
-                ask = result.ended;
+                // Ask again next time unless the radio said it was busy, which is
+                // the only state where a new list will not be started. A missing
+                // end marker does not mean the iterator is still running: the
+                // firmware clears it when the marker is queued, and the marker is
+                // one of the frames the Bluetooth queue drops.
+                ask = !result.refused;
 
-                // a pass that added nobody will not be improved on by another,
-                // unless it was cut off mid list, in which case the rest of that
-                // list is still on its way
-                if(byPublicKey.size === before && result.ended){
+                // out of time. A connect cannot sit here for ever, and the list
+                // says what is missing
+                if(Date.now() > budget){
+                    console.log(`contacts: giving up after ${Math.round((Date.now() - startedAt) / 1000)}s`);
+                    break;
+                }
+
+                // Two passes running that added nobody means this is as good as it
+                // gets. One is not enough: every pass drops a different few, so a
+                // barren pass between two useful ones is normal.
+                barren = byPublicKey.size === before ? barren + 1 : 0;
+                if(barren >= 2){
                     break;
                 }
 
@@ -1396,7 +1415,27 @@ class Connection {
 
     // how many times to re-read the contact list when the device says it sent more
     // than arrived. a local query, so this costs no airtime, only a second or two
-    static MAX_CONTACT_LOAD_PASSES = 4;
+    /**
+     * How many times to read the whole contact list before settling for what
+     * arrived, and how long all of it may take.
+     *
+     * Four was not enough, and the firmware says why. `SerialBLEInterface` holds
+     * a send queue of **four frames** and **drops** anything that will not fit:
+     *
+     *     if (send_queue_len >= FRAME_QUEUE_SIZE) {
+     *       BLE_DEBUG_PRINTLN("writeFrame(), send_queue is full!");
+     *       return 0;
+     *     }
+     *
+     * Adverts, channel messages and acks share that queue, so on a busy mesh a
+     * burst of them costs a few contacts, and the end of list marker goes the
+     * same way. A different few are lost each pass, which is what makes merging
+     * work: node 2 at 198 contacts delivered 94 to 141 per pass. Halving the
+     * shortfall each time needs six or seven passes, not four.
+     */
+    static MAX_CONTACT_LOAD_PASSES = 8;
+
+    static CONTACT_LOAD_BUDGET_MILLIS = 120000;
 
     static async getPosition(timeoutMillis = 5000) {
 

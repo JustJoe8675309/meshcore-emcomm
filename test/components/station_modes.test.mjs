@@ -632,15 +632,26 @@ describe("the settings tabs", () => {
 
     const tab = (wrapper, mode) => wrapper.findAll("button").find((b) => b.text().includes(MODE_LABELS[mode]));
 
-    // a tab reads the radio for a mode it has never shown, through a dynamic
+    // A tab reads the radio for a mode it has never shown, through a dynamic
     // import, so how many turns of the loop that takes is not fixed: wait for the
-    // profile itself rather than guessing a number of ticks
+    // fields themselves rather than guessing a number of ticks.
+    //
+    // flushPromises alone drains microtasks, and a module still loading needs real
+    // time, which is why this waits on the clock too. Under the whole suite, with
+    // 45 files loading at once, the microtask-only version failed about one run in
+    // ten and the audit reported it as a broken test.
     async function open(wrapper, mode) {
         await tab(wrapper, mode).trigger("click");
-        for(let i = 0; i < 50 && wrapper.vm.profile == null; i++){
+        const deadline = Date.now() + 5000;
+        while(Date.now() < deadline){
             await flushPromises();
+            if(wrapper.vm.profile != null && wrapper.text().includes("Frequency (kHz)")){
+                return;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 10));
         }
         expect(wrapper.vm.profile).not.toBe(null);
+        expect(wrapper.text()).toContain("Frequency (kHz)");
     }
 
     it("has a tab for each mode, showing the same fields for each", async () => {
