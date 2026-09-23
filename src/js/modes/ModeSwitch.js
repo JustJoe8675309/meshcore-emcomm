@@ -62,8 +62,8 @@ class ModeSwitch {
 
         const held = new Set(profile.channels.map((c) => (c.name ?? "").trim().toLowerCase()));
         const onRadio = (GlobalState.channels ?? []).filter((c) => (c.name ?? "").trim() !== "");
-        const carried = onRadio.filter((c) => ModeProfiles.keepsAcrossModes(c.name) && !held.has(c.name.trim().toLowerCase()));
-        const archived = onRadio.filter((c) => !ModeProfiles.keepsAcrossModes(c.name) && !held.has(c.name.trim().toLowerCase()));
+        const carried = onRadio.filter((c) => ModeProfiles.carriesInto(c.name, mode) && !held.has(c.name.trim().toLowerCase()));
+        const archived = onRadio.filter((c) => !ModeProfiles.carriesInto(c.name, mode) && !held.has(c.name.trim().toLowerCase()));
 
         if(carried.length > 0){
             changes.push(`${carried.map((c) => c.name).join(", ")} `
@@ -221,7 +221,7 @@ class ModeSwitch {
             const key = (channel) => JSON.stringify([channel.name, channel.secret]);
             const inTarget = new Set(profile.channels.map(key));
 
-            const carried = onRadio.filter((c) => ModeProfiles.keepsAcrossModes(c.name) && !inTarget.has(key(c)));
+            const carried = onRadio.filter((c) => ModeProfiles.carriesInto(c.name, mode) && !inTarget.has(key(c)));
             if(carried.length > 0){
                 profile.channels = [
                     ...profile.channels,

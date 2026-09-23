@@ -684,6 +684,14 @@ split, so parts still fit. Typed messages get DRILL in front unless they already
 The decisions behind the emcomm settings, and their reasoning, are in
 [docs/EMCOMM-MODE.md](docs/EMCOMM-MODE.md).
 
+**A channel whose name says emcomm is carried between modes**, which is what keeps a net's
+own channel, or the bench's Emcomm Testing, on the radio across a switch. **A mode's own
+default channel is the exception**: `#Emcomm` and `#Emcomm-Training` belong to their modes
+rather than to the operator's own set, so normal mode comes back as the radio was rather than
+with a training channel left behind in it, and a drill never ends up holding the live incident
+channel. Nothing is lost either way — a channel not carried is written into the mode being
+left, key and all, so switching back restores it.
+
 **Converting** clears every companion, drops repeaters and rooms quiet for more than 90 days,
 sets the node name, transmit power, position and clock, optionally checks the radio settings,
 then announces the station and looks for repeaters. By default it also:

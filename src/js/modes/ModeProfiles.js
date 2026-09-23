@@ -159,6 +159,36 @@ class ModeProfiles {
         return KEEP_ACROSS_MODES.test(name ?? "");
     }
 
+    /**
+     * Whether a channel on the radio is carried into the mode being entered.
+     *
+     * A channel whose name says emcomm is carried, which is what keeps a net's
+     * own channel and the bench's Emcomm Testing across a switch. **A mode's own
+     * default channel is the exception**: `#Emcomm` and `#Emcomm-Training` are
+     * part of a mode's configuration rather than channels the operator built, so
+     * they stay with their mode. Normal mode comes back as the radio was, with no
+     * `#Emcomm-Training` slot left behind in it, and a drill does not end up
+     * holding the live incident channel.
+     *
+     * Nothing is lost either way: a channel not carried is written into the mode
+     * being left, key and all, so switching back restores it.
+     */
+    static carriesInto(name, targetMode) {
+
+        if(!this.keepsAcrossModes(name)){
+            return false;
+        }
+
+        const wanted = (name ?? "").trim().toLowerCase();
+        for(const [mode, channel] of Object.entries(DEFAULT_CHANNELS)){
+            if(mode !== targetMode && channel.trim().toLowerCase() === wanted){
+                return false;
+            }
+        }
+        return true;
+
+    }
+
     static defaultChannel(mode) {
         return DEFAULT_CHANNELS[mode] ?? null;
     }

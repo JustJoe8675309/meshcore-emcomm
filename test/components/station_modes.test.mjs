@@ -313,6 +313,41 @@ describe("switching a station's mode", () => {
         expect(text).not.toContain("Any other channel is cleared");
     });
 
+    it("does not bring a mode's own channel back into normal mode", async () => {
+        // it did, because the carry rule is "any channel with emcomm in its name".
+        // #Emcomm-Training is part of the training mode rather than a channel the
+        // operator built, so normal comes back as the radio was
+        ModeProfiles.saveProfile("training", await ModeProfiles.defaultEmcommProfile("training", NODE), NODE);
+        ModeProfiles.setCurrent("training", NODE);
+        Connection.getChannel.mockImplementation(async (idx) => answerFor({
+            0: { name: "Public", secret: "8b3387e9c5cdea6ac9e5edbaa115cd72" },
+            1: { name: "#Emcomm-Training", secret: "cd".repeat(16) },
+            2: { name: "Emcomm Testing", secret: "ef".repeat(16) },
+        }, idx));
+
+        await ModeSwitch.apply("normal");
+
+        const normal = ModeProfiles.profile("normal", NODE);
+        const names = normal.channels.map((c) => c.name);
+        expect(names).not.toContain("#Emcomm-Training");
+        // the net's own emcomm channel is still carried, which is the whole point
+        // of the rule
+        expect(names).toContain("Emcomm Testing");
+        // and the training mode keeps its channel for next time
+        expect(ModeProfiles.profile("training", NODE).channels.map((c) => c.name)).toContain("#Emcomm-Training");
+    });
+
+    it("keeps a live incident channel out of a drill, and the other way round", async () => {
+        ModeProfiles.setCurrent("live", NODE);
+        expect(ModeProfiles.carriesInto("#Emcomm", "training")).toBe(false);
+        expect(ModeProfiles.carriesInto("#Emcomm-Training", "live")).toBe(false);
+        // each into its own mode, and a channel the operator made either way
+        expect(ModeProfiles.carriesInto("#Emcomm", "live")).toBe(true);
+        expect(ModeProfiles.carriesInto("#Emcomm-Training", "training")).toBe(true);
+        expect(ModeProfiles.carriesInto("Emcomm Testing", "normal")).toBe(true);
+        expect(ModeProfiles.carriesInto("Public", "normal")).toBe(false);
+    });
+
     it("warns going back to normal with no backup to write", async () => {
         ModeProfiles.setCurrent("live", NODE);
         const result = await ModeSwitch.apply("normal");

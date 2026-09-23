@@ -264,6 +264,11 @@ being a variable.
       before writing anything and offers "Switch anyway", because the pre-EMCOMM
       backup is taken once and never again while away from normal mode: whatever
       is missing from it is missing for the whole incident.
+- [ ] **Normal mode comes back without the mode's own channel.** Switch into
+      Emcomm-Training, then back to Normal: `#Emcomm-Training` must not be in
+      Normal's channels, while an emcomm channel the operator made, such as Emcomm
+      Testing, must still be carried. The training profile keeps its own channel
+      for next time.
 - [ ] **The switch preview says what happens to the channels it is not keeping**,
       not just that the slots are cleared: an emcomm-named channel is carried over,
       and anything else is kept in the mode being left, with its key.
