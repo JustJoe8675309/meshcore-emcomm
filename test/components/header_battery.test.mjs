@@ -147,3 +147,28 @@ describe("what folds away on a narrow screen", () => {
     });
 
 });
+
+// The badge is sized in pixels, not rem.
+//
+// Everything else in that row scales with the root font, which is how 375px of
+// phone ran out. Measured at a 22px root: the badge took 81px and left the
+// station name 72; pinned to pixels it takes 53 and the name gets 101, enough for
+// the callsign. A readout is not a touch target, so holding it still costs
+// nothing — unlike the buttons, which were left alone deliberately.
+describe("the badge holds still while the text grows", () => {
+
+    it("is sized in pixels rather than rem", () => {
+        const badge = source.match(/v-if="GlobalState\.batteryPercentage"[\s\S]{0,1200}?<\/div>/)?.[0] ?? "";
+        expect(badge).toMatch(/text-\[12px\]/);
+        expect(badge).toMatch(/w-\[16px\] h-\[16px\]/);
+        // text-sm and size-5 are rem, and grow with the phone's font setting
+        expect(badge).not.toMatch(/\btext-sm\b/);
+        expect(badge).not.toMatch(/\bsize-5\b/);
+    });
+
+    it("leaves the buttons scaling, since a touch target should grow with the text", () => {
+        const buttons = source.match(/<button @click="disconnect"[\s\S]{0,200}?class="([^"]*)"/);
+        expect(buttons?.[1]).not.toMatch(/\[\d+px\]/);
+    });
+
+});

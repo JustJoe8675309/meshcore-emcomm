@@ -43,10 +43,16 @@
                      reading anything else, so it sits with the buttons where it
                      cannot be squeezed out by a long station name, and turns red
                      with a fifth of the battery left -->
-                <div v-if="GlobalState.batteryPercentage" class="my-auto flex items-center pr-1 text-sm font-semibold whitespace-nowrap"
+                <!-- sized in pixels rather than rem on purpose. Everything else in
+                     this row scales with the root font, which is how 375px of
+                     phone ran out in the first place: at a 22px root the badge
+                     alone took 81px and left the station name 72. Pinned, it takes
+                     53 and the name gets 101. A readout is not a touch target, so
+                     nothing is lost by holding it still -->
+                <div v-if="GlobalState.batteryPercentage" class="my-auto flex items-center pr-1 text-[12px] font-semibold whitespace-nowrap"
                      :class="batteryLow ? 'text-red-600' : 'text-gray-700'"
                      :title="`Battery ${GlobalState.batteryPercentage}%`">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="size-5 mr-0.5" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-[16px] h-[16px] mr-0.5 shrink-0" aria-hidden="true">
                         <rect x="1.5" y="7" width="17" height="10" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
                         <rect x="20" y="10.25" width="2.5" height="3.5" rx="1" fill="currentColor"/>
                         <rect x="3.25" y="8.75" :width="batteryFill" height="6.5" rx="1" fill="currentColor"/>
