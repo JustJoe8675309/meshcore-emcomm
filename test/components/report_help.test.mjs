@@ -216,11 +216,111 @@ describe("the note beside a field", () => {
 
 });
 
-describe("the crib sheet", () => {
+describe("finding a report in the crib sheet", () => {
 
-    function mountSheet(props = {}) {
-        return mount(ReportCribSheet, { props: { open: true, form: formById("medevac"), ...props } });
-    }
+    const mountSheet = (props = {}) => mount(ReportCribSheet, { props: { open: true, form: null, ...props } });
+
+    const entries = (wrapper) => wrapper.findAll(".crib-form button").map((b) => b.text());
+    const groupHeadings = (wrapper) => wrapper.findAll(".crib-form > div:first-child").map((d) => d.text());
+    const buttonSaying = (wrapper, text) => wrapper.findAll("button").find((b) => b.text().trim() === text);
+
+    it("opens as a list when no form is already in front of the operator", () => {
+        const wrapper = mountSheet();
+        // not the whole booklet: nobody looking for the 9-line wants 26 forms of
+        // field notes handed to them
+        expect(wrapper.text()).not.toContain("must be carried");
+        expect(entries(wrapper).length).toBe(ReportForms.length);
+    });
+
+    it("groups by where a form comes from, and says which are nobody's forms", () => {
+        const wrapper = mountSheet();
+        const headings = groupHeadings(wrapper).join("\n");
+
+        expect(headings).toContain("ICS");
+        expect(headings).toContain("ARRL");
+        expect(headings).toContain("National Weather Service");
+        expect(headings).toContain("Military formats");
+        // the honest one: these are formats this app defines, not published forms
+        expect(headings).toContain("Common practice");
+        expect(headings).toContain("Not published forms");
+    });
+
+    it("lists every form exactly once, whichever way it is grouped", async () => {
+        const wrapper = mountSheet();
+        for(const grouping of ["By organization", "By type"]){
+            await buttonSaying(wrapper, grouping).trigger("click");
+
+            const listed = entries(wrapper);
+            expect(listed.length).toBe(ReportForms.length);
+            for(const form of ReportForms){
+                expect(listed.filter((text) => text.includes(form.name)).length,
+                    `${form.name} grouped ${grouping}`).toBe(1);
+            }
+        }
+    });
+
+    it("groups by what kind of thing it is, for the operator who arrives that way", async () => {
+        const wrapper = mountSheet();
+        await buttonSaying(wrapper, "By type").trigger("click");
+        const headings = groupHeadings(wrapper).join("\n");
+
+        expect(headings).toContain("Weather");
+        expect(headings).toContain("Message traffic");
+        expect(headings).toContain("Tasking");
+        // and the organization becomes the tag instead
+        const weather = entries(wrapper).find((text) => text.includes("SKYWARN"));
+        expect(weather).toContain("National Weather Service");
+    });
+
+    it("shows nothing but the form that was pressed", async () => {
+        const wrapper = mountSheet();
+        await wrapper.findAll(".crib-form button")
+            .find((b) => b.text().includes("9-Line MEDEVAC Request"))
+            .trigger("click");
+
+        expect(wrapper.text()).toContain("5. Patients by type");
+        expect(wrapper.text()).toContain("must be carried");
+        // not the next form down, which is what the booklet gave them
+        expect(wrapper.text()).not.toContain("Spotter ID");
+        expect(wrapper.findAll(".crib-form").length).toBe(1);
+    });
+
+    it("goes back to the list without closing", async () => {
+        const wrapper = mountSheet();
+        await wrapper.findAll(".crib-form button").find((b) => b.text().includes("SALUTE")).trigger("click");
+        expect(wrapper.text()).toContain("Size");
+
+        await buttonSaying(wrapper, "The list").trigger("click");
+        expect(entries(wrapper).length).toBe(ReportForms.length);
+        expect(wrapper.emitted("close")).toBeFalsy();
+    });
+
+    it("opens straight on the form the operator was filling in", () => {
+        const wrapper = mountSheet({ form: formById("medevac") });
+
+        expect(wrapper.text()).toContain("9-Line MEDEVAC Request");
+        expect(wrapper.text()).toContain("must be carried");
+        // and the list is still one press away, since they may want a different one
+        expect(buttonSaying(wrapper, "The list")).toBeTruthy();
+    });
+
+    it("comes back to the form in front of them each time it is opened", async () => {
+        const wrapper = mountSheet({ form: formById("medevac") });
+        await buttonSaying(wrapper, "The list").trigger("click");
+        expect(entries(wrapper).length).toBe(ReportForms.length);
+
+        await wrapper.setProps({ open: false });
+        await wrapper.setProps({ open: true });
+        expect(wrapper.text()).toContain("9-Line MEDEVAC Request");
+        expect(wrapper.text()).toContain("must be carried");
+    });
+
+});
+
+describe("the crib sheet itself", () => {
+
+    const mountSheet = (props = {}) => mount(ReportCribSheet, { props: { open: true, form: formById("medevac"), ...props } });
+    const buttonSaying = (wrapper, text) => wrapper.findAll("button").find((b) => b.text().trim() === text);
 
     it("lists the form's fields with what goes in each", () => {
         const wrapper = mountSheet();
@@ -242,26 +342,13 @@ describe("the crib sheet", () => {
     });
 
     it("prints the whole booklet when asked, a page per form", async () => {
-        const wrapper = mountSheet();
-        const all = wrapper.findAll("button").find((b) => b.text().includes("All "));
+        const wrapper = mountSheet({ form: null });
 
-        await all.trigger("click");
+        await buttonSaying(wrapper, `All ${ReportForms.length} forms`).trigger("click");
         expect(wrapper.findAll(".crib-form").length).toBe(ReportForms.length);
-        // every form named, so nothing is silently left out of the binder
         for(const form of ReportForms){
             expect(wrapper.text()).toContain(form.name);
         }
-    });
-
-    it("opens on the form in front of the operator, every time", async () => {
-        const wrapper = mountSheet({ open: false });
-        await wrapper.setProps({ open: true });
-        await wrapper.findAll("button").find((b) => b.text().includes("All ")).trigger("click");
-        expect(wrapper.vm.showAll).toBe(true);
-
-        await wrapper.setProps({ open: false });
-        await wrapper.setProps({ open: true });
-        expect(wrapper.vm.showAll).toBe(false);
     });
 
     it("prints itself and nothing else", () => {
@@ -269,7 +356,7 @@ describe("the crib sheet", () => {
         vi.stubGlobal("print", printed);
 
         const wrapper = mountSheet();
-        wrapper.findAll("button").find((b) => b.text().trim() === "Print").trigger("click");
+        buttonSaying(wrapper, "Print").trigger("click");
         expect(printed).toHaveBeenCalled();
         vi.unstubAllGlobals();
 
@@ -285,12 +372,14 @@ describe("the crib sheet", () => {
         expect(css).toMatch(/body \*\s*\{\s*visibility: hidden/);
     });
 
-    it("keeps its own buttons off the paper", () => {
-        const wrapper = mountSheet();
-        const footer = wrapper.find(".print-hide");
-        expect(footer.exists()).toBe(true);
-        expect(footer.text()).toContain("Print");
-        expect(footer.text()).toContain("Close");
+    it("keeps its own buttons and the grouping switch off the paper", () => {
+        const wrapper = mountSheet({ form: null });
+        const hidden = wrapper.findAll(".print-hide").map((el) => el.text()).join("\n");
+
+        expect(hidden).toContain("Print");
+        expect(hidden).toContain("Close");
+        // the index prints as a contents page, so its group switch has to go
+        expect(hidden).toContain("By organization");
     });
 
 });
@@ -318,19 +407,25 @@ describe("the crib sheet with no radio", () => {
         expect(wrapper.text()).toContain("Print it before you need it");
     });
 
-    it("opens the booklet, since no form is open to start from", async () => {
+    it("opens the list, since no form is open to start from", async () => {
         const wrapper = mountConnect();
         await wrapper.findAll("button").find((b) => b.text().trim() === "Report crib sheet").trigger("click");
 
-        expect(wrapper.findAll(".crib-form").length).toBe(ReportForms.length);
+        // every form, as an index rather than as 26 forms of field notes
+        expect(wrapper.findAll(".crib-form button").length).toBe(ReportForms.length);
         expect(wrapper.text()).toContain("9-Line MEDEVAC Request");
+        expect(wrapper.text()).not.toContain("must be carried");
     });
 
-    it("does not offer to show what is already on screen", () => {
-        // with no form there is nothing for "All 26 forms" to switch to
-        const wrapper = mount(ReportCribSheet, { props: { open: true, form: null } });
-        expect(wrapper.findAll("button").some((b) => b.text().includes("All "))).toBe(false);
-        expect(wrapper.text()).toContain("Report crib sheet");
+    it("reaches one form's details in two presses from a cold start", async () => {
+        const wrapper = mountConnect();
+        await wrapper.findAll("button").find((b) => b.text().trim() === "Report crib sheet").trigger("click");
+        await wrapper.findAll(".crib-form button")
+            .find((b) => b.text().includes("9-Line MEDEVAC Request"))
+            .trigger("click");
+
+        expect(wrapper.text()).toContain("must be carried");
+        expect(wrapper.findAll(".crib-form").length).toBe(1);
     });
 
     it("still connects a radio, which is what that screen is for", () => {

@@ -21,10 +21,60 @@
  */
 import ReportFieldHelp from "./ReportFieldHelp.js";
 
+/**
+ * Where a form comes from, in the order the crib sheet lists them.
+ *
+ * Twenty six forms is no way to find one, so the sheet opens as an index grouped
+ * by this. Attributed honestly: a numbered ICS form says ICS, and a format this
+ * app made up for a job that keeps coming up says so rather than borrowing
+ * somebody's authority for it.
+ */
+const SOURCES = [
+    {
+        id: "ics",
+        label: "ICS",
+        note: "Numbered FEMA and NIMS forms, cut down to what fits on the air.",
+    },
+    {
+        id: "arrl",
+        label: "ARRL",
+        note: "National Traffic System formats, as the traffic nets handle them.",
+    },
+    {
+        id: "nws",
+        label: "National Weather Service",
+        note: "What a SKYWARN spotter reports, and the measurements the office wants with it.",
+    },
+    {
+        id: "military",
+        label: "Military formats",
+        note: "In common use by emergency communications groups, whatever their origin.",
+    },
+    {
+        id: "common",
+        label: "Common practice",
+        note: "Not published forms: formats this app defines for jobs that keep coming up.",
+    },
+];
+
+/** What kind of thing a form is, in the order the crib sheet lists them. */
+const KINDS = [
+    { id: "message", label: "Message traffic" },
+    { id: "request", label: "Requests" },
+    { id: "status", label: "Status reports" },
+    { id: "observation", label: "Field observation" },
+    { id: "weather", label: "Weather" },
+    { id: "tasking", label: "Tasking" },
+    { id: "net", label: "Net control" },
+    { id: "checkin", label: "Check in and out" },
+];
+
 
 const ReportForms = [
     {
         id: "ics213",
+        source: "ics",
+        kind: "message",
         name: "ICS-213 General Message",
         description: "General message traffic between stations.",
         // first line of the sent message, so receiving operators can identify the form
@@ -81,6 +131,8 @@ const ReportForms = [
     },
     {
         id: "checkin",
+        source: "ics",
+        kind: "checkin",
         name: "ICS-211 ARES/RACES Check-In",
         description: "Register your station with net control.",
         header: "CHECK-IN",
@@ -161,6 +213,8 @@ const ReportForms = [
     },
     {
         id: "sitrep",
+        source: "ics",
+        kind: "status",
         name: "ICS-209 SITREP / Status Report",
         description: "Situation report from the field.",
         header: "SITREP",
@@ -217,6 +271,8 @@ const ReportForms = [
     },
     {
         id: "ics213rr",
+        source: "ics",
+        kind: "request",
         name: "ICS-213RR Resource Request",
         description: "Request personnel, equipment or supplies.",
         header: "ICS-213RR",
@@ -278,6 +334,8 @@ const ReportForms = [
     },
     {
         id: "ics213reply",
+        source: "ics",
+        kind: "message",
         name: "ICS-213 Reply",
         description: "Answer an ICS-213 message, quoting what it was about.",
         header: "ICS-213 REPLY",
@@ -295,6 +353,8 @@ const ReportForms = [
 
     {
         id: "checkout",
+        source: "common",
+        kind: "checkin",
         name: "Net Check-Out",
         description: "Leave the net and release your station.",
         header: "CHECK-OUT",
@@ -308,6 +368,8 @@ const ReportForms = [
 
     {
         id: "netsummary",
+        source: "common",
+        kind: "net",
         name: "Net Traffic Summary",
         description: "Net control summary of a session.",
         header: "NET-SUM",
@@ -323,6 +385,8 @@ const ReportForms = [
 
     {
         id: "netopen",
+        source: "common",
+        kind: "net",
         name: "Net Activation",
         description: "Announce that a net is open and how to check in.",
         header: "NET-OPEN",
@@ -340,6 +404,8 @@ const ReportForms = [
 
     {
         id: "welfare",
+        source: "arrl",
+        kind: "message",
         name: "Health & Welfare",
         description: "Pass an enquiry or reply about an individual.",
         header: "WELFARE",
@@ -355,6 +421,8 @@ const ReportForms = [
 
     {
         id: "shelter",
+        source: "common",
+        kind: "status",
         name: "Shelter Status",
         description: "Report shelter population, capacity and needs.",
         header: "SHELTER",
@@ -377,6 +445,8 @@ const ReportForms = [
 
     {
         id: "aidstation",
+        source: "common",
+        kind: "status",
         name: "Aid Station / Checkpoint Status",
         description: "How a station on the course is doing: participants, supplies and medical.",
         header: "AID STN",
@@ -394,6 +464,8 @@ const ReportForms = [
 
     {
         id: "participant",
+        source: "common",
+        kind: "status",
         name: "Participant Status",
         description: "What became of one participant, by number: passed, dropped, or taken somewhere.",
         header: "PARTICIPANT",
@@ -410,6 +482,8 @@ const ReportForms = [
 
     {
         id: "sag",
+        source: "common",
+        kind: "request",
         name: "SAG / Transport Request",
         description: "Ask for a vehicle: where, how many, and how urgent.",
         header: "SAG",
@@ -426,6 +500,8 @@ const ReportForms = [
 
     {
         id: "sweep",
+        source: "common",
+        kind: "status",
         name: "Course Sweep / Last Participant",
         description: "The last participant is past, or the course behind you is clear.",
         header: "SWEEP",
@@ -442,6 +518,8 @@ const ReportForms = [
 
     {
         id: "damage",
+        source: "common",
+        kind: "observation",
         name: "Damage Assessment",
         description: "Report observed damage at a location.",
         header: "DAMAGE",
@@ -457,6 +535,8 @@ const ReportForms = [
 
     {
         id: "route",
+        source: "common",
+        kind: "observation",
         name: "Road / Route Status",
         description: "Report whether a route is passable.",
         header: "ROUTE",
@@ -472,6 +552,8 @@ const ReportForms = [
 
     {
         id: "comms",
+        source: "common",
+        kind: "status",
         name: "Communications Status",
         description: "Report a repeater, mesh node or link up or down.",
         header: "COMMS",
@@ -490,6 +572,8 @@ const ReportForms = [
 
     {
         id: "position",
+        source: "common",
+        kind: "status",
         name: "Position / Station Report",
         description: "Report where your station is and whether it is operational.",
         header: "POSITION",
@@ -508,6 +592,8 @@ const ReportForms = [
 
     {
         id: "skywarn",
+        source: "nws",
+        kind: "weather",
         name: "SKYWARN Spotter Report",
         description: "Severe weather observation for the NWS.",
         header: "SKYWARN",
@@ -524,6 +610,8 @@ const ReportForms = [
 
     {
         id: "salute",
+        source: "military",
+        kind: "observation",
         name: "SALUTE Spot Report",
         description: "Structured report of observed activity.",
         header: "SALUTE",
@@ -539,6 +627,8 @@ const ReportForms = [
 
     {
         id: "winterwx",
+        source: "nws",
+        kind: "weather",
         name: "Winter Weather Report",
         description: "Snow, ice and visibility, in the measurements the NWS asks for.",
         header: "WINTER WX",
@@ -556,6 +646,8 @@ const ReportForms = [
 
     {
         id: "flood",
+        source: "nws",
+        kind: "weather",
         name: "Flood / River Stage Report",
         description: "Water where it should not be, how deep, and whether it is rising.",
         header: "FLOOD",
@@ -575,6 +667,8 @@ const ReportForms = [
 
     {
         id: "radiogram",
+        source: "arrl",
+        kind: "message",
         name: "ARRL Radiogram (NTS)",
         description: "Formal traffic in National Traffic System format.",
         header: "RADIOGRAM",
@@ -597,6 +691,8 @@ const ReportForms = [
 
     {
         id: "fivews",
+        source: "common",
+        kind: "tasking",
         name: "5Ws Briefing",
         description: "Assigns a task or mission to a person or team: who, what, when, where and why.",
         header: "5WS BRIEFING",
@@ -616,6 +712,8 @@ const ReportForms = [
 
     {
         id: "opord",
+        source: "military",
+        kind: "tasking",
         name: "OPORD (5 Paragraph Operations Order)",
         description: "The Army five paragraph operations order, with Hazards in place of enemy forces. Only the mission is required; blank parts are sent as a hyphen.",
         header: "OPORD",
@@ -644,6 +742,8 @@ const ReportForms = [
 
     {
         id: "medevac",
+        source: "military",
+        kind: "request",
         name: "9-Line MEDEVAC Request",
         description: "Medical evacuation request in the standard nine line format.",
         header: "9-LINE",
@@ -673,3 +773,4 @@ for(const form of ReportForms){
 }
 
 export default ReportForms;
+export { SOURCES, KINDS };

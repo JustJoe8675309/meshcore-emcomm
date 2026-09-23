@@ -138,11 +138,17 @@ refuses a field with no note, a note for a field that no longer exists, a dropdo
 nothing explains, and a note that says no more than its label already did.
 
 **Crib sheet.** The same notes on paper, from the link beside the form's description, and from a
-link under the connect buttons so it can be printed with no radio attached: the form's
-fields with what goes in each, or all 26 as a booklet with a page each, and a Print button. A
-binder is what gets read at a muster point, by people whose phone is in a pocket or being used as
-the radio's screen. Printing hides the rest of the app rather than printing the tabs and the
-header with it.
+link under the connect buttons so it can be printed with no radio attached. A binder is what gets
+read at a muster point, by people whose phone is in a pocket or being used as the radio's screen.
+Printing hides the rest of the app rather than printing the tabs and the header with it.
+
+It opens on the form the operator already has open. With nothing chosen it opens as an index
+instead, because 26 forms is no way to find one: grouped by **where a form comes from** — ICS,
+ARRL, the National Weather Service, military formats, and "common practice" for the ones this app
+defines itself rather than borrowing anyone's authority for — or by **what kind of thing it is**,
+since operators arrive from both directions ("the ICS one", "the one for a road"). Whichever way
+it is grouped, the other facet shows as a tag, and one press gives that form's fields and nothing
+else. From there, Print takes the form, the booklet, or the index as a contents page.
 
 Reports are sent as plain text so any stock MeshCore client can read them. A report renders as a
 short tagged block, and fields left blank are dropped rather than sent as empty tags:

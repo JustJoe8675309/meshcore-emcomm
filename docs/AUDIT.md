@@ -165,8 +165,14 @@ rather than an error.
       split across two pages. Print to PDF is enough to check it. **Printed to PDF
       23 Sep** for one form; worth a glance at that PDF for the two details above.
 - [ ] **The crib sheet is reachable with no radio**, from the link under the connect
-      buttons, and opens as the booklet. The operator had to connect a node to reach
+      buttons, and opens as the index. The operator had to connect a node to reach
       it, which is backwards: printing a binder is a desk job the night before.
+- [ ] **The index finds a form in two presses.** Open it cold, press the 9-line, and
+      its fields appear with nothing else. "The list" goes back without closing.
+- [ ] **Both groupings list all 26 forms**, once each: by organization and by type.
+      A form missing from one of them is a form nobody can find that way.
+- [ ] **Opened from a form, it shows that form**, not the index — and "The list" is
+      still there for an operator who wants a different one.
 - [ ] **The booklet prints a page per form**, all 26, each starting on a fresh page.
 
 ### Position requests

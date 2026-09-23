@@ -3,7 +3,7 @@
 // a select with no options, a field type the renderer does not handle. None of that
 // is a syntax error, so nothing else would catch it.
 
-import ReportForms from "../src/js/reports/ReportForms.js";
+import ReportForms, { SOURCES, KINDS } from "../src/js/reports/ReportForms.js";
 import ReportEncoder from "../src/js/reports/ReportEncoder.js";
 
 const FIELD_TYPES = ["text", "textarea", "select", "dtg", "check"];
@@ -38,6 +38,10 @@ for (const form of ReportForms) {
     if (!form.name) problems.push("no name");
     if (!form.description) problems.push("no description");
     if (!form.header) problems.push("no header");
+    // the crib sheet's index groups by these, so a form without them is a form
+    // nobody can find
+    if (!SOURCES.some((s) => s.id === form.source)) problems.push(`unknown source ${form.source}`);
+    if (!KINDS.some((k) => k.id === form.kind)) problems.push(`unknown kind ${form.kind}`);
     if (!Array.isArray(form.fields) || form.fields.length === 0) problems.push("no fields");
 
     const ids = (form.fields ?? []).map((f) => f.id);
