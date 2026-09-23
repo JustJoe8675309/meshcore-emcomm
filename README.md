@@ -467,6 +467,17 @@ the record, changes bit 0, and sends every other field back untouched. Favourite
 the top of the contacts tab and of every picker, with the lifting done inside
 `SearchableSelect` so no picker can be forgotten.
 
+**A contact read lasts as long as the radio keeps answering.** It used to be capped at 20
+seconds from the moment it started, whether contacts were arriving or not. Node 2's roster
+grew to 198 and its reads stopped dead at 131, twice in a row and at the same point every
+pass: over Bluetooth a contact costs several notifications and 198 of them do not fit in 20
+seconds. The merge that recovers dropped contacts gave up too, because a pass cut off in the
+same place adds nobody new. A third of the roster was missing from the app, and since a mode
+switch now refuses to write a way home short of what the radio holds, it blocked that as well.
+The read now ends when the frames stop — a second and a half of quiet — with a 90 second cap
+for a radio that never stops trickling, and the 20 seconds kept as the wait for the first
+contact of all, which is what tells a silent radio from a slow one.
+
 **A channel read is checked against the slot it asked for.** `meshcore.js` resolves a
 channel read with whatever channel info arrives next, whichever slot it belongs to, so a read
 that times out and answers late hands its reply to the following read and every slot after it

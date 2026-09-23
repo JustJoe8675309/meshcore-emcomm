@@ -9,7 +9,7 @@
 // It is a query to the attached device, not a transmission, so it costs no
 // airtime and nothing on the mesh hears it.
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import Connection from "../../src/js/Connection.js";
 import GlobalState from "../../src/js/GlobalState.js";
 
@@ -173,6 +173,104 @@ describe("loading contacts from a lossy link", () => {
     it("refuses when there is no radio", async () => {
         GlobalState.connection = null;
         await expect(Connection.loadContacts()).rejects.toThrow(Connection.DISCONNECTED);
+    });
+
+});
+
+// A roster that takes longer than any fixed budget.
+//
+// Node 2's list grew to 198 and its reads stopped dead at 131, twice in a row and
+// at the same place every pass: the read was capped at 20 seconds from its start
+// whether contacts were arriving or not, and over Bluetooth a contact costs
+// several notifications. The merge loop then gave up as well, because a second
+// pass cut off in the same place adds nobody. A third of the roster was missing,
+// and with the way home now refusing to be written short, that blocked the mode
+// switch too.
+describe("a read the radio is still answering", () => {
+
+    const timings = {
+        max: Connection.CONTACT_READ_MAX_MILLIS,
+        first: Connection.CONTACT_READ_TIMEOUT_MILLIS,
+        quiet: Connection.CONTACT_READ_QUIET_MILLIS,
+    };
+
+    beforeEach(() => {
+        GlobalState.contacts = [];
+        GlobalState.contactsAnnounced = null;
+        GlobalState.contactsMissing = 0;
+    });
+
+    afterEach(() => {
+        // these tests shorten the real timings, and the next test is entitled to
+        // the shipped ones
+        Connection.CONTACT_READ_MAX_MILLIS = timings.max;
+        Connection.CONTACT_READ_TIMEOUT_MILLIS = timings.first;
+        Connection.CONTACT_READ_QUIET_MILLIS = timings.quiet;
+    });
+
+    // a radio that trickles its contacts out slower than the old budget allowed
+    function slowRadio(total, perTick, tickMillis) {
+        const all = Array.from({ length: total }, (_, i) => contact(i));
+        const listeners = {};
+        const emit = (code, value) => (listeners[code] ?? []).slice().forEach((cb) => cb(value));
+        return {
+            on(event, cb) { (listeners[event] ??= []).push(cb); },
+            off(event, cb) { listeners[event] = (listeners[event] ?? []).filter((f) => f !== cb); },
+            async sendCommandGetContacts() {
+                emit(2, { count: total });
+                let sent = 0;
+                const tick = () => {
+                    for(let i = 0; i < perTick && sent < total; i++){
+                        emit(3, all[sent++]);
+                    }
+                    if(sent < total){
+                        setTimeout(tick, tickMillis);
+                    } else {
+                        emit(4, {});
+                    }
+                };
+                setTimeout(tick, tickMillis);
+            },
+        };
+    }
+
+    it("keeps reading while contacts are still arriving, however long the list is", async () => {
+        Connection.CONTACT_READ_MAX_MILLIS = 90000;
+        Connection.CONTACT_READ_TIMEOUT_MILLIS = 300;
+        GlobalState.connection = slowRadio(60, 2, 20);
+
+        await Connection.loadContacts();
+
+        expect(GlobalState.contacts).toHaveLength(60);
+        expect(GlobalState.contactsMissing).toBe(0);
+    });
+
+    it("still gives up on a radio that answers nothing at all", async () => {
+        Connection.CONTACT_READ_TIMEOUT_MILLIS = 200;
+        const listeners = {};
+        GlobalState.connection = {
+            on(event, cb) { (listeners[event] ??= []).push(cb); },
+            off(event, cb) { listeners[event] = (listeners[event] ?? []).filter((f) => f !== cb); },
+            async sendCommandGetContacts() { /* silence */ },
+        };
+
+        const started = Date.now();
+        await Connection.loadContacts();
+
+        expect(GlobalState.contacts).toHaveLength(0);
+        expect(Date.now() - started).toBeLessThan(5000);
+    });
+
+    it("stops soon after the frames stop, rather than holding the link open", async () => {
+        Connection.CONTACT_READ_QUIET_MILLIS = 150;
+        Connection.CONTACT_READ_MAX_MILLIS = 90000;
+        GlobalState.connection = fakeRadio(10, [[]], { dropEndMarkerOnPass: [0] });
+
+        const started = Date.now();
+        await Connection.loadContacts();
+
+        expect(GlobalState.contacts).toHaveLength(10);
+        expect(Date.now() - started).toBeLessThan(3000);
     });
 
 });

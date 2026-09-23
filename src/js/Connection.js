@@ -438,7 +438,9 @@ class Connection {
         // exactly as much a reply as the end marker
         return await this.exclusive(
             () => this.readContactsStream(connection),
-            this.CONTACT_READ_TIMEOUT_MILLIS + this.ACK_TIMEOUT_MILLIS,
+            // the queue must not pull the rug from under a read that is still
+            // getting answers: the stream decides when it is done
+            this.CONTACT_READ_MAX_MILLIS + this.ACK_TIMEOUT_MILLIS,
         );
     }
 
@@ -457,21 +459,33 @@ class Connection {
 
             await connection.sendCommandGetContacts();
 
-            const deadline = Date.now() + this.CONTACT_READ_TIMEOUT_MILLIS;
+            const hardDeadline = Date.now() + this.CONTACT_READ_MAX_MILLIS;
             let lastCount = -1;
             let quietSince = Date.now();
 
-            while(!ended && Date.now() < deadline){
+            while(!ended && Date.now() < hardDeadline){
 
                 await Utils.sleep(this.CONTACT_READ_POLL_MILLIS);
 
-                // finish early when the frames have stopped coming: without the
-                // end marker there is nothing else to wait for, and holding the
-                // full timeout on every pass would make a lossy link crawl
+                // progress keeps the read alive. A big roster over Bluetooth takes
+                // longer than any fixed budget worth setting, and cutting it off
+                // mid stream loses the same contacts on every pass
                 if(contacts.size !== lastCount){
                     lastCount = contacts.size;
                     quietSince = Date.now();
-                } else if(contacts.size > 0 && Date.now() - quietSince > this.CONTACT_READ_QUIET_MILLIS){
+                    continue;
+                }
+
+                // finish when the frames have stopped coming: without the end
+                // marker there is nothing else to wait for, and holding on would
+                // make a lossy link crawl
+                const quietFor = Date.now() - quietSince;
+                if(contacts.size === 0){
+                    // nothing at all yet, so the radio may not answer this command
+                    if(quietFor > this.CONTACT_READ_TIMEOUT_MILLIS){
+                        break;
+                    }
+                } else if(quietFor > this.CONTACT_READ_QUIET_MILLIS){
                     break;
                 }
 
@@ -641,9 +655,26 @@ class Connection {
             : Math.max(0, GlobalState.contactsAnnounced - GlobalState.contacts.length);
     }
 
-    // how long one contact read may take before it is abandoned and asked again
+    // how long to wait for the first contact of a read before giving up on it
     static CONTACT_READ_TIMEOUT_MILLIS = 20000;
     static CONTACT_READ_POLL_MILLIS = 100;
+
+    /**
+     * The longest one contact read may run while contacts are still arriving.
+     *
+     * This used to be the 20 seconds above, counted from the start of the read
+     * whether contacts were arriving or not. Node 2's roster grew to 198 and its
+     * reads stopped dead at 131 twice in a row, every pass cut off at the same
+     * place: over Bluetooth a contact costs several notifications, and 198 of
+     * them do not fit in 20 seconds. The merge loop then gave up too, because a
+     * second pass that ends at the same point adds nobody.
+     *
+     * A third of the roster missing is bad on its own, and worse than that it
+     * blocks a mode switch, which now refuses to write a way home short of what
+     * the radio holds. So the read runs as long as the radio keeps answering, and
+     * the quiet rule below is what ends it.
+     */
+    static CONTACT_READ_MAX_MILLIS = 90000;
 
     // how long without a new contact counts as the list having finished, when the
     // end marker never arrived
