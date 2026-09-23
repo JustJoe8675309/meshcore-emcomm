@@ -275,6 +275,11 @@ being a variable.
       before writing anything and offers "Switch anyway", because the pre-EMCOMM
       backup is taken once and never again while away from normal mode: whatever
       is missing from it is missing for the whole incident.
+- [ ] **A position answering choice survives a round trip.** Tick a channel and a
+      room under "who answers position requests" while in Normal, switch to
+      Emcomm-Training and back, and both must still be ticked. Node 2 lost both
+      silently: the tick boxes wrote the live settings only, and the switch wrote
+      the mode's own (empty) choice over them.
 - [ ] **One of each channel after a round trip.** Read the slots before switching
       and again after coming home: the same channels, at the same slot numbers, and
       no channel twice. Node 2's eight channels at slots 0, 1, 4, 7, 8, 10, 11 and

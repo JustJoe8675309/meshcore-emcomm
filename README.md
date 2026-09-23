@@ -730,6 +730,14 @@ with a training channel left behind in it, and a drill never ends up holding the
 channel. Nothing is lost either way — a channel not carried is written into the mode being
 left, key and all, so switching back restores it.
 
+**A choice about who answers position requests belongs to the mode.** The tick boxes write
+the live per-node settings, which is what the position service reads, and a mode switch writes
+those same settings from the mode's profile — so a choice made anywhere but the mode settings
+tab was undone by the next switch with nothing said. Node 2 had the test room ticked and
+channel 13 marked, and a round trip through Emcomm-Training left both empty. The tick boxes
+now record into the mode in use as well: channels by name, because the slot a channel sits in
+differs between modes, and rooms by key, which does not.
+
 **Coming home, the backup owns the channels.** It records the slot each channel was in, and
 slot numbers are part of "the radio exactly as it was", so the switch clears the slots and the
 restore puts them back where they were. Writing the mode profile's list from slot 0 as well is

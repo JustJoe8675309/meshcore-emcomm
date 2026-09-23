@@ -904,3 +904,90 @@ describe("the channels on the way home", () => {
     });
 
 });
+
+// Who answers position requests, and where that choice lives.
+//
+// The tick boxes in settings write the live per-node settings, which is what
+// PositionService reads. A mode switch writes those same settings from the mode's
+// profile, so a choice made anywhere but the mode settings tab was undone by the
+// next switch without a word. Node 2 had the test room ticked and channel 13
+// marked; a round trip through Emcomm-Training left both empty.
+describe("remembering who answers position requests", () => {
+
+    const NODE_KEY = new Uint8Array(32).fill(0x39);
+    const NODE_HEX = Array.from(NODE_KEY).map((b) => b.toString(16).padStart(2, "0")).join("");
+    const ROOM_HEX = "87" + "0".repeat(62);
+
+    beforeEach(() => {
+        window.localStorage.clear();
+        GlobalState.selfInfo = { name: "KJ5HBN-EMCOMM", publicKey: NODE_KEY };
+        GlobalState.channels = [
+            { idx: 0, name: "Public", secret: new Uint8Array(16) },
+            { idx: 13, name: "Emcomm Testing", secret: new Uint8Array(16).fill(1) },
+        ];
+        GlobalState.contacts = [
+            { publicKey: Utils.hexToBytes(ROOM_HEX), advName: "Joe test room server", type: 3 },
+        ];
+        ModeProfiles.saveProfile("normal", {
+            ...ModeProfiles.blank(),
+            channels: [
+                { name: "Public", secret: "00".repeat(16), answerPositions: false },
+                { name: "Emcomm Testing", secret: "01".repeat(16), answerPositions: false },
+            ],
+        }, NODE_HEX);
+        ModeProfiles.setCurrent("normal", NODE_HEX);
+    });
+
+    afterEach(() => {
+        window.localStorage.clear();
+        GlobalState.selfInfo = null;
+        GlobalState.channels = [];
+        GlobalState.contacts = [];
+    });
+
+    it("writes a marked channel into the mode in use, by name rather than by slot", async () => {
+        // the slot a channel sits in differs between modes, the name does not
+        ModeProfiles.noteAnswerChoices({ markedChannels: [13] }, NODE_HEX);
+
+        const channels = ModeProfiles.profile("normal", NODE_HEX).channels;
+        expect(channels.find((c) => c.name === "Emcomm Testing").answerPositions).toBe(true);
+        expect(channels.find((c) => c.name === "Public").answerPositions).toBe(false);
+    });
+
+    it("clears the mark when it is unticked", async () => {
+        ModeProfiles.noteAnswerChoices({ markedChannels: [13] }, NODE_HEX);
+        ModeProfiles.noteAnswerChoices({ markedChannels: [] }, NODE_HEX);
+
+        expect(ModeProfiles.profile("normal", NODE_HEX).channels.every((c) => c.answerPositions !== true)).toBe(true);
+    });
+
+    it("keeps a room the profile has never held, with its name", async () => {
+        ModeProfiles.noteAnswerChoices({ markedRooms: [ROOM_HEX] }, NODE_HEX);
+
+        const rooms = ModeProfiles.profile("normal", NODE_HEX).rooms;
+        expect(rooms).toHaveLength(1);
+        expect(rooms[0]).toMatchObject({ keyHex: ROOM_HEX, name: "Joe test room server", answerPositions: true });
+    });
+
+    it("records answering unasked as well", async () => {
+        ModeProfiles.noteAnswerChoices({ autoAnswer: true }, NODE_HEX);
+        expect(ModeProfiles.profile("normal", NODE_HEX).autoAnswerPositions).toBe(true);
+    });
+
+    it("leaves a mode with nothing stored alone, since a switch would not overwrite it", async () => {
+        ModeProfiles.setCurrent("live", NODE_HEX);
+        expect(ModeProfiles.noteAnswerChoices({ markedChannels: [13] }, NODE_HEX)).toBe(false);
+        expect(ModeProfiles.profile("live", NODE_HEX)).toBe(null);
+    });
+
+    it("survives the round trip that used to lose it", async () => {
+        // the choice is in the profile, so the switch writes it back rather than
+        // over it
+        ModeProfiles.noteAnswerChoices({ markedChannels: [13], markedRooms: [ROOM_HEX] }, NODE_HEX);
+
+        const profile = ModeProfiles.profile("normal", NODE_HEX);
+        expect(profile.channels.filter((c) => c.answerPositions).map((c) => c.name)).toEqual(["Emcomm Testing"]);
+        expect(profile.rooms.filter((r) => r.answerPositions).map((r) => r.keyHex)).toEqual([ROOM_HEX]);
+    });
+
+});

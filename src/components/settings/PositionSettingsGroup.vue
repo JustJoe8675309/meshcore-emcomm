@@ -68,6 +68,7 @@ import { Constants } from "@liamcottle/meshcore.js";
 import GlobalState from "../../js/GlobalState.js";
 import Utils from "../../js/Utils.js";
 import PositionService from "../../js/position/PositionService.js";
+import ModeProfiles from "../../js/modes/ModeProfiles.js";
 
 export default {
     name: 'PositionSettingsGroup',
@@ -81,6 +82,9 @@ export default {
                 marked.delete(idx);
             }
             PositionService.saveSettings({ ...settings, markedChannels: [...marked] });
+            // and into the mode in use, or the next switch writes the mode's own
+            // choice over the top of this one without saying so
+            ModeProfiles.noteAnswerChoices({ markedChannels: [...marked] });
         },
         toggleRoom(keyHex, on) {
             const settings = PositionService.settings();
@@ -91,9 +95,11 @@ export default {
                 marked.delete(keyHex);
             }
             PositionService.saveSettings({ ...settings, markedRooms: [...marked] });
+            ModeProfiles.noteAnswerChoices({ markedRooms: [...marked] });
         },
         setAutoAnswer(on) {
             PositionService.saveSettings({ ...PositionService.settings(), autoAnswer: on });
+            ModeProfiles.noteAnswerChoices({ autoAnswer: on });
         },
     },
     computed: {
