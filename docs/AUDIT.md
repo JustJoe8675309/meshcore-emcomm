@@ -194,6 +194,10 @@ in settings on the one being asked.
 - [ ] **Map links.** On an Android phone, tap a position's degrees and its MGRS
       reference: each opens the map app, or asks which one, with a pin named for the
       station. On an iPhone, Apple Maps. On Windows, OpenStreetMap in a new tab.
+      Emulating a phone user agent proves only which link is chosen, never that the
+      phone honours it, so this one needs the phone. It needs the laptop to release
+      that radio first as well: only one host can hold a Bluetooth link, so connect
+      the phone to the radio and read its own GPS fix from This station.
 - [ ] **Same location.** Two radios side by side read "Same location as this
       station", with no bearing. Further apart but under a tenth of a mile, the
       distance is in feet and metres.
