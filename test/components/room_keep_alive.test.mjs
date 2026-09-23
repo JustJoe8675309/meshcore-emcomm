@@ -10,6 +10,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import RoomKeepAlive from "../../src/js/rooms/RoomKeepAlive.js";
 import GlobalState from "../../src/js/GlobalState.js";
+import Connection from "../../src/js/Connection.js";
 
 const ROOM = new Uint8Array(32).fill(0x87);
 const OTHER = new Uint8Array(32).fill(0x57);
@@ -155,6 +156,67 @@ describe("room keep-alive", () => {
     it("sends nothing at all when there is no radio", async () => {
         GlobalState.connection = null;
         expect(await RoomKeepAlive.send(ROOM)).toBe(false);
+    });
+
+});
+
+// The keep-alive takes its turn in the command queue.
+//
+// The firmware's serial loop handles an incoming command *instead of* advancing
+// whatever it was streaming, so a frame barging in mid read steals turns from the
+// contact iterator — the same mechanism that had node 2 delivering 141 contacts
+// of 198. A keep-alive is two minutes apart and can afford to wait; a contact
+// read cannot afford to be interrupted.
+describe("waiting its turn", () => {
+
+    let connection;
+
+    beforeEach(() => {
+        connection = fakeConnection();
+        GlobalState.connection = connection;
+        RoomKeepAlive.stopAll();
+        RoomKeepAlive.sending.clear();
+    });
+
+    afterEach(() => {
+        RoomKeepAlive.stopAll();
+        GlobalState.connection = null;
+    });
+
+    it("goes through the queue, not around it", async () => {
+        // hold the queue with something slow, and the keep-alive must wait
+        let release;
+        const held = Connection.exclusive(() => new Promise((resolve) => { release = resolve; }), 10000);
+
+        const sent = RoomKeepAlive.send(ROOM);
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        expect(connection.sent).toHaveLength(0);
+
+        release();
+        await held;
+        await sent;
+        expect(connection.sent).toHaveLength(1);
+    });
+
+    it("does not stack up while one is already waiting for the queue", async () => {
+        let release;
+        const held = Connection.exclusive(() => new Promise((resolve) => { release = resolve; }), 10000);
+
+        const first = RoomKeepAlive.send(ROOM);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        // the timer comes round again while the first is still queued
+        expect(await RoomKeepAlive.send(ROOM)).toBe(false);
+
+        release();
+        await held;
+        await first;
+        expect(connection.sent).toHaveLength(1);
+    });
+
+    it("lets the next one through once the queue has cleared", async () => {
+        await RoomKeepAlive.send(ROOM);
+        await RoomKeepAlive.send(ROOM);
+        expect(connection.sent).toHaveLength(2);
     });
 
 });

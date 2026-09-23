@@ -1054,3 +1054,85 @@ describe("marking a channel from the mode settings tab", () => {
     });
 
 });
+
+// A way home that fails after the slots were cleared.
+//
+// Giving the backup the channels means the switch clears every slot and leaves
+// the writing to the restore. That is right when the restore runs — it knows
+// which slot each channel was in — but the restore is a few hundred radio writes
+// over Bluetooth, and a radio that drops in the middle used to leave the node
+// holding no channels at all: deaf on every channel until somebody noticed.
+describe("when the way home cannot write", () => {
+
+    const NODE_KEY = new Uint8Array(32).fill(0x39);
+    const NODE_HEX = Array.from(NODE_KEY).map((b) => b.toString(16).padStart(2, "0")).join("");
+
+    let written;
+
+    beforeEach(() => {
+        window.localStorage.clear();
+        connect();
+        written = radioChannels({
+            0: { name: "#Emcomm-Training", secret: "aa".repeat(16) },
+            1: { name: "Emcomm Testing", secret: "11".repeat(16) },
+        });
+        quietRadio();
+
+        NodeBackup.save({
+            formatVersion: 1, nodePublicKey: NODE_HEX, nodeName: "KJ5HBN-EMCOMM", capturedAt: 1,
+            settings: {}, contacts: [], warnings: [],
+            channels: [
+                { idx: 0, name: "Public", secret: "8b3387e9c5cdea6ac9e5edbaa115cd72" },
+                { idx: 9, name: "#elp-mesh", secret: "cc".repeat(16) },
+            ],
+        }, NodeBackup.SLOT_PRE_EMCOMM);
+
+        ModeProfiles.saveProfile("normal", {
+            ...ModeProfiles.blank(),
+            radio: { name: "KJ5HBN-EMCOMM" },
+            channels: [
+                { name: "Public", secret: "8b3387e9c5cdea6ac9e5edbaa115cd72", answerPositions: false },
+                { name: "#elp-mesh", secret: "cc".repeat(16), answerPositions: false },
+            ],
+        }, NODE_HEX);
+        ModeProfiles.setCurrent("training", NODE_HEX);
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        GlobalState.connection = null;
+        GlobalState.selfInfo = null;
+        window.localStorage.clear();
+    });
+
+    it("puts the channels back from the mode's own list rather than leaving none", async () => {
+        vi.spyOn(NodeBackup, "restore").mockRejectedValue(new Error("disconnected"));
+
+        const result = await ModeSwitch.apply("normal");
+
+        // the profile's own two, plus Emcomm Testing, which the carry rule had
+        // already added to normal mode because it was on the radio and its name
+        // says emcomm
+        const names = written.filter((w) => w.name !== "").map((w) => w.name);
+        expect(names).toEqual(["Public", "#elp-mesh", "Emcomm Testing"]);
+        expect(result.failures.some((f) => f.what === "the backup")).toBe(true);
+        expect(result.warnings.join(" ")).toContain("put back from this mode's own list");
+    });
+
+    it("says the slots may not be the ones they were in, because only the backup knew", async () => {
+        vi.spyOn(NodeBackup, "restore").mockRejectedValue(new Error("disconnected"));
+
+        const result = await ModeSwitch.apply("normal");
+
+        expect(result.warnings.join(" ")).toMatch(/may not be in the slots they were in/);
+    });
+
+    it("still reaches normal mode, so the operator is not stuck between two", async () => {
+        vi.spyOn(NodeBackup, "restore").mockRejectedValue(new Error("disconnected"));
+
+        await ModeSwitch.apply("normal");
+
+        expect(ModeProfiles.current(NODE_HEX)).toBe("normal");
+    });
+
+});

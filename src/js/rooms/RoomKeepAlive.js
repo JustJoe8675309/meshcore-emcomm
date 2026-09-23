@@ -1,5 +1,11 @@
 import GlobalState from "../GlobalState.js";
 import Utils from "../Utils.js";
+// Connection imports this module in turn. The cycle is harmless because neither
+// side touches the other while the modules are loading: this one only reaches for
+// Connection inside send(), by which time both are built. Importing it lazily
+// instead cost a module load on the first keep-alive, which fake timers cannot
+// advance through, so every test of this file had to wait on real time.
+import Connection from "../Connection.js";
 
 /**
  * Keeps a room session alive, so the room keeps pushing its posts.
@@ -60,6 +66,9 @@ class RoomKeepAlive {
      * without someone asking for a radio check anyway.
      */
     static INTERVAL_MILLIS = 120 * 1000;
+
+    /** How long one keep-alive may hold the radio's queue. */
+    static SEND_TIMEOUT_MILLIS = 5000;
 
     static timers = new Map();
     static newestPost = new Map();
@@ -131,10 +140,20 @@ class RoomKeepAlive {
         }
     }
 
+    /** Rooms with a keep-alive already waiting for the radio's queue. */
+    static sending = new Set();
+
     /**
      * Sends one keep-alive. Quiet about failure by design: this runs on a timer
      * behind whatever the operator is doing, and a radio that is busy or out of
      * range is not something to interrupt them with.
+     *
+     * It takes its turn in the command queue like everything else. That is not
+     * tidiness: the firmware's serial loop handles an incoming command *instead
+     * of* advancing whatever it was streaming, so a frame barging in mid read
+     * steals turns from the contact iterator — the same mechanism that had node 2
+     * delivering 141 contacts of 198. A keep-alive is two minutes apart and can
+     * afford to wait its turn; a contact read cannot afford to be interrupted.
      */
     static async send(publicKey) {
 
@@ -144,6 +163,13 @@ class RoomKeepAlive {
         }
 
         const key = Utils.bytesToHex(publicKey);
+
+        // the queue can be held for a minute and a half by a big contact read, so
+        // the next tick can come round before this one has gone out. One waiting
+        // is enough
+        if(this.sending.has(key)){
+            return false;
+        }
         // 0 leaves the room's own idea of where we are up to, which is right when
         // nothing has been received to know better from
         const since = this.newestPost.get(key) ?? 0;
@@ -155,7 +181,12 @@ class RoomKeepAlive {
         params[3] = (since >> 16) & 0xff;
         params[4] = (since >> 24) & 0xff;
 
-        await connection.sendCommandSendBinaryReq(publicKey, params);
+        this.sending.add(key);
+        try {
+            await Connection.exclusive(() => connection.sendCommandSendBinaryReq(publicKey, params), this.SEND_TIMEOUT_MILLIS);
+        } finally {
+            this.sending.delete(key);
+        }
         return true;
 
     }

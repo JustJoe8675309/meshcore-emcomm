@@ -309,12 +309,32 @@ class ModeSwitch {
                 warnings.push("There was no backup from before this station left normal mode, so contacts were left as they are.");
             } else {
                 onProgress({ what: "the contacts from the backup" });
-                const result = await NodeBackup.restore(backup, (p) => onProgress({ what: p.what, done: p.done, total: p.total }));
-                for(const failure of result.failures){
-                    failures.push(failure);
-                }
-                if(result.notInBackup.length > 0){
-                    warnings.push(`${result.notInBackup.length} contact(s) met since are not in the backup and were left alone: ${result.notInBackup.slice(0, 5).join(", ")}${result.notInBackup.length > 5 ? "..." : ""}`);
+                try {
+                    const result = await NodeBackup.restore(backup, (p) => onProgress({ what: p.what, done: p.done, total: p.total }));
+                    for(const failure of result.failures){
+                        failures.push(failure);
+                    }
+                    if(result.notInBackup.length > 0){
+                        warnings.push(`${result.notInBackup.length} contact(s) met since are not in the backup and were left alone: ${result.notInBackup.slice(0, 5).join(", ")}${result.notInBackup.length > 5 ? "..." : ""}`);
+                    }
+                } catch(e) {
+                    // The slots were cleared for the backup to fill, so a restore
+                    // that never ran leaves a radio holding no channels at all —
+                    // deaf on every channel until somebody notices. Write the
+                    // mode's own list instead, which is what this did before the
+                    // backup was given the slots, and say so.
+                    failures.push({ what: "the backup", reason: String(e?.message ?? e) });
+                    if(backupOwnsChannels){
+                        warnings.push("The backup did not write, so the channels were put back from this mode's own list "
+                            + "rather than left empty. They may not be in the slots they were in before.");
+                        for(let idx = 0; idx < MAX_CHANNEL_SLOTS; idx++){
+                            const channel = profile.channels[idx];
+                            if(channel == null){
+                                break;
+                            }
+                            await attempt(`the channel ${channel.name}`, () => Connection.setChannel(idx, channel.name, Utils.hexToBytes(channel.secret)));
+                        }
+                    }
                 }
             }
         } else if(profile.trimContacts){
