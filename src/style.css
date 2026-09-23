@@ -1,3 +1,66 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Printing a crib sheet.
+ *
+ * Operators asked for the field notes on paper, which is what gets carried to a
+ * muster point and read when the phone is in a pocket or flat. The app is one
+ * scrolling page, so printing it as it stands produces the header, the tabs and
+ * whatever panel happened to be open.
+ *
+ * Instead, everything is hidden and the sheet alone is shown. Visibility rather
+ * than display, because hiding the ancestors with display:none would take the
+ * sheet inside them with it; visibility:hidden lets a descendant turn itself back
+ * on. The sheet is then pulled out of the dialog's fixed, scrolling backdrop and
+ * laid on the page, so it paginates across as many sheets as it needs instead of
+ * being clipped to one screen.
+ */
+@media print {
+
+    body * {
+        visibility: hidden;
+    }
+
+    #crib-sheet,
+    #crib-sheet * {
+        visibility: visible;
+    }
+
+    #crib-sheet {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        box-shadow: none;
+        overflow: visible;
+        max-height: none;
+    }
+
+    /* the buttons are no use on paper */
+    .print-hide {
+        display: none !important;
+    }
+
+    /* keep a field and its note together rather than splitting across a page */
+    .crib-field {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    .crib-form {
+        break-before: page;
+        page-break-before: always;
+    }
+
+    .crib-form:first-of-type {
+        break-before: auto;
+        page-break-before: auto;
+    }
+
+}

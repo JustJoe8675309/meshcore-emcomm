@@ -19,6 +19,8 @@
  * degrees, and a stored position is used, marked last known, when there is no
  * live GPS fix.
  */
+import ReportFieldHelp from "./ReportFieldHelp.js";
+
 
 const ReportForms = [
     {
@@ -660,5 +662,14 @@ const ReportForms = [
     },
 
 ];
+
+// Attach each field's note, so a renderer only ever sees `field.help` and there is
+// one shape at runtime whatever file the words live in. The notes are kept in
+// ReportFieldHelp.js because they are prose and this file is the on-air format.
+for(const form of ReportForms){
+    for(const field of form.fields){
+        field.help = ReportFieldHelp.for(form.id, field.id);
+    }
+}
 
 export default ReportForms;

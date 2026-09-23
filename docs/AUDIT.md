@@ -143,6 +143,24 @@ rather than an error.
       channel never used at the end. Favourites stay on top either way.
 - [ ] **The choice sticks** across leaving the tab and reloading the app.
 
+### Report field notes and the crib sheet
+
+- [ ] **Every field has a blue i**, and tapping it opens a note between the label
+      and the box. Check a form with dropdowns, such as the 9-line or the flood
+      report: the note names every option.
+- [ ] **Two notes open at once.** Open line 3 and line 5 of the 9-line; both stay
+      open, because an operator is comparing them.
+- [ ] **Nothing of it is transmitted.** Fill a form with notes open and read the
+      transmission preview: the bytes are unchanged.
+- [ ] **On a phone with the text turned up**, the note is readable, the i is big
+      enough to hit with a glove, and the form does not scroll sideways. The i
+      scales with the text on purpose — it is a touch target, unlike the battery
+      readout in the header.
+- [ ] **The crib sheet prints** from a computer: the form's fields and notes only,
+      without the app's header, tabs or the sheet's own buttons, and a field is not
+      split across two pages. Print to PDF is enough to check it.
+- [ ] **The booklet prints a page per form**, all 26, each starting on a fresh page.
+
 ### Position requests
 
 Needs two radios, each running this app, on a channel ticked under **Position requests**

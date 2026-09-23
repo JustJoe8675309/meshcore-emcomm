@@ -52,7 +52,13 @@
                     v-model="selectedFormId"
                     :options="formOptions"
                     placeholder="Select a report, or type to filter..."/>
-                <div v-if="selectedForm" class="text-xs text-gray-500">{{ selectedForm.description }}</div>
+                <div v-if="selectedForm" class="flex items-start justify-between space-x-2">
+                    <div class="text-xs text-gray-500">{{ selectedForm.description }}</div>
+                    <!-- the same notes the blue i shows, laid out to be printed and
+                         carried; a binder is what gets read at a muster point -->
+                    <button @click="cribSheetOpen = true" type="button"
+                        class="shrink-0 text-xs text-blue-700 hover:text-blue-900 underline">Crib sheet</button>
+                </div>
             </fieldset>
 
             <!-- form fields -->
@@ -246,6 +252,9 @@
             </div>
 
         </div>
+
+        <ReportCribSheet :open="cribSheetOpen" :form="selectedForm" @close="cribSheetOpen = false"/>
+
     </div>
 </template>
 
@@ -264,6 +273,7 @@ import OperatorSettings from "../../js/reports/OperatorSettings.js";
 import SearchableSelect from "./SearchableSelect.vue";
 import ReportFormFields from "./ReportFormFields.vue";
 import TransmissionPreview from "./TransmissionPreview.vue";
+import ReportCribSheet from "./ReportCribSheet.vue";
 import ModeProfiles from "../../js/modes/ModeProfiles.js";
 
 export default {
@@ -272,6 +282,7 @@ export default {
         SearchableSelect,
         ReportFormFields,
         TransmissionPreview,
+        ReportCribSheet,
     },
     data() {
         return {
@@ -280,6 +291,7 @@ export default {
             selectedContactPublicKey: null,
             selectedFormId: null,
             values: {},
+            cribSheetOpen: false,
             isConfirming: false,
             isSending: false,
             sendFailure: null,

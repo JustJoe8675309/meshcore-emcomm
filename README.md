@@ -123,6 +123,26 @@ Escape closes without changing the selection.
 These are compact radio versions rather than the full official forms. They carry the same
 traffic in the fields that matter over the air, but do not reproduce the printed layout.
 
+**Every field says what goes in it.** The standard forms are full of words that are exact to the
+agency receiving them and mean nothing to somebody filling one in for the first time: LITTER and
+AMBULATORY, precedence, check, HX, accretion. A small blue **i** beside each label opens a note
+between the label and the box — what the field is for, what every option of a dropdown means, and,
+where a standard sets a threshold, the threshold and whose it is. It opens on a tap rather than a
+hover, since a hover does not exist on the phone these are usually filled in on and never reaches
+an operator in gloves, and more than one can be open at once for comparing two fields. None of it
+is transmitted, so it costs no airtime, and it is in the app itself, so it is there with no signal.
+
+The notes live in `src/js/reports/ReportFieldHelp.js`, apart from the field definitions, because
+they are prose that gets revised after a net while the definitions are the on-air format. A test
+refuses a field with no note, a note for a field that no longer exists, a dropdown option that
+nothing explains, and a note that says no more than its label already did.
+
+**Crib sheet.** The same notes on paper, from the link beside the form's description: the form's
+fields with what goes in each, or all 26 as a booklet with a page each, and a Print button. A
+binder is what gets read at a muster point, by people whose phone is in a pocket or being used as
+the radio's screen. Printing hides the rest of the app rather than printing the tabs and the
+header with it.
+
 Reports are sent as plain text so any stock MeshCore client can read them. A report renders as a
 short tagged block, and fields left blank are dropped rather than sent as empty tags:
 

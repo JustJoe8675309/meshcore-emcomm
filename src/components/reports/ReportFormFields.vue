@@ -7,7 +7,20 @@
                 {{ field.label }}
                 <span v-if="field.required" class="text-red-600" aria-hidden="true">*</span>
                 <span v-if="field.required" class="sr-only">required</span>
+                <button v-if="field.help" @click.prevent="toggleHelp(field)" type="button"
+                    :aria-expanded="isHelpOpen(field) ? 'true' : 'false'"
+                    :aria-controls="helpId(field)"
+                    :aria-label="`What to put in ${field.label}`"
+                    :title="`What to put in ${field.label}`"
+                    class="ml-1 align-middle w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold leading-none hover:bg-blue-200">i</button>
             </label>
+
+            <!-- What the field is for, between its label and the box, so it is read
+                 in that order and nothing floats over anything. Opened by tapping:
+                 a hover tooltip does not exist on the phone this is most often
+                 filled in on, and never reaches an operator in gloves. -->
+            <p v-if="field.help && isHelpOpen(field)" :id="helpId(field)"
+               class="text-xs text-blue-900 bg-blue-50 border border-blue-200 rounded p-2">{{ field.help }}</p>
 
             <!-- dropdown field -->
             <select
@@ -31,6 +44,17 @@
                     class="rounded border-gray-300">
                 <span>{{ field.label }}</span>
             </label>
+
+            <div v-if="field.type === 'check' && field.help" class="space-y-1">
+                <button @click.prevent="toggleHelp(field)" type="button"
+                    :aria-expanded="isHelpOpen(field) ? 'true' : 'false'"
+                    :aria-controls="helpId(field)"
+                    :aria-label="`What ${field.label} does`"
+                    :title="`What ${field.label} does`"
+                    class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold leading-none hover:bg-blue-200">i</button>
+                <p v-if="isHelpOpen(field)" :id="helpId(field)"
+                   class="text-xs text-blue-900 bg-blue-50 border border-blue-200 rounded p-2">{{ field.help }}</p>
+            </div>
 
             <!-- multi line field -->
             <textarea
@@ -167,6 +191,10 @@ export default {
             positionBusyField: null,
             // why the position could not be used, per field id
             positionErrors: {},
+            // which field notes are open, by field id. Open one at a time is
+            // tempting and wrong: an operator comparing line 3 with line 5 wants
+            // both, and closing one to read the other loses their place.
+            openHelp: {},
         };
     },
     computed: {
@@ -191,9 +219,22 @@ export default {
         fields() {
             this.chosenModes = {};
             this.positionErrors = {};
+            this.openHelp = {};
         },
     },
     methods: {
+
+        helpId(field) {
+            return `${this.fieldId(field)}-help`;
+        },
+
+        isHelpOpen(field) {
+            return this.openHelp[field.id] === true;
+        },
+
+        toggleHelp(field) {
+            this.openHelp = { ...this.openHelp, [field.id]: !this.isHelpOpen(field) };
+        },
 
         dtgMode(field) {
             return this.chosenModes[field.id] ?? Dtg.parse(this.values[field.id]).mode;
