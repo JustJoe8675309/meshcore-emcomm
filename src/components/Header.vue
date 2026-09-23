@@ -148,10 +148,7 @@ import { SHARE_PATH } from "../js/modes/ModeShare.js";
 
 export default {
     name: 'Header',
-    components: {
-        FirstRunSetup,
-    },
-    components: {DropDownMenuItem, DropDownMenu, IconButton, ModeBanner, ModeSwitchDialog, ModeSharing},
+    components: {DropDownMenuItem, DropDownMenu, IconButton, ModeBanner, ModeSwitchDialog, ModeSharing, FirstRunSetup},
     data() {
         return {
             modeDialogOpen: false,

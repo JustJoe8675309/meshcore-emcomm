@@ -190,6 +190,12 @@ describe("the first run walkthrough", () => {
 
 describe("when the walkthrough is offered", () => {
 
+    // The real wizard, not a stub of it. Stubbing it here once hid a genuine
+    // fault: the header had ended up with two `components` keys, the second
+    // overwriting the first, so FirstRunSetup was never registered — and an
+    // unregistered component renders as nothing in a production build, silently.
+    // A global stub resolves an unregistered component too, so the test passed
+    // while the live app showed no wizard at all. Only its innards are stubbed.
     function mountHeader() {
         return mount(Header, {
             global: {
@@ -201,11 +207,13 @@ describe("when the walkthrough is offered", () => {
                     ModeBanner: true,
                     ModeSwitchDialog: true,
                     ModeSharing: true,
-                    FirstRunSetup: { props: ["open"], template: "<div class='wizard'>{{ open }}</div>" },
+                    ModeSettingsTabs: { props: ["only"], template: "<div class='mode-form'>{{ only }}</div>" },
                 },
             },
         });
     }
+
+    const wizardShowing = (wrapper) => wrapper.text().includes("Set up this station");
 
     beforeEach(() => {
         window.localStorage.clear();
@@ -223,7 +231,7 @@ describe("when the walkthrough is offered", () => {
         connect();
         const wrapper = mountHeader();
         await flushPromises();
-        expect(wrapper.find(".wizard").text()).toBe("true");
+        expect(wizardShowing(wrapper)).toBe(true);
     });
 
     it("is not offered to a station that has been through it", async () => {
@@ -232,7 +240,7 @@ describe("when the walkthrough is offered", () => {
 
         const wrapper = mountHeader();
         await flushPromises();
-        expect(wrapper.find(".wizard").text()).toBe("false");
+        expect(wizardShowing(wrapper)).toBe(false);
     });
 
     it("waits for the radio rather than asking with no station to ask about", async () => {
@@ -241,12 +249,12 @@ describe("when the walkthrough is offered", () => {
 
         const wrapper = mountHeader();
         await flushPromises();
-        expect(wrapper.find(".wizard").text()).toBe("false");
+        expect(wizardShowing(wrapper)).toBe(false);
 
         // and offers it the moment the radio answers
         GlobalState.selfInfo = SELF_INFO;
         await flushPromises();
-        expect(wrapper.find(".wizard").text()).toBe("true");
+        expect(wizardShowing(wrapper)).toBe(true);
     });
 
 });
