@@ -294,7 +294,7 @@ describe("switching a station's mode", () => {
         const text = described.changes.join(" ");
         expect(text).toContain("Transmit power becomes 22 dBm, from 14");
         expect(text).toContain("Channels become: #Emcomm");
-        expect(text).toContain("Companions are cleared");
+        expect(text).toContain("Contacts not heard in 90 days are dropped");
         expect(written).toEqual([]);
         expect(Connection.setAdvertName).not.toHaveBeenCalled();
     });
@@ -400,20 +400,22 @@ describe("what a switch must never destroy", () => {
         };
     }
 
-    it("keeps a favourite companion, and a favourite repeater quiet for years", async () => {
+    it("keeps a favourite whatever its age, and anything heard lately", async () => {
         const longAgo = Math.floor(Date.now() / 1000) - 400 * 24 * 60 * 60;
         GlobalState.contacts = [
-            contact(1),
-            contact(2, { favourite: true }),
-            contact(3, { type: Constants.AdvType.Repeater, lastAdvert: longAgo }),
+            contact(1),                                                                   // companion, heard now
+            contact(2, { favourite: true }),                                              // starred
+            contact(3, { type: Constants.AdvType.Repeater, lastAdvert: longAgo }),        // quiet, unstarred
             contact(4, { type: Constants.AdvType.Repeater, lastAdvert: longAgo, favourite: true }),
             contact(5, { type: Constants.AdvType.Room, lastAdvert: longAgo, favourite: true }),
+            contact(6, { lastAdvert: longAgo }),                                          // companion, quiet
         ];
 
         await ModeSwitch.apply("live");
 
-        // only the unstarred companion and the unstarred quiet repeater go
-        expect(removed.sort()).toEqual(["01", "03"]);
+        // the two quiet unstarred ones, and nothing else: a companion heard now
+        // stays, where it used to be cleared for being a companion
+        expect(removed.sort()).toEqual(["03", "06"]);
     });
 
     it("keeps a channel the new mode does not hold, rather than losing its key", async () => {

@@ -85,7 +85,7 @@ class ModeSwitch {
         if(mode === "normal"){
             changes.push("Contacts are written back from the backup taken before this station left normal mode.");
         } else if(profile.trimContacts){
-            changes.push("Companions are cleared, and repeaters and rooms not heard in 90 days are dropped. The backup keeps them.");
+            changes.push("Contacts not heard in 90 days are dropped, whatever kind they are. Favourites are kept, and the backup keeps everything.");
         }
 
         if(profile.positionFromGps){

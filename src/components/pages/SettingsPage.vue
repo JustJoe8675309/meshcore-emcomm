@@ -37,6 +37,15 @@
                     <!-- what each mode holds, and which one this station is in -->
                     <ModeSettingsTabs/>
 
+                    <!-- the walkthrough again, for a station set up in a hurry -->
+                    <div class="bg-white p-2 border-t">
+                        <button @click="firstRunOpen = true" type="button"
+                                class="w-full text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 font-medium rounded-lg text-sm px-4 py-2">
+                            Walk through the modes again
+                        </button>
+                    </div>
+                    <FirstRunSetup :open="firstRunOpen" @close="firstRunOpen = false"/>
+
                     <!-- emcomm, stored in this browser rather than on the device -->
                     <div class="bg-white divide-y">
 
@@ -338,15 +347,17 @@ import NodeBackup from "../../js/NodeBackup.js";
 import EmcommMode from "../../js/EmcommMode.js";
 import EmcommSettingsGroup from "../settings/EmcommSettingsGroup.vue";
 import ModeSettingsTabs from "../modes/ModeSettingsTabs.vue";
+import FirstRunSetup from "../modes/FirstRunSetup.vue";
 import ModeProfiles from "../../js/modes/ModeProfiles.js";
 import BusyOverlay from "../BusyOverlay.vue";
 import PositionSettingsGroup from "../settings/PositionSettingsGroup.vue";
 
 export default {
     name: 'SettingsPage',
-    components: {Page, SaveButton, AppBar, EmcommSettingsGroup, BusyOverlay, PositionSettingsGroup, ModeSettingsTabs},
+    components: {Page, SaveButton, AppBar, EmcommSettingsGroup, BusyOverlay, PositionSettingsGroup, ModeSettingsTabs, FirstRunSetup},
     data() {
         return {
+            firstRunOpen: false,
             isSaving: false,
             name: null,
             radioFreq: null,

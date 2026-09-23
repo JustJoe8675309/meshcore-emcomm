@@ -128,6 +128,7 @@
     </div>
 
     <ModeSwitchDialog :open="modeDialogOpen" @close="modeDialogOpen = false"/>
+    <FirstRunSetup :open="firstRunOpen" @close="firstRunOpen = false"/>
     <ModeSharing :open="sharingOpen" :incoming-link="incomingLink" @close="closeSharing"/>
 
     </div>
@@ -142,14 +143,19 @@ import DropDownMenuItem from "./DropDownMenuItem.vue";
 import ModeBanner from "./modes/ModeBanner.vue";
 import ModeSwitchDialog from "./modes/ModeSwitchDialog.vue";
 import ModeSharing from "./modes/ModeSharing.vue";
+import FirstRunSetup, { FirstRunSetup as FirstRun } from "./modes/FirstRunSetup.vue";
 import { SHARE_PATH } from "../js/modes/ModeShare.js";
 
 export default {
     name: 'Header',
+    components: {
+        FirstRunSetup,
+    },
     components: {DropDownMenuItem, DropDownMenu, IconButton, ModeBanner, ModeSwitchDialog, ModeSharing},
     data() {
         return {
             modeDialogOpen: false,
+            firstRunOpen: false,
             sharingOpen: false,
             // a code scanned with the phone's own camera opens the app at the
             // sharing link, which lands here
@@ -159,6 +165,27 @@ export default {
     mounted() {
         this.takeIncomingLink();
         window.addEventListener("hashchange", this.takeIncomingLink);
+    },
+    watch: {
+
+        /**
+         * The walkthrough is offered once per station, when the radio has said who
+         * it is.
+         *
+         * Keyed on selfInfo rather than on the connection, because the node key is
+         * what decides whether this station has been set up and it is not known
+         * until the radio answers. One laptop can drive several radios, and each of
+         * them is a station that has or has not been through this.
+         */
+        "GlobalState.selfInfo": {
+            handler(info) {
+                if(info != null && !this.firstRunOpen && !FirstRun.isDone()){
+                    this.firstRunOpen = true;
+                }
+            },
+            immediate: true,
+        },
+
     },
     beforeUnmount() {
         window.removeEventListener("hashchange", this.takeIncomingLink);

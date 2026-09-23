@@ -428,15 +428,20 @@ class EmcommMode {
                 continue;
             }
 
-            // companions go regardless of age: a person's node re-adds itself the
-            // moment it adverts, so they are the cheapest thing to clear
-            if(type === Constants.AdvType.Chat){
-                remove.push(contact);
-                continue;
-            }
-
-            const isRoomOrRepeater = type === Constants.AdvType.Room || type === Constants.AdvType.Repeater;
-            if(!isRoomOrRepeater){
+            // One rule for everyone, at the operator's decision: a contact goes
+            // only if it has been quiet for the age below, whatever kind it is.
+            //
+            // Companions used to go regardless of age, on the reasoning that a
+            // person's node re-adds itself the moment it adverts. That is true of
+            // a station that is on the air and in range, and false of exactly the
+            // people an incident needs: the operator who has not keyed up yet, the
+            // one working from a valley, the one whose radio is off until their
+            // shift. Clearing them cost the list of who is on the net to save room
+            // that the age rule frees anyway.
+            const judged = type === Constants.AdvType.Chat
+                || type === Constants.AdvType.Room
+                || type === Constants.AdvType.Repeater;
+            if(!judged){
                 // sensors and anything a later firmware introduces. not ours to
                 // judge, so left alone
                 keep.push(contact);

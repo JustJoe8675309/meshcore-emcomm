@@ -38,19 +38,23 @@ describe("planning the trim", () => {
 
     beforeEach(() => { nextKey = 1; });
 
-    it("removes every companion, however recently heard", () => {
-        // a person's node re-adds itself the moment it adverts, so they are the
-        // cheapest thing to clear and the easiest to get back
+    it("judges a companion by its age, like everything else", () => {
+        // Companions used to go regardless of age, on the reasoning that a
+        // person's node re-adds itself the moment it adverts. True of a station
+        // on the air and in range; false of exactly the people an incident needs —
+        // the operator who has not keyed up yet, the one in a valley, the one
+        // whose radio is off until their shift. The operator settled on one rule
+        // for everyone.
         const plan = EmcommMode.planTrim([
             contact(Constants.AdvType.Chat, 0),
             contact(Constants.AdvType.Chat, 200),
         ], NOW);
 
-        expect(plan.remove).toHaveLength(2);
-        expect(plan.keep).toHaveLength(0);
+        expect(names(plan.keep)).toEqual(["1-0"]);
+        expect(names(plan.remove)).toEqual(["1-200"]);
     });
 
-    it("keeps repeaters and rooms heard inside 90 days", () => {
+    it("keeps anything heard inside 90 days", () => {
         const plan = EmcommMode.planTrim([
             contact(Constants.AdvType.Repeater, 1),
             contact(Constants.AdvType.Repeater, 89),
@@ -61,7 +65,7 @@ describe("planning the trim", () => {
         expect(plan.keep).toHaveLength(3);
     });
 
-    it("removes repeaters and rooms quiet for more than 90 days", () => {
+    it("removes anything quiet for more than 90 days", () => {
         const plan = EmcommMode.planTrim([
             contact(Constants.AdvType.Repeater, 91),
             contact(Constants.AdvType.Room, 365),
@@ -112,12 +116,15 @@ describe("planning the trim", () => {
             expect(plan.keptForUnreadableAge).toBe(0);
         });
 
-        it("still removes a companion with an unreadable age", () => {
-            // companions go regardless, so the age never gets a say
+        it("keeps a companion whose clock cannot be read, now the age has a say", () => {
+            // it used to go regardless, because companions were never judged by
+            // age. Judged by age, an age nobody can read is not grounds to delete
+            // a person from the net
             const plan = EmcommMode.planTrim(
                 [contact(Constants.AdvType.Chat, 0, { lastAdvert: NOW + (4 * 365 * DAY) })], NOW,
             );
-            expect(plan.remove).toHaveLength(1);
+            expect(plan.remove).toHaveLength(0);
+            expect(plan.keptForUnreadableAge).toBe(1);
         });
 
     });
@@ -132,14 +139,15 @@ describe("planning the trim", () => {
     it("counts what it is about to remove, by kind", () => {
         const plan = EmcommMode.planTrim([
             contact(Constants.AdvType.Chat, 1),
-            contact(Constants.AdvType.Chat, 2),
+            contact(Constants.AdvType.Chat, 200),
             contact(Constants.AdvType.Repeater, 100),
             contact(Constants.AdvType.Room, 100),
             contact(Constants.AdvType.Repeater, 1),
         ], NOW);
 
-        expect(plan.counts).toEqual({ companions: 2, rooms: 1, repeaters: 1 });
-        expect(plan.keep).toHaveLength(1);
+        expect(plan.counts).toEqual({ companions: 1, rooms: 1, repeaters: 1 });
+        // the companion heard yesterday and the repeater heard yesterday
+        expect(plan.keep).toHaveLength(2);
     });
 
     it("copes with an empty list", () => {
@@ -173,9 +181,10 @@ describe("carrying out the trim", () => {
 
     beforeEach(() => {
         nextKey = 1;
+        // quiet long enough to go, under one rule for every kind
         const contacts = [
-            contact(Constants.AdvType.Chat, 1),
-            contact(Constants.AdvType.Chat, 2),
+            contact(Constants.AdvType.Chat, 200),
+            contact(Constants.AdvType.Chat, 300),
             contact(Constants.AdvType.Repeater, 1),
         ];
         plan = EmcommMode.planTrim(contacts, NOW);
@@ -192,7 +201,7 @@ describe("carrying out the trim", () => {
         const result = await EmcommMode.trim(plan);
         expect(result.removed).toBe(2);
         expect(result.notRemoved).toEqual([]);
-        expect(names(radio.held)).toEqual(["2-1"]);   // the repeater
+        expect(names(radio.held)).toEqual(["2-1"]);   // the repeater, heard yesterday
     });
 
     it("reads the list back rather than trusting the commands took", async () => {
@@ -203,7 +212,7 @@ describe("carrying out the trim", () => {
     it("tries again for a removal the device ignored", async () => {
         // one command per contact over a link measured dropping frames
         radio = fakeRadio({ ignores: [1] });
-        const contacts = [contact(Constants.AdvType.Chat, 1)];
+        const contacts = [contact(Constants.AdvType.Chat, 200)];
         radio.held = [...contacts];
         GlobalState.connection = radio;
         Connection.loadContacts.mockImplementation(async () => {
@@ -218,7 +227,7 @@ describe("carrying out the trim", () => {
 
     it("gives up after a bounded number of passes and names the survivors", async () => {
         radio = fakeRadio({ ignores: [1, 2, 3, 4, 5] });
-        const contacts = [contact(Constants.AdvType.Chat, 1, { advName: "Stubborn" })];
+        const contacts = [contact(Constants.AdvType.Chat, 200, { advName: "Stubborn" })];
         radio.held = [...contacts];
         GlobalState.connection = radio;
         Connection.loadContacts.mockImplementation(async () => {

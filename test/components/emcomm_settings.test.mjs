@@ -217,14 +217,27 @@ describe("the trim, with favourites", () => {
             contact(4, { type: Constants.AdvType.Repeater, lastAdvert: longAgo, favourite: true }),
             contact(5, { type: Constants.AdvType.Room, lastAdvert: longAgo, favourite: true }),
         ], now);
-        expect(plan.remove.map((c) => c.advName)).toEqual(["Contact 1", "Contact 3"]);
+        // contact 1 is a companion heard just now, so the age keeps it as well
+        expect(plan.remove.map((c) => c.advName)).toEqual(["Contact 3"]);
         expect(plan.keptFavourites).toBe(3);
     });
 
-    it("still removes every companion that is not starred", () => {
+    it("keeps a companion nobody starred, if it has been heard", () => {
+        // companions used to go regardless of age. One rule for every kind now, so
+        // a person heard this morning stays whether or not anyone starred them
         const plan = EmcommMode.planTrim([contact(1), contact(2), contact(3)], now);
-        expect(plan.remove).toHaveLength(3);
+        expect(plan.remove).toHaveLength(0);
         expect(plan.keptFavourites).toBe(0);
+    });
+
+    it("removes a companion nobody starred that has been quiet for months", () => {
+        const quiet = now - 200 * 24 * 60 * 60;
+        const plan = EmcommMode.planTrim([
+            contact(1, { lastAdvert: quiet }),
+            contact(2, { lastAdvert: quiet, favourite: true }),
+        ], now);
+        expect(plan.remove.map((c) => c.advName)).toEqual(["Contact 1"]);
+        expect(plan.keptFavourites).toBe(1);
     });
 
 });

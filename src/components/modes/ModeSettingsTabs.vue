@@ -1,16 +1,18 @@
 <template>
     <div class="bg-white divide-y">
 
-        <div class="bg-white p-2 font-semibold">Modes</div>
+        <div v-if="only == null" class="bg-white p-2 font-semibold">Modes</div>
 
-        <div class="p-2 text-xs text-gray-500">
+        <div v-if="only == null" class="p-2 text-xs text-gray-500">
             Each mode holds its own radio settings, channels and rooms. Switching writes them to the
             radio, from the banner at the top of the app. The layout here is the same for every mode:
             only what is in it differs.
         </div>
 
-        <!-- one tab per mode, coloured as the banner is -->
-        <div class="p-2 flex space-x-1">
+        <!-- one tab per mode, coloured as the banner is. The first run wizard asks
+             for one mode at a time and passes `only`, which hides the strip rather
+             than growing a second copy of the form to drift from this one -->
+        <div v-if="only == null" class="p-2 flex space-x-1">
             <button
                 v-for="mode of modes"
                 :key="mode"
@@ -146,7 +148,7 @@
 
                 <label class="flex items-start space-x-2 text-xs text-gray-700">
                     <input v-model="profile.trimContacts" type="checkbox" class="mt-0.5">
-                    <span>Clear companions and long quiet repeaters when entering this mode. The backup keeps them</span>
+                    <span>Drop contacts not heard in 90 days when entering this mode. Favourites are kept, and the backup keeps everything</span>
                 </label>
 
                 <div class="text-xs text-gray-700">Repeating adverts, in minutes. 0 turns one off.</div>
@@ -191,6 +193,13 @@ import PositionService from "../../js/position/PositionService.js";
 
 export default {
     name: 'ModeSettingsTabs',
+    props: {
+        /** One mode only, with no tab strip: what the first run wizard asks for. */
+        only: {
+            type: String,
+            default: null,
+        },
+    },
     data() {
         return {
             tab: "normal",
@@ -201,8 +210,17 @@ export default {
         };
     },
     mounted() {
-        this.tab = this.current;
+        this.tab = this.only ?? this.current;
         this.load();
+    },
+    watch: {
+        only(mode) {
+            if(mode != null){
+                this.tab = mode;
+                this.message = null;
+                this.load();
+            }
+        },
     },
     methods: {
         labelFor(mode) {
