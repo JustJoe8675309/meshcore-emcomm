@@ -240,13 +240,16 @@ class ModeProfiles {
         // so a short read is read again and then refused outright. Better no
         // normal profile, which the next connect will take, than a confident
         // wrong one.
+        const short = (r) => r.gaps.length > 0 || r.gaveUp;
         let read = await this.readChannelsWithFailures();
-        if(read.gaps.length > 0){
+        if(short(read)){
             read = await this.readChannelsWithFailures();
         }
-        if(read.gaps.length > 0){
-            throw new Error(`channel slot${read.gaps.length === 1 ? " " + read.gaps[0] : "s " + read.gaps.join(", ")} `
-                + "would not read, so this radio's own settings were not recorded");
+        if(short(read)){
+            throw new Error(read.gaveUp
+                ? "the radio's channels would not read in time, so its own settings were not recorded"
+                : `channel slot${read.gaps.length === 1 ? " " + read.gaps[0] : "s " + read.gaps.join(", ")} `
+                    + "would not read, so this radio's own settings were not recorded");
         }
 
         const channels = [];
@@ -277,6 +280,13 @@ class ModeProfiles {
 
     }
 
+    /**
+     * How long one pass over the channel slots may take before the rest are
+     * called unreadable. Bounded because the per-slot retries are not: three
+     * attempts of four seconds each, sixteen slots.
+     */
+    static READ_DEADLINE_MILLIS = 20000;
+
     /** Every channel the radio holds, by slot, name and key. */
     static async readChannels() {
         return (await this.readChannelsWithFailures()).channels;
@@ -289,14 +299,32 @@ class ModeProfiles {
      * that answers nothing would otherwise read as a radio with no channels.
      * Anything about to clear slots needs to tell those apart.
      */
-    static async readChannelsWithFailures() {
+    static async readChannelsWithFailures({ deadlineMillis = this.READ_DEADLINE_MILLIS } = {}) {
 
         const Connection = (await import("../Connection.js")).default;
         const channels = [];
         const failed = [];
         let lastAnswered = -1;
+        let gaveUp = false;
+        const deadline = Date.now() + deadlineMillis;
 
         for(let idx = 0; idx < 16; idx++){
+
+            // A slot the radio will not answer costs three attempts of four
+            // seconds, so sixteen of them is over three minutes, and this is
+            // called twice by captureNormal and again by every mode switch. On a
+            // radio that answers nothing the connect screen would sit on
+            // "Remembering this radio's own settings" for six minutes rather than
+            // saying it could not read them.
+            if(Date.now() > deadline){
+                for(let rest = idx; rest < 16; rest++){
+                    failed.push(rest);
+                }
+                console.log(`the channel read gave up after ${Math.round(deadlineMillis / 1000)}s, at slot ${idx}`);
+                gaveUp = true;
+                break;
+            }
+
             try {
                 const channel = await Connection.getChannel(idx);
                 lastAnswered = idx;
@@ -307,6 +335,7 @@ class ModeProfiles {
             } catch(e) {
                 failed.push(idx);
             }
+
         }
 
         // A radio with fewer slots than this asks for answers the ones past its
@@ -316,7 +345,11 @@ class ModeProfiles {
         // loses a channel silently.
         const gaps = failed.filter((idx) => idx < lastAnswered);
 
-        return { channels: channels, unreadable: failed.length, gaps: gaps };
+        // Giving up is not the same as reading an empty slot, and the gap rule
+        // cannot see the difference: everything abandoned sits after the last slot
+        // that answered, so none of it counts as a hole. Anything that writes to
+        // the radio from this read has to know the read was cut short.
+        return { channels: channels, unreadable: failed.length, gaps: gaps, gaveUp: gaveUp };
 
     }
 

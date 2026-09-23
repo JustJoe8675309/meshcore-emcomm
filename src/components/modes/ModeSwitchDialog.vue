@@ -129,6 +129,13 @@ export default {
         },
         chosen: {
             handler() {
+                // A refusal, and the operator's answer to it, belong to the mode
+                // they were about to switch to. Left on screen after the choice
+                // changes, "Switch anyway, without a complete way home" would
+                // carry consent given about one mode into a switch to another.
+                this.shortfall = null;
+                this.failures = [];
+                this.done = null;
                 this.describe();
             },
         },

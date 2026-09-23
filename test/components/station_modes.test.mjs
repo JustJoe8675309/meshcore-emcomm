@@ -446,11 +446,19 @@ describe("what a switch must never destroy", () => {
         expect(result.warnings.join(" ")).not.toContain("in no mode");
     });
 
-    it("says so rather than staying quiet if the channels could not be read first", async () => {
+    it("leaves the slots exactly as they are if the channels could not be read first", async () => {
+        // it used to write the mode's channels anyway and warn that a channel in
+        // no mode "may have been lost". Clearing a slot this app never read
+        // destroys the key of whatever was in it, and a private channel's key is
+        // on the radio and nowhere else, so now nothing is written at all
         Connection.getChannel.mockRejectedValue(new Error("the radio did not answer"));
         GlobalState.contacts = [];
+
         const result = await ModeSwitch.apply("live");
-        expect(result.warnings.join(" ")).toContain("any channel in no mode may have been lost");
+
+        expect(written).toEqual([]);
+        expect(result.warnings.join(" ")).toContain("left exactly as they are");
+        expect(result.warnings.join(" ")).toContain("would destroy the key");
     });
 
 });
@@ -1133,6 +1141,56 @@ describe("when the way home cannot write", () => {
         await ModeSwitch.apply("normal");
 
         expect(ModeProfiles.current(NODE_HEX)).toBe("normal");
+    });
+
+});
+
+// A refusal belongs to the mode it was about to switch to.
+//
+// The incomplete-backup block and its "Switch anyway, without a complete way
+// home" button stayed on screen when the operator changed their mind about which
+// mode to enter, so consent given about one mode would have carried into a switch
+// to another.
+describe("the refusal does not follow the operator to another mode", () => {
+
+    let apply;
+
+    beforeEach(async () => {
+        window.localStorage.clear();
+        connect();
+        radioChannels({ 0: { name: "Public", secret: "8b3387e9c5cdea6ac9e5edbaa115cd72" } });
+        quietRadio();
+        await ModeProfiles.captureNormal(NODE);
+
+        const refusal = new Error(`${ModeSwitch.INCOMPLETE_BACKUP}: 13 of 186 contacts could not be read`);
+        refusal.incompleteBackup = true;
+        refusal.shortfall = "13 of 186 contacts could not be read";
+        apply = vi.spyOn(ModeSwitch, "apply").mockRejectedValue(refusal);
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        GlobalState.connection = null;
+        GlobalState.selfInfo = null;
+        window.localStorage.clear();
+    });
+
+    it("clears the refusal when the chosen mode changes", async () => {
+        const wrapper = mount(ModeSwitchDialog, { props: { open: true } });
+        await flushPromises();
+        wrapper.vm.chosen = "live";
+        await flushPromises();
+
+        await wrapper.findAll("button").find((b) => b.text().includes("Switch to Emcomm-Live")).trigger("click");
+        await flushPromises();
+        expect(wrapper.text()).toContain("Nothing has been changed");
+
+        // changes their mind
+        wrapper.vm.chosen = "training";
+        await flushPromises();
+
+        expect(wrapper.text()).not.toContain("Nothing has been changed");
+        expect(wrapper.findAll("button").some((b) => b.text().includes("Switch anyway"))).toBe(false);
     });
 
 });

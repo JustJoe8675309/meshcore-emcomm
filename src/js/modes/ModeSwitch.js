@@ -210,12 +210,25 @@ class ModeSwitch {
         // the new mode does not hold is written into the mode being left, because
         // a private channel's random key is on the radio and nowhere else, and
         // clearing its slot would destroy it with no way back
+        // nothing is written to the slots unless the radio's own channels were read
+        // first, so a channel this app never saw cannot be cleared out from under it
+        let channelsRead = false;
+
         try {
 
             const read = await ModeProfiles.readChannelsWithFailures();
             const onRadio = read.channels;
             if(onRadio.length === 0 && read.unreadable === MAX_CHANNEL_SLOTS){
                 throw new Error("the radio answered no channel at all");
+            }
+            // A read that ran out of time saw only part of the radio. Clearing
+            // slots on that basis would destroy the key of any channel it never
+            // reached, and a private channel's key is on the radio and nowhere
+            // else. Leave the slots alone and say so: the mode's other settings
+            // still apply, and the operator can switch again on a radio that
+            // answers.
+            if(read.gaveUp){
+                throw new Error("the read of the radio's channels ran out of time");
             }
 
             const key = (channel) => JSON.stringify([channel.name, channel.secret]);
@@ -248,8 +261,11 @@ class ModeSwitch {
                 }
             }
 
+            channelsRead = true;
+
         } catch(e) {
-            warnings.push(`The radio's channels could not be read before writing the new ones, so any channel in no mode may have been lost: ${e?.message ?? e}`);
+            warnings.push(`The radio's channels were left exactly as they are, because they could not be read first `
+                + `and clearing a slot unread would destroy the key of whatever was in it: ${e?.message ?? e}`);
         }
 
         // Going home, the backup owns the channels. It records the slot each one
@@ -265,7 +281,7 @@ class ModeSwitch {
         const backupOwnsChannels = (homeBackup?.channels?.length ?? 0) > 0;
 
         const marked = [];
-        for(let idx = 0; idx < MAX_CHANNEL_SLOTS; idx++){
+        for(let idx = 0; channelsRead && idx < MAX_CHANNEL_SLOTS; idx++){
             const channel = backupOwnsChannels ? null : profile.channels[idx];
             if(channel){
                 await attempt(`the channel ${channel.name}`, () => Connection.setChannel(idx, channel.name, Utils.hexToBytes(channel.secret)));

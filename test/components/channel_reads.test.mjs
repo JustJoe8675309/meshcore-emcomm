@@ -375,3 +375,66 @@ describe("a read that cannot finish in time", () => {
     });
 
 });
+
+// The mode system's channel read is bounded too.
+//
+// Checking each slot's answer means a slot the radio will not answer costs three
+// attempts of four seconds, so sixteen of them is over three minutes — and
+// captureNormal reads twice, and every mode switch reads again. On a radio that
+// answers nothing the connect screen would have sat on "Remembering this radio's
+// own settings" for six minutes rather than saying it could not read them.
+describe("a mode read that cannot finish in time", () => {
+
+    const deadline = ModeProfiles.READ_DEADLINE_MILLIS;
+
+    beforeEach(() => {
+        window.localStorage.clear();
+        GlobalState.selfInfo = SELF_INFO;
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        ModeProfiles.READ_DEADLINE_MILLIS = deadline;
+        window.localStorage.clear();
+        GlobalState.selfInfo = null;
+        GlobalState.connection = null;
+    });
+
+    it("gives up on the rest rather than working through every slot", async () => {
+        ModeProfiles.READ_DEADLINE_MILLIS = 30;
+        vi.spyOn(Connection, "getChannel").mockImplementation(async (idx) => {
+            await new Promise((r) => setTimeout(r, 12));
+            return slot(idx, idx === 0 ? "Public" : "");
+        });
+
+        const started = Date.now();
+        const read = await ModeProfiles.readChannelsWithFailures();
+
+        expect(Date.now() - started).toBeLessThan(1000);
+        expect(read.channels.map((c) => c.name)).toEqual(["Public"]);
+        // everything it never got to is counted, not quietly treated as empty
+        expect(read.unreadable).toBeGreaterThan(8);
+    });
+
+    it("refuses to record a way home from a read that gave up", async () => {
+        ModeProfiles.READ_DEADLINE_MILLIS = 30;
+        vi.spyOn(Connection, "getChannel").mockImplementation(async (idx) => {
+            await new Promise((r) => setTimeout(r, 12));
+            return slot(idx, `Channel ${idx}`);
+        });
+
+        await expect(ModeProfiles.captureNormal(NODE)).rejects.toThrow(/would not read/);
+    });
+
+    it("still reads a healthy radio in full", async () => {
+        vi.spyOn(Connection, "getChannel").mockImplementation(async (idx) => (
+            idx >= 8 ? Promise.reject(new Error("no such slot")) : slot(idx, idx < 3 ? `Channel ${idx}` : "")
+        ));
+
+        const read = await ModeProfiles.readChannelsWithFailures();
+
+        expect(read.channels).toHaveLength(3);
+        expect(read.gaps).toEqual([]);
+    });
+
+});
