@@ -216,6 +216,16 @@ describe("the sharing screen", () => {
         return wrapper;
     }
 
+    // the take view renders after the link is decoded, which is a dynamic import
+    // away, so a fixed number of ticks is a race: the suite failed here about one
+    // run in four, reading the share view's text while vm.view already said take
+    async function waitForText(wrapper, text) {
+        for(let i = 0; i < 50 && !wrapper.text().includes(text); i++){
+            await flushPromises();
+        }
+        return wrapper.text();
+    }
+
     it("offers a code for each emcomm mode, and never for normal", async () => {
         const wrapper = await open();
         const buttons = wrapper.findAll("button").map((b) => b.text());
@@ -252,7 +262,7 @@ describe("the sharing screen", () => {
         await flushPromises();
 
         expect(wrapper.vm.view).toBe("take");
-        expect(wrapper.text()).toContain("Emcomm-Live from KJ5HBN");
+        expect(await waitForText(wrapper, "Emcomm-Live from KJ5HBN")).toContain("Emcomm-Live from KJ5HBN");
         expect(wrapper.text()).toContain("Channels: #Emcomm, County Tac");
         expect(wrapper.text()).toContain("keeps its own name");
 
