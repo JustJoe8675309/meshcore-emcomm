@@ -10,8 +10,10 @@ const FIELD_TYPES = ["text", "textarea", "select", "dtg", "check"];
 const PREFILL_FLAGS = ["prefillFromCallsign", "prefillFromSpotterId"];
 // every key a field is allowed to carry. a flag nothing reads does nothing, silently,
 // so an unknown key is treated as a mistake rather than ignored
+// help is attached by ReportForms from ReportFieldHelp rather than written here,
+// and is as much part of a field as its label
 const FIELD_KEYS = ["id", "tag", "label", "type", "placeholder", "required", "options",
-    "offersPosition", "positionWithMgrs", ...PREFILL_FLAGS];
+    "offersPosition", "positionWithMgrs", "help", ...PREFILL_FLAGS];
 
 let failures = 0;
 function check(name, condition, detail = "") {
@@ -47,6 +49,9 @@ for (const form of ReportForms) {
         if (!field.id) problems.push("a field has no id");
         if (!field.tag) problems.push(`${field.id}: no tag`);
         if (!field.label) problems.push(`${field.id}: no label`);
+        // a field with no note is a field an operator has to guess at, which is
+        // the whole reason the notes exist
+        if (typeof field.help !== "string" || field.help.trim() === "") problems.push(`${field.id}: no help`);
         if (!FIELD_TYPES.includes(field.type)) problems.push(`${field.id}: unknown type ${field.type}`);
         if (field.type === "select" && !(field.options ?? []).length) problems.push(`${field.id}: select with no options`);
         if (field.type !== "select" && field.options) problems.push(`${field.id}: options on a non select`);
