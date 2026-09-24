@@ -34,22 +34,127 @@
                 <!-- setting groups -->
                 <div class="space-y-4">
 
-                    <!-- what each mode holds, and which one this station is in -->
-                    <ModeSettingsTabs/>
-
-                    <!-- the walkthrough again, for a station set up in a hurry -->
-                    <div class="bg-white p-2 border-t">
-                        <button @click="firstRunOpen = true" type="button"
-                                class="w-full text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 font-medium rounded-lg text-sm px-4 py-2">
-                            Walk through the modes again
-                        </button>
+                    <!-- the fields below are empty rather than current, and saving
+                         them would write the emptiness to the radio -->
+                    <div v-if="loadError" role="status" class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg m-2 p-2">
+                        {{ loadError }}
                     </div>
-                    <FirstRunSetup :open="firstRunOpen" @close="firstRunOpen = false"/>
 
-                    <!-- emcomm, stored in this browser rather than on the device -->
+                    <!-- the read waits its turn behind whatever else the radio is
+                         doing, which after an advert can be a few seconds of
+                         contact reload. Say so, rather than show empty fields -->
+                    <div v-else-if="isLoading" role="status" class="bg-blue-50 border border-blue-200 text-blue-800 text-sm rounded-lg m-2 p-2">
+                        Reading settings from the radio. Save is off until they have loaded.
+                    </div>
+
+                    <!-- Everything that takes effect the moment it is saved. Public
+                         Info, Radio Settings and EMCOMM Settings were three groups
+                         editing the same radio, transmit power appearing in all
+                         three; they are one group now. -->
+                    <SettingsSection title="This station, now"
+                                     note="What the radio is doing at this moment. Saving also updates the mode this station is in, so coming home does not undo it."
+                                     open-by-default>
+
+                    <!-- public info -->
                     <div class="bg-white divide-y">
 
-                        <div class="bg-white p-2 font-semibold">Emcomm</div>
+                        <div class="w-full p-2">
+                            <div class="block mb-2 text-sm font-medium text-gray-900">Name</div>
+                            <input v-model="name" type="text" placeholder="e.g: Anonymous" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                        </div>
+
+                        <div class="w-full p-2">
+                            <div class="block mb-2 text-sm font-medium text-gray-900">Latitude</div>
+                            <input v-model="latitude" type="number" placeholder="e.g: -38.664646" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                        </div>
+
+                        <div class="w-full p-2">
+                            <div class="block mb-2 text-sm font-medium text-gray-900">Longitude</div>
+                            <input v-model="longitude" type="number" placeholder="e.g: 178.023507" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                        </div>
+
+                    </div>
+
+                    <!-- radio settings -->
+                    <div class="bg-white divide-y">
+
+                        <div class="w-full p-2">
+                            <div class="block mb-2 text-sm font-medium text-gray-900">Frequency (MHz)</div>
+                            <input v-model="radioFreq" type="number" placeholder="e.g: 917.375" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                        </div>
+
+                        <div class="w-full p-2">
+                            <div class="block mb-2 text-sm font-medium text-gray-900">Bandwidth</div>
+                            <select v-model="radioBw" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                <option :value="7800">7.8 kHz</option>
+                                <option :value="10400">10.4 kHz</option>
+                                <option :value="15600">15.6 kHz</option>
+                                <option :value="20800">20.8 kHz</option>
+                                <option :value="31250">31.25 kHz</option>
+                                <option :value="41700">41.7 kHz</option>
+                                <option :value="62500">62.5 kHz</option>
+                                <option :value="125000">125 kHz</option>
+                                <option :value="250000">250 kHz</option>
+                                <option :value="500000">500 kHz</option>
+                            </select>
+                        </div>
+
+                        <div class="w-full p-2">
+                            <div class="block mb-2 text-sm font-medium text-gray-900">Spreading Factor</div>
+                            <select v-model="radioSf" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                <option :value="7">7</option>
+                                <option :value="8">8</option>
+                                <option :value="9">9</option>
+                                <option :value="10">10</option>
+                                <option :value="11">11</option>
+                                <option :value="12">12</option>
+                            </select>
+                        </div>
+
+                        <div class="w-full p-2">
+                            <div class="block mb-2 text-sm font-medium text-gray-900">Coding Rate</div>
+                            <select v-model="radioCr" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                <option :value="5">5</option>
+                                <option :value="6">6</option>
+                                <option :value="7">7</option>
+                                <option :value="8">8</option>
+                            </select>
+                        </div>
+
+                        <div class="w-full p-2">
+                            <div class="block mb-2 text-sm font-medium text-gray-900">Transmit Power (dBm)</div>
+                            <input v-model="txPower" type="number" placeholder="e.g: 22" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                        </div>
+
+                    </div>
+
+                        <EmcommSettingsGroup bare/>
+
+                        <PositionSettingsGroup bare/>
+
+                    </SettingsSection>
+
+                    <!-- what each mode will write when it is entered, which is a
+                         different question from what the radio is doing now -->
+                    <SettingsSection title="What each mode writes"
+                                     note="Entering a mode from the banner writes these. Editing them changes nothing until then.">
+
+
+                        <!-- what each mode holds, and which one this station is in -->
+                        <ModeSettingsTabs/>
+
+                        <!-- the walkthrough again, for a station set up in a hurry -->
+                        <div class="bg-white p-2 border-t">
+                            <button @click="firstRunOpen = true" type="button"
+                                    class="w-full text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 font-medium rounded-lg text-sm px-4 py-2">
+                                Walk through the modes again
+                            </button>
+                        </div>
+
+                    </SettingsSection>
+
+                    <SettingsSection title="Operator"
+                                     note="You, rather than the radio. Kept in this browser.">
 
                         <div class="w-full p-2">
                             <div class="block mb-2 text-sm font-medium text-gray-900">Operator callsign</div>
@@ -92,6 +197,11 @@
                                 Applies to the DTG fields on report forms. Match whatever your net runs on.
                             </div>
                         </div>
+
+                    </SettingsSection>
+
+                    <SettingsSection title="Backups"
+                                     note="Contacts, channels and their keys, and the radio settings.">
 
                         <!-- node backup. the way home for EMCOMM mode, so it says
                              plainly what it holds and when it was taken -->
@@ -178,106 +288,12 @@
 
                         </div>
 
-                    </div>
+                    </SettingsSection>
 
-                    <!-- the fields below are empty rather than current, and saving
-                         them would write the emptiness to the radio -->
-                    <div v-if="loadError" role="status" class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg m-2 p-2">
-                        {{ loadError }}
-                    </div>
-
-                    <!-- the read waits its turn behind whatever else the radio is
-                         doing, which after an advert can be a few seconds of
-                         contact reload. Say so, rather than show empty fields -->
-                    <div v-else-if="isLoading" role="status" class="bg-blue-50 border border-blue-200 text-blue-800 text-sm rounded-lg m-2 p-2">
-                        Reading settings from the radio. Save is off until they have loaded.
-                    </div>
-
-                    <!-- public info -->
-                    <div class="bg-white divide-y">
-
-                        <div class="bg-white p-2 font-semibold">Public Info</div>
-
-                        <div class="w-full p-2">
-                            <div class="block mb-2 text-sm font-medium text-gray-900">Name</div>
-                            <input v-model="name" type="text" placeholder="e.g: Anonymous" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                        </div>
-
-                        <div class="w-full p-2">
-                            <div class="block mb-2 text-sm font-medium text-gray-900">Latitude</div>
-                            <input v-model="latitude" type="number" placeholder="e.g: -38.664646" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                        </div>
-
-                        <div class="w-full p-2">
-                            <div class="block mb-2 text-sm font-medium text-gray-900">Longitude</div>
-                            <input v-model="longitude" type="number" placeholder="e.g: 178.023507" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                        </div>
-
-                    </div>
-
-                    <!-- radio settings -->
-                    <div class="bg-white divide-y">
-
-                        <div class="bg-white p-2 font-semibold">Radio Settings</div>
-
-                        <div class="w-full p-2">
-                            <div class="block mb-2 text-sm font-medium text-gray-900">Frequency (MHz)</div>
-                            <input v-model="radioFreq" type="number" placeholder="e.g: 917.375" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                        </div>
-
-                        <div class="w-full p-2">
-                            <div class="block mb-2 text-sm font-medium text-gray-900">Bandwidth</div>
-                            <select v-model="radioBw" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                                <option :value="7800">7.8 kHz</option>
-                                <option :value="10400">10.4 kHz</option>
-                                <option :value="15600">15.6 kHz</option>
-                                <option :value="20800">20.8 kHz</option>
-                                <option :value="31250">31.25 kHz</option>
-                                <option :value="41700">41.7 kHz</option>
-                                <option :value="62500">62.5 kHz</option>
-                                <option :value="125000">125 kHz</option>
-                                <option :value="250000">250 kHz</option>
-                                <option :value="500000">500 kHz</option>
-                            </select>
-                        </div>
-
-                        <div class="w-full p-2">
-                            <div class="block mb-2 text-sm font-medium text-gray-900">Spreading Factor</div>
-                            <select v-model="radioSf" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                                <option :value="7">7</option>
-                                <option :value="8">8</option>
-                                <option :value="9">9</option>
-                                <option :value="10">10</option>
-                                <option :value="11">11</option>
-                                <option :value="12">12</option>
-                            </select>
-                        </div>
-
-                        <div class="w-full p-2">
-                            <div class="block mb-2 text-sm font-medium text-gray-900">Coding Rate</div>
-                            <select v-model="radioCr" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                                <option :value="5">5</option>
-                                <option :value="6">6</option>
-                                <option :value="7">7</option>
-                                <option :value="8">8</option>
-                            </select>
-                        </div>
-
-                        <div class="w-full p-2">
-                            <div class="block mb-2 text-sm font-medium text-gray-900">Transmit Power (dBm)</div>
-                            <input v-model="txPower" type="number" placeholder="e.g: 22" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                        </div>
-
-                    </div>
-
-                    <EmcommSettingsGroup/>
-
-                    <PositionSettingsGroup/>
+                    <SettingsSection title="Commands">
 
                     <!-- commands -->
                     <div class="flex flex-col divide-y bg-white">
-
-                        <div class="bg-white p-2 font-semibold">Commands</div>
 
                         <RouterLink :to="{ name: 'rxlog' }">
                             <div class="flex cursor-pointer px-2 py-3 bg-white hover:bg-gray-50">
@@ -325,6 +341,10 @@
 
                     </div>
 
+                    </SettingsSection>
+
+                    <FirstRunSetup :open="firstRunOpen" @close="firstRunOpen = false"/>
+
                 </div>
 
             </div>
@@ -346,6 +366,7 @@ import PositionService from "../../js/position/PositionService.js";
 import NodeBackup from "../../js/NodeBackup.js";
 import EmcommMode from "../../js/EmcommMode.js";
 import EmcommSettingsGroup from "../settings/EmcommSettingsGroup.vue";
+import SettingsSection from "../settings/SettingsSection.vue";
 import ModeSettingsTabs from "../modes/ModeSettingsTabs.vue";
 import FirstRunSetup from "../modes/FirstRunSetup.vue";
 import ModeProfiles from "../../js/modes/ModeProfiles.js";
@@ -354,7 +375,7 @@ import PositionSettingsGroup from "../settings/PositionSettingsGroup.vue";
 
 export default {
     name: 'SettingsPage',
-    components: {Page, SaveButton, AppBar, EmcommSettingsGroup, BusyOverlay, PositionSettingsGroup, ModeSettingsTabs, FirstRunSetup},
+    components: {Page, SaveButton, AppBar, EmcommSettingsGroup, BusyOverlay, PositionSettingsGroup, ModeSettingsTabs, FirstRunSetup, SettingsSection},
     data() {
         return {
             firstRunOpen: false,
@@ -765,6 +786,16 @@ Settings, channels and ${backup.contacts.length} contacts will be written to thi
 
                 // reload self info
                 await Connection.loadSelfInfo(Connection.READ_TIMEOUT_MILLIS);
+
+                // and into the mode in use, so coming home does not undo it
+                ModeProfiles.noteRadioSettings({
+                    name: this.name,
+                    radioFreq: radioFreq,
+                    radioBw: this.radioBw,
+                    radioSf: this.radioSf,
+                    radioCr: this.radioCr,
+                    txPower: Number(this.txPower),
+                });
 
                 // show success alert
                 alert("Settings saved.");

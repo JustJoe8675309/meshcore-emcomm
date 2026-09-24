@@ -432,6 +432,43 @@ class ModeProfiles {
     }
 
     /**
+     * Records a setting changed on the live radio into the mode in use.
+     *
+     * A mode writes its own radio settings when it is entered, so a change made on
+     * the settings page was undone the next time the station came home: the
+     * operator raised the transmit power, went to a drill, came back, and the power
+     * was as it had been, with nothing said. The mode in use is the one that would
+     * undo it, so that is the one updated. In normal mode, where a station spends
+     * its life, that means normal mode keeps up with the radio.
+     *
+     * It deliberately does not touch the other modes. What a drill writes is the
+     * drill's business, and "the radio as this app first found it" would stop
+     * meaning anything if every mode followed every change made in another.
+     */
+    static noteRadioSettings(settings, nodeKeyHex = this.nodeKeyHex()) {
+
+        const mode = this.current(nodeKeyHex);
+        const profile = this.profile(mode, nodeKeyHex);
+        if(profile == null){
+            // nothing stored for this mode, so there is nothing a switch would
+            // write over the change that was just made
+            return false;
+        }
+
+        const allowed = ["name", "radioFreq", "radioBw", "radioSf", "radioCr", "txPower",
+            "shareLocation", "advertPosition", "multiAcks", "autoAddContacts"];
+        for(const [key, value] of Object.entries(settings ?? {})){
+            if(allowed.includes(key) && value != null){
+                profile.radio[key] = value;
+            }
+        }
+
+        this.saveProfile(mode, profile, nodeKeyHex);
+        return true;
+
+    }
+
+    /**
      * Records the auto or manual choice into the mode in use.
      *
      * The setting in the settings page writes the live per-node value, which is

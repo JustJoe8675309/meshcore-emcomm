@@ -1,7 +1,7 @@
 <template>
     <div class="bg-white divide-y">
 
-        <div class="bg-white p-2 font-semibold flex items-center justify-between">
+        <div v-if="!bare" class="bg-white p-2 font-semibold flex items-center justify-between">
             <span>EMCOMM Settings</span>
             <span class="text-xs font-normal" :class="[ inEmcommMode ? 'text-amber-700' : 'text-gray-500' ]">
                 {{ modeLabel }}
@@ -9,8 +9,8 @@
         </div>
 
         <div class="p-2 text-xs text-gray-500">
-            The settings EMCOMM mode changes, so they can be set or put back one at a time. Each
-            takes effect on the radio straight away; the groups above still edit the same values.
+            Each of these takes effect on the radio straight away, one at a time, rather than
+            waiting for Save.
         </div>
 
         <!-- automatic contacts -->
@@ -183,6 +183,13 @@ import Utils from "../../js/Utils.js";
 
 export default {
     name: 'EmcommSettingsGroup',
+    props: {
+        // inside a settings section, which supplies the heading
+        bare: {
+            type: Boolean,
+            default: false,
+        },
+    },
     data() {
         return {
             busy: false,
@@ -277,8 +284,13 @@ export default {
         },
 
         setMaxPower() {
-            return this.run("Transmit power", () => EmcommMode.applySettings({ txPower: this.current.maxTxPower })
-                .then((r) => { if(r.failures.length) throw new Error(r.failures[0].reason); }));
+            const power = this.current.maxTxPower;
+            return this.run("Transmit power", () => EmcommMode.applySettings({ txPower: power })
+                .then((r) => {
+                    if(r.failures.length) throw new Error(r.failures[0].reason);
+                    // into the mode in use, or coming home puts the old power back
+                    ModeProfiles.noteRadioSettings({ txPower: power });
+                }));
         },
 
         setPositionFromGps() {
@@ -295,7 +307,8 @@ export default {
             const turningOn = this.sharing !== "all";
             return this.run(
                 "Location sharing",
-                () => EmcommMode.setLocationSharing(turningOn),
+                () => EmcommMode.setLocationSharing(turningOn)
+                    .then(() => ModeProfiles.noteRadioSettings({ shareLocation: turningOn })),
                 turningOn ? "Location is shared with any station that asks." : "Location is no longer shared.",
             );
         },
@@ -304,7 +317,8 @@ export default {
             const turningOff = this.current.manualAddContacts !== 1;
             return this.run(
                 "Automatic contacts",
-                () => EmcommMode.setManualAddContacts(turningOff),
+                () => EmcommMode.setManualAddContacts(turningOff)
+                    .then(() => ModeProfiles.noteRadioSettings({ autoAddContacts: !turningOff })),
                 turningOff ? "Contacts are no longer added automatically." : "Contacts are added automatically again.",
             );
         },

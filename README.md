@@ -726,10 +726,31 @@ radio. Messages saved before this build have no key; a switch attributes them to
 channel is in their slot at the time, which the preview says before it happens, and a conversation
 that is already mixed is cleared with Delete Message History on that channel.
 
-**Settings has a tab for each mode**, identical in layout: only what is in them differs. A tab
-edits that mode without touching the radio, and says so: the radio changes when the mode is
-entered from the banner. Normal mode's tab also has a button to take the radio's settings and
-channels as they are now, which is the only time normal mode is re-read after the first connect.
+**The settings page is split by *when*, not by topic.** Five folded groups:
+
+- **This station, now** — what the radio is doing at this moment: its name, position, radio
+  settings, transmit power, location sharing, advert position, clock, repeating adverts, and
+  whether position requests are answered automatically. Open when the page opens, because it is
+  what an operator usually came for.
+- **What each mode writes** — a tab per mode, identical in layout, editing what that mode will
+  write when it is entered. Nothing here changes the radio until it is. Normal mode's tab also
+  has a button to take the radio's settings and channels as they are now, which is the only time
+  normal mode is re-read after the first connect.
+- **Operator** — the callsign, SKYWARN number and date-time zone. You, rather than the radio, and
+  kept in this browser.
+- **Backups**, and **Commands**.
+
+That split exists because the page had grown to nine groups stacked end to end, several editing
+the same value under different headings: transmit power in three of them, the node name and the
+radio settings in two each, and two headings a few inches apart reading "Emcomm" and "EMCOMM
+Settings" while meaning entirely different things. Every setting appears once per meaning now.
+
+**Saving a live setting also writes it into the mode the station is in.** A mode writes its own
+radio settings when it is entered, so raising the transmit power, going to a drill and coming
+home used to put the old power back with nothing said. The mode in use is the one that would undo
+it, so that is the one updated — in normal mode, where a station spends its life, that means
+normal mode keeps up with the radio. The other modes are left alone: what a drill writes is the
+drill's business.
 
 **Handing a mode to the other stations.** The QR button beside the settings gear opens sharing.
 One operator sets a station up properly and shows a code; everyone else scans it with their own

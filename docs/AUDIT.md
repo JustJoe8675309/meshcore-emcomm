@@ -437,6 +437,22 @@ size turned up, not just at a narrow window.
       the way to clear a conversation that is already mixed. After one switch the
       count should be zero for the slots that were read.
 
+### The settings page
+
+- [ ] **It opens as five named groups**, not a wall: This station now, What each
+      mode writes, Operator, Backups, Commands. Only the first is open.
+- [ ] **Each setting is in one place.** Transmit power used to be editable in
+      three groups, the node name and the radio settings in two each. Look for a
+      second copy of any of them.
+- [ ] **A live change survives a round trip.** In Normal, raise the transmit
+      power and Save, switch to Emcomm-Training and back: the power must still be
+      the new one. It used to be put back with nothing said, because the mode
+      writes its own settings on entry and nothing had told the mode.
+- [ ] **A live change does not leak into the other modes.** After the above, the
+      Emcomm-Live tab's transmit power is whatever it was.
+- [ ] **On a phone with the text turned up**, the group headings and their notes
+      read without the page scrolling sideways.
+
 ### Settings, and repeating adverts
 
 - [ ] **Open settings on a connected node and look before touching anything.** Name,

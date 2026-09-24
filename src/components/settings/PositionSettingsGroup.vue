@@ -1,7 +1,8 @@
 <template>
     <div class="bg-white divide-y">
 
-        <div class="bg-white p-2 font-semibold">Position requests</div>
+        <div v-if="!bare" class="bg-white p-2 font-semibold">Position requests</div>
+        <div v-else class="p-2 pb-0 text-sm font-medium text-gray-900">Position requests</div>
 
         <div class="p-2 text-xs text-gray-500">
             Other stations running this app can ask where this one is. Every channel this radio
@@ -64,6 +65,13 @@ import ModeProfiles from "../../js/modes/ModeProfiles.js";
 
 export default {
     name: 'PositionSettingsGroup',
+    props: {
+        // inside a settings section, which supplies the heading
+        bare: {
+            type: Boolean,
+            default: false,
+        },
+    },
     data() {
         return {
             choices: [
