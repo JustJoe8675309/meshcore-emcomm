@@ -392,11 +392,13 @@ class ModeSwitch {
 
         // --- this app's own settings for the node
 
-        PositionService.saveSettings({
+        const saveAnswerChoices = () => PositionService.saveSettings({
             markedChannels: marked,
             markedRooms: profile.rooms.filter((r) => r.answerPositions).map((r) => r.keyHex),
             autoAnswer: profile.autoAnswerPositions === true,
         }, nodeKeyHex);
+
+        saveAnswerChoices();
 
         AdvertSchedule.set(nodeKeyHex, profile.adverts);
         AdvertSchedule.start(nodeKeyHex);
@@ -446,20 +448,21 @@ class ModeSwitch {
                             warnings.push(`${restored.join(", ")} ${restored.length === 1 ? "was" : "were"} not in the backup, `
                                 + `so ${restored.length === 1 ? "it was" : "they were"} put back from normal mode's own list. `
                                 + `${restored.length === 1 ? "It" : "They"} may not be in the slot ${restored.length === 1 ? "it was" : "they were"} in before.`);
-
-                            // The answering choices were saved further up, before
-                            // these slots were known, so a channel put back here
-                            // would have been written to the radio and then left
-                            // out of the list of who answers. Node 3 showed it:
-                            // #emcomm-testing came home to slot 16 ticked in the
-                            // profile and missing from the marks.
-                            PositionService.saveSettings({
-                                markedChannels: marked,
-                                markedRooms: profile.rooms.filter((r) => r.answerPositions).map((r) => r.keyHex),
-                                autoAnswer: profile.autoAnswerPositions === true,
-                            }, nodeKeyHex);
                         }
                     }
+
+                    // The last word on who answers.
+                    //
+                    // The restore puts the app's own settings back from the
+                    // backup, and that snapshot was taken before any of this: it
+                    // does not know which slots the channels came home to, or that
+                    // one was just put back from the profile. Node 3 showed it on
+                    // the bench, thirteen seconds apart — the switch wrote
+                    // [7, 16] and the restore wrote [7] over the top, and then
+                    // captured that into the next backup, so the mistake carried
+                    // itself forward. Saying it again here makes the profile's
+                    // ticks the authority every time, which cannot go stale.
+                    saveAnswerChoices();
                 } catch(e) {
                     // The slots were cleared for the backup to fill, so a restore
                     // that never ran leaves a radio holding no channels at all —

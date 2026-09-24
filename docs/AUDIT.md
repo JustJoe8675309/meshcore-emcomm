@@ -361,6 +361,13 @@ size turned up, not just at a narrow window.
       by a build that stopped at 16 slots, and the round trip cleared
       `#emcomm-testing` out of slot 16 with nothing to put back. A backup kept for
       ever drifts away from the radio it describes.
+- [ ] **Who answers position requests survives the way home.** Tick a channel,
+      round trip, and check the ticks still match the slots the channels came home
+      to — on node 3 the switch wrote slots 7 and 16 and the backup's own settings
+      overwrote it with 7 thirteen seconds later, then captured that into the next
+      backup, so the mistake carried itself forward. If a mark goes missing,
+      instrument it rather than guessing: patch `Storage.prototype.setItem` in the
+      page to log writes to `position_settings` with a stack, then do a round trip.
 - [ ] **A channel the backup never saw still comes home.** With a backup that is
       missing one of normal mode's channels, coming home must write it into a free
       slot and say so in the warnings, rather than leaving the slot empty. Matched

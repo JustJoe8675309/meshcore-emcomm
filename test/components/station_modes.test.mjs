@@ -257,6 +257,37 @@ describe("switching a station's mode", () => {
         expect(result.warnings.join(" ")).toContain("put back from normal mode's own list");
     });
 
+    // The restore puts the app's own settings back from the backup, and that
+    // snapshot predates the switch: it does not know which slots the channels came
+    // home to. Node 3 showed it thirteen seconds apart — the switch wrote [7, 16]
+    // and the restore wrote [7] over the top, then captured that into the next
+    // backup, so the mistake carried itself forward.
+    it("has the last word on who answers, after the backup puts its own settings back", async () => {
+        const normal = await ModeProfiles.profileOrDefault("normal", NODE);
+        normal.channels.find((c) => c.name === "Emcomm Testing").answerPositions = true;
+        ModeProfiles.saveProfile("normal", normal, NODE);
+
+        NodeBackup.capture.mockResolvedValue({
+            formatVersion: 1, nodePublicKey: NODE, nodeName: "before", capturedAt: 1, settings: {},
+            channels: [
+                { idx: 0, name: "Public", secret: "8b3387e9c5cdea6ac9e5edbaa115cd72" },
+                { idx: 3, name: "Emcomm Testing", secret: "11111111111111111111111111111111" },
+            ],
+            contacts: [], warnings: [],
+        });
+        // as the real restore does: it writes the settings the backup carries
+        NodeBackup.restore.mockImplementation(async () => {
+            PositionService.saveSettings({ markedChannels: [], markedRooms: [], autoAnswer: false }, NODE);
+            return { failures: [], notInBackup: [] };
+        });
+
+        await ModeSwitch.apply("live");
+        await ModeSwitch.apply("normal");
+
+        const saved = JSON.parse(window.localStorage.getItem(`position_settings:${NODE}`) ?? "{}");
+        expect(saved.markedChannels).toEqual([3]);
+    });
+
     it("does not write a second copy of a channel the backup restored", async () => {
         NodeBackup.capture.mockResolvedValue({
             formatVersion: 1, nodePublicKey: NODE, nodeName: "before", capturedAt: 1, settings: {},
