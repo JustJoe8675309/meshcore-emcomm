@@ -47,7 +47,6 @@ async function aProfile({ privateChannel = true } = {}) {
     if(privateChannel){
         profile.channels.push({ name: "County Tac", secret: "ab".repeat(16) });
     }
-    profile.rooms = [{ keyHex: OTHER, name: "N.E. ELP EMCOMM OBSVR" }];
     profile.adverts = { zeroHopMinutes: 30, floodMinutes: 60 };
     profile.autoAnswerPositions = true;
     profile.trimContacts = true;
@@ -84,12 +83,25 @@ describe("the code", () => {
             shareLocation: true, advertPosition: true, multiAcks: true, autoAddContacts: true,
         });
         expect(shared.profile.channels).toEqual(profile.channels);
-        expect(shared.profile.rooms).toEqual(profile.rooms);
         expect(shared.profile.adverts).toEqual({ zeroHopMinutes: 30, floodMinutes: 60 });
         expect(shared.profile.autoAnswerPositions).toBe(true);
         expect(shared.profile.trimContacts).toBe(true);
         expect(shared.profile.announce).toBe("flood");
         expect(shared.profile.discoverRepeaters).toBe(true);
+    });
+
+    // Codes printed or pasted before rooms left a mode still carry "o". A net that
+    // handed one out should not have to hand out a new one.
+    it("still reads a code made when a mode listed rooms", async () => {
+        const profile = await aProfile();
+        const link = ModeShare.link(profile, "live", { origin: "x/" });
+        const payload = JSON.parse(atob(decodeURIComponent(link.split("&d=")[1]).replace(/-/g, "+").replace(/_/g, "/")));
+        payload.o = [{ k: OTHER, n: "N.E. ELP EMCOMM OBSVR" }];
+        const older = `x/#/mode?v=1&d=${encodeURIComponent(btoa(JSON.stringify(payload)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""))}`;
+
+        const shared = await ModeShare.read(older);
+        expect(shared.mode).toBe("live");
+        expect(shared.profile.channels).toEqual(profile.channels);
     });
 
     it("never carries the node name: two stations must not answer to one", async () => {

@@ -5,7 +5,7 @@
 // camera opens it and an operator who has not installed the app still lands on
 // the web one. See docs/MODE-SHARING.md for the decisions behind this.
 //
-// What travels: the radio settings, the channels with their keys, the rooms, the
+// What travels: the radio settings, the channels with their keys, the
 // advert intervals and the entering choices. What does not:
 //
 //   the node name   every station is its own station, and two stations answering
@@ -58,7 +58,9 @@ function compact(profile, mode, { includePrivateKeys = true, from = "" } = {}) {
             }
             return entry;
         }),
-        o: profile.rooms.map((room) => ({ k: room.keyHex, n: room.name })),
+        // "o", the rooms a mode used, went when every room became available for a
+        // roll call: the list named them and did nothing else. A code made before
+        // that still carries it and still reads; it is not looked at.
         q: profile.autoAnswerPositions ? 1 : 0,
         z: profile.adverts.zeroHopMinutes,
         d: profile.adverts.floodMinutes,
@@ -170,7 +172,6 @@ class ModeShare {
                 autoAddContacts: data.r?.u === 1,
             },
             channels: channels,
-            rooms: (data.o ?? []).map((room) => ({ keyHex: room.k, name: room.n })),
             autoAnswerPositions: data.q === 1,
             adverts: { zeroHopMinutes: data.z ?? 0, floodMinutes: data.d ?? 0 },
             markDrill: data.x === 1,
@@ -225,9 +226,6 @@ class ModeShare {
         }
         if(profile.radio.txPower != null){
             lines.push(`Transmit power: ${profile.radio.txPower} dBm.`);
-        }
-        if(profile.rooms.length > 0){
-            lines.push(`Rooms: ${profile.rooms.map((r) => r.name).join(", ")}.`);
         }
         lines.push(`Repeating adverts: ${profile.adverts.zeroHopMinutes || "no"} zero hop, ${profile.adverts.floodMinutes || "no"} flood, in minutes.`);
         if(profile.markDrill){

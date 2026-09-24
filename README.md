@@ -695,8 +695,8 @@ battery line, and switched by tapping it:
 | Mode | Bar | What it is |
 | ---- | --- | ---------- |
 | **Normal mode** | green | The radio as this app first found it: its own settings, channels and contacts. |
-| **Emcomm-Live** | red | A real incident: the net's channels and rooms, and the settings an incident wants. |
-| **Emcomm-Training** | yellow | A drill: its own channels and rooms, and everything sent marked DRILL. |
+| **Emcomm-Live** | red | A real incident: the net's channels, and the settings an incident wants. |
+| **Emcomm-Training** | yellow | A drill: its own channels, and everything sent marked DRILL. |
 
 Black letters on each colour, and the words say it too, so it reads in sunlight and to an
 operator who cannot tell red from green.
@@ -707,13 +707,17 @@ what the radio can hear really changes. The dialog lists what a switch will do, 
 it stands, before anything is written, and every step is reported as it goes.
 
 **What belongs to a mode:** the node name, radio settings and transmit power; location sharing,
-the position in adverts, extra acknowledgements and automatic contacts; its channels and which of
-them answer position requests; which rooms it uses; whether position requests are answered
-automatically; the repeating advert intervals; whether to trim contacts, announce the station and
-search for repeaters on entering; and whether everything sent is marked DRILL.
+the position in adverts, extra acknowledgements and automatic contacts; its channels; whether
+position requests are answered automatically; the repeating advert intervals; whether to trim
+contacts, announce the station and search for repeaters on entering; and whether everything sent
+is marked DRILL.
 
 **What does not:** the operator's callsign, the report time zone, message history, and contacts.
-Contacts come from the backup rather than from a mode, since they are not a setting.
+Contacts come from the backup rather than from a mode, since they are not a setting. Rooms are
+contacts too, so a mode does not list them: every room this radio is in can be used for a roll
+call, in every mode. Every channel in every mode answers position requests as well; whether the
+answer goes out by itself or waits for the operator is one setting for the station, not a tick
+per channel.
 
 **A channel's messages belong to the channel, not to the slot.** A radio holds channels in
 numbered slots, and a mode writes its own channels into them, so the channel in slot 3 today is
@@ -981,8 +985,8 @@ back exactly as it was:
 - **The radio:** name, position, transmit power, radio settings, location sharing, the add
   contacts mode, channels and contacts, all from the pre-EMCOMM backup.
 - **This app's own settings for the node,** which live in the browser rather than on the radio:
-  the repeating advert schedule, which channels and rooms answer position requests and whether
-  automatically, and the report time zone. These are kept in every backup from now on. An older
+  the repeating advert schedule, whether position requests are answered automatically, and the
+  report time zone. These are kept in every backup from now on. An older
   backup without them leaves them as they are.
 - **What was added while in the mode.** Contacts added (automatic contacts is on in the mode)
   and channels in slots that were empty before are listed by name, and **OK removes them**, so

@@ -7,7 +7,7 @@ is `src/js/modes/ModeShare.js` and `src/components/modes/ModeSharing.vue`.
 ## What it is for
 
 One operator sets a node up properly: the net's channels and their keys, the radio
-settings, which rooms to use, the advert intervals. Everyone else at the muster
+settings, the advert intervals. Everyone else at the muster
 point should get the same thing in seconds, without reading keys aloud over the
 air or typing a 32 character secret on a phone.
 
@@ -18,8 +18,8 @@ until they switch into the mode, which is already how modes work.
 ## What is shared, and what is not
 
 A **mode profile** is what travels: radio settings, channels with their keys,
-which rooms to use, position answering, advert intervals, the DRILL mark, and the
-entering choices (trim, announce, discover).
+position answering, advert intervals, the DRILL mark, and the entering choices
+(trim, announce, discover).
 
 Three things are deliberately left out:
 

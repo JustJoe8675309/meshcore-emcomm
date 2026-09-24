@@ -4,7 +4,7 @@
         <div v-if="only == null" class="bg-white p-2 font-semibold">Modes</div>
 
         <div v-if="only == null" class="p-2 text-xs text-gray-500">
-            Each mode holds its own radio settings, channels and rooms. Switching writes them to the
+            Each mode holds its own radio settings and channels. Switching writes them to the
             radio, from the banner at the top of the app. The layout here is the same for every mode:
             only what is in it differs.
         </div>
@@ -105,22 +105,6 @@
                 <div v-if="newChannelName && !newChannelName.trim().startsWith('#')" class="text-xs text-gray-500">
                     Not a # channel, so it gets a random key. Share it with the net by exporting the
                     channel from the stock app, or use a # name instead.
-                </div>
-            </div>
-
-            <!-- rooms this mode uses -->
-            <div class="p-2 space-y-2">
-                <div class="text-sm font-medium text-gray-900">Rooms</div>
-                <div v-if="rooms.length === 0" class="text-xs text-gray-500">This radio has no room servers among its contacts.</div>
-                <div v-for="room of rooms" :key="room.keyHex" class="flex items-center justify-between text-xs text-gray-700">
-                    <label class="flex items-center space-x-2">
-                        <input type="checkbox" :checked="usesRoom(room.keyHex)" @change="toggleRoom(room, $event.target.checked)">
-                        <span>{{ room.name }}</span>
-                    </label>
-                </div>
-                <div class="text-xs text-gray-500">
-                    Rooms are contacts, so they are not removed when the mode changes. This says which
-                    of them this mode uses for position roll calls.
                 </div>
             </div>
 
@@ -274,16 +258,6 @@ export default {
         removeChannel(index) {
             this.profile.channels.splice(index, 1);
         },
-        usesRoom(keyHex) {
-            return (this.profile?.rooms ?? []).some((r) => r.keyHex === keyHex);
-        },
-        toggleRoom(room, on) {
-            if(on){
-                this.profile.rooms.push({ keyHex: room.keyHex, name: room.name });
-            } else {
-                this.profile.rooms = this.profile.rooms.filter((r) => r.keyHex !== room.keyHex);
-            }
-        },
     },
     computed: {
         modes() {
@@ -296,11 +270,6 @@ export default {
         },
         notConnected() {
             return GlobalState.connection == null || GlobalState.selfInfo == null;
-        },
-        rooms() {
-            return GlobalState.contacts
-                .filter((c) => c.type === Constants.AdvType.Room)
-                .map((c) => ({ keyHex: Utils.bytesToHex(c.publicKey), name: PositionService.contactName(c) }));
         },
         canAddChannel() {
             return this.profile != null && this.newChannelName.trim() !== "" && this.profile.channels.length < 16;

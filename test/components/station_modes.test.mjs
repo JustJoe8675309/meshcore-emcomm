@@ -765,7 +765,7 @@ describe("the settings tabs", () => {
         await flushPromises();
         for(const mode of MODES){
             await open(wrapper, mode);
-            for(const label of ["Node name", "Frequency (kHz)", "Transmit power (dBm)", "Channels", "Rooms", "Zero hop", "Flood"]){
+            for(const label of ["Node name", "Frequency (kHz)", "Transmit power (dBm)", "Channels", "Zero hop", "Flood"]){
                 expect(wrapper.text()).toContain(label);
             }
         }
@@ -825,20 +825,29 @@ describe("the settings tabs", () => {
         expect(named.secret).not.toBe(added.secret);
     });
 
-    it("saves a mode, and keeps the rooms it uses", async () => {
+    it("saves a mode", async () => {
         const wrapper = mount(ModeSettingsTabs);
         await flushPromises();
         await open(wrapper, "live");
 
-        wrapper.vm.toggleRoom({ keyHex: ROOM_HEX, name: "N.E. ELP EMCOMM OBSVR" }, true);
         wrapper.vm.profile.adverts.zeroHopMinutes = 45;
         wrapper.vm.save();
         await flushPromises();
 
-        const saved = ModeProfiles.profile("live", NODE);
-        expect(saved.rooms).toEqual([{ keyHex: ROOM_HEX, name: "N.E. ELP EMCOMM OBSVR" }]);
-        expect(saved.adverts.zeroHopMinutes).toBe(45);
+        expect(ModeProfiles.profile("live", NODE).adverts.zeroHopMinutes).toBe(45);
         expect(wrapper.text()).toContain("Emcomm-Live saved");
+    });
+
+    // Every room this radio is in answers a roll call, so a list of which ones a
+    // mode "uses" named them and did nothing else. A room is a contact: it cannot
+    // be added or removed here either.
+    it("has nothing to say about rooms", async () => {
+        const wrapper = mount(ModeSettingsTabs);
+        await flushPromises();
+        await open(wrapper, "live");
+
+        expect(wrapper.text()).not.toContain("Rooms");
+        expect(ModeProfiles.profile("live", NODE).rooms).toBeUndefined();
     });
 
     it("says that saving the mode in use does not change the radio by itself", async () => {

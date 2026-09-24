@@ -136,8 +136,6 @@ class ModeProfiles {
             },
             // written to the radio's slots in this order when the mode is entered
             channels: [],
-            // room servers this mode uses, by contact key
-            rooms: [],
             autoAnswerPositions: false,
             adverts: { zeroHopMinutes: 0, floodMinutes: 0 },
             // everything sent in this mode is marked DRILL
@@ -261,7 +259,6 @@ class ModeProfiles {
             ...stored,
             radio: { ...blank.radio, ...(stored.radio ?? {}) },
             channels: Array.isArray(stored.channels) ? stored.channels.map((c) => ({ ...c })) : [],
-            rooms: Array.isArray(stored.rooms) ? stored.rooms.map((r) => ({ ...r })) : [],
             adverts: { ...blank.adverts, ...(stored.adverts ?? {}) },
         };
     }
@@ -436,7 +433,6 @@ class ModeProfiles {
             },
             // the net's own channel, plus anything the operator adds
             channels: [{ name: channelName, secret: secret }],
-            rooms: [],
             autoAnswerPositions: false,
             adverts: { ...EmcommMode.ADVERT_SCHEDULE },
             markDrill: mode === "training",
