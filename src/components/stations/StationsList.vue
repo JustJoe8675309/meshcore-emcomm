@@ -325,7 +325,13 @@ export default {
             }));
             const channels = (this.channels ?? []).map((channel) => ({
                 kind: "channel",
-                key: `channel:${channel.idx}`,
+                // Identified by the channel, not by the slot. Keyed by slot,
+                // Vue reused one row's component when a mode switch put a
+                // different channel in that slot: on the bench #Emcomm-Training
+                // arrived in Public's slot wearing Public's unread count, 91
+                // messages it could not see. The component is the channel's, so
+                // the key has to be too.
+                key: `channel:${channel.idx}:${ChannelKeys.of(channel) ?? "unkeyed"}`,
                 name: channel.name ?? "",
                 // in seconds, as a contact's advert time is, so they sort together
                 lastHeard: this.channelActivity[channel.idx] != null

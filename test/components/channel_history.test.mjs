@@ -311,3 +311,102 @@ describe("what the switch dialog says about saved messages", () => {
     });
 
 });
+
+// A row in the one list belongs to a channel, not to a slot.
+//
+// Found on the bench, on the build that fixed the conversation. Node 1 switched
+// to Emcomm-Training, which put #Emcomm-Training into slot 0 where Public had
+// been. The conversation opened correctly empty — and the list showed
+// "#Emcomm-Training 91", Public's unread count, on a drill channel that had
+// never carried a message.
+//
+// Vue keyed the row by slot, so it reused Public's component and only updated the
+// name; mounted() never ran again and the subscription stayed on Public's key.
+// The message viewer had already been given a watcher for the same reason when
+// the router reused it between two conversations. This row had not.
+describe("a channel row after the slot changes hands", () => {
+
+    const PUBLIC = { idx: 0, name: "Public", secret: new Uint8Array(16).fill(0x8b) };
+    const TRAINING = { idx: 0, name: "#Emcomm-Training", secret: new Uint8Array(16).fill(0x03) };
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it("is keyed by the channel, so a new occupant gets its own row", async () => {
+        const rows = [];
+        vi.spyOn(Database.ChannelMessage, "getLatestChannelMessage").mockReturnValue({ exec: async () => null });
+
+        const wrapper = mount(StationsList, {
+            props: { contacts: [], channels: [PUBLIC] },
+            global: { stubs: { ContactListItem: true, ChannelListItem: true, DropDownMenu: true, IconButton: true } },
+        });
+        await flushPromises();
+        rows.push(wrapper.vm.rows[0].key);
+
+        await wrapper.setProps({ channels: [TRAINING] });
+        await flushPromises();
+        rows.push(wrapper.vm.rows[0].key);
+
+        expect(rows[0]).not.toBe(rows[1]);
+        expect(rows[1]).toContain("0303");
+    });
+
+    it("counts the new channel's messages, not the old one's", async () => {
+        const asked = [];
+        vi.spyOn(Database.ChannelMessage, "getChannelMessages").mockReturnValue({
+            $: { subscribe: () => ({ unsubscribe() {} }) },
+        });
+        vi.spyOn(Database.ChannelMessagesReadState, "get").mockReturnValue({
+            $: { subscribe: (fn) => { fn({ timestamp: 0 }); return { unsubscribe() {} }; } },
+            exec: async () => ({ timestamp: 0 }),
+        });
+        vi.spyOn(Database.ChannelMessage, "getChannelMessagesUnreadCount").mockImplementation((idx, since, key) => {
+            asked.push(key);
+            return { exec: async () => (key === Utils.bytesToHex(PUBLIC.secret) ? 91 : 0) };
+        });
+
+        const wrapper = mount(ChannelListItem, {
+            props: { channel: PUBLIC },
+            global: { stubs: { RouterLink: { template: "<a><slot/></a>" }, ChannelDropDownMenu: true } },
+        });
+        await flushPromises();
+        expect(wrapper.vm.unreadMessagesCount).toBe(91);
+
+        // the same row, handed a different channel by a mode switch
+        await wrapper.setProps({ channel: TRAINING });
+        await flushPromises();
+
+        expect(asked.at(-1)).toBe(Utils.bytesToHex(TRAINING.secret));
+        expect(wrapper.vm.unreadMessagesCount).toBe(0);
+        wrapper.unmount();
+    });
+
+    it("lets go of the old channel's subscriptions", async () => {
+        let live = 0;
+        vi.spyOn(Database.ChannelMessage, "getChannelMessages").mockReturnValue({
+            $: { subscribe: () => { live++; return { unsubscribe() { live--; } }; } },
+        });
+        vi.spyOn(Database.ChannelMessagesReadState, "get").mockReturnValue({
+            $: { subscribe: () => { live++; return { unsubscribe() { live--; } }; } },
+            exec: async () => ({ timestamp: 0 }),
+        });
+        vi.spyOn(Database.ChannelMessage, "getChannelMessagesUnreadCount").mockReturnValue({ exec: async () => 0 });
+
+        const wrapper = mount(ChannelListItem, {
+            props: { channel: PUBLIC },
+            global: { stubs: { RouterLink: { template: "<a><slot/></a>" }, ChannelDropDownMenu: true } },
+        });
+        await flushPromises();
+        expect(live).toBe(2);
+
+        await wrapper.setProps({ channel: TRAINING });
+        await flushPromises();
+        // two, not four: the old channel's are gone rather than left running
+        expect(live).toBe(2);
+
+        wrapper.unmount();
+        expect(live).toBe(0);
+    });
+
+});

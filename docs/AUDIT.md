@@ -379,6 +379,12 @@ size turned up, not just at a narrow window.
       empty channel key, so it is still shown by slot. Checked on a radio because
       the migration needs a leader election across tabs, which the test
       environment cannot provide.
+- [ ] **The unread badge belongs to the new channel.** After the switch, the
+      channel now in a used slot must show its own unread count, not the old
+      occupant's. Node 1 showed "#Emcomm-Training 91" — Public's count, on a drill
+      channel that had never carried a message — because the list keyed its rows
+      by slot and Vue reused the component. Check it in both directions: coming
+      home, Public must not inherit the training channel's count either.
 - [ ] **A new channel opens empty.** Send a few messages on a channel in Normal,
       switch to Emcomm-Training, and open `#Emcomm-Training`: it must have no
       conversation at all. Reported from the operator's radio, which showed the

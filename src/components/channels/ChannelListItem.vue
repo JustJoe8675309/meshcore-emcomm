@@ -42,21 +42,21 @@ export default {
         };
     },
     mounted() {
-
-        // listen for new messages so we can update read state
-        this.channelMessagesSubscription = Database.ChannelMessage.getChannelMessages(this.channel.idx, this.channelKey).$.subscribe(async () => {
-            await this.onMessagesUpdated();
-        });
-
-        // listen for read state changes
-        this.channelMessagesReadStateSubscription = Database.ChannelMessagesReadState.get(this.channel.idx).$.subscribe(async (channelMessagesReadState) => {
-            await this.onChannelMessagesReadStateChange(channelMessagesReadState);
-        });
-
+        this.subscribe();
     },
     unmounted() {
-        this.channelMessagesSubscription?.unsubscribe();
-        this.channelMessagesReadStateSubscription?.unsubscribe();
+        this.unsubscribe();
+    },
+    watch: {
+        // A mode switch can hand this row a different channel without unmounting
+        // it, and mounted() does not fire again. The message viewer already
+        // guards the same way for the same reason; this row did not, and kept
+        // counting the old channel's messages under the new one's name.
+        channel() {
+            this.unsubscribe();
+            this.unreadMessagesCount = 0;
+            this.subscribe();
+        },
     },
     computed: {
         /** This channel, rather than the slot it happens to sit in. */
@@ -65,6 +65,28 @@ export default {
         },
     },
     methods: {
+
+        subscribe() {
+
+            // listen for new messages so we can update read state
+            this.channelMessagesSubscription = Database.ChannelMessage.getChannelMessages(this.channel.idx, this.channelKey).$.subscribe(async () => {
+                await this.onMessagesUpdated();
+            });
+
+            // listen for read state changes
+            this.channelMessagesReadStateSubscription = Database.ChannelMessagesReadState.get(this.channel.idx).$.subscribe(async (channelMessagesReadState) => {
+                await this.onChannelMessagesReadStateChange(channelMessagesReadState);
+            });
+
+        },
+
+        unsubscribe() {
+            this.channelMessagesSubscription?.unsubscribe();
+            this.channelMessagesSubscription = null;
+            this.channelMessagesReadStateSubscription?.unsubscribe();
+            this.channelMessagesReadStateSubscription = null;
+        },
+
         async onMessagesUpdated() {
             const channelMessagesReadState = await Database.ChannelMessagesReadState.get(this.channel.idx).exec();
             await this.onChannelMessagesReadStateChange(channelMessagesReadState);
