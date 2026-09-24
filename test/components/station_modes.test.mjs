@@ -767,6 +767,33 @@ describe("the settings tabs", () => {
         }
     });
 
+    // The operator's case: a station in a drill setting up what it comes home to.
+    // Editing normal mode has to work from inside another mode, and take effect
+    // when the station goes back rather than at once.
+    it("edits a mode the station is not in, and changes nothing until it is entered", async () => {
+        ModeProfiles.setCurrent("training", NODE);
+        const setTxPower = vi.spyOn(Connection, "setTxPower").mockResolvedValue(undefined);
+        const setRadioParams = vi.spyOn(Connection, "setRadioParams").mockResolvedValue(undefined);
+        const wrapper = mount(ModeSettingsTabs);
+        await flushPromises();
+
+        await open(wrapper, "normal");
+        wrapper.vm.profile.radio.txPower = 17;
+        wrapper.vm.profile.adverts.zeroHopMinutes = 45;
+        wrapper.vm.save();
+        await flushPromises();
+
+        // saved where the switch home will read it
+        const saved = ModeProfiles.profile("normal", NODE);
+        expect(saved.radio.txPower).toBe(17);
+        expect(saved.adverts.zeroHopMinutes).toBe(45);
+
+        // and the radio, which is in another mode, was not touched
+        expect(setTxPower).not.toHaveBeenCalled();
+        expect(setRadioParams).not.toHaveBeenCalled();
+        expect(wrapper.text()).toContain("Normal mode saved");
+    });
+
     it("shows each mode's own channels", async () => {
         const wrapper = mount(ModeSettingsTabs);
         await flushPromises();

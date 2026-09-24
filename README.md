@@ -726,25 +726,30 @@ radio. Messages saved before this build have no key; a switch attributes them to
 channel is in their slot at the time, which the preview says before it happens, and a conversation
 that is already mixed is cleared with Delete Message History on that channel.
 
-**The settings page is split by *when*, not by topic.** Three tabs across the top, coloured as
-the mode banner is, with the mode in use marked:
+**Settings opens on a tab for each mode** — Normal, Emcomm-Training, Emcomm-Live — coloured as
+the banner is, with the mode in use marked. They hold the same fields in the same layout, and each
+shows what that mode will write to the radio when it is entered. **Any of them can be edited from
+any other**, so a station working a drill can set up what it comes home to, and nothing written
+there reaches the radio until the mode is entered from the banner. Normal mode's tab also has the
+button to take the radio's settings and channels as they are now, which is the only time normal
+mode is re-read after the first connect.
 
-- **This station, now** — what the radio is doing at this moment: its name, position, radio
-  settings, transmit power, whether it answers from the radio itself, advert position, clock,
-  repeating adverts, whether position requests are answered automatically, and normal mode's
-  channels and rooms. The tab the page opens on.
-- **Emcomm-Training** and **Emcomm-Live** — what that mode will write to the radio when it is
-  entered from the banner. Nothing in them changes the radio until then.
+Below that, folded:
 
-There is no separate tab for normal mode, and that is deliberate: saving a live setting writes it
-into the mode in use, so in normal mode the live fields *are* normal mode's, and a tab of its own
-would put the same values on screen twice. Normal mode's channels and rooms sit under the first
-tab for the same reason, without its radio settings, which are the live ones above them. The
-button to take the radio's settings and channels as normal mode is there too — the only time
-normal mode is re-read after the first connect.
+- **The radio right now** — the same settings as the radio actually holds them: name, position,
+  frequency, bandwidth, spreading factor, coding rate, transmit power, whether it answers from the
+  radio itself, advert position, clock, repeating adverts, and whether position requests are
+  answered automatically. Saving here reaches the radio as it is saved, and is also written into
+  the mode the station is in, so coming home does not undo it.
+- **Operator** — callsign, SKYWARN number and date-time zone. You, rather than the radio, kept in
+  this browser.
+- **Backups**, and **Commands**.
 
-Below the tabs, folded: **Operator** (callsign, SKYWARN number and date-time zone — you, rather
-than the radio, kept in this browser), **Backups**, and **Commands**.
+The same settings appear in two places on purpose, and the headings say which is which: in a mode
+tab they are a promise about what will be written later, and under "the radio right now" they are
+the radio. That is the one duplication worth keeping — the page used to have several that were
+not, with transmit power editable in three groups and two headings reading "Emcomm" and "EMCOMM
+Settings" while meaning entirely different things.
 
 That split exists because the page had grown to nine groups stacked end to end, several editing
 the same value under different headings: transmit power in three of them, the node name and the

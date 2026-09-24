@@ -27,32 +27,21 @@ describe("the shape of the settings page", () => {
 
     const sectionTitles = [...source.matchAll(/<SettingsSection title="([^"]+)"/g)].map((m) => m[1]);
 
-    it("puts the station's three states in tabs", () => {
-        // what the radio is doing, and what each emcomm mode would write. Normal
-        // mode is not among them: saving a live setting writes the mode in use, so
-        // in normal mode the live fields are normal mode's, and a tab for it would
-        // be the same values twice
-        const tabs = source.match(/stationTabs\(\) \{[\s\S]*?\n        \}/)?.[0] ?? "";
-        expect(tabs).toContain('id: "now"');
-        expect(tabs).toContain('id: "training"');
-        expect(tabs).toContain('id: "live"');
-        expect(tabs).not.toContain('id: "normal"');
+    it("puts one tab per mode, all the same shape", () => {
+        // the operator's correction: normal, training and live, identical in
+        // layout, each showing what it will write when the station enters it. Any
+        // can be edited from any other, so a station in a drill can set up what it
+        // comes home to.
+        const tabs = readFileSync(resolve("src/components/modes/ModeSettingsTabs.vue"), "utf8");
+        expect(tabs).toMatch(/v-for="mode of modes"/);
+        expect(source).toMatch(/<ModeSettingsTabs\/>/);
+        // and no second, cut-down copy of the form for one of them
+        expect(source).not.toContain("channels-only");
+        expect(tabs).not.toContain("channelsOnly");
     });
 
-    it("opens on what the radio is doing", () => {
-        expect(source).toMatch(/stationTab: "now"/);
-    });
-
-    it("keeps the rest as folded groups below the tabs", () => {
-        expect(sectionTitles).toEqual(["Operator", "Backups", "Commands"]);
-    });
-
-    it("shows a mode's own form under its tab, and normal's channels under the first", () => {
-        // the emcomm tabs render the whole mode form; the now tab renders normal
-        // mode's channels and rooms alone, because its radio settings are the live
-        // ones above them
-        expect(source).toMatch(/<ModeSettingsTabs only="normal" channels-only\/>/);
-        expect(source).toMatch(/<ModeSettingsTabs :only="stationTab"/);
+    it("keeps the live radio below them, as its own thing", () => {
+        expect(sectionTitles).toEqual(["The radio right now", "Operator", "Backups", "Commands"]);
     });
 
     it("has one place to edit each thing", () => {
@@ -73,10 +62,8 @@ describe("the shape of the settings page", () => {
     });
 
     it("says what a live change does to the mode, where the operator will read it", () => {
-        const note = source.match(/stationTabNote\(\) \{[\s\S]*?\n        \}/)?.[0] ?? "";
-        expect(note).toContain("writes it into the mode this");
-        // and what an emcomm tab is: a promise about later, not a change now
-        expect(note).toContain("Nothing here changes the radio until then.");
+        const live = source.match(/<SettingsSection title="The radio right now"[\s\S]{0,400}?>/)?.[0] ?? "";
+        expect(live).toContain("written into the mode this station is in");
     });
 
 });
@@ -182,32 +169,6 @@ describe("a live change and the mode in use", () => {
         expect(group).toContain("noteRadioSettings({ txPower: power })");
         expect(group).toContain("noteRadioSettings({ shareLocation: turningOn })");
         expect(group).toContain("noteRadioSettings({ autoAddContacts: !turningOff })");
-    });
-
-});
-
-// "Is this station, now the normal mode?" — asked by the operator, and the answer
-// is "only while the station is in normal mode".
-//
-// The live fields are the radio's, whatever mode it is in. Normal's channels sit
-// under the same tab because the mode form is the only way to add a channel, and
-// for a while they were headed simply "Channels" — so in a drill that tab showed
-// the drill's live radio settings next to normal's channel list, with nothing
-// saying they were different things.
-describe("whose channels the first tab is showing", () => {
-
-    const source = readFileSync(resolve("src/components/modes/ModeSettingsTabs.vue"), "utf8");
-
-    it("names them as normal mode's when they are shown beside the live settings", () => {
-        expect(source).toContain('channelsOnly ? "Channels normal mode writes" : "Channels"');
-    });
-
-    it("says the radio is holding another mode's channels when it is", () => {
-        const warning = source.match(/v-if="channelsOnly && current !== 'normal'"[\s\S]{0,320}?<\/div>/)?.[0] ?? "";
-        expect(warning).toContain("holding that mode's");
-        expect(warning).toContain("These are what it comes home to");
-        // amber, as the app's other "this is not what you might assume" lines are
-        expect(warning).toContain("text-amber-800");
     });
 
 });

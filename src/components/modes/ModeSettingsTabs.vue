@@ -31,7 +31,7 @@
         <template v-else>
 
             <!-- the radio's own settings -->
-            <div v-if="!channelsOnly" class="p-2 space-y-2">
+            <div class="p-2 space-y-2">
                 <div class="text-sm font-medium text-gray-900">Radio</div>
 
                 <label class="block text-xs text-gray-700">Node name
@@ -77,19 +77,11 @@
 
             <!-- channels written to the radio in this mode -->
             <div class="p-2 space-y-2">
-                <div class="text-sm font-medium text-gray-900">{{ channelsOnly ? "Channels normal mode writes" : "Channels" }}</div>
+                <div class="text-sm font-medium text-gray-900">Channels</div>
                 <div class="text-xs text-gray-500">
                     Written to the radio's slots in this order when the mode is entered. Any other
                     channel is cleared. A name beginning with # has its key worked out from the name,
                     so a whole net joins by name.
-                </div>
-
-                <!-- the settings above this are the radio's live ones, so in an
-                     emcomm mode they belong to that mode while this list belongs to
-                     normal. Saying so beats letting the two read as one thing. -->
-                <div v-if="channelsOnly && current !== 'normal'" class="text-xs text-amber-800">
-                    This station is in {{ labelFor(current) }}, so the radio is holding that mode's
-                    channels at the moment, not these. These are what it comes home to.
                 </div>
 
                 <div v-if="profile.channels.length === 0" class="text-xs text-amber-700">
@@ -133,7 +125,7 @@
             </div>
 
             <!-- the rest of what belongs to a mode -->
-            <div v-if="!channelsOnly" class="p-2 space-y-2">
+            <div class="p-2 space-y-2">
                 <div class="text-sm font-medium text-gray-900">Also</div>
 
                 <label class="flex items-start space-x-2 text-xs text-gray-700">
@@ -198,14 +190,6 @@ export default {
         only: {
             type: String,
             default: null,
-        },
-        // channels and rooms alone. Normal mode's radio settings are the live ones
-        // shown above it on the settings page, so repeating them here would put
-        // the same value on the screen twice — which is the fault this page was
-        // rearranged to fix.
-        channelsOnly: {
-            type: Boolean,
-            default: false,
         },
     },
     data() {
