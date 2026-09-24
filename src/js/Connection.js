@@ -2019,6 +2019,50 @@ class Connection {
      * device command replaces the whole contact record, so every other field has
      * to be sent back exactly as it came.
      */
+    /**
+     * Changes this radio's own name for a contact.
+     *
+     * The whole record has to go back, since the firmware takes a contact as one
+     * write; only the name differs. The contact list is read back afterwards for
+     * the same reason the favourite is: the device owns the record, and a write it
+     * altered or refused should not leave the list saying otherwise.
+     *
+     * The radio's copy is what changes. A later advert from that station carries
+     * its own name, and the radio may take that name back.
+     */
+    static async renameContact(publicKey, name) {
+
+        const connection = GlobalState.connection;
+        if(connection == null){
+            throw new Error(this.DISCONNECTED);
+        }
+
+        const wanted = String(name ?? "").trim();
+        if(wanted === ""){
+            throw new Error("A contact needs a name.");
+        }
+
+        const contact = GlobalState.contacts.find((c) => Utils.isUint8ArrayEqual(c.publicKey, publicKey));
+        if(contact == null){
+            throw new Error("no such contact");
+        }
+
+        await this.withSettingTimeout("rename", () => connection.addOrUpdateContact(
+            contact.publicKey,
+            contact.type,
+            contact.flags,
+            contact.outPathLen,
+            contact.outPath,
+            wanted,
+            contact.lastAdvert,
+            contact.advLat,
+            contact.advLon,
+        ));
+
+        await this.loadContacts();
+
+    }
+
     static async setContactFavourite(publicKey, favourite) {
 
         const connection = GlobalState.connection;

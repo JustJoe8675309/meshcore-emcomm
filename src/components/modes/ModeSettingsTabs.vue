@@ -30,113 +30,166 @@
 
         <template v-else>
 
-            <!-- the radio's own settings -->
-            <div class="p-2 space-y-2">
-                <div class="text-sm font-medium text-gray-900">Radio</div>
+            <!-- Each heading folds. A mode is a long form and an operator comes to
+                 it for one thing, so it opens as a list of headings rather than a
+                 page they have to scroll past. Radio opens by default: it is what
+                 the tab is mostly about. -->
+            <SettingsSection title="Radio" note="What this mode writes to the radio when it is entered." open-by-default sub>
+                <div class="p-2 space-y-2">
 
-                <label class="block text-xs text-gray-700">Node name
-                    <input v-model="profile.radio.name" type="text" class="mt-0.5 w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
-                </label>
+                    <label class="block text-xs text-gray-700">Node name
+                        <input v-model="profile.radio.name" type="text" class="mt-0.5 w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
+                    </label>
 
-                <div class="grid grid-cols-2 gap-2">
-                    <label class="block text-xs text-gray-700">Frequency (kHz)
-                        <input v-model.number="profile.radio.radioFreq" type="number" class="mt-0.5 w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="block text-xs text-gray-700">Frequency (kHz)
+                            <input v-model.number="profile.radio.radioFreq" type="number" class="mt-0.5 w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
+                        </label>
+                        <label class="block text-xs text-gray-700">Bandwidth (Hz)
+                            <input v-model.number="profile.radio.radioBw" type="number" class="mt-0.5 w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
+                        </label>
+                        <label class="block text-xs text-gray-700">Spreading factor
+                            <input v-model.number="profile.radio.radioSf" type="number" class="mt-0.5 w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
+                        </label>
+                        <label class="block text-xs text-gray-700">Coding rate
+                            <input v-model.number="profile.radio.radioCr" type="number" class="mt-0.5 w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
+                        </label>
+                    </div>
+
+                    <label class="block text-xs text-gray-700">Transmit power (dBm)
+                        <input v-model.number="profile.radio.txPower" type="number" class="mt-0.5 w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
                     </label>
-                    <label class="block text-xs text-gray-700">Bandwidth (Hz)
-                        <input v-model.number="profile.radio.radioBw" type="number" class="mt-0.5 w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
-                    </label>
-                    <label class="block text-xs text-gray-700">Spreading factor
-                        <input v-model.number="profile.radio.radioSf" type="number" class="mt-0.5 w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
-                    </label>
-                    <label class="block text-xs text-gray-700">Coding rate
-                        <input v-model.number="profile.radio.radioCr" type="number" class="mt-0.5 w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
-                    </label>
+
                 </div>
+            </SettingsSection>
 
-                <label class="block text-xs text-gray-700">Transmit power (dBm)
-                    <input v-model.number="profile.radio.txPower" type="number" class="mt-0.5 w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
-                </label>
-
-                <label class="flex items-start space-x-2 text-xs text-gray-700">
-                    <input v-model="profile.radio.shareLocation" type="checkbox" class="mt-0.5">
-                    <span>Share location with stations that ask</span>
-                </label>
-                <label class="flex items-start space-x-2 text-xs text-gray-700">
-                    <input v-model="profile.radio.advertPosition" type="checkbox" class="mt-0.5">
-                    <span>Put this station's position in every advert</span>
-                </label>
-                <label class="flex items-start space-x-2 text-xs text-gray-700">
-                    <input v-model="profile.radio.multiAcks" type="checkbox" class="mt-0.5">
-                    <span>Send each delivery acknowledgement more than once</span>
-                </label>
-                <label class="flex items-start space-x-2 text-xs text-gray-700">
-                    <input v-model="profile.radio.autoAddContacts" type="checkbox" class="mt-0.5">
-                    <span>Add contacts automatically</span>
-                </label>
-            </div>
+            <!-- Who the radio knows. Not part of a mode: a switch does not write
+                 them and coming home does not take them away, so these read the
+                 same in every tab and a change here reaches the radio at once.
+                 They are here because this is where an operator looks. -->
+            <ContactsGroup kind="companion"/>
+            <ContactsGroup kind="repeater"/>
 
             <!-- channels written to the radio in this mode -->
-            <div class="p-2 space-y-2">
-                <div class="text-sm font-medium text-gray-900">Channels</div>
-                <div class="text-xs text-gray-500">
-                    Written to the radio's slots in this order when the mode is entered. Any other
-                    channel is cleared. A name beginning with # has its key worked out from the name,
-                    so a whole net joins by name.
-                </div>
-
-                <div v-if="profile.channels.length === 0" class="text-xs text-amber-700">
-                    No channels: this mode would clear every channel from the radio.
-                </div>
-
-                <div v-for="(channel, index) of profile.channels" :key="index" class="border border-gray-200 rounded p-2 space-y-1">
-                    <div class="flex items-center justify-between">
-                        <div class="text-sm text-gray-900">{{ channel.name }}</div>
-                        <button @click="removeChannel(index)" type="button" class="text-xs text-red-600 underline">Remove</button>
+            <SettingsSection title="Channels" note="What this mode can hear. Written to the radio's slots when the mode is entered." sub>
+                <div class="p-2 space-y-2">
+                    <div class="text-xs text-gray-500">
+                        Written in this order when the mode is entered, and any other channel is cleared.
+                        A name beginning with # has its key worked out from the name, so a whole net joins
+                        by name.
                     </div>
-                    <div class="font-mono text-[10px] text-gray-500 break-all">{{ channel.secret }}</div>
+
+                    <div v-if="profile.channels.length === 0" class="text-xs text-amber-700">
+                        No channels: this mode would clear every channel from the radio.
+                    </div>
+
+                    <div v-for="(channel, index) of profile.channels" :key="index" class="border border-gray-200 rounded p-2 space-y-1">
+
+                        <!-- renaming a # channel changes its key, since the key comes
+                             from the name: said here rather than found out on air -->
+                        <template v-if="editingChannel === index">
+                            <label class="block text-xs text-gray-700">Channel name
+                                <input v-model="editChannelName" type="text" aria-label="Channel name"
+                                       class="mt-0.5 w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
+                            </label>
+                            <label class="block text-xs text-gray-700">Key
+                                <input v-model="editChannelSecret" type="text" aria-label="Channel key" spellcheck="false"
+                                       :disabled="editChannelName.trim().startsWith('#')"
+                                       class="mt-0.5 w-full bg-gray-50 border border-gray-300 disabled:bg-gray-100 font-mono text-xs rounded p-2">
+                            </label>
+                            <div v-if="editChannelName.trim().startsWith('#')" class="text-xs text-gray-500">
+                                A # name works its own key out, so the key follows the name.
+                            </div>
+                            <div class="flex space-x-2">
+                                <button @click="saveChannel(index)" :disabled="!canSaveChannel" type="button"
+                                        class="text-white bg-blue-700 hover:bg-blue-800 disabled:bg-gray-400 text-xs font-medium rounded-lg px-3 py-2">Save</button>
+                                <button @click="editingChannel = null" type="button"
+                                        class="bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 text-xs font-medium rounded-lg px-3 py-2">Cancel</button>
+                            </div>
+                            <div class="text-xs text-amber-700">
+                                Messages are filed under a channel's key, so changing the key starts a new
+                                history. The old one is kept, and comes back if the key does.
+                            </div>
+                        </template>
+
+                        <template v-else>
+                            <div class="flex items-center justify-between">
+                                <div class="text-sm text-gray-900">{{ channel.name }}</div>
+                                <div class="shrink-0 ml-2 space-x-3">
+                                    <button @click="startEditChannel(index)" type="button" class="text-xs text-blue-700 underline">Edit</button>
+                                    <button @click="removeChannel(index)" type="button" class="text-xs text-red-600 underline">Delete</button>
+                                </div>
+                            </div>
+                            <div class="font-mono text-[10px] text-gray-500 break-all">{{ channel.secret }}</div>
+                        </template>
+
+                    </div>
+
+                    <div class="flex space-x-2">
+                        <input v-model="newChannelName" type="text" placeholder="#Emcomm, or a channel name" aria-label="New channel name"
+                               class="w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
+                        <button @click="addChannel" :disabled="!canAddChannel" type="button"
+                                class="bg-white border border-gray-300 hover:bg-gray-100 disabled:opacity-60 text-gray-700 text-xs font-medium rounded-lg px-3 py-2">Add</button>
+                    </div>
+                    <div v-if="newChannelName && !newChannelName.trim().startsWith('#')" class="text-xs text-gray-500">
+                        Not a # channel, so it gets a random key. Share it with the net by exporting the
+                        channel from the stock app, or use a # name instead.
+                    </div>
                 </div>
+            </SettingsSection>
 
-                <div class="flex space-x-2">
-                    <input v-model="newChannelName" type="text" placeholder="#Emcomm, or a channel name" aria-label="New channel name"
-                           class="w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
-                    <button @click="addChannel" :disabled="!canAddChannel" type="button"
-                            class="bg-white border border-gray-300 hover:bg-gray-100 disabled:opacity-60 text-gray-700 text-xs font-medium rounded-lg px-3 py-2">Add</button>
-                </div>
-                <div v-if="newChannelName && !newChannelName.trim().startsWith('#')" class="text-xs text-gray-500">
-                    Not a # channel, so it gets a random key. Share it with the net by exporting the
-                    channel from the stock app, or use a # name instead.
-                </div>
-            </div>
+            <ContactsGroup kind="room"/>
 
-            <!-- the rest of what belongs to a mode -->
-            <div class="p-2 space-y-2">
-                <div class="text-sm font-medium text-gray-900">Also</div>
+            <!-- Every yes or no a mode holds, in one place. The radio's four used
+                 to sit among the numbers above, where a tick next to a frequency
+                 field reads as part of it. -->
+            <SettingsSection title="Also" note="Everything this mode turns on or off." sub>
+                <div class="p-2 space-y-2">
 
-                <label class="flex items-start space-x-2 text-xs text-gray-700">
-                    <input v-model="profile.autoAnswerPositions" type="checkbox" class="mt-0.5">
-                    <span>Answer position requests automatically, without asking each time</span>
-                </label>
-
-                <label class="flex items-start space-x-2 text-xs text-gray-700">
-                    <input v-model="profile.markDrill" type="checkbox" class="mt-0.5">
-                    <span>Mark everything sent DRILL</span>
-                </label>
-
-                <label class="flex items-start space-x-2 text-xs text-gray-700">
-                    <input v-model="profile.trimContacts" type="checkbox" class="mt-0.5">
-                    <span>Drop contacts not heard in 90 days when entering this mode. Favourites are kept, and the backup keeps everything</span>
-                </label>
-
-                <div class="text-xs text-gray-700">Repeating adverts, in minutes. 0 turns one off.</div>
-                <div class="grid grid-cols-2 gap-2">
-                    <label class="block text-xs text-gray-700">Zero hop
-                        <input v-model.number="profile.adverts.zeroHopMinutes" type="number" min="0" class="mt-0.5 w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
+                    <label class="flex items-start space-x-2 text-xs text-gray-700">
+                        <input v-model="profile.radio.shareLocation" type="checkbox" class="mt-0.5">
+                        <span>Share location with stations that ask</span>
                     </label>
-                    <label class="block text-xs text-gray-700">Flood
-                        <input v-model.number="profile.adverts.floodMinutes" type="number" min="0" class="mt-0.5 w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
+                    <label class="flex items-start space-x-2 text-xs text-gray-700">
+                        <input v-model="profile.radio.advertPosition" type="checkbox" class="mt-0.5">
+                        <span>Put this station's position in every advert</span>
                     </label>
+                    <label class="flex items-start space-x-2 text-xs text-gray-700">
+                        <input v-model="profile.radio.multiAcks" type="checkbox" class="mt-0.5">
+                        <span>Send each delivery acknowledgement more than once</span>
+                    </label>
+                    <label class="flex items-start space-x-2 text-xs text-gray-700">
+                        <input v-model="profile.radio.autoAddContacts" type="checkbox" class="mt-0.5">
+                        <span>Add contacts automatically</span>
+                    </label>
+
+                    <label class="flex items-start space-x-2 text-xs text-gray-700">
+                        <input v-model="profile.autoAnswerPositions" type="checkbox" class="mt-0.5">
+                        <span>Answer position requests automatically, without asking each time</span>
+                    </label>
+
+                    <label class="flex items-start space-x-2 text-xs text-gray-700">
+                        <input v-model="profile.markDrill" type="checkbox" class="mt-0.5">
+                        <span>Mark everything sent DRILL</span>
+                    </label>
+
+                    <label class="flex items-start space-x-2 text-xs text-gray-700">
+                        <input v-model="profile.trimContacts" type="checkbox" class="mt-0.5">
+                        <span>Drop contacts not heard in 90 days when entering this mode. Favourites are kept, and the backup keeps everything</span>
+                    </label>
+
+                    <div class="text-xs text-gray-700">Repeating adverts, in minutes. 0 turns one off.</div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="block text-xs text-gray-700">Zero hop
+                            <input v-model.number="profile.adverts.zeroHopMinutes" type="number" min="0" class="mt-0.5 w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
+                        </label>
+                        <label class="block text-xs text-gray-700">Flood
+                            <input v-model.number="profile.adverts.floodMinutes" type="number" min="0" class="mt-0.5 w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
+                        </label>
+                    </div>
+
                 </div>
-            </div>
+            </SettingsSection>
 
             <div class="p-2 space-y-2">
                 <button @click="save" type="button"
@@ -166,9 +219,15 @@ import Utils from "../../js/Utils.js";
 import EmcommMode from "../../js/EmcommMode.js";
 import ModeProfiles, { MODES, MODE_CLASSES } from "../../js/modes/ModeProfiles.js";
 import PositionService from "../../js/position/PositionService.js";
+import SettingsSection from "../settings/SettingsSection.vue";
+import ContactsGroup from "../settings/ContactsGroup.vue";
 
 export default {
     name: 'ModeSettingsTabs',
+    components: {
+        SettingsSection,
+        ContactsGroup,
+    },
     props: {
         /** One mode only, with no tab strip: what the first run wizard asks for. */
         only: {
@@ -181,6 +240,10 @@ export default {
             tab: "normal",
             profile: null,
             newChannelName: "",
+            // index of the channel being edited, or null
+            editingChannel: null,
+            editChannelName: "",
+            editChannelSecret: "",
             message: null,
             busy: false,
         };
@@ -257,6 +320,27 @@ export default {
         },
         removeChannel(index) {
             this.profile.channels.splice(index, 1);
+            this.editingChannel = null;
+        },
+        startEditChannel(index) {
+            const channel = this.profile.channels[index];
+            this.editingChannel = index;
+            this.editChannelName = channel.name;
+            this.editChannelSecret = channel.secret;
+        },
+        async saveChannel(index) {
+            const name = this.editChannelName.trim();
+            if(name === ""){
+                return;
+            }
+            // a # channel's key is its name, so renaming one to another # name has
+            // to work the new key out: leaving the old key would put this station
+            // on a channel called one thing and keyed as another
+            const secret = name.startsWith("#")
+                ? Utils.bytesToHex(await EmcommMode.hashtagChannelKey(name))
+                : this.editChannelSecret.trim().toLowerCase();
+            this.profile.channels[index] = { name: name, secret: secret };
+            this.editingChannel = null;
         },
     },
     computed: {
@@ -273,6 +357,18 @@ export default {
         },
         canAddChannel() {
             return this.profile != null && this.newChannelName.trim() !== "" && this.profile.channels.length < 16;
+        },
+        canSaveChannel() {
+            const name = this.editChannelName.trim();
+            if(name === ""){
+                return false;
+            }
+            if(name.startsWith("#")){
+                return true;
+            }
+            // a channel key is 16 bytes. A short or mistyped one is not refused by
+            // the radio, it simply hears nothing, which is the worst way to find out
+            return /^[0-9a-f]{32}$/i.test(this.editChannelSecret.trim());
         },
     },
 }

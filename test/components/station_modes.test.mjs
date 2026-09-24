@@ -839,15 +839,99 @@ describe("the settings tabs", () => {
     });
 
     // Every room this radio is in answers a roll call, so a list of which ones a
-    // mode "uses" named them and did nothing else. A room is a contact: it cannot
-    // be added or removed here either.
-    it("has nothing to say about rooms", async () => {
+    // mode "uses" named them and did nothing else. What replaced it manages the
+    // room contacts themselves, which is the thing an operator could not do.
+    // A mode is a long form and an operator comes to it for one thing, so it
+    // opens as a list of headings. Radio is the exception: it is what the tab is
+    // mostly about.
+    it("folds every heading, with the radio open and the rest shut", async () => {
         const wrapper = mount(ModeSettingsTabs);
         await flushPromises();
         await open(wrapper, "live");
 
-        expect(wrapper.text()).not.toContain("Rooms");
+        // a heading button reads as its title and its note run together
+        const fold = (heading) => wrapper.findAll("button[aria-expanded]").find((b) => b.text().startsWith(heading));
+        for(const heading of ["Radio", "Companions", "Repeaters", "Channels", "Rooms", "Also"]){
+            expect(fold(heading), heading).not.toBe(undefined);
+        }
+        expect(fold("Radio").attributes("aria-expanded")).toBe("true");
+        expect(fold("Also").attributes("aria-expanded")).toBe("false");
+
+        await fold("Also").trigger("click");
+        expect(fold("Also").attributes("aria-expanded")).toBe("true");
+    });
+
+    it("puts every tick under Also, not among the radio's numbers", async () => {
+        const wrapper = mount(ModeSettingsTabs);
+        await flushPromises();
+        await open(wrapper, "live");
+
+        const also = wrapper.findAll("button[aria-expanded]").find((b) => b.text().startsWith("Also"));
+        const panel = also.element.parentElement.querySelector("div");
+        const ticks = panel.querySelectorAll("input[type=checkbox]");
+        expect(ticks.length).toBe(7);
+
+        // and none is left beside the frequency and power fields
+        const radio = wrapper.findAll("button[aria-expanded]").find((b) => b.text().startsWith("Radio"));
+        expect(radio.element.parentElement.querySelectorAll("input[type=checkbox]").length).toBe(0);
+    });
+
+    it("offers the radio's contacts in every mode, saying they are not the mode's", async () => {
+        for(const mode of MODES){
+            const wrapper = mount(ModeSettingsTabs);
+            await flushPromises();
+            await open(wrapper, mode);
+
+            const headings = wrapper.findAll("button[aria-expanded]").map((b) => b.text());
+            for(const kind of ["Companions", "Repeaters", "Rooms"]){
+                expect(headings.some((h) => h.startsWith(kind)), `${mode}: ${kind}`).toBe(true);
+            }
+            expect(wrapper.text()).toContain("Not part of a mode");
+        }
+    });
+
+    it("edits a channel, and a # rename takes the new name's key", async () => {
+        const wrapper = mount(ModeSettingsTabs);
+        await flushPromises();
+        await open(wrapper, "live");
+
+        wrapper.vm.startEditChannel(0);
+        wrapper.vm.editChannelName = "#Emcomm-Training";
+        await wrapper.vm.saveChannel(0);
+
+        const expected = Utils.bytesToHex(await EmcommMode.hashtagChannelKey("#Emcomm-Training"));
+        expect(wrapper.vm.profile.channels[0]).toEqual({ name: "#Emcomm-Training", secret: expected });
+        expect(wrapper.vm.editingChannel).toBe(null);
+    });
+
+    it("will not save a private channel with a key that is not a key", async () => {
+        // the radio does not refuse a short key, it simply hears nothing, which is
+        // the worst way to find out
+        const wrapper = mount(ModeSettingsTabs);
+        await flushPromises();
+        await open(wrapper, "live");
+
+        wrapper.vm.startEditChannel(0);
+        wrapper.vm.editChannelName = "County Tac";
+        wrapper.vm.editChannelSecret = "abcd";
+        await flushPromises();
+        expect(wrapper.vm.canSaveChannel).toBe(false);
+
+        wrapper.vm.editChannelSecret = "ab".repeat(16);
+        await flushPromises();
+        expect(wrapper.vm.canSaveChannel).toBe(true);
+    });
+
+    it("keeps no list of rooms a mode uses", async () => {
+        const wrapper = mount(ModeSettingsTabs);
+        await flushPromises();
+        await open(wrapper, "live");
+
+        wrapper.vm.save();
+        await flushPromises();
+
         expect(ModeProfiles.profile("live", NODE).rooms).toBeUndefined();
+        expect(wrapper.text()).not.toContain("which of them this mode uses");
     });
 
     it("says that saving the mode in use does not change the radio by itself", async () => {

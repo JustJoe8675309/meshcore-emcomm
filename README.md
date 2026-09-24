@@ -738,7 +738,27 @@ there reaches the radio until the mode is entered from the banner. Normal mode's
 button to take the radio's settings and channels as they are now, which is the only time normal
 mode is re-read after the first connect.
 
-Below that, folded:
+**Inside a tab, every heading folds.** A mode is a long form and an operator comes to it for one
+thing, so it opens as a list of headings: **Radio** (open, since it is what the tab is mostly
+about), **Companions**, **Repeaters**, **Channels**, **Rooms** and **Also**. Every yes-or-no a
+mode holds is under Also, together — the radio's four used to sit among the frequency and power
+fields, where a tick beside a number reads as part of it.
+
+**Companions, Repeaters and Rooms are the radio's contacts, not the mode's.** They read the same
+in all three tabs and a change reaches the radio at once, which the note under each heading says,
+because everything else in a tab is a promise about later. Each lists what the radio holds, with
+**Edit** to rename it on this radio and **Delete** to forget it, after a question. Adding is by
+`meshcore://` link: a station is its public key, only an advert carries one, and there is nothing
+sensible to type by hand. Repeaters also arrive from the Repeater Search tab, and anything heard
+arrives by itself while automatic contacts is on. A rename changes this radio's copy; a later
+advert from that station may put its own name back.
+
+Channels are the mode's own, and **Edit** there changes a channel's name and key. Renaming a #
+channel works the new key out from the new name, since that is where a # channel's key comes
+from, and a private channel's key has to be 32 hex characters — a short one is not refused by the
+radio, it simply hears nothing.
+
+Below the tabs, folded:
 
 - **The radio right now** — the same settings as the radio actually holds them: name, position,
   frequency, bandwidth, spreading factor, coding rate, transmit power, whether it answers from the

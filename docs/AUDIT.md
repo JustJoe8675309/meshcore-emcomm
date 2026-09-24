@@ -466,6 +466,21 @@ size turned up, not just at a narrow window.
       coloured as the banner is, with the mode in use marked. All three hold the
       same fields in the same layout. The radio right now, Operator, Backups and
       Commands are folded below them.
+- [ ] **Inside a tab the headings fold**: Radio open, then Companions, Repeaters,
+      Channels, Rooms and Also shut. Every tick is under Also, and none is left
+      beside the frequency and power fields.
+- [ ] **The contact groups read the same in all three tabs**, and each says it is
+      not part of a mode. Switch modes and look again: the same contacts.
+- [ ] **Rename a repeater** from its group, then pull the contact list down: the
+      radio holds the new name. Its favourite star and its path must survive the
+      rename.
+- [ ] **Forget a companion** and answer no: nothing changes. Answer yes on one
+      that can be heard again, and it goes; it comes back when it next adverts.
+- [ ] **Add a room from a `meshcore://` link** in the Rooms group. It appears in
+      Contacts & Channels too, and can be logged into.
+- [ ] **Edit a channel** in a mode: rename `#Emcomm-Training` to `#Emcomm` and the
+      key shown changes to the one worked out from the new name. On a private
+      channel, a key shorter than 32 hex characters must refuse to save.
 - [ ] **A mode can be edited from another mode.** In Emcomm-Training, change
       something on the Normal tab and save: the radio must not change. Switch home
       and it takes effect. That is the point of the tabs.

@@ -5,7 +5,7 @@
                 :aria-expanded="open ? 'true' : 'false'"
                 class="w-full flex items-center justify-between p-2 text-left hover:bg-gray-50">
             <span>
-                <span class="font-semibold text-gray-900">{{ title }}</span>
+                <span :class="sub ? 'text-sm font-medium text-gray-900' : 'font-semibold text-gray-900'">{{ title }}</span>
                 <span v-if="note" class="block text-xs text-gray-500">{{ note }}</span>
             </span>
             <span class="shrink-0 ml-2 text-gray-500" aria-hidden="true">
@@ -53,6 +53,12 @@ export default {
             default: null,
         },
         openByDefault: {
+            type: Boolean,
+            default: false,
+        },
+        // a group inside a group: same fold, quieter heading, so a nested one does
+        // not read as loudly as the section it sits in
+        sub: {
             type: Boolean,
             default: false,
         },
