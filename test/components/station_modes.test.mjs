@@ -233,6 +233,11 @@ describe("switching a station's mode", () => {
             contacts: [], warnings: [],
         });
 
+        // ticked to answer, as #emcomm-testing was on node 3
+        const normal = await ModeProfiles.profileOrDefault("normal", NODE);
+        normal.channels.find((c) => c.name === "Emcomm Testing").answerPositions = true;
+        ModeProfiles.saveProfile("normal", normal, NODE);
+
         await ModeSwitch.apply("live");
         written.length = 0;
         const result = await ModeSwitch.apply("normal");
@@ -241,6 +246,13 @@ describe("switching a station's mode", () => {
         expect(restored.length).toBe(1);
         // into a slot the backup did not claim
         expect(restored[0].idx).not.toBe(0);
+
+        // and it answers position requests at the slot it landed in. The marks
+        // are saved before the restore runs, so a channel put back afterwards was
+        // written to the radio and then left out of who answers: node 3 came home
+        // with #emcomm-testing in slot 16 and marked channels holding only slot 7
+        const saved = JSON.parse(window.localStorage.getItem(`position_settings:${NODE}`) ?? "{}");
+        expect(saved.markedChannels).toContain(restored[0].idx);
         // the channel wording, not the contacts one, which also says "not in the backup"
         expect(result.warnings.join(" ")).toContain("put back from normal mode's own list");
     });

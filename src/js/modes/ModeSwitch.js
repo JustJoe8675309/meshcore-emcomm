@@ -446,6 +446,18 @@ class ModeSwitch {
                             warnings.push(`${restored.join(", ")} ${restored.length === 1 ? "was" : "were"} not in the backup, `
                                 + `so ${restored.length === 1 ? "it was" : "they were"} put back from normal mode's own list. `
                                 + `${restored.length === 1 ? "It" : "They"} may not be in the slot ${restored.length === 1 ? "it was" : "they were"} in before.`);
+
+                            // The answering choices were saved further up, before
+                            // these slots were known, so a channel put back here
+                            // would have been written to the radio and then left
+                            // out of the list of who answers. Node 3 showed it:
+                            // #emcomm-testing came home to slot 16 ticked in the
+                            // profile and missing from the marks.
+                            PositionService.saveSettings({
+                                markedChannels: marked,
+                                markedRooms: profile.rooms.filter((r) => r.answerPositions).map((r) => r.keyHex),
+                                autoAnswer: profile.autoAnswerPositions === true,
+                            }, nodeKeyHex);
                         }
                     }
                 } catch(e) {
