@@ -172,3 +172,48 @@ describe("a live change and the mode in use", () => {
     });
 
 });
+
+// What normal mode is, and when the way home is taken.
+//
+// The operator's rule: normal mode is whatever the app loads when it connects to
+// a station that is in normal mode — every connect, not only the first — and the
+// backup used to come home is taken then too. Node 3 lost a channel to the old
+// rule: its way home was a record three days old, made by a build that stopped at
+// 16 channel slots, so slot 16 was cleared with nothing to put it back.
+describe("what connecting decides", () => {
+
+    const connect = readFileSync(resolve("src/js/Connection.js"), "utf8");
+    const switcher = readFileSync(resolve("src/js/modes/ModeSwitch.js"), "utf8");
+
+    it("records normal mode on every connect, not only the first", () => {
+        expect(connect).toContain('if(ModeProfiles.current() === "normal")');
+        // the old rule, which only ever looked once
+        expect(connect).not.toContain('if(ModeProfiles.profile("normal") == null)');
+    });
+
+    it("leaves it alone when the station is in an emcomm mode", () => {
+        // the radio is holding that mode's settings; writing them down as normal
+        // would make coming home mean nothing
+        const block = connect.match(/if\(ModeProfiles\.current\(\) === "normal"\)\{[\s\S]{0,900}?\n            \}/)?.[0] ?? "";
+        expect(block).toContain("NodeBackup.capture()");
+        expect(block).toContain("ModeProfiles.captureNormal");
+    });
+
+    it("takes the way home at the same time, from the same read of the radio", () => {
+        const block = connect.match(/if\(ModeProfiles\.current\(\) === "normal"\)\{[\s\S]{0,900}?\n            \}/)?.[0] ?? "";
+        // one verified read, used for the profile and the backup both
+        expect(block).toMatch(/const backup = await NodeBackup\.capture\(\);[\s\S]{0,200}channels: backup\.channels/);
+        expect(block).toContain("NodeBackup.SLOT_PRE_EMCOMM");
+    });
+
+    it("lets the mode's radio settings outlast the backup's on the way home", () => {
+        // the restore writes what the backup recorded at connect, so a change made
+        // since — which went into normal mode as it was made — has to be written
+        // again afterwards or it is put back to what it was
+        const restoreAt = switcher.indexOf("await NodeBackup.restore(backup");
+        const reapplyAt = switcher.indexOf("The mode's radio settings, again, for the same reason.");
+        expect(restoreAt).toBeGreaterThan(-1);
+        expect(reapplyAt).toBeGreaterThan(restoreAt);
+    });
+
+});

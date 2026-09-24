@@ -224,7 +224,7 @@ class ModeProfiles {
      * station as its owner had it before any of this. Taken once, when the app
      * first sees a node, and again only when the operator asks.
      */
-    static async captureNormal(nodeKeyHex = this.nodeKeyHex()) {
+    static async captureNormal(nodeKeyHex = this.nodeKeyHex(), { channels: given = null } = {}) {
 
         const selfInfo = GlobalState.selfInfo;
         if(selfInfo == null){
@@ -241,8 +241,10 @@ class ModeProfiles {
         // so a short read is read again and then refused outright. Better no
         // normal profile, which the next connect will take, than a confident
         // wrong one.
+        // a caller that has just done a verified read of every slot can hand it
+        // over rather than make the radio answer for all of them again
         const short = (r) => r.gaps.length > 0 || r.gaveUp;
-        let read = await this.readChannelsWithFailures();
+        let read = given != null ? { channels: given, gaps: [], gaveUp: false } : await this.readChannelsWithFailures();
         if(short(read)){
             read = await this.readChannelsWithFailures();
         }

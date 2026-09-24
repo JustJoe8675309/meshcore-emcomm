@@ -756,6 +756,15 @@ the same value under different headings: transmit power in three of them, the no
 radio settings in two each, and two headings a few inches apart reading "Emcomm" and "EMCOMM
 Settings" while meaning entirely different things. Every setting appears once per meaning now.
 
+**Connecting to a station in normal mode is what decides what normal mode is.** Its settings and
+channels as they stand are recorded then — on every such connect, not only the first — so a
+channel added with another app, or a setting changed on the radio itself, is part of the way home
+rather than something the next trip through an emcomm mode quietly undoes. The backup used to come
+home is taken at the same moment, from the same read of the slots, which also means a switch later
+does not stop to read the whole radio first: not what an incident wants. Connecting to a station
+that is in an emcomm mode records nothing, because the radio is holding that mode's settings and
+writing them down as "normal" would make coming home mean nothing.
+
 **Saving a live setting also writes it into the mode the station is in.** A mode writes its own
 radio settings when it is entered, so raising the transmit power, going to a drill and coming
 home used to put the old power back with nothing said. The mode in use is the one that would undo

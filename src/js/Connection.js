@@ -15,6 +15,7 @@ import { Advert } from "@liamcottle/meshcore.js";
 import Airtime from "./reports/Airtime.js";
 import PositionService from "./position/PositionService.js";
 import ModeProfiles from "./modes/ModeProfiles.js";
+import NodeBackup from "./NodeBackup.js";
 
 // before any connection exists: the serial read loop starts in its constructor
 installResilientSerialReads();
@@ -369,14 +370,28 @@ class Connection {
             await this.loadChannels((slot, slots, found) => {
                 step(`Reading channels... ${found} found`, slot, slots);
             });
-            // the first time this app sees a node, its settings and channels as
-            // they stand become its normal mode: the station as its owner had it.
-            // Never guessed at, and never taken again by itself, since by then the
-            // radio may be in an emcomm mode
-            if(ModeProfiles.profile("normal") == null){
+            // Connecting to a station that is in normal mode is what decides what
+            // normal mode is: its settings and channels as they stand, the station
+            // as its owner has it. Taken on every such connect, not only the first,
+            // so that a channel added with another app or a setting changed on the
+            // radio is part of the way home rather than something the next trip
+            // through an emcomm mode quietly undoes. Node 3 lost a channel that way,
+            // to a record three days old.
+            //
+            // In an emcomm mode it is left alone: the radio is holding that mode's
+            // settings, and writing them down as "normal" would make coming home
+            // mean nothing.
+            if(ModeProfiles.current() === "normal"){
                 step("Remembering this radio's own settings...");
                 try {
-                    await ModeProfiles.captureNormal();
+                    // one verified read of every slot, used for both: the profile
+                    // that says what normal mode writes, and the backup that is the
+                    // way home from an emcomm mode. Taking the backup here also
+                    // means a switch later does not have to stop and read the whole
+                    // radio first, which is not what an incident wants.
+                    const backup = await NodeBackup.capture();
+                    await ModeProfiles.captureNormal(undefined, { channels: backup.channels });
+                    NodeBackup.save(backup, NodeBackup.SLOT_PRE_EMCOMM);
                 } catch(e) {
                     console.log("could not record the radio's normal mode", e);
                 }

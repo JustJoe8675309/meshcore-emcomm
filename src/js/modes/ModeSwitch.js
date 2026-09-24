@@ -436,6 +436,28 @@ class ModeSwitch {
                         }
                     }
 
+                    // The mode's radio settings, again, for the same reason.
+                    //
+                    // The restore writes the ones the backup recorded, and that
+                    // backup is taken when the station connects — so a setting
+                    // changed on the radio since then, which was written into
+                    // normal mode as it was changed, would be put back to what it
+                    // was at connect. The operator raises the power, goes to a
+                    // drill, comes home, and the power is as it was: the fault
+                    // that was fixed once already, and would return here by the
+                    // back door.
+                    if(profile.radio.name){
+                        await attempt("the node name", () => Connection.setAdvertName(profile.radio.name));
+                    }
+                    if(profile.radio.radioFreq != null){
+                        await attempt("the radio settings", () => Connection.setRadioParams(
+                            profile.radio.radioFreq, profile.radio.radioBw, profile.radio.radioSf, profile.radio.radioCr,
+                        ));
+                    }
+                    if(profile.radio.txPower != null){
+                        await attempt("transmit power", () => Connection.setTxPower(profile.radio.txPower));
+                    }
+
                     // The last word on who answers.
                     //
                     // The restore puts the app's own settings back from the

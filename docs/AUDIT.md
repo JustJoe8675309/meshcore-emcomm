@@ -361,6 +361,20 @@ size turned up, not just at a narrow window.
 - [ ] **Manual or auto survives a round trip.** Set Auto reply in Normal, switch to
       Emcomm-Training and back: still Auto. It is part of the mode, so setting it
       in one mode does not change another.
+- [ ] **Connecting records normal mode.** With the station in normal mode, add a
+      channel with the stock app, then connect here: the Normal tab must show it,
+      and so must the way home backup. It used to be recorded on the first connect
+      only, and node 3 lost a channel to a record three days old.
+- [ ] **Connecting in an emcomm mode records nothing.** Connect a station left in
+      Emcomm-Training: the Normal tab must still hold its normal channels, not the
+      drill's, and the way home backup must be untouched.
+- [ ] **Connecting is not made slow by it.** Time a connect before and after: the
+      profile and the backup share one read of the slots, so it should cost one
+      pass over the channels, not three.
+- [ ] **A live change still outlasts the way home.** Connect, raise the transmit
+      power and save, then round trip through Emcomm-Training. The power must
+      still be raised: the backup was taken at connect and holds the old value, so
+      the mode's own settings are written again after the restore.
 - [ ] **The way home is taken fresh every time.** Switch away from normal, come
       home, add a channel, and switch away again: the new backup must include it.
       Node 3 failed this on 23 Sep — its backup was from three days earlier, made
