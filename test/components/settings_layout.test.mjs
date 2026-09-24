@@ -27,21 +27,32 @@ describe("the shape of the settings page", () => {
 
     const sectionTitles = [...source.matchAll(/<SettingsSection title="([^"]+)"/g)].map((m) => m[1]);
 
-    it("is a handful of named groups rather than a wall", () => {
-        expect(sectionTitles).toEqual([
-            "This station, now",
-            "What each mode writes",
-            "Operator",
-            "Backups",
-            "Commands",
-        ]);
+    it("puts the station's three states in tabs", () => {
+        // what the radio is doing, and what each emcomm mode would write. Normal
+        // mode is not among them: saving a live setting writes the mode in use, so
+        // in normal mode the live fields are normal mode's, and a tab for it would
+        // be the same values twice
+        const tabs = source.match(/stationTabs\(\) \{[\s\S]*?\n        \}/)?.[0] ?? "";
+        expect(tabs).toContain('id: "now"');
+        expect(tabs).toContain('id: "training"');
+        expect(tabs).toContain('id: "live"');
+        expect(tabs).not.toContain('id: "normal"');
     });
 
-    it("opens on what the radio is doing, and leaves the rest folded", () => {
-        const open = [...source.matchAll(/<SettingsSection title="([^"]+)"[\s\S]{0,300}?>/g)]
-            .filter((m) => m[0].includes("open-by-default"))
-            .map((m) => m[1]);
-        expect(open).toEqual(["This station, now"]);
+    it("opens on what the radio is doing", () => {
+        expect(source).toMatch(/stationTab: "now"/);
+    });
+
+    it("keeps the rest as folded groups below the tabs", () => {
+        expect(sectionTitles).toEqual(["Operator", "Backups", "Commands"]);
+    });
+
+    it("shows a mode's own form under its tab, and normal's channels under the first", () => {
+        // the emcomm tabs render the whole mode form; the now tab renders normal
+        // mode's channels and rooms alone, because its radio settings are the live
+        // ones above them
+        expect(source).toMatch(/<ModeSettingsTabs only="normal" channels-only\/>/);
+        expect(source).toMatch(/<ModeSettingsTabs :only="stationTab"/);
     });
 
     it("has one place to edit each thing", () => {
@@ -62,8 +73,10 @@ describe("the shape of the settings page", () => {
     });
 
     it("says what a live change does to the mode, where the operator will read it", () => {
-        const live = source.match(/<SettingsSection title="This station, now"[\s\S]{0,400}?>/)?.[0] ?? "";
-        expect(live).toContain("updates the mode this station is in");
+        const note = source.match(/stationTabNote\(\) \{[\s\S]*?\n        \}/)?.[0] ?? "";
+        expect(note).toContain("writes it into the mode this");
+        // and what an emcomm tab is: a promise about later, not a change now
+        expect(note).toContain("Nothing here changes the radio until then.");
     });
 
 });

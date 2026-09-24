@@ -439,8 +439,12 @@ size turned up, not just at a narrow window.
 
 ### The settings page
 
-- [ ] **It opens as five named groups**, not a wall: This station now, What each
-      mode writes, Operator, Backups, Commands. Only the first is open.
+- [ ] **It opens on three tabs** — This station now, Emcomm-Training,
+      Emcomm-Live — coloured as the banner is, with the mode in use marked, and
+      the first one showing. Operator, Backups and Commands are folded below them.
+- [ ] **There is no normal mode tab**, and normal mode's channels are under the
+      first one. Its radio settings are not repeated there: they are the live
+      fields above.
 - [ ] **Each setting is in one place.** Transmit power used to be editable in
       three groups, the node name and the radio settings in two each. Look for a
       second copy of any of them.

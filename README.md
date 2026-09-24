@@ -726,19 +726,25 @@ radio. Messages saved before this build have no key; a switch attributes them to
 channel is in their slot at the time, which the preview says before it happens, and a conversation
 that is already mixed is cleared with Delete Message History on that channel.
 
-**The settings page is split by *when*, not by topic.** Five folded groups:
+**The settings page is split by *when*, not by topic.** Three tabs across the top, coloured as
+the mode banner is, with the mode in use marked:
 
 - **This station, now** — what the radio is doing at this moment: its name, position, radio
-  settings, transmit power, location sharing, advert position, clock, repeating adverts, and
-  whether position requests are answered automatically. Open when the page opens, because it is
-  what an operator usually came for.
-- **What each mode writes** — a tab per mode, identical in layout, editing what that mode will
-  write when it is entered. Nothing here changes the radio until it is. Normal mode's tab also
-  has a button to take the radio's settings and channels as they are now, which is the only time
-  normal mode is re-read after the first connect.
-- **Operator** — the callsign, SKYWARN number and date-time zone. You, rather than the radio, and
-  kept in this browser.
-- **Backups**, and **Commands**.
+  settings, transmit power, whether it answers from the radio itself, advert position, clock,
+  repeating adverts, whether position requests are answered automatically, and normal mode's
+  channels and rooms. The tab the page opens on.
+- **Emcomm-Training** and **Emcomm-Live** — what that mode will write to the radio when it is
+  entered from the banner. Nothing in them changes the radio until then.
+
+There is no separate tab for normal mode, and that is deliberate: saving a live setting writes it
+into the mode in use, so in normal mode the live fields *are* normal mode's, and a tab of its own
+would put the same values on screen twice. Normal mode's channels and rooms sit under the first
+tab for the same reason, without its radio settings, which are the live ones above them. The
+button to take the radio's settings and channels as normal mode is there too — the only time
+normal mode is re-read after the first connect.
+
+Below the tabs, folded: **Operator** (callsign, SKYWARN number and date-time zone — you, rather
+than the radio, kept in this browser), **Backups**, and **Commands**.
 
 That split exists because the page had grown to nine groups stacked end to end, several editing
 the same value under different headings: transmit power in three of them, the node name and the

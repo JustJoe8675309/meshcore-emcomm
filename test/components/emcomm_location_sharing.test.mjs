@@ -176,9 +176,12 @@ describe("the EMCOMM settings group", () => {
         const share = vi.spyOn(EmcommMode, "setLocationSharing").mockResolvedValue(undefined);
         const wrapper = mount(EmcommSettingsGroup);
         await flushPromises();
-        expect(wrapper.text()).toContain("Location sharing");
+        // named for what it does rather than for the firmware flag: the radio
+        // answers by itself, with this app closed, which is the part that matters
+        expect(wrapper.text()).toContain("Answer from the radio itself");
+        expect(wrapper.text()).toContain("with this app closed");
         expect(wrapper.text()).toContain("Off");
-        const button = wrapper.findAll("button").find((b) => b.text() === "Turn on" && b.element.closest("div").textContent.includes("Location sharing"));
+        const button = wrapper.findAll("button").find((b) => b.text() === "Turn on" && b.element.closest("div").textContent.includes("Answer from the radio itself"));
         await button.trigger("click");
         await flushPromises();
         expect(share).toHaveBeenCalledWith(true);

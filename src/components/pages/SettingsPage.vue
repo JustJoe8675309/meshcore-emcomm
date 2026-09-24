@@ -51,9 +51,29 @@
                          Info, Radio Settings and EMCOMM Settings were three groups
                          editing the same radio, transmit power appearing in all
                          three; they are one group now. -->
-                    <SettingsSection title="This station, now"
-                                     note="What the radio is doing at this moment. Saving also updates the mode this station is in, so coming home does not undo it."
-                                     open-by-default>
+                    <!-- One tab per state this station can be in: what the radio is
+                         doing now, and what each emcomm mode will write when it is
+                         entered. The live settings are normal mode's, since saving
+                         one writes the mode in use, so there is no separate normal
+                         tab to keep in step with them. -->
+                    <div class="bg-white">
+
+                        <div class="p-2 flex space-x-1">
+                            <button v-for="tab of stationTabs" :key="tab.id" @click="stationTab = tab.id" type="button"
+                                    :class="stationTab === tab.id ? tab.classes + ' font-bold' : 'bg-gray-100 text-gray-600'"
+                                    class="w-full text-xs rounded px-2 py-1">
+                                {{ tab.label }}
+                                <span v-if="tab.inUse" class="block font-normal">in use</span>
+                            </button>
+                        </div>
+
+                        <div class="p-2 pt-0 text-xs text-gray-500">{{ stationTabNote }}</div>
+
+                    </div>
+
+                    <!-- what the radio is doing at this moment -->
+                    <template v-if="stationTab === 'now'">
+
 
                     <!-- public info -->
                     <div class="bg-white divide-y">
@@ -132,26 +152,23 @@
 
                         <PositionSettingsGroup bare/>
 
-                    </SettingsSection>
+                        <!-- normal mode's channels and rooms. Its radio settings are
+                             the live ones above, kept in step by saving them. -->
+                        <ModeSettingsTabs only="normal" channels-only/>
 
-                    <!-- what each mode will write when it is entered, which is a
-                         different question from what the radio is doing now -->
-                    <SettingsSection title="What each mode writes"
-                                     note="Entering a mode from the banner writes these. Editing them changes nothing until then.">
+                    </template>
 
+                    <!-- what an emcomm mode will write when it is entered -->
+                    <template v-else>
+                        <ModeSettingsTabs :only="stationTab" :key="stationTab"/>
 
-                        <!-- what each mode holds, and which one this station is in -->
-                        <ModeSettingsTabs/>
-
-                        <!-- the walkthrough again, for a station set up in a hurry -->
                         <div class="bg-white p-2 border-t">
                             <button @click="firstRunOpen = true" type="button"
                                     class="w-full text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 font-medium rounded-lg text-sm px-4 py-2">
                                 Walk through the modes again
                             </button>
                         </div>
-
-                    </SettingsSection>
+                    </template>
 
                     <SettingsSection title="Operator"
                                      note="You, rather than the radio. Kept in this browser.">
@@ -369,7 +386,7 @@ import EmcommSettingsGroup from "../settings/EmcommSettingsGroup.vue";
 import SettingsSection from "../settings/SettingsSection.vue";
 import ModeSettingsTabs from "../modes/ModeSettingsTabs.vue";
 import FirstRunSetup from "../modes/FirstRunSetup.vue";
-import ModeProfiles from "../../js/modes/ModeProfiles.js";
+import ModeProfiles, { MODE_CLASSES, MODE_LABELS } from "../../js/modes/ModeProfiles.js";
 import BusyOverlay from "../BusyOverlay.vue";
 import PositionSettingsGroup from "../settings/PositionSettingsGroup.vue";
 
@@ -378,6 +395,9 @@ export default {
     components: {Page, SaveButton, AppBar, EmcommSettingsGroup, BusyOverlay, PositionSettingsGroup, ModeSettingsTabs, FirstRunSetup, SettingsSection},
     data() {
         return {
+            // now, training or live: what the radio is doing, or what a mode will
+            // write when it is entered
+            stationTab: "now",
             firstRunOpen: false,
             isSaving: false,
             name: null,
@@ -841,6 +861,31 @@ Settings, channels and ${backup.contacts.length} contacts will be written to thi
         },
     },
     computed: {
+
+        /**
+         * The three states a station can be looked at in.
+         *
+         * Normal mode is not among them on purpose: saving a live setting writes
+         * the mode in use, so in normal mode the live fields *are* normal mode's,
+         * and a separate tab for it would be the same values twice.
+         */
+        stationTabs() {
+            const current = ModeProfiles.current(this.nodePublicKey);
+            return [
+                { id: "now", label: "This station, now", classes: MODE_CLASSES.normal, inUse: current === "normal" },
+                { id: "training", label: MODE_LABELS.training, classes: MODE_CLASSES.training, inUse: current === "training" },
+                { id: "live", label: MODE_LABELS.live, classes: MODE_CLASSES.live, inUse: current === "live" },
+            ];
+        },
+
+        stationTabNote() {
+            if(this.stationTab === "now"){
+                return "What the radio is doing at this moment. Saving also writes it into the mode this "
+                    + "station is in, so coming home does not undo it.";
+            }
+            return `What ${MODE_LABELS[this.stationTab] ?? "this mode"} will write to the radio when you `
+                + "enter it from the banner. Nothing here changes the radio until then.";
+        },
 
         // what the loading screen says is under way, or null for no screen. A
         // conversion waiting on its confirmation dialog has no step and is not

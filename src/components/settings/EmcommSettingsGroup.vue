@@ -34,7 +34,7 @@
         <!-- location sharing, which is the radio's telemetry permission -->
         <div class="w-full p-2 space-y-1">
             <div class="flex items-center justify-between">
-                <div class="text-sm font-medium text-gray-900">Location sharing</div>
+                <div class="text-sm font-medium text-gray-900">Answer from the radio itself</div>
                 <div class="text-xs text-gray-500">{{ sharingLabel }}</div>
             </div>
             <button
@@ -45,8 +45,15 @@
                 {{ sharing === "all" ? "Turn off" : "Turn on" }}
             </button>
             <div class="text-xs text-gray-500">
-                On, the radio answers any contact's position request itself, even with this app closed,
-                if it has a working GPS. Also shares battery voltage.
+                A permission in the radio's own firmware, not a setting in this app. On, the radio
+                answers any station asking for its position and battery voltage <span class="font-medium">by
+                itself, with this app closed</span>, from a live GPS fix. It answers immediately and with
+                no record, so it is the switch to think about if you would rather not be found.
+            </div>
+            <div class="text-xs text-gray-500">
+                It is also how this app reaches a station whose own app is shut — it falls back to asking
+                the radio after 30 seconds — and the only way a station running the stock app can ever get
+                your position, since the datagrams this app sends are invisible to it.
             </div>
         </div>
 

@@ -31,7 +31,7 @@
         <template v-else>
 
             <!-- the radio's own settings -->
-            <div class="p-2 space-y-2">
+            <div v-if="!channelsOnly" class="p-2 space-y-2">
                 <div class="text-sm font-medium text-gray-900">Radio</div>
 
                 <label class="block text-xs text-gray-700">Node name
@@ -125,7 +125,7 @@
             </div>
 
             <!-- the rest of what belongs to a mode -->
-            <div class="p-2 space-y-2">
+            <div v-if="!channelsOnly" class="p-2 space-y-2">
                 <div class="text-sm font-medium text-gray-900">Also</div>
 
                 <label class="flex items-start space-x-2 text-xs text-gray-700">
@@ -190,6 +190,14 @@ export default {
         only: {
             type: String,
             default: null,
+        },
+        // channels and rooms alone. Normal mode's radio settings are the live ones
+        // shown above it on the settings page, so repeating them here would put
+        // the same value on the screen twice — which is the fault this page was
+        // rearranged to fix.
+        channelsOnly: {
+            type: Boolean,
+            default: false,
         },
     },
     data() {
