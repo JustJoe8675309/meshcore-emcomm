@@ -185,3 +185,29 @@ describe("a live change and the mode in use", () => {
     });
 
 });
+
+// "Is this station, now the normal mode?" — asked by the operator, and the answer
+// is "only while the station is in normal mode".
+//
+// The live fields are the radio's, whatever mode it is in. Normal's channels sit
+// under the same tab because the mode form is the only way to add a channel, and
+// for a while they were headed simply "Channels" — so in a drill that tab showed
+// the drill's live radio settings next to normal's channel list, with nothing
+// saying they were different things.
+describe("whose channels the first tab is showing", () => {
+
+    const source = readFileSync(resolve("src/components/modes/ModeSettingsTabs.vue"), "utf8");
+
+    it("names them as normal mode's when they are shown beside the live settings", () => {
+        expect(source).toContain('channelsOnly ? "Channels normal mode writes" : "Channels"');
+    });
+
+    it("says the radio is holding another mode's channels when it is", () => {
+        const warning = source.match(/v-if="channelsOnly && current !== 'normal'"[\s\S]{0,320}?<\/div>/)?.[0] ?? "";
+        expect(warning).toContain("holding that mode's");
+        expect(warning).toContain("These are what it comes home to");
+        // amber, as the app's other "this is not what you might assume" lines are
+        expect(warning).toContain("text-amber-800");
+    });
+
+});
