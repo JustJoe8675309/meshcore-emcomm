@@ -192,18 +192,16 @@
             </SettingsSection>
 
             <div class="p-2 space-y-2">
-                <button @click="save" type="button"
-                        class="w-full text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5">Save {{ labelFor(tab) }}</button>
-
-                <button v-if="tab === 'normal'" @click="recapture" :disabled="busy" type="button"
-                        class="w-full text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 disabled:opacity-60 font-medium rounded-lg text-xs px-3 py-2">
-                    Take the radio's settings and channels as they are now
-                </button>
+                <button @click="save" :disabled="busy" type="button"
+                        class="w-full text-white bg-blue-700 hover:bg-blue-800 disabled:bg-gray-400 font-medium rounded-lg text-sm px-5 py-2.5">Save {{ labelFor(tab) }}</button>
 
                 <div v-if="message" role="status" class="text-xs text-gray-600">{{ message }}</div>
-                <div v-if="tab === current" class="text-xs text-amber-700">
-                    This station is in this mode. Saving here does not change the radio: switch into the
-                    mode again from the banner to write it.
+                <div v-if="tab === current" class="text-xs text-gray-500">
+                    This station is in this mode, so saving writes these settings to the radio. Channels
+                    are written when a mode is entered, from the banner.
+                </div>
+                <div v-else class="text-xs text-gray-500">
+                    Nothing here reaches the radio until this station enters {{ labelFor(tab) }}.
                 </div>
             </div>
 
@@ -218,7 +216,7 @@ import GlobalState from "../../js/GlobalState.js";
 import Utils from "../../js/Utils.js";
 import EmcommMode from "../../js/EmcommMode.js";
 import ModeProfiles, { MODES, MODE_CLASSES } from "../../js/modes/ModeProfiles.js";
-import PositionService from "../../js/position/PositionService.js";
+import ModeSwitch from "../../js/modes/ModeSwitch.js";
 import SettingsSection from "../settings/SettingsSection.vue";
 import ContactsGroup from "../settings/ContactsGroup.vue";
 
@@ -284,28 +282,34 @@ export default {
                 this.message = `Could not read this mode: ${e?.message ?? e}`;
             }
         },
-        save() {
+        async save() {
+
             ModeProfiles.saveProfile(this.tab, JSON.parse(JSON.stringify(this.profile)));
-            // the mode in use keeps its app side settings in step at once; the
-            // radio side waits for a switch, which is said on screen
-            if(this.tab === this.current){
-                // every channel and room is answered, so the only live value this
-                // tab owns is whether the operator is asked first
-                PositionService.saveSettings({ autoAnswer: this.profile.autoAnswerPositions === true });
+
+            // Another mode is a promise about later. The mode the station is in is
+            // the radio, so saving it writes it: an operator who changes the power
+            // and presses Save means now, not after a round trip through another
+            // mode and back.
+            if(this.tab !== this.current){
+                this.message = `${this.labelFor(this.tab)} saved. It reaches the radio when this station enters that mode.`;
+                return;
             }
-            this.message = `${this.labelFor(this.tab)} saved.`;
-        },
-        async recapture() {
+
             this.busy = true;
-            this.message = null;
+            this.message = `Writing ${this.labelFor(this.tab)} to the radio...`;
             try {
-                this.profile = await ModeProfiles.captureNormal();
-                this.message = "Normal mode now holds the radio's settings and channels as they are now.";
+                const { failures } = await ModeSwitch.applySettings(this.tab);
+                this.message = failures.length === 0
+                    ? `${this.labelFor(this.tab)} saved, and written to the radio.`
+                    : `${this.labelFor(this.tab)} saved, but the radio did not take ${failures.map((f) => f.what).join(", ")}.`;
             } catch(e) {
-                this.message = `Could not read the radio: ${e?.message ?? e}`;
+                // saved either way: the profile is written before any of this, so
+                // a radio that would not answer has not lost the operator's work
+                this.message = `${this.labelFor(this.tab)} saved, but it could not be written to the radio: ${e?.message ?? e}`;
             } finally {
                 this.busy = false;
             }
+
         },
         async addChannel() {
             const name = this.newChannelName.trim();

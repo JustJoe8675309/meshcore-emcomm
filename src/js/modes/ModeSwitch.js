@@ -140,6 +140,74 @@ class ModeSwitch {
      */
     static INCOMPLETE_BACKUP = "the way home would be incomplete";
 
+    /**
+     * Writes the settings of the mode the station is already in.
+     *
+     * Saving a mode used to be a promise about later even when it was the mode in
+     * use: the operator changed the transmit power, saved, and the radio went on
+     * at the old power until they switched modes and back. So the settings page
+     * carried a second copy of the same fields whose job was to reach the radio
+     * now, and every field existed twice.
+     *
+     * Channels are left alone on purpose. Writing them means clearing every slot
+     * the mode does not name, which is a switch: it is destructive, it is slow,
+     * and it is what the banner is for. The tab says so where the channels are.
+     *
+     * Contacts and the way home are not touched either, for the same reason —
+     * this is the mode the station is in, so there is nothing to back up or
+     * restore.
+     */
+    static async applySettings(mode, onProgress = () => {}) {
+
+        if(GlobalState.connection == null){
+            throw new Error(Connection.DISCONNECTED);
+        }
+
+        const nodeKeyHex = ModeProfiles.nodeKeyHex();
+        const profile = await ModeProfiles.profileOrDefault(mode, nodeKeyHex);
+        const failures = [];
+
+        const attempt = async (what, action) => {
+            onProgress({ what: what });
+            try {
+                await action();
+                return true;
+            } catch(e) {
+                failures.push({ what: what, reason: String(e?.message ?? e) });
+                return false;
+            }
+        };
+
+        if(profile.radio.name){
+            await attempt("the node name", () => Connection.setAdvertName(profile.radio.name));
+        }
+        if(profile.radio.radioFreq != null){
+            await attempt("the radio settings", () => Connection.setRadioParams(
+                profile.radio.radioFreq, profile.radio.radioBw, profile.radio.radioSf, profile.radio.radioCr,
+            ));
+        }
+        if(profile.radio.txPower != null){
+            await attempt("transmit power", () => Connection.setTxPower(profile.radio.txPower));
+        }
+        await attempt("sharing, adverts and acknowledgements", () => EmcommMode.applyRadioPolicies({
+            shareLocation: profile.radio.shareLocation,
+            advertPosition: profile.radio.advertPosition,
+            multiAcks: profile.radio.multiAcks,
+        }));
+        await attempt("how contacts are added", () => EmcommMode.setManualAddContacts(!profile.radio.autoAddContacts));
+
+        // read back rather than assume: the radio owns these, and the page above
+        // shows what it says it holds
+        await attempt("reading the settings back", () => Connection.loadSelfInfo(Connection.READ_TIMEOUT_MILLIS));
+
+        PositionService.saveSettings({ autoAnswer: profile.autoAnswerPositions === true }, nodeKeyHex);
+        AdvertSchedule.set(nodeKeyHex, profile.adverts);
+        AdvertSchedule.start(nodeKeyHex);
+
+        return { failures: failures };
+
+    }
+
     static async apply(mode, onProgress = () => {}, { acceptIncompleteBackup = false } = {}) {
 
         if(GlobalState.connection == null){

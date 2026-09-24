@@ -737,10 +737,17 @@ only group on the page that is about you rather than the node.
 **Below it, a tab for each mode** — Normal, Emcomm-Training, Emcomm-Live — coloured as
 the banner is, with the mode in use marked. They hold the same fields in the same layout, and each
 shows what that mode will write to the radio when it is entered. **Any of them can be edited from
-any other**, so a station working a drill can set up what it comes home to, and nothing written
-there reaches the radio until the mode is entered from the banner. Normal mode's tab also has the
-button to take the radio's settings and channels as they are now, which is the only time normal
-mode is re-read after the first connect.
+any other**, so a station working a drill can set up what it comes home to.
+
+**Saving the mode the station is in writes it to the radio.** Saving any other mode is a promise
+about later, and the tab says which it is doing. That is what an operator means by Save: they
+raised the transmit power and want it raised, not after a round trip through another mode and
+back. Channels are the exception and wait for a switch, because writing them means clearing every
+slot the mode does not name — that is destructive, it is slow, and it is what the banner is for.
+
+Normal mode is re-read from the radio on every connect, so there is no button for it. There used
+to be one, and it was a footgun: it sat on the Normal tab, so a station actually sitting in a
+drill could have the drill written down as its home with one press.
 
 **Inside a tab, every heading folds.** A mode is a long form and an operator comes to it for one
 thing, so it opens as a list of headings: **Radio** (open, since it is what the tab is mostly
@@ -764,18 +771,17 @@ radio, it simply hears nothing.
 
 Below the tabs, folded:
 
-- **The radio right now** — the same settings as the radio actually holds them: name, position,
-  frequency, bandwidth, spreading factor, coding rate, transmit power, whether it answers from the
-  radio itself, advert position, clock, repeating adverts, and whether position requests are
-  answered automatically. Saving here reaches the radio as it is saved, and is also written into
-  the mode the station is in, so coming home does not undo it.
+- **This radio now** — what no mode holds: where the station is, and the one-press jobs against
+  the radio as it stands — raise to maximum power, set the position from a live GPS fix, sync the
+  clock, what the repeating adverts have actually sent, and Manual or Auto reply to position
+  requests. The station's position stays as it is through every switch, which is why it is here
+  and not on a mode tab.
 - **Backups**, and **Commands**.
 
-The same settings appear in two places on purpose, and the headings say which is which: in a mode
-tab they are a promise about what will be written later, and under "the radio right now" they are
-the radio. That is the one duplication worth keeping — the page used to have several that were
-not, with transmit power editable in three groups and two headings reading "Emcomm" and "EMCOMM
-Settings" while meaning entirely different things.
+Every setting is in one place. The page used to carry a second copy of every mode field here,
+because saving a mode did not reach the radio; now that it does, the copy is gone. Before that it
+was worse still — transmit power was editable in three groups, and two headings a few inches apart
+read "Emcomm" and "EMCOMM Settings" while meaning entirely different things.
 
 That split exists because the page had grown to nine groups stacked end to end, several editing
 the same value under different headings: transmit power in three of them, the node name and the

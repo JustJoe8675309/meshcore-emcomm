@@ -466,7 +466,7 @@ size turned up, not just at a narrow window.
       It is the one group on the page that is not about the node.
 - [ ] **Then a tab per mode** — Normal, Emcomm-Training, Emcomm-Live — coloured
       as the banner is, with the mode in use marked. All three hold the same
-      fields in the same layout. The radio right now, Backups and Commands are
+      fields in the same layout. This radio now, Backups and Commands are
       folded below them.
 - [ ] **Inside a tab the headings fold**: Radio open, then Companions, Repeaters,
       Channels, Rooms and Also shut. Every tick is under Also, and none is left
@@ -489,12 +489,19 @@ size turned up, not just at a narrow window.
 - [ ] **Each setting is in one place.** Transmit power used to be editable in
       three groups, the node name and the radio settings in two each. Look for a
       second copy of any of them.
-- [ ] **A live change survives a round trip.** In Normal, raise the transmit
-      power and Save, switch to Emcomm-Training and back: the power must still be
-      the new one. It used to be put back with nothing said, because the mode
-      writes its own settings on entry and nothing had told the mode.
+- [ ] **Saving the mode in use reaches the radio.** In Normal, change the
+      transmit power on the Normal tab and Save. The radio is at the new power
+      before any switch — check it on the node itself, not only on screen.
+- [ ] **Saving another mode does not.** From Normal, change the Emcomm-Live tab's
+      power and Save: the radio is unchanged, and the tab says so.
+- [ ] **Channels still wait for a switch.** Add a channel to the mode in use and
+      Save: the radio's slots are untouched until the mode is entered.
+- [ ] **A live change survives a round trip.** After the first check, switch to
+      Emcomm-Training and back: the power must still be the new one.
 - [ ] **A live change does not leak into the other modes.** After the above, the
       Emcomm-Live tab's transmit power is whatever it was.
+- [ ] **The position is not a mode's.** Set a latitude and longitude under "This
+      radio now", switch modes twice: the position is still there.
 - [ ] **On a phone with the text turned up**, the group headings and their notes
       read without the page scrolling sideways.
 

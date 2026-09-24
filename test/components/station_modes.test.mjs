@@ -934,18 +934,124 @@ describe("the settings tabs", () => {
         expect(wrapper.text()).not.toContain("which of them this mode uses");
     });
 
-    it("says that saving the mode in use does not change the radio by itself", async () => {
+    // Saving the mode the station is in used to be a promise about later, like
+    // saving any other mode: the operator raised the power, saved, and the radio
+    // went on at the old power until they switched away and back. That is why the
+    // page carried a second copy of every one of these fields.
+    it("writes the mode in use to the radio when it is saved", async () => {
+        const applied = vi.spyOn(ModeSwitch, "applySettings").mockResolvedValue({ failures: [] });
         const wrapper = mount(ModeSettingsTabs);
         await flushPromises();
-        expect(wrapper.text()).toContain("switch into the mode again from the banner to write it");
+        await open(wrapper, "normal");
+
+        wrapper.vm.profile.radio.txPower = 22;
+        await wrapper.vm.save();
+
+        expect(applied).toHaveBeenCalledWith("normal");
+        expect(ModeProfiles.profile("normal", NODE).radio.txPower).toBe(22);
+        expect(wrapper.text()).toContain("written to the radio");
     });
 
-    it("can take the radio's settings again for normal mode", async () => {
+    it("leaves the radio alone when the mode saved is not the one in use", async () => {
+        const applied = vi.spyOn(ModeSwitch, "applySettings").mockResolvedValue({ failures: [] });
         const wrapper = mount(ModeSettingsTabs);
         await flushPromises();
-        GlobalState.selfInfo = selfInfo({ name: "Renamed", txPower: 20 });
-        await wrapper.vm.recapture();
-        expect(ModeProfiles.profile("normal", NODE).radio).toMatchObject({ name: "Renamed", txPower: 20 });
+        await open(wrapper, "live");
+
+        wrapper.vm.profile.radio.txPower = 22;
+        await wrapper.vm.save();
+
+        expect(applied).not.toHaveBeenCalled();
+        expect(wrapper.text()).toContain("when this station enters that mode");
+    });
+
+    it("keeps the operator's work when the radio will not take it", async () => {
+        vi.spyOn(ModeSwitch, "applySettings").mockRejectedValue(new Error("timed out"));
+        const wrapper = mount(ModeSettingsTabs);
+        await flushPromises();
+        await open(wrapper, "normal");
+
+        wrapper.vm.profile.radio.txPower = 22;
+        await wrapper.vm.save();
+
+        // the profile is written before the radio is touched, so a silent radio
+        // does not cost the operator what they just typed
+        expect(ModeProfiles.profile("normal", NODE).radio.txPower).toBe(22);
+        expect(wrapper.text()).toContain("could not be written to the radio");
+    });
+
+    it("says that channels wait for a switch, since writing them clears slots", async () => {
+        const wrapper = mount(ModeSettingsTabs);
+        await flushPromises();
+        await open(wrapper, "normal");
+        expect(wrapper.text()).toContain("Channels are written when a mode is entered");
+    });
+
+});
+
+// Writing the settings of the mode the station is already in. Not a switch:
+// there is nothing to back up, nothing to restore, and the channels are already
+// the ones this mode named.
+describe("saving the mode in use", () => {
+
+    beforeEach(async () => {
+        window.localStorage.clear();
+        connect();
+        radioChannels({ 0: { name: "Public", secret: "8b3387e9c5cdea6ac9e5edbaa115cd72" } });
+        quietRadio();
+        await ModeProfiles.captureNormal(NODE);
+        ModeProfiles.saveProfile("normal", {
+            ...await ModeProfiles.profileOrDefault("normal", NODE),
+            radio: { name: "Joe-KJ5HBN-HTv3", radioFreq: 906875, radioBw: 250000, radioSf: 10, radioCr: 5,
+                     txPower: 22, shareLocation: true, advertPosition: true, multiAcks: false, autoAddContacts: false },
+        }, NODE);
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        GlobalState.connection = null;
+        GlobalState.selfInfo = null;
+        window.localStorage.clear();
+    });
+
+    it("writes the radio's settings, and reads them back", async () => {
+        const result = await ModeSwitch.applySettings("normal");
+
+        expect(result.failures).toEqual([]);
+        expect(Connection.setTxPower).toHaveBeenCalledWith(22);
+        expect(Connection.setRadioParams).toHaveBeenCalledWith(906875, 250000, 10, 5);
+        expect(Connection.setAdvertName).toHaveBeenCalledWith("Joe-KJ5HBN-HTv3");
+        expect(EmcommMode.applyRadioPolicies).toHaveBeenCalledWith({ shareLocation: true, advertPosition: true, multiAcks: false });
+        expect(EmcommMode.setManualAddContacts).toHaveBeenCalledWith(true);
+        // the radio owns what it holds, so the page is shown what it says
+        expect(Connection.loadSelfInfo).toHaveBeenCalled();
+    });
+
+    it("does not touch the channels, which is what a switch is for", async () => {
+        // writing them means clearing every slot the mode does not name, and a
+        // private channel's key is on the radio and nowhere else
+        await ModeSwitch.applySettings("normal");
+        expect(Connection.setChannel).not.toHaveBeenCalled();
+        expect(Connection.deleteChannel).not.toHaveBeenCalled();
+    });
+
+    it("takes no backup and restores nothing: the station is not going anywhere", async () => {
+        const captured = vi.spyOn(NodeBackup, "capture");
+        const restored = vi.spyOn(NodeBackup, "restore");
+        await ModeSwitch.applySettings("normal");
+        expect(captured).not.toHaveBeenCalled();
+        expect(restored).not.toHaveBeenCalled();
+    });
+
+    it("reports what the radio would not take, rather than claiming it worked", async () => {
+        Connection.setTxPower.mockRejectedValue(new Error("timed out"));
+        const result = await ModeSwitch.applySettings("normal");
+        expect(result.failures.map((f) => f.what)).toContain("transmit power");
+    });
+
+    it("refuses with no radio connected", async () => {
+        GlobalState.connection = null;
+        await expect(ModeSwitch.applySettings("normal")).rejects.toThrow();
     });
 
 });

@@ -116,87 +116,34 @@
                         </button>
                     </div>
 
-                    <!-- The radio as it is at this moment, which is not the same
-                         question as what a mode would write. The fields look like
-                         the ones in the tab above because they are the same
-                         settings: there they are a promise about later, here they
-                         are the radio. -->
-                    <SettingsSection title="The radio right now"
-                                     note="Changes here reach the radio as they are saved, and are written into the mode this station is in so that coming home does not undo them.">
+                    <!-- What is not a mode, and so has nowhere else to live: where
+                         this station is, and the one press jobs against the radio as
+                         it stands. The mode fields used to be repeated here too,
+                         because saving a mode did not reach the radio. Saving the
+                         mode in use does now, so they are gone from here. -->
+                    <SettingsSection title="This radio now"
+                                     note="Where this station is, and jobs done to the radio as it stands. Not held by a mode.">
 
+                        <div class="bg-white divide-y">
 
-                    <!-- public info -->
-                    <div class="bg-white divide-y">
+                            <div class="w-full p-2">
+                                <div class="block mb-2 text-sm font-medium text-gray-900">Latitude</div>
+                                <input v-model="latitude" type="number" placeholder="e.g: -38.664646" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                            </div>
 
-                        <div class="w-full p-2">
-                            <div class="block mb-2 text-sm font-medium text-gray-900">Name</div>
-                            <input v-model="name" type="text" placeholder="e.g: Anonymous" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                            <div class="w-full p-2">
+                                <div class="block mb-2 text-sm font-medium text-gray-900">Longitude</div>
+                                <input v-model="longitude" type="number" placeholder="e.g: 178.023507" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                            </div>
+
+                            <div class="w-full p-2 text-xs text-gray-500">
+                                Where the station is, which is a fact about the station rather than a mode:
+                                it stays as it is through every switch. The node name, frequency, bandwidth,
+                                spreading factor, coding rate and transmit power belong to a mode, and are
+                                set on its tab above.
+                            </div>
+
                         </div>
-
-                        <div class="w-full p-2">
-                            <div class="block mb-2 text-sm font-medium text-gray-900">Latitude</div>
-                            <input v-model="latitude" type="number" placeholder="e.g: -38.664646" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                        </div>
-
-                        <div class="w-full p-2">
-                            <div class="block mb-2 text-sm font-medium text-gray-900">Longitude</div>
-                            <input v-model="longitude" type="number" placeholder="e.g: 178.023507" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                        </div>
-
-                    </div>
-
-                    <!-- radio settings -->
-                    <div class="bg-white divide-y">
-
-                        <div class="w-full p-2">
-                            <div class="block mb-2 text-sm font-medium text-gray-900">Frequency (MHz)</div>
-                            <input v-model="radioFreq" type="number" placeholder="e.g: 917.375" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                        </div>
-
-                        <div class="w-full p-2">
-                            <div class="block mb-2 text-sm font-medium text-gray-900">Bandwidth</div>
-                            <select v-model="radioBw" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                                <option :value="7800">7.8 kHz</option>
-                                <option :value="10400">10.4 kHz</option>
-                                <option :value="15600">15.6 kHz</option>
-                                <option :value="20800">20.8 kHz</option>
-                                <option :value="31250">31.25 kHz</option>
-                                <option :value="41700">41.7 kHz</option>
-                                <option :value="62500">62.5 kHz</option>
-                                <option :value="125000">125 kHz</option>
-                                <option :value="250000">250 kHz</option>
-                                <option :value="500000">500 kHz</option>
-                            </select>
-                        </div>
-
-                        <div class="w-full p-2">
-                            <div class="block mb-2 text-sm font-medium text-gray-900">Spreading Factor</div>
-                            <select v-model="radioSf" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                                <option :value="7">7</option>
-                                <option :value="8">8</option>
-                                <option :value="9">9</option>
-                                <option :value="10">10</option>
-                                <option :value="11">11</option>
-                                <option :value="12">12</option>
-                            </select>
-                        </div>
-
-                        <div class="w-full p-2">
-                            <div class="block mb-2 text-sm font-medium text-gray-900">Coding Rate</div>
-                            <select v-model="radioCr" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                                <option :value="5">5</option>
-                                <option :value="6">6</option>
-                                <option :value="7">7</option>
-                                <option :value="8">8</option>
-                            </select>
-                        </div>
-
-                        <div class="w-full p-2">
-                            <div class="block mb-2 text-sm font-medium text-gray-900">Transmit Power (dBm)</div>
-                            <input v-model="txPower" type="number" placeholder="e.g: 22" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                        </div>
-
-                    </div>
 
                         <EmcommSettingsGroup bare/>
 
@@ -384,12 +331,6 @@ export default {
         return {
             firstRunOpen: false,
             isSaving: false,
-            name: null,
-            radioFreq: null,
-            radioBw: null,
-            radioSf: null,
-            radioCr: null,
-            txPower: null,
             latitude: null,
             longitude: null,
             deviceInfo: null,
@@ -684,17 +625,6 @@ Settings, channels and ${backup.contacts.length} contacts will be written to thi
                 return;
             }
 
-            this.name = GlobalState.selfInfo.name;
-
-            // convert radio frequency from kHz to MHz
-            // e.g: 917375 -> 917.375
-            this.radioFreq = GlobalState.selfInfo.radioFreq / 1000;
-
-            this.radioBw = GlobalState.selfInfo.radioBw;
-            this.radioSf = GlobalState.selfInfo.radioSf;
-            this.radioCr = GlobalState.selfInfo.radioCr;
-            this.txPower = GlobalState.selfInfo.txPower;
-
             // convert latitude and longitude from integer to decimal
             // e.g: -38664646, 178023507 -> -38.664646, 178.023507
             // 0, 0 is how a node with no position reports, and it is a real place in
@@ -732,77 +662,24 @@ Settings, channels and ${backup.contacts.length} contacts will be written to thi
 
             try {
 
-                // ensure name provided
-                if(!this.name || this.name.length === 0){
-                    alert("Name is required!");
-                    return;
-                }
-
-                // ensure frequency provided
-                if(!this.radioFreq){
-                    alert("Frequency is required!");
-                    return;
-                }
-
-                // ensure bandwidth provided
-                if(!this.radioBw){
-                    alert("Bandwidth is required!");
-                    return;
-                }
-
-                // ensure spreading factor provided
-                if(!this.radioSf){
-                    alert("Spreading Factor is required!");
-                    return;
-                }
-
-                // ensure coding rate provided
-                if(!this.radioCr){
-                    alert("Coding Rate is required!");
-                    return;
-                }
-
-                // ensure transmit power provided
-                if(!this.txPower){
-                    alert("Transmit Power is required!");
-                    return;
-                }
-
                 // a blank field means no position, which the radio stores as zero. A
                 // number box that has been cleared holds "", not null, so both count
                 const latitudeInput = this.latitude == null || this.latitude === "" ? 0 : this.latitude;
                 const longitudeInput = this.longitude == null || this.longitude === "" ? 0 : this.longitude;
-
-                // convert radio frequency from MHz to kHz
-                // e.g: 917.375 -> 917375
-                const radioFreq = this.radioFreq * 1000;
 
                 // convert latitude and longitude from decimal to integer
                 // e.g: -38.664646, 178.023507 -> -38664646, 178023507
                 const latitude = Math.floor(latitudeInput * 1000000);
                 const longitude = Math.floor(longitudeInput * 1000000);
 
-                // save settings
-                await Connection.setAdvertName(this.name);
                 await Connection.setAdvertLatLong(latitude, longitude);
-                await Connection.setRadioParams(radioFreq, this.radioBw, this.radioSf, this.radioCr);
-                await Connection.setTxPower(this.txPower);
 
-                // reload self info
+                // reload self info: the radio owns what it holds, and the fields
+                // here show what it says
                 await Connection.loadSelfInfo(Connection.READ_TIMEOUT_MILLIS);
 
-                // and into the mode in use, so coming home does not undo it
-                ModeProfiles.noteRadioSettings({
-                    name: this.name,
-                    radioFreq: radioFreq,
-                    radioBw: this.radioBw,
-                    radioSf: this.radioSf,
-                    radioCr: this.radioCr,
-                    txPower: Number(this.txPower),
-                });
-
                 // show success alert
-                alert("Settings saved.");
+                alert("Position saved.");
 
             } catch(e) {
                 console.log(e);

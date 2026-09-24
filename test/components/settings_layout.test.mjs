@@ -46,18 +46,24 @@ describe("the shape of the settings page", () => {
     it("asks who is operating first, and keeps the live radio below the modes", () => {
         // the operator is the first thing to set on a station being handed over,
         // and the one group here that is not about the node at all
-        expect(sectionTitles).toEqual(["Operator", "The radio right now", "Backups", "Commands"]);
+        expect(sectionTitles).toEqual(["Operator", "This radio now", "Backups", "Commands"]);
         expect(source.indexOf('title="Operator"')).toBeLessThan(source.indexOf("<ModeSettingsTabs/>"));
     });
 
     it("has one place to edit each thing", () => {
-        // the three groups that each used to edit the radio are one group now
+        // The three groups that each used to edit the radio are gone, and so is
+        // the copy that replaced them: a mode's fields are edited on its tab, and
+        // saving the mode the station is in writes them to the radio. Transmit
+        // power was once editable in three groups on this page.
         expect(source).not.toContain(">Public Info<");
         expect(source).not.toContain(">Radio Settings<");
-        // and transmit power, which was in three of them, is written once here
-        expect((source.match(/Transmit Power \(dBm\)/g) ?? []).length).toBe(1);
-        expect((source.match(/v-model="radioFreq"/g) ?? []).length).toBe(1);
-        expect((source.match(/v-model="name"/g) ?? []).length).toBe(1);
+        expect(source).not.toContain("Transmit Power (dBm)");
+        expect(source).not.toContain('v-model="radioFreq"');
+        expect(source).not.toContain('v-model="name"');
+
+        // what is left is what no mode holds: where the station is
+        expect((source.match(/v-model="latitude"/g) ?? []).length).toBe(1);
+        expect((source.match(/v-model="longitude"/g) ?? []).length).toBe(1);
     });
 
     it("no longer has two headings called Emcomm", () => {
@@ -67,9 +73,11 @@ describe("the shape of the settings page", () => {
         expect(sectionTitles.filter((t) => /emcomm/i.test(t))).toEqual([]);
     });
 
-    it("says what a live change does to the mode, where the operator will read it", () => {
-        const live = source.match(/<SettingsSection title="The radio right now"[\s\S]{0,400}?>/)?.[0] ?? "";
-        expect(live).toContain("written into the mode this station is in");
+    it("says what is left here is not a mode's, and where the rest went", () => {
+        const live = source.match(/<SettingsSection title="This radio now"[\s\S]{0,400}?>/)?.[0] ?? "";
+        expect(live).toContain("Not held by a mode");
+        // and the operator is told where the fields that left have gone
+        expect(source).toContain("set on its tab above");
     });
 
 });
@@ -161,13 +169,13 @@ describe("a live change and the mode in use", () => {
         expect(ModeProfiles.profile("training", NODE)).toBe(null);
     });
 
-    it("is called by the settings page after it writes the radio", () => {
-        // the order matters: the radio is written first, and the mode is told only
-        // once that worked
-        const write = source.indexOf("Connection.setTxPower(this.txPower)");
-        const note = source.indexOf("ModeProfiles.noteRadioSettings({");
-        expect(write).toBeGreaterThan(-1);
-        expect(note).toBeGreaterThan(write);
+    it("is not needed by this page any more, which only writes the position", () => {
+        // the page used to hold a second copy of every mode field, so it wrote the
+        // radio and then told the mode. The mode tab does both now
+        expect(source).toContain("Connection.setAdvertLatLong(latitude, longitude)");
+        expect(source).not.toContain("Connection.setTxPower");
+        expect(source).not.toContain("Connection.setRadioParams");
+        expect(source).not.toContain("ModeProfiles.noteRadioSettings({");
     });
 
     it("is called by the live toggles too, which change the radio one at a time", () => {

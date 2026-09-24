@@ -4,9 +4,9 @@
 // that the settings read can wait behind other work: on the bench, opening
 // settings just after an advert arrived meant waiting out a two pass contact
 // reload over Bluetooth, several seconds of empty fields. Empty is the dangerous
-// state. An empty Name box looks like a node with no name, and saving it writes
-// one. So the page says it is reading, and Save stays off until the fields hold
-// what the radio actually said.
+// state: an empty position box looks like a station with no position, and saving
+// it writes 0, 0 — a real place in the Gulf of Guinea. So the page says it is
+// reading, and Save stays off until the fields hold what the radio actually said.
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
@@ -49,12 +49,12 @@ function mountPage() {
 }
 
 const saveButton = (wrapper) => wrapper.findAll("button").find((b) => ["Save", "Saving..."].includes(b.text().trim()));
-const nameField = (wrapper) => wrapper.findAll("input").find((i) => i.attributes("placeholder") === "e.g: Anonymous");
+const latitudeField = (wrapper) => wrapper.findAll("input").find((i) => i.attributes("placeholder") === "e.g: -38.664646");
 
 describe("SettingsPage while reading the radio", () => {
 
     let read;
-    let setAdvertName;
+    let setPosition;
 
     beforeEach(() => {
         window.localStorage.clear();
@@ -66,7 +66,7 @@ describe("SettingsPage while reading the radio", () => {
             GlobalState.selfInfo = await read.promise;
         });
         vi.spyOn(Connection, "deviceQuery").mockResolvedValue(null);
-        setAdvertName = vi.spyOn(Connection, "setAdvertName").mockResolvedValue(undefined);
+        setPosition = vi.spyOn(Connection, "setAdvertLatLong").mockResolvedValue(undefined);
     });
 
     afterEach(() => {
@@ -81,7 +81,7 @@ describe("SettingsPage while reading the radio", () => {
 
         expect(wrapper.text()).toContain("Reading settings from the radio");
         expect(saveButton(wrapper).attributes("disabled")).toBeDefined();
-        expect(nameField(wrapper).element.value).toBe("");
+        expect(latitudeField(wrapper).element.value).toBe("");
     });
 
     it("reads with the short bound, so a silent radio is reported in seconds", async () => {
@@ -97,7 +97,7 @@ describe("SettingsPage while reading the radio", () => {
         read.resolve(SELF_INFO);
         await flushPromises();
 
-        expect(nameField(wrapper).element.value).toBe("KJ5HBN-EMCOMM");
+        expect(latitudeField(wrapper).element.value).toBe("31.926949");
         expect(wrapper.text()).not.toContain("Reading settings from the radio");
         expect(saveButton(wrapper).attributes("disabled")).toBeUndefined();
     });
@@ -110,7 +110,7 @@ describe("SettingsPage while reading the radio", () => {
         read.resolve(SELF_INFO);
         await flushPromises();
 
-        expect(nameField(wrapper).element.value).toBe("KJ5HBN-EMCOMM");
+        expect(latitudeField(wrapper).element.value).toBe("31.926949");
         expect(saveButton(wrapper).attributes("disabled")).toBeUndefined();
     });
 
@@ -131,7 +131,7 @@ describe("SettingsPage while reading the radio", () => {
 
         await wrapper.vm.save();
 
-        expect(setAdvertName).not.toHaveBeenCalled();
+        expect(setPosition).not.toHaveBeenCalled();
     });
 
     it("turns Save off again when a later re-read fails", async () => {
