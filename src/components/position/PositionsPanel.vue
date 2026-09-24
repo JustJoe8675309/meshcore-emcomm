@@ -374,11 +374,8 @@ export default {
                 }
                 return "once";
             }
-            if(mode.type === "until"){
-                return `every ${mode.intervalMinutes} min until answered`;
-            }
-            if(mode.type === "count"){
-                return `up to ${mode.maxCount} times every ${mode.intervalMinutes} min`;
+            if(mode.type === "repeat"){
+                return `every ${mode.intervalMinutes} min for ${mode.forMinutes} min, or until answered`;
             }
             return "once";
         },

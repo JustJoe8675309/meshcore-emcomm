@@ -820,8 +820,8 @@ describe("asking", () => {
         expect(request.status).toBe("stopped");
     });
 
-    it("until: repeats every interval until the answer comes, then stops", async () => {
-        const request = PositionService.start(THEM_CONTACT, channel, { type: "until", intervalMinutes: 2 });
+    it("repeat: asks every interval until the answer comes, then stops", async () => {
+        const request = PositionService.start(THEM_CONTACT, channel, { type: "repeat", intervalMinutes: 2, forMinutes: 60 });
         await vi.advanceTimersByTimeAsync(0);
         await vi.advanceTimersByTimeAsync(2 * 60000);
         await vi.advanceTimersByTimeAsync(2 * 60000);
@@ -838,19 +838,33 @@ describe("asking", () => {
         expect(report.requestedByUs).toBe(true);
     });
 
-    it("count: stops at the number asked for, and says so", async () => {
-        const request = PositionService.start(THEM_CONTACT, channel, { type: "count", intervalMinutes: 1, maxCount: 3 });
+    // "every 1 minute for 2 minutes" is three asks: now, and at each minute
+    // inside the window. The operator is told the number before they send.
+    it("repeat: stops when the window closes, and says so", async () => {
+        const request = PositionService.start(THEM_CONTACT, channel, { type: "repeat", intervalMinutes: 1, forMinutes: 2 });
         await vi.advanceTimersByTimeAsync(0);
         await vi.advanceTimersByTimeAsync(60000);
         await vi.advanceTimersByTimeAsync(60000);
-        await vi.advanceTimersByTimeAsync(60000);
+        expect(sent).toHaveLength(3);
+
+        // and nothing after the window, however long anyone waits
+        await vi.advanceTimersByTimeAsync(10 * 60000);
         expect(sent).toHaveLength(3);
         expect(request.status).toBe("gave up");
         expect(request.outcome).toBe("No answer after 3 requests.");
     });
 
-    it("count: stops early when answered", async () => {
-        const request = PositionService.start(THEM_CONTACT, channel, { type: "count", intervalMinutes: 1, maxCount: 5 });
+    it("repeat: a window shorter than the interval still sends once", async () => {
+        // asking every 10 minutes for 2 would otherwise be a repeat that repeats
+        // nothing; the window is widened to hold one interval
+        const request = PositionService.start(THEM_CONTACT, channel, { type: "repeat", intervalMinutes: 10, forMinutes: 2 });
+        expect(request.mode.forMinutes).toBe(10);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(sent).toHaveLength(1);
+    });
+
+    it("repeat: stops early when answered", async () => {
+        const request = PositionService.start(THEM_CONTACT, channel, { type: "repeat", intervalMinutes: 1, forMinutes: 5 });
         await vi.advanceTimersByTimeAsync(0);
         answer(request.tag);
         await vi.advanceTimersByTimeAsync(10 * 60000);
@@ -859,7 +873,7 @@ describe("asking", () => {
     });
 
     it("a decline stops the repeats and names who declined", async () => {
-        const request = PositionService.start(THEM_CONTACT, channel, { type: "until", intervalMinutes: 1 });
+        const request = PositionService.start(THEM_CONTACT, channel, { type: "repeat", intervalMinutes: 1, forMinutes: 60 });
         await vi.advanceTimersByTimeAsync(0);
         answer(request.tag, Protocol.KIND.DECLINED);
         await vi.advanceTimersByTimeAsync(5 * 60000);
@@ -870,7 +884,7 @@ describe("asking", () => {
     });
 
     it("will not repeat faster than once a minute", async () => {
-        PositionService.start(THEM_CONTACT, channel, { type: "until", intervalMinutes: 0 });
+        PositionService.start(THEM_CONTACT, channel, { type: "repeat", intervalMinutes: 0, forMinutes: 10 });
         await vi.advanceTimersByTimeAsync(0);
         await vi.advanceTimersByTimeAsync(59000);
         expect(sent).toHaveLength(1);
@@ -902,21 +916,21 @@ describe("asking", () => {
 
     it("says silence may mean either, since a radio that does not share says nothing", async () => {
         // on the bench, with sharing off, node 2 did not answer at all
-        const request = PositionService.start(THEM_CONTACT, channel, { type: "until", intervalMinutes: 5 });
+        const request = PositionService.start(THEM_CONTACT, channel, { type: "repeat", intervalMinutes: 5, forMinutes: 60 });
         await vi.advanceTimersByTimeAsync(30000);
         expect(request.radioNote).toBe("Its radio did not answer either: it may not share location, or may be out of range.");
     });
 
     it("says why when the radio answers without a position", async () => {
         Connection.requestTelemetry.mockResolvedValue({ pubKeyPrefix: THEM.slice(0, 6), lppSensorData: new Uint8Array([1, 116, 1, 160]) });
-        const request = PositionService.start(THEM_CONTACT, channel, { type: "until", intervalMinutes: 5 });
+        const request = PositionService.start(THEM_CONTACT, channel, { type: "repeat", intervalMinutes: 5, forMinutes: 60 });
         await vi.advanceTimersByTimeAsync(30000);
         expect(request.status).toBe("running");
         expect(request.radioNote).toMatch(/no working GPS, or its owner does not share location/);
     });
 
     it("stops everything when the radio disconnects", async () => {
-        const request = PositionService.start(THEM_CONTACT, channel, { type: "until", intervalMinutes: 1 });
+        const request = PositionService.start(THEM_CONTACT, channel, { type: "repeat", intervalMinutes: 1, forMinutes: 60 });
         await vi.advanceTimersByTimeAsync(0);
         PositionService.onDisconnected();
         await vi.advanceTimersByTimeAsync(5 * 60000);
@@ -1054,14 +1068,54 @@ describe("the request form", () => {
         const wrapper = mount(PositionRequestDialog, { global: { mocks: { $router: { push() {} } } } });
         PositionService.openRequest(THEM_CONTACT);
         await flushPromises();
-        wrapper.vm.modeType = "until";
-        wrapper.vm.intervalMinutes = 3;
+        wrapper.vm.modeType = "custom";
+        wrapper.vm.customInterval = 3;
+        wrapper.vm.customFor = 30;
         await flushPromises();
         expect(wrapper.text()).toContain("floods the whole mesh");
         expect(wrapper.vm.canSend).toBe(true);
-        wrapper.vm.intervalMinutes = 0;
+        wrapper.vm.customInterval = 0;
         await flushPromises();
         expect(wrapper.text()).toContain("The shortest interval is 1 minute");
+        expect(wrapper.vm.canSend).toBe(false);
+    });
+
+    it("offers the intervals worth one press, and lets the rest be typed", async () => {
+        const wrapper = mount(PositionRequestDialog, { global: { mocks: { $router: { push() {} } } } });
+        PositionService.openRequest(THEM_CONTACT);
+        await flushPromises();
+
+        const choices = wrapper.findAll("select")
+            .find((s) => (s.attributes("aria-label") ?? "").startsWith("Minutes between requests"))
+            .findAll("option").map((o) => o.text());
+        expect(choices).toEqual(["1", "5", "15", "30", "60"]);
+    });
+
+    it("says how many requests that is before any go out", async () => {
+        const wrapper = mount(PositionRequestDialog, { global: { mocks: { $router: { push() {} } } } });
+        PositionService.openRequest(THEM_CONTACT);
+        await flushPromises();
+
+        wrapper.vm.modeType = "preset";
+        wrapper.vm.presetInterval = 5;
+        wrapper.vm.presetFor = 30;
+        await flushPromises();
+        // now, then every five minutes to the half hour
+        expect(wrapper.text()).toContain("7 requests");
+        expect(wrapper.text()).toContain("30 minutes from now");
+    });
+
+    it("refuses a window shorter than the gap between requests", async () => {
+        const wrapper = mount(PositionRequestDialog, { global: { mocks: { $router: { push() {} } } } });
+        PositionService.openRequest(THEM_CONTACT);
+        await flushPromises();
+
+        wrapper.vm.modeType = "custom";
+        wrapper.vm.customInterval = 15;
+        wrapper.vm.customFor = 5;
+        await flushPromises();
+
+        expect(wrapper.text()).toContain("would send one and stop");
         expect(wrapper.vm.canSend).toBe(false);
     });
 
@@ -1072,12 +1126,12 @@ describe("the request form", () => {
         PositionService.openRequest(THEM_CONTACT);
         await flushPromises();
         wrapper.vm.viaKey = "channel:7";
-        wrapper.vm.modeType = "count";
-        wrapper.vm.intervalMinutes = 10;
-        wrapper.vm.maxCount = 4;
+        wrapper.vm.modeType = "custom";
+        wrapper.vm.customInterval = 10;
+        wrapper.vm.customFor = 40;
         await flushPromises();
         await wrapper.findAll("button").find((b) => b.text() === "Request").trigger("click");
-        expect(start).toHaveBeenCalledWith(THEM_CONTACT, { kind: "channel", idx: 7, name: "Emcomm Testing" }, { type: "count", intervalMinutes: 10, maxCount: 4 });
+        expect(start).toHaveBeenCalledWith(THEM_CONTACT, { kind: "channel", idx: 7, name: "Emcomm Testing" }, { type: "repeat", intervalMinutes: 10, forMinutes: 40 });
         expect(pushed).toEqual([{ name: "main", query: { tab: "positions" } }]);
         expect(PositionService.state.requestTarget).toBe(null);
     });

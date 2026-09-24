@@ -235,9 +235,15 @@ in settings on the one being asked.
       distance is in feet and metres.
 - [ ] **Direct.** Ask directly: nothing appears in either conversation, and the answer
       reaches only node 1.
-- [ ] **Repeats.** Every 1 minute until answered, then Up to 3 times every 1 minute
-      with node 2 not answering: three requests, then "No answer after 3 requests".
-      Repeats stop when either radio disconnects.
+- [ ] **Repeats.** Every 1 minute for 2 minutes, with node 2 not answering: three
+      requests — now, and one at each minute inside the window — then "No answer
+      after 3 requests", and nothing afterwards however long you wait. The form
+      says "3 requests" before you send it, so check the count it promises is the
+      count that goes out. Repeats stop when either radio disconnects.
+- [ ] **The interval list is one press**: 1, 5, 15, 30, 60. Anything else is typed
+      on the row below it.
+- [ ] **A window shorter than the interval is refused** — every 15 minutes for 5 —
+      rather than sending once and calling itself a repeat.
 - [ ] **A channel not ticked** is not answered.
 - [ ] **The radio's own answer.** With node 2's app closed and its location sharing on,
       node 1 gets node 2's GPS position from its radio about 30 s after asking. With

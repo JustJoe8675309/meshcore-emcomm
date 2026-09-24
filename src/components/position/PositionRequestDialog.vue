@@ -34,24 +34,41 @@
                 </label>
 
                 <label class="flex items-start space-x-2 text-sm text-gray-800">
-                    <input type="radio" value="until" v-model="modeType" class="mt-0.5">
+                    <input type="radio" value="preset" v-model="modeType" class="mt-0.5">
                     <span>Every
-                        <input v-model.number="intervalMinutes" :disabled="modeType !== 'until'" type="number" min="1" step="1" aria-label="Minutes between requests" class="w-16 mx-1 bg-gray-50 border border-gray-300 text-sm rounded p-1">
-                        minutes until it is answered</span>
+                        <select v-model.number="presetInterval" :disabled="modeType !== 'preset'" aria-label="Minutes between requests"
+                                class="mx-1 bg-gray-50 border border-gray-300 text-sm rounded p-1">
+                            <option v-for="choice of intervalChoices" :key="choice" :value="choice">{{ choice }}</option>
+                        </select>
+                        minutes for
+                        <input v-model.number="presetFor" :disabled="modeType !== 'preset'" type="number" min="1" step="1" aria-label="How long to keep asking"
+                               class="w-16 mx-1 bg-gray-50 border border-gray-300 text-sm rounded p-1">
+                        minutes, or until it is answered</span>
                 </label>
 
                 <label class="flex items-start space-x-2 text-sm text-gray-800">
-                    <input type="radio" value="count" v-model="modeType" class="mt-0.5">
-                    <span>Up to
-                        <input v-model.number="maxCount" :disabled="modeType !== 'count'" type="number" min="1" step="1" aria-label="Most requests to send" class="w-14 mx-1 bg-gray-50 border border-gray-300 text-sm rounded p-1">
-                        times, every
-                        <input v-model.number="intervalMinutes" :disabled="modeType !== 'count'" type="number" min="1" step="1" aria-label="Minutes between requests" class="w-16 mx-1 bg-gray-50 border border-gray-300 text-sm rounded p-1">
+                    <input type="radio" value="custom" v-model="modeType" class="mt-0.5">
+                    <span>Every
+                        <input v-model.number="customInterval" :disabled="modeType !== 'custom'" type="number" min="1" step="1" aria-label="Minutes between requests, your own"
+                               class="w-16 mx-1 bg-gray-50 border border-gray-300 text-sm rounded p-1">
+                        minutes for
+                        <input v-model.number="customFor" :disabled="modeType !== 'custom'" type="number" min="1" step="1" aria-label="How long to keep asking, your own"
+                               class="w-16 mx-1 bg-gray-50 border border-gray-300 text-sm rounded p-1">
                         minutes, or until it is answered</span>
                 </label>
             </fieldset>
 
+            <div v-if="repeats" class="text-xs text-gray-500">
+                That is {{ askCount }} request{{ askCount === 1 ? "" : "s" }} if nobody answers, the last one
+                about {{ lastAskAfter }} minutes from now.
+            </div>
+
             <div v-if="intervalTooShort" role="status" class="text-xs text-red-600">
                 The shortest interval is {{ minInterval }} minute.
+            </div>
+            <div v-else-if="windowTooShort" role="status" class="text-xs text-red-600">
+                Asking for less time than the gap between requests would send one and stop, so
+                give it at least {{ interval }} minutes.
             </div>
             <div v-else-if="intervalCaution" role="status" class="text-xs text-amber-800">
                 Every request floods the whole mesh, like a flood advert. Under {{ cautionInterval }} minutes
@@ -85,16 +102,19 @@
 
 <script>
 import GlobalState from "../../js/GlobalState.js";
-import PositionService, { MIN_INTERVAL_MINUTES, CAUTION_INTERVAL_MINUTES } from "../../js/position/PositionService.js";
+import PositionService, { MIN_INTERVAL_MINUTES, CAUTION_INTERVAL_MINUTES, INTERVAL_CHOICES } from "../../js/position/PositionService.js";
 
 export default {
     name: 'PositionRequestDialog',
     data() {
         return {
             viaKey: "direct",
+            // once, preset (an interval from the list) or custom (your own)
             modeType: "once",
-            intervalMinutes: 10,
-            maxCount: 3,
+            presetInterval: 5,
+            presetFor: 30,
+            customInterval: 10,
+            customFor: 60,
         };
     },
     watch: {
@@ -103,8 +123,10 @@ export default {
             if(value){
                 this.viaKey = "direct";
                 this.modeType = "once";
-                this.intervalMinutes = 10;
-                this.maxCount = 3;
+                this.presetInterval = 5;
+                this.presetFor = 30;
+                this.customInterval = 10;
+                this.customFor = 60;
             }
         },
     },
@@ -123,11 +145,9 @@ export default {
                     const channel = this.channels.find((c) => c.idx === idx);
                     return { kind: "channel", idx, name: channel?.name };
                 })();
-            PositionService.start(this.target, via, {
-                type: this.modeType,
-                intervalMinutes: this.intervalMinutes,
-                maxCount: this.maxCount,
-            });
+            PositionService.start(this.target, via, this.modeType === "once"
+                ? { type: "once" }
+                : { type: "repeat", intervalMinutes: this.interval, forMinutes: this.forMinutes });
             this.close();
             this.$router.push({ name: "main", query: { tab: "positions" } });
         },
@@ -148,6 +168,26 @@ export default {
         repeats() {
             return this.modeType !== "once";
         },
+        intervalChoices() {
+            return INTERVAL_CHOICES;
+        },
+        /** The interval of whichever repeating row is chosen. */
+        interval() {
+            return Number(this.modeType === "custom" ? this.customInterval : this.presetInterval);
+        },
+        forMinutes() {
+            return Number(this.modeType === "custom" ? this.customFor : this.presetFor);
+        },
+        /** How many go out if nobody ever answers, so the operator can see the cost. */
+        askCount() {
+            if(!this.repeats || this.intervalTooShort || this.windowTooShort){
+                return 1;
+            }
+            return 1 + Math.floor(this.forMinutes / this.interval);
+        },
+        lastAskAfter() {
+            return (this.askCount - 1) * this.interval;
+        },
         minInterval() {
             return MIN_INTERVAL_MINUTES;
         },
@@ -155,19 +195,16 @@ export default {
             return CAUTION_INTERVAL_MINUTES;
         },
         intervalTooShort() {
-            return this.repeats && !(Number(this.intervalMinutes) >= MIN_INTERVAL_MINUTES);
+            return this.repeats && !(this.interval >= MIN_INTERVAL_MINUTES);
+        },
+        windowTooShort() {
+            return this.repeats && !(this.forMinutes >= this.interval);
         },
         intervalCaution() {
-            return this.repeats && Number(this.intervalMinutes) < CAUTION_INTERVAL_MINUTES;
+            return this.repeats && this.interval < CAUTION_INTERVAL_MINUTES;
         },
         canSend() {
-            if(this.notConnected || this.intervalTooShort){
-                return false;
-            }
-            if(this.modeType === "count" && !(Number(this.maxCount) >= 1)){
-                return false;
-            }
-            return true;
+            return !this.notConnected && !this.intervalTooShort && !this.windowTooShort;
         },
     },
 }

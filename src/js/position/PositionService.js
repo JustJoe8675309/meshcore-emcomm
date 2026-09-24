@@ -73,6 +73,12 @@ export const ROOM_STALE_SECONDS = 10 * 60;
 export const MIN_INTERVAL_MINUTES = 1;
 export const CAUTION_INTERVAL_MINUTES = 5;
 
+// the intervals offered as a single press, and the longest a repeat may run.
+// A day is already a long time to be flooding the mesh for one station's
+// position; past that the operator has forgotten it is on.
+export const INTERVAL_CHOICES = [1, 5, 15, 30, 60];
+export const MAX_FOR_MINUTES = 24 * 60;
+
 // how long to wait for a station's app before asking its radio instead
 const APP_ANSWER_WAIT_MILLIS = 30 * 1000;
 
@@ -309,8 +315,14 @@ class PositionService {
      * Starts asking a contact for its position.
      *
      * target: the contact. via: { kind: "channel", idx, name } or { kind: "direct" }.
-     * mode: { type: "once" } | { type: "until", intervalMinutes } |
-     *       { type: "count", intervalMinutes, maxCount }
+     * mode: { type: "once" } | { type: "repeat", intervalMinutes, forMinutes }
+     *
+     * A repeat asks every intervalMinutes for forMinutes, and stops early the
+     * moment it is answered. It used to be "until answered" with no end, or a
+     * count of attempts; both are gone. Every request floods the whole mesh, so an
+     * ask that runs until somebody notices it is still running is a bad thing to
+     * leave on a net, and a count is arithmetic the operator has to do in their
+     * head to know when it stops. A window says when it stops.
      */
     static start(target, via, mode) {
 
@@ -329,6 +341,8 @@ class PositionService {
             nodeKeyHex: this.nodeKeyHex(),
             sent: 0,
             startedAt: Date.now(),
+            // when the asking stops, whatever happens. Null for a single request.
+            endsAt: normalised.type === "repeat" ? Date.now() + normalised.forMinutes * MINUTE : null,
             lastSentAt: null,
             nextAt: Date.now(),
             status: "running",
@@ -352,16 +366,15 @@ class PositionService {
     }
 
     static normaliseMode(mode) {
-        const type = ["once", "until", "count"].includes(mode?.type) ? mode.type : "once";
-        const interval = Math.max(MIN_INTERVAL_MINUTES, Math.round(Number(mode?.intervalMinutes) || 0));
-        const maxCount = Math.max(1, Math.round(Number(mode?.maxCount) || 1));
+        const type = ["once", "repeat"].includes(mode?.type) ? mode.type : "once";
         if(type === "once"){
             return { type };
         }
-        if(type === "until"){
-            return { type, intervalMinutes: interval };
-        }
-        return { type, intervalMinutes: interval, maxCount };
+        const intervalMinutes = Math.max(MIN_INTERVAL_MINUTES, Math.round(Number(mode?.intervalMinutes) || 0));
+        // at least one interval, or the window would close before the second ask
+        // and the operator would have chosen a repeat and got a single request
+        const forMinutes = Math.min(MAX_FOR_MINUTES, Math.max(intervalMinutes, Math.round(Number(mode?.forMinutes) || 0)));
+        return { type, intervalMinutes, forMinutes };
     }
 
     static find(tag) {
@@ -668,7 +681,10 @@ class PositionService {
         this.scheduleFallback(request);
 
         const { mode } = request;
-        const more = mode.type === "until" || (mode.type === "count" && request.sent < mode.maxCount);
+        // one more only if it lands inside the window the operator asked for
+        const more = mode.type === "repeat"
+            && request.endsAt != null
+            && Date.now() + mode.intervalMinutes * MINUTE <= request.endsAt;
         if(!more){
             // the last one: wait for the station's app, then its radio, then give up
             request.nextAt = null;

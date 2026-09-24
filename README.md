@@ -1086,11 +1086,22 @@ direct. The one place it is visible to them is a room, where posts must be text 
 Worth knowing when planning a net with mixed clients: ask those stations by voice, or work the
 positions through a room.
 
-**Asking.** Three modes: once; every N minutes until answered; or up to X times every Y minutes,
-stopping early on an answer. Each request floods the whole mesh like a flood advert, so the
-shortest interval is a minute, and the form warns under five. Repeats run on a browser timer,
-so like repeating adverts they need the app on screen, and the screen is kept on while they
-run. The tab shows each request, how many have gone, when the next is due, and a Stop button.
+**Asking.** Three choices: **once**; **every 1, 5, 15, 30 or 60 minutes for N minutes**; or
+**every X minutes for Y minutes**, with your own numbers. Both repeating choices stop the moment
+they are answered — the first is the common case in one press, the second is for when none of
+those intervals is the one you want.
+
+A repeat is a window rather than a count, and that is deliberate. "Until answered" could be left
+running on a net all afternoon by an operator who walked away, and "up to X times" is arithmetic
+someone has to do in their head to know when it stops. A window says when it stops. The form says
+how many requests that will be if nobody answers, and when the last one goes, before any of them
+do.
+
+Each request floods the whole mesh like a flood advert, so the shortest interval is a minute, the
+form warns under five, a repeat cannot run longer than a day, and a window shorter than one
+interval is refused rather than quietly sending once. Repeats run on a browser timer, so like
+repeating adverts they need the app on screen, and the screen is kept on while they run. The tab
+shows each request, how many have gone, when the next is due, and a Stop button.
 
 **Being asked.** A request on a channel is only answered on channels ticked under **Position
 requests** in settings. A direct one is always put to the operator, since it is addressed to
