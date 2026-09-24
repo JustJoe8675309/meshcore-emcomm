@@ -242,8 +242,16 @@ in settings on the one being asked.
 - [ ] **The radio's own answer.** With node 2's app closed and its location sharing on,
       node 1 gets node 2's GPS position from its radio about 30 s after asking. With
       sharing off it gets nothing, and says it could be either reason.
-- [ ] **A stock client** on the channel shows nothing for the datagrams. Sent a direct
-      request, it shows the readable line.
+- [ ] **A stock client** on the channel shows nothing for the datagrams. **Proven
+      23 Sep** on node 3 running the factory app: a position sent to a channel showed
+      nothing, as designed.
+- [ ] **A stock client shows nothing for a direct request either**, which is not what
+      this checklist used to say. Proven the same evening: the direct request carries a
+      readable line but travels as text type 1, and the stock app does not display that
+      as a message. Checked against the alternative by sending an ordinary direct
+      message from the same station over the same path, which arrived normally — so it
+      is displayed, not delivery, that fails. If this is ever changed to text type 0,
+      test that it does not then clutter both stations' conversations.
 
 ### Room servers
 

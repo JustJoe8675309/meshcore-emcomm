@@ -1073,10 +1073,18 @@ menu beside it in Contacts. Everything that comes back is on the **Positions** t
   all. Every station on the channel running this app sees the answer, so a position asked for
   on the net is shared with the net.
 - **Direct,** there is no datagram, so it goes as a direct message of text type 1, which the
-  firmware calls command data. Only the two stations see the answer. A station without this app
-  sees a readable line, such as "Position request from KJ5HBN (answering needs
-  Mesh-Emcomm)", followed by the encoded request. This app reads it and keeps it out of the
-  conversation.
+  firmware calls command data. Only the two stations see the answer. This app reads it and keeps
+  it out of the conversation. The request does carry a readable line — "Position request from
+  KJ5HBN (answering needs Mesh-Emcomm)" — and for a long time this said a station without the app
+  would see it. **It does not.** Tested against the stock MeshCore app on 23 Sep: a direct request
+  showed nothing at all, while an ordinary message from the same station over the same path
+  arrived normally, so the packet is delivered and the stock app simply does not display text
+  type 1 as a message.
+
+**So a station running the stock app sees none of this app's position traffic**, on a channel or
+direct. The one place it is visible to them is a room, where posts must be text type 0 anyway.
+Worth knowing when planning a net with mixed clients: ask those stations by voice, or work the
+positions through a room.
 
 **Asking.** Three modes: once; every N minutes until answered; or up to X times every Y minutes,
 stopping early on an answer. Each request floods the whole mesh like a flood advert, so the
