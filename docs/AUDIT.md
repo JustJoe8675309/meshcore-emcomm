@@ -462,10 +462,12 @@ size turned up, not just at a narrow window.
 
 ### The settings page
 
-- [ ] **It opens on a tab per mode** — Normal, Emcomm-Training, Emcomm-Live —
-      coloured as the banner is, with the mode in use marked. All three hold the
-      same fields in the same layout. The radio right now, Operator, Backups and
-      Commands are folded below them.
+- [ ] **Operator is first**, folded: callsign, SKYWARN number, date-time zone.
+      It is the one group on the page that is not about the node.
+- [ ] **Then a tab per mode** — Normal, Emcomm-Training, Emcomm-Live — coloured
+      as the banner is, with the mode in use marked. All three hold the same
+      fields in the same layout. The radio right now, Backups and Commands are
+      folded below them.
 - [ ] **Inside a tab the headings fold**: Radio open, then Companions, Repeaters,
       Channels, Rooms and Also shut. Every tick is under Also, and none is left
       beside the frequency and power fields.

@@ -47,6 +47,57 @@
                         Reading settings from the radio. Save is off until they have loaded.
                     </div>
 
+                    <!-- Who is operating, before anything about the radio. It is
+                         the first thing to set on a station being handed over, it
+                         prefills every report form, and it is the one group on this
+                         page that is not about the node at all. -->
+                    <SettingsSection title="Operator"
+                                     note="You, rather than the radio. Kept in this browser.">
+
+                        <div class="w-full p-2">
+                            <div class="block mb-2 text-sm font-medium text-gray-900">Operator callsign</div>
+                            <input
+                                :value="operatorCallsign"
+                                @input="onOperatorCallsignInput"
+                                type="text"
+                                placeholder="e.g: KJ5HBN"
+                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                            <div class="mt-1 text-xs text-gray-500">
+                                Used to prefill callsign fields on report forms. Separate from the device
+                                name above, which names the radio.
+                            </div>
+                        </div>
+
+                        <div class="w-full p-2">
+                            <div class="block mb-2 text-sm font-medium text-gray-900">SKYWARN spotter number</div>
+                            <input
+                                :value="operatorSkywarnNumber"
+                                @input="onOperatorSkywarnNumberInput"
+                                type="text"
+                                placeholder="Optional"
+                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                            <div class="mt-1 text-xs text-gray-500">
+                                If set, SKYWARN reports identify you as callsign/number. Left blank, they
+                                use your callsign alone.
+                            </div>
+                        </div>
+
+                        <div class="w-full p-2">
+                            <div class="block mb-2 text-sm font-medium text-gray-900">Date time group</div>
+                            <select
+                                :value="operatorDtgZone"
+                                @change="onOperatorDtgZoneChange"
+                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                <option value="local">Local time (191830L SEP)</option>
+                                <option value="zulu">Zulu / UTC (190030Z SEP)</option>
+                            </select>
+                            <div class="mt-1 text-xs text-gray-500">
+                                Applies to the DTG fields on report forms. Match whatever your net runs on.
+                            </div>
+                        </div>
+
+                    </SettingsSection>
+
                     <!-- Everything that takes effect the moment it is saved. Public
                          Info, Radio Settings and EMCOMM Settings were three groups
                          editing the same radio, transmit power appearing in all
@@ -150,53 +201,6 @@
                         <EmcommSettingsGroup bare/>
 
                         <PositionSettingsGroup bare/>
-
-                    </SettingsSection>
-
-                    <SettingsSection title="Operator"
-                                     note="You, rather than the radio. Kept in this browser.">
-
-                        <div class="w-full p-2">
-                            <div class="block mb-2 text-sm font-medium text-gray-900">Operator callsign</div>
-                            <input
-                                :value="operatorCallsign"
-                                @input="onOperatorCallsignInput"
-                                type="text"
-                                placeholder="e.g: KJ5HBN"
-                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                            <div class="mt-1 text-xs text-gray-500">
-                                Used to prefill callsign fields on report forms. Separate from the device
-                                name above, which names the radio.
-                            </div>
-                        </div>
-
-                        <div class="w-full p-2">
-                            <div class="block mb-2 text-sm font-medium text-gray-900">SKYWARN spotter number</div>
-                            <input
-                                :value="operatorSkywarnNumber"
-                                @input="onOperatorSkywarnNumberInput"
-                                type="text"
-                                placeholder="Optional"
-                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                            <div class="mt-1 text-xs text-gray-500">
-                                If set, SKYWARN reports identify you as callsign/number. Left blank, they
-                                use your callsign alone.
-                            </div>
-                        </div>
-
-                        <div class="w-full p-2">
-                            <div class="block mb-2 text-sm font-medium text-gray-900">Date time group</div>
-                            <select
-                                :value="operatorDtgZone"
-                                @change="onOperatorDtgZoneChange"
-                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                                <option value="local">Local time (191830L SEP)</option>
-                                <option value="zulu">Zulu / UTC (190030Z SEP)</option>
-                            </select>
-                            <div class="mt-1 text-xs text-gray-500">
-                                Applies to the DTG fields on report forms. Match whatever your net runs on.
-                            </div>
-                        </div>
 
                     </SettingsSection>
 

@@ -730,7 +730,11 @@ radio. Messages saved before this build have no key; a switch attributes them to
 channel is in their slot at the time, which the preview says before it happens, and a conversation
 that is already mixed is cleared with Delete Message History on that channel.
 
-**Settings opens on a tab for each mode** — Normal, Emcomm-Training, Emcomm-Live — coloured as
+**Settings opens on Operator** — callsign, SKYWARN number and date-time zone, folded. It is the
+first thing to set on a station being handed over, it prefills every report form, and it is the
+only group on the page that is about you rather than the node.
+
+**Below it, a tab for each mode** — Normal, Emcomm-Training, Emcomm-Live — coloured as
 the banner is, with the mode in use marked. They hold the same fields in the same layout, and each
 shows what that mode will write to the radio when it is entered. **Any of them can be edited from
 any other**, so a station working a drill can set up what it comes home to, and nothing written
@@ -765,8 +769,6 @@ Below the tabs, folded:
   radio itself, advert position, clock, repeating adverts, and whether position requests are
   answered automatically. Saving here reaches the radio as it is saved, and is also written into
   the mode the station is in, so coming home does not undo it.
-- **Operator** — callsign, SKYWARN number and date-time zone. You, rather than the radio, kept in
-  this browser.
 - **Backups**, and **Commands**.
 
 The same settings appear in two places on purpose, and the headings say which is which: in a mode

@@ -43,8 +43,11 @@ describe("the shape of the settings page", () => {
         expect(tabs).not.toContain("channelsOnly");
     });
 
-    it("keeps the live radio below them, as its own thing", () => {
-        expect(sectionTitles).toEqual(["The radio right now", "Operator", "Backups", "Commands"]);
+    it("asks who is operating first, and keeps the live radio below the modes", () => {
+        // the operator is the first thing to set on a station being handed over,
+        // and the one group here that is not about the node at all
+        expect(sectionTitles).toEqual(["Operator", "The radio right now", "Backups", "Commands"]);
+        expect(source.indexOf('title="Operator"')).toBeLessThan(source.indexOf("<ModeSettingsTabs/>"));
     });
 
     it("has one place to edit each thing", () => {
