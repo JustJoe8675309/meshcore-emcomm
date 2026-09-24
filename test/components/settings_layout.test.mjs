@@ -10,11 +10,14 @@
 // radio is doing now, against what a mode will write when it is entered. Each
 // setting appears once per meaning, under a heading that states the meaning.
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mount } from "@vue/test-utils";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { mount, flushPromises } from "@vue/test-utils";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import SettingsSection from "../../src/components/settings/SettingsSection.vue";
+import LeftInModeDialog from "../../src/components/modes/LeftInModeDialog.vue";
+import NodeBackup from "../../src/js/NodeBackup.js";
+import EmcommMode from "../../src/js/EmcommMode.js";
 import ModeProfiles from "../../src/js/modes/ModeProfiles.js";
 import GlobalState from "../../src/js/GlobalState.js";
 import Utils from "../../src/js/Utils.js";
@@ -191,19 +194,30 @@ describe("what connecting decides", () => {
         expect(connect).not.toContain('if(ModeProfiles.profile("normal") == null)');
     });
 
-    it("leaves it alone when the station is in an emcomm mode", () => {
-        // the radio is holding that mode's settings; writing them down as normal
-        // would make coming home mean nothing
-        const block = connect.match(/if\(ModeProfiles\.current\(\) === "normal"\)\{[\s\S]{0,900}?\n            \}/)?.[0] ?? "";
-        expect(block).toContain("NodeBackup.capture()");
-        expect(block).toContain("ModeProfiles.captureNormal");
+    it("takes the way home at the same time, from the same read of the radio", () => {
+        // one verified read, used for the profile that says what normal mode
+        // writes and for the backup that is the way home
+        expect(connect).toContain("const backup = await NodeBackup.capture();");
+        expect(connect).toMatch(/captureNormal\(undefined, \{ channels: backup\.channels \}\)/);
+        expect(connect).toContain("NodeBackup.SLOT_PRE_EMCOMM");
     });
 
-    it("takes the way home at the same time, from the same read of the radio", () => {
-        const block = connect.match(/if\(ModeProfiles\.current\(\) === "normal"\)\{[\s\S]{0,900}?\n            \}/)?.[0] ?? "";
-        // one verified read, used for the profile and the backup both
-        expect(block).toMatch(/const backup = await NodeBackup\.capture\(\);[\s\S]{0,200}channels: backup\.channels/);
-        expect(block).toContain("NodeBackup.SLOT_PRE_EMCOMM");
+    it("asks rather than guesses when the radio is holding a mode's own channel", () => {
+        // a radio left in Emcomm-Training on another computer would otherwise have
+        // a drill written down as its home, and the real settings would be gone
+        // from everywhere: this app never knew them and the radio is not holding
+        // them any more
+        expect(connect).toContain("ModeProfiles.modeLeftOn(backup.channels)");
+        expect(connect).toContain("GlobalState.leftInMode =");
+
+        // and nothing is recorded while the question is open
+        const asked = connect.match(/if\(leftIn != null\)\{[\s\S]{0,600}?\n                    \}/)?.[0] ?? "";
+        expect(asked).not.toContain("captureNormal");
+        expect(asked).not.toContain("NodeBackup.save");
+    });
+
+    it("stops asking once the operator says the channel is normal for this radio", () => {
+        expect(connect).toContain("ModeProfiles.normalConfirmed()");
     });
 
     it("lets the mode's radio settings outlast the backup's on the way home", () => {
@@ -214,6 +228,85 @@ describe("what connecting decides", () => {
         const reapplyAt = switcher.indexOf("The mode's radio settings, again, for the same reason.");
         expect(restoreAt).toBeGreaterThan(-1);
         expect(reapplyAt).toBeGreaterThan(restoreAt);
+    });
+
+});
+
+// A radio holding an emcomm mode's own channel, on a browser with no record of it
+// being in one: a second machine, or cleared site data. Taking it as found would
+// write a drill down as the station's home.
+describe("a station that may have been left in a mode", () => {
+
+    const NODE_KEY = new Uint8Array(32).fill(0x39);
+    const NODE = Utils.bytesToHex(NODE_KEY);
+
+    beforeEach(() => {
+        window.localStorage.clear();
+        GlobalState.selfInfo = { name: "Joe-KJ5HBN-HTv3", publicKey: NODE_KEY };
+        GlobalState.leftInMode = null;
+    });
+
+    afterEach(() => {
+        window.localStorage.clear();
+        GlobalState.selfInfo = null;
+        GlobalState.leftInMode = null;
+        vi.restoreAllMocks();
+    });
+
+    it("is spotted by the channel's key, not its name", async () => {
+        const trainingKey = Utils.bytesToHex(await EmcommMode.hashtagChannelKey("#Emcomm-Training"));
+        const liveKey = Utils.bytesToHex(await EmcommMode.hashtagChannelKey("#Emcomm"));
+
+        expect(await ModeProfiles.modeLeftOn([{ name: "whatever", secret: trainingKey }])).toBe("training");
+        expect(await ModeProfiles.modeLeftOn([{ name: "whatever", secret: liveKey.toUpperCase() }])).toBe("live");
+    });
+
+    it("is not spotted by a name that merely says emcomm", async () => {
+        // the operator's own bench channel is called Emcomm Testing, and asking
+        // about it every connect would teach them to dismiss the question unread
+        expect(await ModeProfiles.modeLeftOn([
+            { name: "Emcomm Testing", secret: "86753098".repeat(4) },
+            { name: "#Emcomm-Training", secret: "11".repeat(16) },
+        ])).toBe(null);
+    });
+
+    it("believes the operator that it is in a mode, and records nothing", async () => {
+        GlobalState.leftInMode = {
+            mode: "training", channelName: "#Emcomm-Training", nodeKeyHex: NODE,
+            backup: { channels: [], contacts: [] },
+        };
+        const wrapper = mount(LeftInModeDialog);
+
+        await wrapper.findAll("button").find((b) => b.text().includes("It is in")).trigger("click");
+
+        expect(ModeProfiles.current(NODE)).toBe("training");
+        expect(ModeProfiles.profile("normal", NODE)).toBe(null);
+        expect(GlobalState.leftInMode).toBe(null);
+        // and says the uncomfortable part: this computer cannot put it back
+        expect(wrapper.text()).toContain("no record of its normal settings");
+    });
+
+    it("records it as normal when the operator says so, and stops asking", async () => {
+        const captured = vi.spyOn(ModeProfiles, "captureNormal").mockResolvedValue({});
+        const saved = vi.spyOn(NodeBackup, "save").mockReturnValue(true);
+        GlobalState.leftInMode = {
+            mode: "training", channelName: "#Emcomm-Training", nodeKeyHex: NODE,
+            backup: { channels: [{ name: "#Emcomm-Training", secret: "11".repeat(16) }] },
+        };
+        const wrapper = mount(LeftInModeDialog);
+
+        await wrapper.findAll("button").find((b) => b.text() === "This is its normal setup").trigger("click");
+        await flushPromises();
+
+        expect(captured).toHaveBeenCalled();
+        expect(saved).toHaveBeenCalled();
+        expect(ModeProfiles.normalConfirmed(NODE)).toBe(true);
+        expect(GlobalState.leftInMode).toBe(null);
+    });
+
+    it("says nothing at all when there is nothing to ask about", () => {
+        const wrapper = mount(LeftInModeDialog);
+        expect(wrapper.text()).toBe("");
     });
 
 });

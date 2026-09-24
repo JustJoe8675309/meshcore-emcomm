@@ -30,6 +30,11 @@ const globalState = reactive({
     // why the last connection attempt failed, shown on the connect screen. a modal
     // would block the whole app, which is the wrong trade on a phone during a net
     connectionError: null,
+    // set when a radio turns up holding an emcomm mode's own channel and this
+    // browser has no record of it being in that mode: { mode, channelName,
+    // nodeKeyHex, backup }. Nothing about normal mode is recorded until the
+    // operator says which it is.
+    leftInMode: null,
     // which kinds of repeating advert have a timer armed, so the ui can say so.
     // kept here because it has to be reactive: read straight off the schedule it
     // is plain module state, and a computed with no reactive dependency caches

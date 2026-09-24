@@ -194,6 +194,61 @@ class ModeProfiles {
         return DEFAULT_CHANNELS[mode] ?? null;
     }
 
+    /**
+     * Which emcomm mode's own channel this radio is holding, or null.
+     *
+     * Entering Emcomm-Live writes #Emcomm and Emcomm-Training writes
+     * #Emcomm-Training, so finding one is a good sign the station was left in
+     * that mode — on another computer, say, where the record of it stayed.
+     *
+     * Matched by key rather than by name. A hashtag channel's key comes from its
+     * name, so the key is the same on every radio in the net and cannot be
+     * imitated by naming something similarly. A channel merely *called* something
+     * with "emcomm" in it is not a signal at all: the operator's own bench channel
+     * is called Emcomm Testing, and asking about it every connect would teach them
+     * to dismiss the question without reading it.
+     */
+    static async modeLeftOn(channels) {
+        const EmcommMode = (await import("../EmcommMode.js")).default;
+        for(const [mode, name] of Object.entries(DEFAULT_CHANNELS)){
+            const key = Utils.bytesToHex(await EmcommMode.hashtagChannelKey(name)).toLowerCase();
+            if((channels ?? []).some((c) => String(c.secret ?? "").toLowerCase() === key)){
+                return mode;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Whether the operator has said that this radio's emcomm channel is simply
+     * part of its normal setup, so it is not asked about again.
+     */
+    static normalConfirmed(nodeKeyHex = this.nodeKeyHex()) {
+        if(nodeKeyHex == null){
+            return false;
+        }
+        try {
+            return window.localStorage.getItem(`normal_confirmed:${nodeKeyHex}`) != null;
+        } catch(e) {
+            // a browser that refuses storage would ask on every connect, which is
+            // how an operator learns to dismiss a question unread
+            return true;
+        }
+    }
+
+    static confirmNormal(nodeKeyHex = this.nodeKeyHex()) {
+        if(nodeKeyHex == null){
+            return false;
+        }
+        try {
+            window.localStorage.setItem(`normal_confirmed:${nodeKeyHex}`, new Date().toISOString());
+            return true;
+        } catch(e) {
+            console.log("could not record that this radio's setup was confirmed", e);
+            return false;
+        }
+    }
+
     /** A profile, filled out from what is stored, or the defaults for that mode. */
     static profile(mode, nodeKeyHex = this.nodeKeyHex()) {
         const stored = this.read(nodeKeyHex).profiles[mode];

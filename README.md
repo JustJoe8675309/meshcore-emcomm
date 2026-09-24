@@ -765,6 +765,21 @@ does not stop to read the whole radio first: not what an incident wants. Connect
 that is in an emcomm mode records nothing, because the radio is holding that mode's settings and
 writing them down as "normal" would make coming home mean nothing.
 
+**A radio holding an emcomm mode's own channel is asked about, not assumed.** Entering
+Emcomm-Live writes `#Emcomm` and Emcomm-Training writes `#Emcomm-Training`, so finding one on a
+radio this browser has no record of is a good sign it was left in that mode — on another computer,
+where the record of it stayed. Taken as found, a drill would be written down as the station's home
+and a later trip back from a drill would take it there, with the real settings gone from
+everywhere: this app never knew them and the radio is not holding them any more.
+
+So nothing is recorded and the app asks: **it is in Emcomm-Training**, which sets the banner to
+that and records nothing, or **this is its normal setup**, which records it and does not ask again
+for that radio. Matched by the channel's key, not its name — a hashtag channel's key comes from
+its name, so it is the same on every radio in the net, while a channel merely *called* something
+with "emcomm" in it is not a signal at all. Answering "it is in that mode" on a computer that has
+never seen the station in normal mode also says so plainly: take it home from the computer you
+left it on, or load a backup file, because nothing here can put it back.
+
 **Saving a live setting also writes it into the mode the station is in.** A mode writes its own
 radio settings when it is entered, so raising the transmit power, going to a drill and coming
 home used to put the old power back with nothing said. The mode in use is the one that would undo

@@ -227,6 +227,8 @@ class Connection {
         this.abandonConnect = null;
         // room sessions live on the radio, so they do not survive it going away
         GlobalState.roomLogins = {};
+        // and a question about a radio that has gone is no longer a question
+        GlobalState.leftInMode = null;
         // and so do the keep-alives that hold them open
         RoomKeepAlive.stopAll();
         // the slot count was this radio's, not the next one's
@@ -390,8 +392,28 @@ class Connection {
                     // means a switch later does not have to stop and read the whole
                     // radio first, which is not what an incident wants.
                     const backup = await NodeBackup.capture();
-                    await ModeProfiles.captureNormal(undefined, { channels: backup.channels });
-                    NodeBackup.save(backup, NodeBackup.SLOT_PRE_EMCOMM);
+
+                    // A radio holding an emcomm mode's own channel was probably
+                    // left in that mode, on another computer, where the record of
+                    // it stayed. Recording it here as normal would make a drill
+                    // this station's home, and a later trip back from a drill would
+                    // take it there. The app cannot know which it is, so it asks
+                    // rather than guesses, and records nothing until it is told.
+                    const leftIn = ModeProfiles.normalConfirmed()
+                        ? null
+                        : await ModeProfiles.modeLeftOn(backup.channels);
+
+                    if(leftIn != null){
+                        GlobalState.leftInMode = {
+                            mode: leftIn,
+                            channelName: ModeProfiles.defaultChannel(leftIn),
+                            nodeKeyHex: ModeProfiles.nodeKeyHex(),
+                            backup: backup,
+                        };
+                    } else {
+                        await ModeProfiles.captureNormal(undefined, { channels: backup.channels });
+                        NodeBackup.save(backup, NodeBackup.SLOT_PRE_EMCOMM);
+                    }
                 } catch(e) {
                     console.log("could not record the radio's normal mode", e);
                 }

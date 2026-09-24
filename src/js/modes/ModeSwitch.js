@@ -154,8 +154,13 @@ class ModeSwitch {
         const failures = [];
         const warnings = [];
 
-        // The way home, before the first change of any kind, taken every time the
-        // station leaves normal mode.
+        // The way home, before the first change of any kind.
+        //
+        // Connecting to a station in normal mode takes one, so by here there
+        // usually is one and a switch does not stop to read the whole radio —
+        // which is not what an incident wants. It is taken here when there is not:
+        // a station whose connect-time capture was held back by the question about
+        // an emcomm channel, or one connected before that was the rule.
         //
         // It used to be taken only if there was not one already, which read as
         // "never replace the pristine original" — but `from === "normal"` already
@@ -168,7 +173,7 @@ class ModeSwitch {
         //
         // A degraded read cannot replace a good backup by accident: the shortfall
         // refusal below happens before anything is saved.
-        if(from === "normal" && mode !== "normal"){
+        if(from === "normal" && mode !== "normal" && NodeBackup.load(nodeKeyHex, NodeBackup.SLOT_PRE_EMCOMM) == null){
             onProgress({ what: "Backing up before any change" });
             const backup = await NodeBackup.capture();
 

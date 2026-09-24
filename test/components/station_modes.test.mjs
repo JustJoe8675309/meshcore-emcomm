@@ -209,19 +209,23 @@ describe("switching a station's mode", () => {
     });
 
     // A backup taken once and kept for ever drifts away from the radio it claims
-    // to describe. Node 3's was three days old, from a build that still stopped at
+    // to describe: node 3's was three days old, from a build that still stopped at
     // 16 channel slots, and a round trip cleared #emcomm-testing out of slot 16
-    // with nothing to put back. Leaving normal is the one moment the radio is in
-    // the state being returned to, so that is when it is captured.
-    it("takes a fresh way home each time it leaves normal", async () => {
+    // with nothing to put back. Connecting to a station in normal mode takes one
+    // now, so by the time a switch runs there usually is one — and a switch in an
+    // incident does not stop to read the whole radio first.
+    it("takes the way home only when there is not one already", async () => {
         await ModeSwitch.apply("live");
         expect(NodeBackup.load(NODE, NodeBackup.SLOT_PRE_EMCOMM).nodeName).toBe("before");
+        expect(NodeBackup.capture).toHaveBeenCalledTimes(1);
 
         await ModeSwitch.apply("normal");
-        NodeBackup.capture.mockResolvedValue({ formatVersion: 1, nodePublicKey: NODE, nodeName: "after", capturedAt: 3, settings: {}, channels: [], contacts: [], warnings: [] });
         await ModeSwitch.apply("training");
 
-        expect(NodeBackup.load(NODE, NodeBackup.SLOT_PRE_EMCOMM).nodeName).toBe("after");
+        // the one from before is still the way home, and the radio was not read
+        // again to say so
+        expect(NodeBackup.load(NODE, NodeBackup.SLOT_PRE_EMCOMM).nodeName).toBe("before");
+        expect(NodeBackup.capture).toHaveBeenCalledTimes(1);
     });
 
     it("puts back a channel normal mode knows about that the backup never saw", async () => {

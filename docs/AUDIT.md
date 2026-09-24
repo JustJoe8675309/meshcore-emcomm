@@ -368,6 +368,15 @@ size turned up, not just at a narrow window.
 - [ ] **Connecting in an emcomm mode records nothing.** Connect a station left in
       Emcomm-Training: the Normal tab must still hold its normal channels, not the
       drill's, and the way home backup must be untouched.
+- [ ] **A radio left in a mode, on a browser that does not know it.** Put a node
+      into Emcomm-Training, then open the app in a private window and connect it.
+      It must ask "Is this station in a mode?", naming `#Emcomm-Training`, and
+      record nothing until answered. Answering "It is in Emcomm-Training" sets the
+      banner and warns that this computer cannot put it back; answering "This is
+      its normal setup" records it and does not ask again for that radio.
+- [ ] **A normal channel called Emcomm something is not asked about.** The bench
+      channel Emcomm Testing must not trigger it — the test is the channel's key,
+      not its name.
 - [ ] **Connecting is not made slow by it.** Time a connect before and after: the
       profile and the backup share one read of the slots, so it should cost one
       pass over the channels, not three.

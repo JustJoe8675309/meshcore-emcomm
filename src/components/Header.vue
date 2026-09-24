@@ -129,6 +129,9 @@
 
     <ModeSwitchDialog :open="modeDialogOpen" @close="modeDialogOpen = false"/>
     <FirstRunSetup :open="firstRunOpen" @close="firstRunOpen = false"/>
+
+    <!-- asked before anything about normal mode is written down -->
+    <LeftInModeDialog/>
     <ModeSharing :open="sharingOpen" :incoming-link="incomingLink" @close="closeSharing"/>
 
     </div>
@@ -144,11 +147,12 @@ import ModeBanner from "./modes/ModeBanner.vue";
 import ModeSwitchDialog from "./modes/ModeSwitchDialog.vue";
 import ModeSharing from "./modes/ModeSharing.vue";
 import FirstRunSetup, { FirstRunSetup as FirstRun } from "./modes/FirstRunSetup.vue";
+import LeftInModeDialog from "./modes/LeftInModeDialog.vue";
 import { SHARE_PATH } from "../js/modes/ModeShare.js";
 
 export default {
     name: 'Header',
-    components: {DropDownMenuItem, DropDownMenu, IconButton, ModeBanner, ModeSwitchDialog, ModeSharing, FirstRunSetup},
+    components: {DropDownMenuItem, DropDownMenu, IconButton, ModeBanner, ModeSwitchDialog, ModeSharing, FirstRunSetup, LeftInModeDialog},
     data() {
         return {
             modeDialogOpen: false,
