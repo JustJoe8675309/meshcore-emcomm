@@ -154,9 +154,21 @@ class ModeSwitch {
         const failures = [];
         const warnings = [];
 
-        // the way home, before the first change of any kind. Taken only when
-        // leaving normal, and never replaced while away from it
-        if(from === "normal" && mode !== "normal" && NodeBackup.load(nodeKeyHex, NodeBackup.SLOT_PRE_EMCOMM) == null){
+        // The way home, before the first change of any kind, taken every time the
+        // station leaves normal mode.
+        //
+        // It used to be taken only if there was not one already, which read as
+        // "never replace the pristine original" — but `from === "normal"` already
+        // guarantees this only runs from the state being returned to, so the extra
+        // check bought nothing and cost a channel. Node 3 proved it: its backup was
+        // three days old, from a build that still stopped at 16 channel slots, so a
+        // round trip cleared #emcomm-testing out of slot 16 and had nothing to put
+        // back. A backup that is never refreshed is a backup that drifts away from
+        // the radio it claims to describe.
+        //
+        // A degraded read cannot replace a good backup by accident: the shortfall
+        // refusal below happens before anything is saved.
+        if(from === "normal" && mode !== "normal"){
             onProgress({ what: "Backing up before any change" });
             const backup = await NodeBackup.capture();
 
@@ -186,12 +198,16 @@ class ModeSwitch {
             }
         }
 
+        // returns whether it worked, so a caller can tell: this used to return
+        // nothing, and a check on its result would have read as success every time
         const attempt = async (what, action) => {
             onProgress({ what: what });
             try {
                 await action();
+                return true;
             } catch(e) {
                 failures.push({ what: what, reason: String(e?.message ?? e) });
+                return false;
             }
         };
 
@@ -344,6 +360,25 @@ class ModeSwitch {
             }
         }
 
+        // Anything normal mode knows about that the backup does not.
+        //
+        // The backup owns the slots, which is what stopped channels coming home
+        // twice, and it means a channel the backup never saw is simply cleared. An
+        // old backup, or one taken before a channel was added, would take that
+        // channel's key with it. So after the backup has had the slots it asked
+        // for, the profile's own channels are checked by key and any that are
+        // missing go into the first free slot.
+        //
+        // Matched by key rather than by name, because the key is what makes a
+        // channel itself: two channels can share a name and be different, and the
+        // point here is not to write a second copy of one the backup restored.
+        const missingFromBackup = backupOwnsChannels
+            ? profile.channels.filter((c) => {
+                const key = (c.secret ?? "").toLowerCase();
+                return key !== "" && !homeBackup.channels.some((b) => (b.secret ?? "").toLowerCase() === key);
+            })
+            : [];
+
         // the marks follow the slots the backup will write, so a channel answering
         // position requests keeps doing it at the slot it comes back in
         if(backupOwnsChannels){
@@ -381,6 +416,37 @@ class ModeSwitch {
                     }
                     if(result.notInBackup.length > 0){
                         warnings.push(`${result.notInBackup.length} contact(s) met since are not in the backup and were left alone: ${result.notInBackup.slice(0, 5).join(", ")}${result.notInBackup.length > 5 ? "..." : ""}`);
+                    }
+
+                    // after the backup has taken the slots it recorded, put back
+                    // anything normal mode holds that the backup never saw
+                    if(missingFromBackup.length > 0){
+                        const taken = new Set(homeBackup.channels.map((c) => c.idx));
+                        const restored = [];
+                        for(const channel of missingFromBackup){
+                            let idx = 0;
+                            while(idx < slotCount && taken.has(idx)){
+                                idx++;
+                            }
+                            if(idx >= slotCount){
+                                warnings.push(`${channel.name} could not be put back: the radio's slots are full.`);
+                                continue;
+                            }
+                            taken.add(idx);
+                            const wrote = await attempt(`the channel ${channel.name}`,
+                                () => Connection.setChannel(idx, channel.name, Utils.hexToBytes(channel.secret)));
+                            if(wrote !== false){
+                                restored.push(channel.name);
+                                if(channel.answerPositions){
+                                    marked.push(idx);
+                                }
+                            }
+                        }
+                        if(restored.length > 0){
+                            warnings.push(`${restored.join(", ")} ${restored.length === 1 ? "was" : "were"} not in the backup, `
+                                + `so ${restored.length === 1 ? "it was" : "they were"} put back from normal mode's own list. `
+                                + `${restored.length === 1 ? "It" : "They"} may not be in the slot ${restored.length === 1 ? "it was" : "they were"} in before.`);
+                        }
                     }
                 } catch(e) {
                     // The slots were cleared for the backup to fill, so a restore

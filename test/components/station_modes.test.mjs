@@ -208,6 +208,61 @@ describe("switching a station's mode", () => {
         expect(NodeBackup.load(NODE, NodeBackup.SLOT_PRE_EMCOMM).nodeName).toBe("before");
     });
 
+    // A backup taken once and kept for ever drifts away from the radio it claims
+    // to describe. Node 3's was three days old, from a build that still stopped at
+    // 16 channel slots, and a round trip cleared #emcomm-testing out of slot 16
+    // with nothing to put back. Leaving normal is the one moment the radio is in
+    // the state being returned to, so that is when it is captured.
+    it("takes a fresh way home each time it leaves normal", async () => {
+        await ModeSwitch.apply("live");
+        expect(NodeBackup.load(NODE, NodeBackup.SLOT_PRE_EMCOMM).nodeName).toBe("before");
+
+        await ModeSwitch.apply("normal");
+        NodeBackup.capture.mockResolvedValue({ formatVersion: 1, nodePublicKey: NODE, nodeName: "after", capturedAt: 3, settings: {}, channels: [], contacts: [], warnings: [] });
+        await ModeSwitch.apply("training");
+
+        expect(NodeBackup.load(NODE, NodeBackup.SLOT_PRE_EMCOMM).nodeName).toBe("after");
+    });
+
+    it("puts back a channel normal mode knows about that the backup never saw", async () => {
+        // the backup remembers only Public; the radio also had Emcomm Testing,
+        // which is in the normal profile because this build read it
+        NodeBackup.capture.mockResolvedValue({
+            formatVersion: 1, nodePublicKey: NODE, nodeName: "before", capturedAt: 1, settings: {},
+            channels: [{ idx: 0, name: "Public", secret: "8b3387e9c5cdea6ac9e5edbaa115cd72" }],
+            contacts: [], warnings: [],
+        });
+
+        await ModeSwitch.apply("live");
+        written.length = 0;
+        const result = await ModeSwitch.apply("normal");
+
+        const restored = written.filter((w) => w.name === "Emcomm Testing");
+        expect(restored.length).toBe(1);
+        // into a slot the backup did not claim
+        expect(restored[0].idx).not.toBe(0);
+        // the channel wording, not the contacts one, which also says "not in the backup"
+        expect(result.warnings.join(" ")).toContain("put back from normal mode's own list");
+    });
+
+    it("does not write a second copy of a channel the backup restored", async () => {
+        NodeBackup.capture.mockResolvedValue({
+            formatVersion: 1, nodePublicKey: NODE, nodeName: "before", capturedAt: 1, settings: {},
+            channels: [
+                { idx: 0, name: "Public", secret: "8b3387e9c5cdea6ac9e5edbaa115cd72" },
+                // the same channel under another name: matching by name would miss it
+                { idx: 4, name: "Testing, Emcomm", secret: "11111111111111111111111111111111" },
+            ],
+            contacts: [], warnings: [],
+        });
+
+        await ModeSwitch.apply("live");
+        written.length = 0;
+        await ModeSwitch.apply("normal");
+
+        expect(written.filter((w) => w.secret === "11111111111111111111111111111111")).toEqual([]);
+    });
+
     it("writes the mode's channels from slot 0 and clears the rest", async () => {
         await ModeSwitch.apply("live");
         expect(written[0]).toMatchObject({ idx: 0, name: "#Emcomm" });

@@ -355,6 +355,17 @@ size turned up, not just at a narrow window.
       Emcomm-Training and back, and both must still be ticked. Node 2 lost both
       silently: the tick boxes wrote the live settings only, and the switch wrote
       the mode's own (empty) choice over them.
+- [ ] **The way home is taken fresh every time.** Switch away from normal, come
+      home, add a channel, and switch away again: the new backup must include it.
+      Node 3 failed this on 23 Sep — its backup was from three days earlier, made
+      by a build that stopped at 16 slots, and the round trip cleared
+      `#emcomm-testing` out of slot 16 with nothing to put back. A backup kept for
+      ever drifts away from the radio it describes.
+- [ ] **A channel the backup never saw still comes home.** With a backup that is
+      missing one of normal mode's channels, coming home must write it into a free
+      slot and say so in the warnings, rather than leaving the slot empty. Matched
+      by key, so a channel the backup restored under another name is not written
+      twice.
 - [ ] **A channel above slot 16 survives a round trip.** Put one in slot 20 with
       the stock app or from settings, then switch into a mode and back: it must be
       in the backup, in the Normal profile, and back on the radio afterwards.
