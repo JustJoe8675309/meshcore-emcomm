@@ -138,29 +138,32 @@ describe("being asked", () => {
         reset();
     });
 
-    const mark = (...channels) => PositionService.saveSettings({ markedChannels: channels, autoAnswer: false });
+    const mark = () => PositionService.saveSettings({ autoAnswer: false });
 
-    it("ignores a request on a channel not ticked for it", () => {
-        PositionService.onChannelData({ channelIdx: 0, dataType: Protocol.DATA_TYPE, data: incomingRequest() });
-        expect(PositionService.state.prompt).toBe(null);
-    });
-
-    it("asks the operator about one on a ticked channel", () => {
-        mark(7);
+    // Every channel is answered now. It used to be a list of ticked slots, and
+    // that list was dragged from slot to slot on every mode switch — three faults
+    // in one evening came from it being dragged wrong. The operator's question was
+    // never "which channels" but "am I asked first".
+    it("asks the operator about a request on any channel it holds", () => {
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: incomingRequest() });
         expect(PositionService.state.prompt.name).toBe("KJ5HBN-EMCOMM");
         expect(PositionService.state.prompt.via).toEqual({ kind: "channel", idx: 7, name: "Emcomm Testing" });
     });
 
+    it("answers on a channel that was never chosen for it", () => {
+        // slot 0 is Public on the bench radios, and nothing was ever ticked
+        PositionService.onChannelData({ channelIdx: 0, dataType: Protocol.DATA_TYPE, data: incomingRequest() });
+        expect(PositionService.state.prompt).not.toBe(null);
+        expect(PositionService.state.prompt.via.idx).toBe(0);
+    });
+
     it("ignores a request for another station, and another app's datagrams", () => {
-        mark(7);
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: incomingRequest(1, THEM) });
         PositionService.onChannelData({ channelIdx: 7, dataType: 0xFF00, data: incomingRequest() });
         expect(PositionService.state.prompt).toBe(null);
     });
 
     it("keeps one prompt per station however often it asks", () => {
-        mark(7);
         for(let i = 0; i < 3; i++){
             PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: incomingRequest(55) });
         }
@@ -175,7 +178,6 @@ describe("being asked", () => {
     });
 
     it("sends the position on the same channel, answering the tag", async () => {
-        mark(7);
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: incomingRequest(77) });
         await PositionService.answer(PositionService.state.prompt);
 
@@ -207,14 +209,12 @@ describe("being asked", () => {
 
     it("says it has no position rather than send 0, 0", async () => {
         connect({ lat: 0, lon: 0 });
-        mark(7);
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: incomingRequest() });
         await PositionService.answer(PositionService.state.prompt);
         expect(datagrams[0].message.hasPosition).toBe(false);
     });
 
     it("declines by callsign", async () => {
-        mark(7);
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: incomingRequest(5) });
         await PositionService.decline(PositionService.state.prompt);
         expect(datagrams[0].message.kind).toBe(Protocol.KIND.DECLINED);
@@ -224,7 +224,6 @@ describe("being asked", () => {
 
     it("declines by node name when no callsign is set", async () => {
         OperatorSettings.setCallsign("");
-        mark(7);
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: incomingRequest(5) });
         await PositionService.decline(PositionService.state.prompt);
         expect(datagrams[0].message.name).toBe("Joe-KJ5HBN-HTv3");
@@ -239,10 +238,10 @@ describe("being asked", () => {
     });
 
     it("keeps its settings per radio", () => {
-        mark(7);
-        expect(PositionService.isChannelMarked(7)).toBe(true);
+        PositionService.saveSettings({ autoAnswer: true });
+        expect(PositionService.settings().autoAnswer).toBe(true);
         GlobalState.selfInfo = { ...GlobalState.selfInfo, publicKey: THEM };
-        expect(PositionService.isChannelMarked(7)).toBe(false);
+        expect(PositionService.settings().autoAnswer).toBe(false);
     });
 
 });

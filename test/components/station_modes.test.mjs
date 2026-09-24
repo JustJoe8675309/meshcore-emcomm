@@ -233,11 +233,6 @@ describe("switching a station's mode", () => {
             contacts: [], warnings: [],
         });
 
-        // ticked to answer, as #emcomm-testing was on node 3
-        const normal = await ModeProfiles.profileOrDefault("normal", NODE);
-        normal.channels.find((c) => c.name === "Emcomm Testing").answerPositions = true;
-        ModeProfiles.saveProfile("normal", normal, NODE);
-
         await ModeSwitch.apply("live");
         written.length = 0;
         const result = await ModeSwitch.apply("normal");
@@ -247,12 +242,6 @@ describe("switching a station's mode", () => {
         // into a slot the backup did not claim
         expect(restored[0].idx).not.toBe(0);
 
-        // and it answers position requests at the slot it landed in. The marks
-        // are saved before the restore runs, so a channel put back afterwards was
-        // written to the radio and then left out of who answers: node 3 came home
-        // with #emcomm-testing in slot 16 and marked channels holding only slot 7
-        const saved = JSON.parse(window.localStorage.getItem(`position_settings:${NODE}`) ?? "{}");
-        expect(saved.markedChannels).toContain(restored[0].idx);
         // the channel wording, not the contacts one, which also says "not in the backup"
         expect(result.warnings.join(" ")).toContain("put back from normal mode's own list");
     });
@@ -264,7 +253,7 @@ describe("switching a station's mode", () => {
     // backup, so the mistake carried itself forward.
     it("has the last word on who answers, after the backup puts its own settings back", async () => {
         const normal = await ModeProfiles.profileOrDefault("normal", NODE);
-        normal.channels.find((c) => c.name === "Emcomm Testing").answerPositions = true;
+        normal.autoAnswerPositions = true;
         ModeProfiles.saveProfile("normal", normal, NODE);
 
         NodeBackup.capture.mockResolvedValue({
@@ -277,7 +266,7 @@ describe("switching a station's mode", () => {
         });
         // as the real restore does: it writes the settings the backup carries
         NodeBackup.restore.mockImplementation(async () => {
-            PositionService.saveSettings({ markedChannels: [], markedRooms: [], autoAnswer: false }, NODE);
+            PositionService.saveSettings({ autoAnswer: false }, NODE);
             return { failures: [], notInBackup: [] };
         });
 
@@ -285,7 +274,7 @@ describe("switching a station's mode", () => {
         await ModeSwitch.apply("normal");
 
         const saved = JSON.parse(window.localStorage.getItem(`position_settings:${NODE}`) ?? "{}");
-        expect(saved.markedChannels).toEqual([3]);
+        expect(saved.autoAnswer).toBe(true);
     });
 
     it("does not write a second copy of a channel the backup restored", async () => {
@@ -340,8 +329,9 @@ describe("switching a station's mode", () => {
         expect(Connection.setTxPower).toHaveBeenCalledWith(22);
         expect(EmcommMode.applyRadioPolicies).toHaveBeenCalledWith({ shareLocation: true, advertPosition: true, multiAcks: true });
         expect(EmcommMode.setManualAddContacts).toHaveBeenCalledWith(false);
-        // the channel it wrote is the one that answers position requests
-        expect(PositionService.settings(NODE).markedChannels).toEqual([0]);
+        // every channel is answered, so what the mode carries is whether the
+        // operator is asked first
+        expect(PositionService.settings(NODE)).toEqual({ autoAnswer: false });
         expect(AdvertSchedule.get(NODE)).toEqual({ zeroHopMinutes: 30, floodMinutes: 60 });
         expect(AdvertSchedule.start).toHaveBeenCalledWith(NODE);
     });
@@ -796,7 +786,6 @@ describe("the settings tabs", () => {
         await wrapper.vm.addChannel();
         const added = wrapper.vm.profile.channels.find((c) => c.name === "#Drill-Net");
         expect(added.secret).toBe(Utils.bytesToHex(await EmcommMode.hashtagChannelKey("#Drill-Net")));
-        expect(added.answerPositions).toBe(true);
 
         wrapper.vm.newChannelName = "County Tac";
         await wrapper.vm.addChannel();
@@ -816,7 +805,7 @@ describe("the settings tabs", () => {
         await flushPromises();
 
         const saved = ModeProfiles.profile("live", NODE);
-        expect(saved.rooms).toEqual([{ keyHex: ROOM_HEX, name: "N.E. ELP EMCOMM OBSVR", answerPositions: true }]);
+        expect(saved.rooms).toEqual([{ keyHex: ROOM_HEX, name: "N.E. ELP EMCOMM OBSVR" }]);
         expect(saved.adverts.zeroHopMinutes).toBe(45);
         expect(wrapper.text()).toContain("Emcomm-Live saved");
     });
@@ -1007,28 +996,32 @@ describe("the channels on the way home", () => {
             .toEqual(["Public", "#elp-mesh", "Emcomm Testing"]);
     });
 
-    it("keeps a channel answering position requests at the slot it comes back in", async () => {
+    it("leaves nothing to carry from slot to slot", async () => {
         await ModeSwitch.apply("normal");
 
-        // Emcomm Testing answers, and the backup puts it at slot 13
+        // every channel is answered wherever it lands, so the only thing the
+        // switch writes is the mode's auto or manual choice. The list this used to
+        // keep caused three separate faults in one evening: a tick left on the
+        // channel that used to be in that slot, a tick lost when a channel came
+        // home to a different one, and the backup's own copy overwriting the right
+        // answer with an old one.
         const settings = JSON.parse(window.localStorage.getItem(`position_settings:${NODE_HEX}`));
-        expect(settings.markedChannels).toContain(13);
+        expect(Object.keys(settings)).toEqual(["autoAnswer"]);
     });
 
 });
 
-// Who answers position requests, and where that choice lives.
+// Whether the operator is asked before their position goes out.
 //
-// The tick boxes in settings write the live per-node settings, which is what
-// PositionService reads. A mode switch writes those same settings from the mode's
-// profile, so a choice made anywhere but the mode settings tab was undone by the
-// next switch without a word. Node 2 had the test room ticked and channel 13
-// marked; a round trip through Emcomm-Training left both empty.
-describe("remembering who answers position requests", () => {
+// This used to be a list of ticked channels and rooms as well, kept against slot
+// numbers, and dragged from slot to slot on every mode switch. Three faults in
+// one evening came from that dragging. Every channel and room is answered now, so
+// the only choice left is auto or manual — and it still has to survive a switch,
+// which is what this block is about.
+describe("remembering whether to answer automatically", () => {
 
     const NODE_KEY = new Uint8Array(32).fill(0x39);
     const NODE_HEX = Array.from(NODE_KEY).map((b) => b.toString(16).padStart(2, "0")).join("");
-    const ROOM_HEX = "87" + "0".repeat(62);
 
     beforeEach(() => {
         window.localStorage.clear();
@@ -1037,14 +1030,11 @@ describe("remembering who answers position requests", () => {
             { idx: 0, name: "Public", secret: new Uint8Array(16) },
             { idx: 13, name: "Emcomm Testing", secret: new Uint8Array(16).fill(1) },
         ];
-        GlobalState.contacts = [
-            { publicKey: Utils.hexToBytes(ROOM_HEX), advName: "Joe test room server", type: 3 },
-        ];
         ModeProfiles.saveProfile("normal", {
             ...ModeProfiles.blank(),
             channels: [
-                { name: "Public", secret: "00".repeat(16), answerPositions: false },
-                { name: "Emcomm Testing", secret: "01".repeat(16), answerPositions: false },
+                { name: "Public", secret: "00".repeat(16) },
+                { name: "Emcomm Testing", secret: "01".repeat(16) },
             ],
         }, NODE_HEX);
         ModeProfiles.setCurrent("normal", NODE_HEX);
@@ -1057,112 +1047,25 @@ describe("remembering who answers position requests", () => {
         GlobalState.contacts = [];
     });
 
-    it("writes a marked channel into the mode in use, by name rather than by slot", async () => {
-        // the slot a channel sits in differs between modes, the name does not
-        ModeProfiles.noteAnswerChoices({ markedChannels: [13] }, NODE_HEX);
-
-        const channels = ModeProfiles.profile("normal", NODE_HEX).channels;
-        expect(channels.find((c) => c.name === "Emcomm Testing").answerPositions).toBe(true);
-        expect(channels.find((c) => c.name === "Public").answerPositions).toBe(false);
-    });
-
-    it("clears the mark when it is unticked", async () => {
-        ModeProfiles.noteAnswerChoices({ markedChannels: [13] }, NODE_HEX);
-        ModeProfiles.noteAnswerChoices({ markedChannels: [] }, NODE_HEX);
-
-        expect(ModeProfiles.profile("normal", NODE_HEX).channels.every((c) => c.answerPositions !== true)).toBe(true);
-    });
-
-    it("keeps a room the profile has never held, with its name", async () => {
-        ModeProfiles.noteAnswerChoices({ markedRooms: [ROOM_HEX] }, NODE_HEX);
-
-        const rooms = ModeProfiles.profile("normal", NODE_HEX).rooms;
-        expect(rooms).toHaveLength(1);
-        expect(rooms[0]).toMatchObject({ keyHex: ROOM_HEX, name: "Joe test room server", answerPositions: true });
-    });
-
-    it("records answering unasked as well", async () => {
+    it("writes the choice into the mode in use", async () => {
         ModeProfiles.noteAnswerChoices({ autoAnswer: true }, NODE_HEX);
         expect(ModeProfiles.profile("normal", NODE_HEX).autoAnswerPositions).toBe(true);
+
+        ModeProfiles.noteAnswerChoices({ autoAnswer: false }, NODE_HEX);
+        expect(ModeProfiles.profile("normal", NODE_HEX).autoAnswerPositions).toBe(false);
     });
 
     it("leaves a mode with nothing stored alone, since a switch would not overwrite it", async () => {
         ModeProfiles.setCurrent("live", NODE_HEX);
-        expect(ModeProfiles.noteAnswerChoices({ markedChannels: [13] }, NODE_HEX)).toBe(false);
+        expect(ModeProfiles.noteAnswerChoices({ autoAnswer: true }, NODE_HEX)).toBe(false);
         expect(ModeProfiles.profile("live", NODE_HEX)).toBe(null);
     });
 
-    it("survives the round trip that used to lose it", async () => {
-        // the choice is in the profile, so the switch writes it back rather than
-        // over it
-        ModeProfiles.noteAnswerChoices({ markedChannels: [13], markedRooms: [ROOM_HEX] }, NODE_HEX);
-
-        const profile = ModeProfiles.profile("normal", NODE_HEX);
-        expect(profile.channels.filter((c) => c.answerPositions).map((c) => c.name)).toEqual(["Emcomm Testing"]);
-        expect(profile.rooms.filter((r) => r.answerPositions).map((r) => r.keyHex)).toEqual([ROOM_HEX]);
-    });
-
-});
-
-// Marking a channel that does not sit where it sits in the list.
-//
-// The mode settings tab wrote the live marks from each channel's position in the
-// profile list. Inside an emcomm mode that is also its slot, because entering one
-// writes the channels from slot 0. In normal mode it is not: those channels come
-// back from the backup at the slots they were in. Node 2's Emcomm Testing is
-// seventh in the list and slot 13 on the radio, so by position this marked
-// #joebot — the wrong channel answered position requests, and the right one
-// ignored them.
-describe("marking a channel from the mode settings tab", () => {
-
-    const NODE_KEY = new Uint8Array(32).fill(0x39);
-    const NODE_HEX = Array.from(NODE_KEY).map((b) => b.toString(16).padStart(2, "0")).join("");
-
-    beforeEach(() => {
-        window.localStorage.clear();
-        GlobalState.selfInfo = { name: "KJ5HBN-EMCOMM", publicKey: NODE_KEY };
-        GlobalState.connection = { on() {}, off() {} };
-        // the radio's own layout, which is not contiguous
-        GlobalState.channels = [
-            { idx: 0, name: "Public", secret: new Uint8Array(16) },
-            { idx: 7, name: "#joebot", secret: new Uint8Array(16).fill(2) },
-            { idx: 13, name: "Emcomm Testing", secret: new Uint8Array(16).fill(1) },
-        ];
-        ModeProfiles.setCurrent("normal", NODE_HEX);
-    });
-
-    afterEach(() => {
-        vi.restoreAllMocks();
-        window.localStorage.clear();
-        GlobalState.selfInfo = null;
-        GlobalState.connection = null;
-        GlobalState.channels = [];
-    });
-
-    it("marks the slot the channel is really in", async () => {
-        const { default: ModeSettingsTabs } = await import("../../src/components/modes/ModeSettingsTabs.vue");
-
-        const vm = {
-            tab: "normal",
-            current: "normal",
-            profile: {
-                ...ModeProfiles.blank(),
-                channels: [
-                    { name: "Public", secret: "00".repeat(16), answerPositions: false },
-                    { name: "#joebot", secret: "02".repeat(16), answerPositions: false },
-                    { name: "Emcomm Testing", secret: "01".repeat(16), answerPositions: true },
-                ],
-                rooms: [],
-            },
-            labelFor: () => "Normal mode",
-            message: null,
-        };
-
-        ModeSettingsTabs.methods.save.call(vm);
-
-        const settings = JSON.parse(window.localStorage.getItem(`position_settings:${NODE_HEX}`));
-        expect(settings.markedChannels).toEqual([13]);
-        expect(settings.markedChannels).not.toContain(7);
+    it("keeps no list of channels or rooms to answer on", async () => {
+        ModeProfiles.noteAnswerChoices({ autoAnswer: true }, NODE_HEX);
+        const saved = JSON.parse(window.localStorage.getItem(`position_settings:${NODE_HEX}`) ?? "{}");
+        expect(saved.markedChannels).toBeUndefined();
+        expect(saved.markedRooms).toBeUndefined();
     });
 
 });

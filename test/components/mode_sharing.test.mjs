@@ -42,12 +42,12 @@ async function aProfile({ privateChannel = true } = {}) {
         txPower: 22, shareLocation: true, advertPosition: true, multiAcks: true, autoAddContacts: true,
     };
     profile.channels = [
-        { name: "#Emcomm", secret: Utils.bytesToHex(await EmcommMode.hashtagChannelKey("#Emcomm")), answerPositions: true },
+        { name: "#Emcomm", secret: Utils.bytesToHex(await EmcommMode.hashtagChannelKey("#Emcomm")) },
     ];
     if(privateChannel){
-        profile.channels.push({ name: "County Tac", secret: "ab".repeat(16), answerPositions: false });
+        profile.channels.push({ name: "County Tac", secret: "ab".repeat(16) });
     }
-    profile.rooms = [{ keyHex: OTHER, name: "N.E. ELP EMCOMM OBSVR", answerPositions: true }];
+    profile.rooms = [{ keyHex: OTHER, name: "N.E. ELP EMCOMM OBSVR" }];
     profile.adverts = { zeroHopMinutes: 30, floodMinutes: 60 };
     profile.autoAnswerPositions = true;
     profile.trimContacts = true;

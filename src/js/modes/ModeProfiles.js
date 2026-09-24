@@ -255,7 +255,7 @@ class ModeProfiles {
 
         const channels = [];
         for(const channel of read.channels){
-            channels.push({ name: channel.name, secret: channel.secret, answerPositions: false });
+            channels.push({ name: channel.name, secret: channel.secret });
         }
 
         const profile = {
@@ -378,7 +378,7 @@ class ModeProfiles {
                 autoAddContacts: true,
             },
             // the net's own channel, plus anything the operator adds
-            channels: [{ name: channelName, secret: secret, answerPositions: true }],
+            channels: [{ name: channelName, secret: secret }],
             rooms: [],
             autoAnswerPositions: false,
             adverts: { ...EmcommMode.ADVERT_SCHEDULE },
@@ -432,19 +432,19 @@ class ModeProfiles {
     }
 
     /**
-     * Records who answers position requests into the mode in use.
+     * Records the auto or manual choice into the mode in use.
      *
-     * The tick boxes in settings write the live per-node settings, which is what
-     * `PositionService` reads. A mode switch then writes those same settings from
+     * The setting in the settings page writes the live per-node value, which is
+     * what `PositionService` reads. A mode switch then writes that same value from
      * the mode's profile, so a choice made anywhere but the mode settings tab was
-     * quietly undone by the next switch. On the bench node 2 had the test room
-     * ticked and channel 13 marked; a round trip through Emcomm-Training left both
-     * empty, with nothing said.
+     * quietly undone by the next switch. On the bench node 2's choice survived a
+     * round trip through Emcomm-Training only after this was added.
      *
-     * Channels are matched by name rather than by slot, because the slot a channel
-     * sits in is not the same in every mode. Rooms are matched by key, which is.
+     * This used to carry lists of ticked channels and rooms as well. Every channel
+     * and room is answered now, so there is nothing left to record but whether the
+     * operator is asked first.
      */
-    static noteAnswerChoices({ markedChannels, markedRooms, autoAnswer }, nodeKeyHex = this.nodeKeyHex()) {
+    static noteAnswerChoices({ autoAnswer }, nodeKeyHex = this.nodeKeyHex()) {
 
         const mode = this.current(nodeKeyHex);
         const profile = this.profile(mode, nodeKeyHex);
@@ -452,29 +452,6 @@ class ModeProfiles {
             // nothing stored for this mode yet, so there is nothing a switch would
             // overwrite: the live settings stand on their own
             return false;
-        }
-
-        const tidy = (name) => (name ?? "").trim().toLowerCase();
-
-        if(Array.isArray(markedChannels)){
-            const slots = new Set(markedChannels);
-            const names = new Set((GlobalState.channels ?? [])
-                .filter((c) => slots.has(c.idx))
-                .map((c) => tidy(c.name)));
-            profile.channels = profile.channels.map((c) => ({ ...c, answerPositions: names.has(tidy(c.name)) }));
-        }
-
-        if(Array.isArray(markedRooms)){
-            const wanted = new Set(markedRooms);
-            profile.rooms = (profile.rooms ?? []).map((r) => ({ ...r, answerPositions: wanted.has(r.keyHex) }));
-            // a room the profile has never held: keep the choice rather than lose
-            // it, since this is the only place it would be remembered
-            for(const keyHex of markedRooms){
-                if(!profile.rooms.some((r) => r.keyHex === keyHex)){
-                    const contact = (GlobalState.contacts ?? []).find((c) => Utils.bytesToHex(c.publicKey) === keyHex);
-                    profile.rooms.push({ keyHex: keyHex, name: contact?.advName ?? "a room", answerPositions: true });
-                }
-            }
         }
 
         if(autoAnswer != null){

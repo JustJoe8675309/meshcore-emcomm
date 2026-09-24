@@ -232,34 +232,25 @@ describe("being asked with everyone else", () => {
         vi.restoreAllMocks();
     });
 
-    const mark = (settings) => PositionService.saveSettings({ markedChannels: [], markedRooms: [], autoAnswer: false, ...settings });
+    const mark = (settings) => PositionService.saveSettings({ autoAnswer: false, ...settings });
 
-    it("ignores a roll call on a channel not ticked", () => {
-        PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: rollCallFrom(ALPHA) });
-        expect(PositionService.state.prompt).toBe(null);
-    });
-
-    it("puts one on a ticked channel to the operator, as a roll call", () => {
-        mark({ markedChannels: [7] });
+    it("puts a roll call on any channel it holds to the operator", () => {
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: rollCallFrom(ALPHA) });
         expect(PositionService.state.prompt.rollCall).toBe(true);
         expect(PositionService.state.prompt.name).toBe("NCS");
     });
 
     it("stays silent when named among the stations already heard", () => {
-        mark({ markedChannels: [7] });
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: rollCallFrom(ALPHA, 77, ["a7a7a7"]) });
         expect(PositionService.state.prompt).toBe(null);
     });
 
     it("ignores its own roll call heard back through a repeater", () => {
-        mark({ markedChannels: [7] });
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: rollCallFrom(ME) });
         expect(PositionService.state.prompt).toBe(null);
     });
 
     it("answers to the station that asked, on the channel, for everyone there to see", async () => {
-        mark({ markedChannels: [7] });
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: rollCallFrom(ALPHA, 77) });
         await PositionService.answer(PositionService.state.prompt, {});
         expect(sent[0].idx).toBe(7);
@@ -270,7 +261,7 @@ describe("being asked with everyone else", () => {
     });
 
     it("answering automatically, waits a random moment first, so answers do not collide", async () => {
-        mark({ markedChannels: [7], autoAnswer: true });
+        mark({ autoAnswer: true });
         vi.spyOn(Math, "random").mockReturnValue(0.5);
         const spread = PositionService.rollCallSpreadMillis();
         expect(spread).toBeGreaterThanOrEqual(10000);
@@ -286,7 +277,7 @@ describe("being asked with everyone else", () => {
     });
 
     it("answers a single station's own request automatically at once, as before", async () => {
-        mark({ markedChannels: [7], autoAnswer: true });
+        mark({ autoAnswer: true });
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: Protocol.encode({ kind: Protocol.KIND.REQUEST, tag: 3, to: ME, from: ALPHA, name: "NCS" }) });
         await vi.advanceTimersByTimeAsync(0);
         expect(sent).toHaveLength(1);
@@ -330,16 +321,14 @@ describe("in a room", () => {
     const post = (message, readable = "Position roll call from NCS") => Protocol.toDirectText(message, readable, Protocol.MAX_ROOM_BYTES);
     const rollCall = () => post({ kind: Protocol.KIND.ROLL_CALL, tag: 12, to: Protocol.EVERYONE, from: ALPHA, name: "NCS", heard: [] });
 
-    it("answers only in a room ticked for it", () => {
+    it("answers in any room it is in", () => {
+        // a room answer is a post everyone there can read, stock apps included, so
+        // this is the one worth knowing about: manual reply is the default
         expect(PositionService.onRoomText(ROOM_CONTACT, ALPHA.slice(0, 4), rollCall(), now())).toBe(true);
-        expect(PositionService.state.prompt).toBe(null);
-        PositionService.saveSettings({ markedChannels: [], markedRooms: [ROOM_HEX], autoAnswer: false });
-        PositionService.onRoomText(ROOM_CONTACT, ALPHA.slice(0, 4), rollCall(), now());
         expect(PositionService.state.prompt.via).toEqual(ROOM_VIA);
     });
 
     it("answers as a post in the room, within the room's 151 bytes", async () => {
-        PositionService.saveSettings({ markedChannels: [], markedRooms: [ROOM_HEX], autoAnswer: false });
         PositionService.onRoomText(ROOM_CONTACT, ALPHA.slice(0, 4), rollCall(), now());
         await PositionService.answer(PositionService.state.prompt, {});
         expect(sent[0].key).toEqual(ROOM);
@@ -349,7 +338,6 @@ describe("in a room", () => {
     });
 
     it("ignores a roll call the room replays from before a login, but keeps a position it replays", () => {
-        PositionService.saveSettings({ markedChannels: [], markedRooms: [ROOM_HEX], autoAnswer: false });
         const old = now() - 20 * 60;
         expect(PositionService.onRoomText(ROOM_CONTACT, ALPHA.slice(0, 4), rollCall(), old)).toBe(true);
         expect(PositionService.state.prompt).toBe(null);
@@ -361,7 +349,6 @@ describe("in a room", () => {
     });
 
     it("judges a post's age by the room's own clock, read at login, not this one", () => {
-        PositionService.saveSettings({ markedChannels: [], markedRooms: [ROOM_HEX], autoAnswer: false });
         // a room without GPS running 30 minutes slow: a roll call posted just now
         // carries a time 30 minutes ago by this clock
         const roomNow = now() - 30 * 60;
@@ -391,7 +378,6 @@ describe("in a room", () => {
     });
 
     it("does not believe a post whose code names another author than the room does, and leaves it as text", () => {
-        PositionService.saveSettings({ markedChannels: [], markedRooms: [ROOM_HEX], autoAnswer: false });
         expect(PositionService.onRoomText(ROOM_CONTACT, BRAVO.slice(0, 4), rollCall(), now())).toBe(false);
         expect(PositionService.state.prompt).toBe(null);
     });
@@ -401,7 +387,6 @@ describe("in a room", () => {
     });
 
     it("keeps a roll call post out of the room's conversation, with no notification", async () => {
-        PositionService.saveSettings({ markedChannels: [], markedRooms: [ROOM_HEX], autoAnswer: false });
         const insert = vi.spyOn(Database.Message, "insert").mockResolvedValue({});
         const notify = vi.spyOn(NotificationUtils, "showNewMessageNotification").mockResolvedValue(undefined);
         await Connection.onContactMessageReceived({ pubKeyPrefix: ROOM.slice(0, 6), txtType: 2, text: rollCall(), senderTimestamp: now(), pathLen: 0 });
@@ -629,7 +614,6 @@ describe("the prompt, for a roll call in a room", () => {
     });
 
     it("says it asks everyone, and that the answer is a post everyone in the room sees", async () => {
-        PositionService.saveSettings({ markedChannels: [], markedRooms: [ROOM_HEX], autoAnswer: false });
         const wrapper = mount(PositionPrompt, { global: { mocks: { $router: { push: vi.fn() } } } });
         PositionService.onRoomText(ROOM_CONTACT, ALPHA.slice(0, 4), Protocol.toDirectText(
             { kind: Protocol.KIND.ROLL_CALL, tag: 12, to: Protocol.EVERYONE, from: ALPHA, name: "NCS", heard: [] }, "x", Protocol.MAX_ROOM_BYTES,
@@ -640,7 +624,6 @@ describe("the prompt, for a roll call in a room", () => {
     });
 
     it("opens the room's conversation for Send with message", async () => {
-        PositionService.saveSettings({ markedChannels: [], markedRooms: [ROOM_HEX], autoAnswer: false });
         vi.spyOn(Connection, "sendRoomPost").mockResolvedValue(undefined);
         const push = vi.fn();
         const wrapper = mount(PositionPrompt, { global: { mocks: { $router: { push } } } });
@@ -663,13 +646,25 @@ describe("the settings, for rooms", () => {
         connect();
     });
 
-    it("lists the radio's rooms, none ticked, and saves one ticked", async () => {
+    it("offers manual or auto, and nothing else to choose", async () => {
         const wrapper = mount(PositionSettingsGroup);
-        expect(wrapper.text()).toContain("Answer in these rooms");
-        const box = wrapper.findAll("label").find((l) => l.text() === "N.E. ELP EMCOMM OBSVR").find("input");
-        expect(box.element.checked).toBe(false);
-        await box.setValue(true);
-        expect(PositionService.settings().markedRooms).toEqual([ROOM_HEX]);
+
+        // no list of channels or rooms to pick from any more
+        expect(wrapper.text()).not.toContain("Answer in these rooms");
+        expect(wrapper.text()).not.toContain("Answer on these channels");
+
+        const labels = wrapper.findAll("button").map((b) => b.text());
+        expect(labels).toEqual(["Manual reply", "Auto reply"]);
+    });
+
+    it("saves the choice, and says what it means", async () => {
+        const wrapper = mount(PositionSettingsGroup);
+        expect(PositionService.settings().autoAnswer).toBe(false);
+        expect(wrapper.text()).toContain("each request asks you first");
+
+        await wrapper.findAll("button").find((b) => b.text() === "Auto reply").trigger("click");
+        expect(PositionService.settings().autoAnswer).toBe(true);
+        expect(wrapper.text()).toContain("with no prompt");
     });
 
 });

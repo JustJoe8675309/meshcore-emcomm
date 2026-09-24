@@ -756,8 +756,8 @@ contacts come from, and puts the station back as it was.
 
 **Each emcomm mode starts with its own channel:** `#Emcomm` for Emcomm-Live and
 `#Emcomm-Training` for Emcomm-Training, each with the key every client derives from that name, and
-each ticked to answer position requests. It is a default, not a rule: an operator who removes it
-in the tab meant to, and it stays removed.
+each with the key every client derives from that name. It is a default, not a rule: an operator
+who removes it in the tab meant to, and it stays removed.
 
 **A channel whose name contains "emcomm" travels with the station.** Emergency work does not stop
 being emergency work because the mode changed, so any such channel found on the radio is carried
@@ -792,13 +792,24 @@ with a training channel left behind in it, and a drill never ends up holding the
 channel. Nothing is lost either way — a channel not carried is written into the mode being
 left, key and all, so switching back restores it.
 
-**A choice about who answers position requests belongs to the mode.** The tick boxes write
-the live per-node settings, which is what the position service reads, and a mode switch writes
-those same settings from the mode's profile — so a choice made anywhere but the mode settings
-tab was undone by the next switch with nothing said. Node 2 had the test room ticked and
-channel 13 marked, and a round trip through Emcomm-Training left both empty. The tick boxes
-now record into the mode in use as well: channels by name, because the slot a channel sits in
-differs between modes, and rooms by key, which does not.
+**Every channel answers position requests, and every room.** There is no list to keep: a
+station asking is answered wherever it asks from, and the only choice is **Manual reply** — each
+request asks you first, and nothing goes out until you say so — or **Auto reply**, where the
+position goes out as soon as it is asked for. That choice belongs to the mode, so a drill can
+answer by itself while everyday operating asks first.
+
+It used to be a list of ticked channels and rooms, and that list was a running sore. A tick was
+kept against a slot number, a slot is not a channel, and so the ticks had to be dragged from slot
+to slot on every mode switch. Three separate faults in one evening came from them being dragged
+wrong: a tick left on the channel that used to be in that slot, a tick lost when a channel came
+home to a different one, and the backup's own copy quietly overwriting the right answer with an
+old one. The operator's question was never "which channels" but "am I asked first", so that is
+all that is left.
+
+**What that costs, said plainly:** any station on any channel this radio holds can ask where it
+is, including a public one. On Manual that is a prompt you can decline. On Auto it is a position
+sent to everyone on that channel running this app — and in a room, a text post that stock clients
+can read too.
 
 **The slot count comes from the radio, not from this app.** Everything that reads, writes or
 clears channel slots used to stop at 16, in four separate places, while both bench radios

@@ -244,7 +244,9 @@ in settings on the one being asked.
       on the row below it.
 - [ ] **A window shorter than the interval is refused** — every 15 minutes for 5 —
       rather than sending once and calling itself a repeat.
-- [ ] **A channel not ticked** is not answered.
+- [ ] **A channel nobody chose** is answered too — that is the point of the
+      change. Ask from a channel you never set up for positions and check it is
+      still put to the operator.
 - [ ] **The radio's own answer.** With node 2's app closed and its location sharing on,
       node 1 gets node 2's GPS position from its radio about 30 s after asking. With
       sharing off it gets nothing, and says it could be either reason.
@@ -351,16 +353,14 @@ size turned up, not just at a narrow window.
       before writing anything and offers "Switch anyway", because the pre-EMCOMM
       backup is taken once and never again while away from normal mode: whatever
       is missing from it is missing for the whole incident.
-- [ ] **The channel that answers is the one that was ticked.** On a radio whose
-      channels are not in slots 0, 1, 2..., tick one low in the list from the mode
-      settings tab, then have the other node run a roll call on it. Node 2's Emcomm
-      Testing is seventh in the list and slot 13 on the radio, and the tab marked
-      by list position: #joebot was marked and Emcomm Testing ignored the roll call.
-- [ ] **A position answering choice survives a round trip.** Tick a channel and a
-      room under "who answers position requests" while in Normal, switch to
-      Emcomm-Training and back, and both must still be ticked. Node 2 lost both
-      silently: the tick boxes wrote the live settings only, and the switch wrote
-      the mode's own (empty) choice over them.
+- [ ] **Every channel answers, wherever it sits.** Have the other node ask on a
+      channel low in the list, on a radio whose channels are not in slots 0, 1,
+      2... It must be answered. There is no list of ticked channels any more, and
+      that list was the source of three faults in one evening — all of them about
+      dragging ticks from slot to slot.
+- [ ] **Manual or auto survives a round trip.** Set Auto reply in Normal, switch to
+      Emcomm-Training and back: still Auto. It is part of the mode, so setting it
+      in one mode does not change another.
 - [ ] **The way home is taken fresh every time.** Switch away from normal, come
       home, add a channel, and switch away again: the new backup must include it.
       Node 3 failed this on 23 Sep — its backup was from three days earlier, made

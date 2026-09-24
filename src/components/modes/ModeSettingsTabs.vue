@@ -94,10 +94,6 @@
                         <button @click="removeChannel(index)" type="button" class="text-xs text-red-600 underline">Remove</button>
                     </div>
                     <div class="font-mono text-[10px] text-gray-500 break-all">{{ channel.secret }}</div>
-                    <label class="flex items-center space-x-2 text-xs text-gray-700">
-                        <input v-model="channel.answerPositions" type="checkbox">
-                        <span>Answer position requests on it</span>
-                    </label>
                 </div>
 
                 <div class="flex space-x-2">
@@ -121,14 +117,10 @@
                         <input type="checkbox" :checked="usesRoom(room.keyHex)" @change="toggleRoom(room, $event.target.checked)">
                         <span>{{ room.name }}</span>
                     </label>
-                    <label v-if="usesRoom(room.keyHex)" class="flex items-center space-x-2 text-gray-600">
-                        <input type="checkbox" :checked="answersRoom(room.keyHex)" @change="toggleRoomAnswer(room.keyHex, $event.target.checked)">
-                        <span>Answer positions</span>
-                    </label>
                 </div>
                 <div class="text-xs text-gray-500">
                     Rooms are contacts, so they are not removed when the mode changes. This says which
-                    of them this mode uses for position roll calls and answering.
+                    of them this mode uses for position roll calls.
                 </div>
             </div>
 
@@ -250,23 +242,9 @@ export default {
             // the mode in use keeps its app side settings in step at once; the
             // radio side waits for a switch, which is said on screen
             if(this.tab === this.current){
-                // by name against the radio's own slots, not by position in this
-                // list. The two agree inside an emcomm mode, because entering one
-                // writes the channels from slot 0, and they do not agree in normal
-                // mode, whose channels come back from the backup at the slots they
-                // were in. Node 2's Emcomm Testing is seventh in the list and slot
-                // 13 on the radio: by position this marked #joebot, so a request
-                // was answered on the wrong channel and Emcomm Testing ignored it.
-                const answering = new Set(this.profile.channels
-                    .filter((c) => c.answerPositions)
-                    .map((c) => (c.name ?? "").trim().toLowerCase()));
-                PositionService.saveSettings({
-                    markedChannels: (GlobalState.channels ?? [])
-                        .filter((c) => answering.has((c.name ?? "").trim().toLowerCase()))
-                        .map((c) => c.idx),
-                    markedRooms: this.profile.rooms.filter((r) => r.answerPositions).map((r) => r.keyHex),
-                    autoAnswer: this.profile.autoAnswerPositions === true,
-                });
+                // every channel and room is answered, so the only live value this
+                // tab owns is whether the operator is asked first
+                PositionService.saveSettings({ autoAnswer: this.profile.autoAnswerPositions === true });
             }
             this.message = `${this.labelFor(this.tab)} saved.`;
         },
@@ -290,7 +268,7 @@ export default {
             const secret = name.startsWith("#")
                 ? Utils.bytesToHex(await EmcommMode.hashtagChannelKey(name))
                 : Utils.bytesToHex(crypto.getRandomValues(new Uint8Array(16)));
-            this.profile.channels.push({ name: name, secret: secret, answerPositions: name.startsWith("#") });
+            this.profile.channels.push({ name: name, secret: secret });
             this.newChannelName = "";
         },
         removeChannel(index) {
@@ -299,20 +277,11 @@ export default {
         usesRoom(keyHex) {
             return (this.profile?.rooms ?? []).some((r) => r.keyHex === keyHex);
         },
-        answersRoom(keyHex) {
-            return (this.profile?.rooms ?? []).find((r) => r.keyHex === keyHex)?.answerPositions === true;
-        },
         toggleRoom(room, on) {
             if(on){
-                this.profile.rooms.push({ keyHex: room.keyHex, name: room.name, answerPositions: true });
+                this.profile.rooms.push({ keyHex: room.keyHex, name: room.name });
             } else {
                 this.profile.rooms = this.profile.rooms.filter((r) => r.keyHex !== room.keyHex);
-            }
-        },
-        toggleRoomAnswer(keyHex, on) {
-            const room = this.profile.rooms.find((r) => r.keyHex === keyHex);
-            if(room){
-                room.answerPositions = on;
             }
         },
     },

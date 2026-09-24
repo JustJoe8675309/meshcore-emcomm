@@ -228,14 +228,14 @@ describe("putting the node back exactly, when leaving EMCOMM mode", () => {
         const { default: AdvertSchedule } = await import("../../src/js/AdvertSchedule.js");
         const { default: PositionService } = await import("../../src/js/position/PositionService.js");
         AdvertSchedule.set(NODE_HEX, { zeroHopMinutes: 0, floodMinutes: 0 });
-        PositionService.saveSettings({ markedChannels: [], markedRooms: [], autoAnswer: false }, NODE_HEX);
+        PositionService.saveSettings({ autoAnswer: false }, NODE_HEX);
         backup = await NodeBackup.capture();
         radio.writes = [];
     });
 
     it("keeps this app's advert schedule, position settings and report time zone in the backup", () => {
         expect(backup.app.advertSchedule).toEqual({ zeroHopMinutes: 0, floodMinutes: 0 });
-        expect(backup.app.positionSettings).toEqual({ markedChannels: [], markedRooms: [], autoAnswer: false });
+        expect(backup.app.positionSettings).toEqual({ autoAnswer: false });
         expect(backup.app.dtgZone).toBe("local");
         // the callsign names the person, not the node, so it is not taken back
         expect(backup.app.callsign).toBeUndefined();
@@ -256,10 +256,10 @@ describe("putting the node back exactly, when leaving EMCOMM mode", () => {
         const { default: PositionService } = await import("../../src/js/position/PositionService.js");
         vi.spyOn(AdvertSchedule, "start").mockImplementation(() => {});
         AdvertSchedule.set(NODE_HEX, { zeroHopMinutes: 30, floodMinutes: 240 });
-        PositionService.saveSettings({ markedChannels: [7], markedRooms: [], autoAnswer: true }, NODE_HEX);
+        PositionService.saveSettings({ autoAnswer: true }, NODE_HEX);
         await NodeBackup.restore(backup);
         expect(AdvertSchedule.get(NODE_HEX)).toEqual({ zeroHopMinutes: 0, floodMinutes: 0 });
-        expect(PositionService.settings(NODE_HEX)).toEqual({ markedChannels: [], markedRooms: [], autoAnswer: false });
+        expect(PositionService.settings(NODE_HEX)).toEqual({ autoAnswer: false });
         expect(AdvertSchedule.start).toHaveBeenCalledWith(NODE_HEX);
     });
 

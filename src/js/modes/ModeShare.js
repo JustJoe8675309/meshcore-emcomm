@@ -47,15 +47,18 @@ function compact(profile, mode, { includePrivateKeys = true, from = "" } = {}) {
         // a hashtag channel's key comes from its name, so it is not carried: the
         // receiver works it out, and nothing private is in the code that was not
         // already public
+        // "a", which channel answered position requests, was dropped when every
+        // channel started answering. A code made before that still carries it and
+        // still reads: it is simply not looked at.
         c: profile.channels.map((channel) => {
             const hashtag = (channel.name ?? "").startsWith("#");
-            const entry = { n: channel.name, a: channel.answerPositions ? 1 : 0 };
+            const entry = { n: channel.name };
             if(!hashtag && includePrivateKeys){
                 entry.k = channel.secret;
             }
             return entry;
         }),
-        o: profile.rooms.map((room) => ({ k: room.keyHex, n: room.name, a: room.answerPositions ? 1 : 0 })),
+        o: profile.rooms.map((room) => ({ k: room.keyHex, n: room.name })),
         q: profile.autoAnswerPositions ? 1 : 0,
         z: profile.adverts.zeroHopMinutes,
         d: profile.adverts.floodMinutes,
@@ -141,9 +144,9 @@ class ModeShare {
             if(name.startsWith("#")){
                 const { default: EmcommMode } = await import("../EmcommMode.js");
                 const { default: Utils } = await import("../Utils.js");
-                channels.push({ name, secret: Utils.bytesToHex(await EmcommMode.hashtagChannelKey(name)), answerPositions: channel.a === 1 });
+                channels.push({ name, secret: Utils.bytesToHex(await EmcommMode.hashtagChannelKey(name)) });
             } else if(channel.k){
-                channels.push({ name, secret: channel.k, answerPositions: channel.a === 1 });
+                channels.push({ name, secret: channel.k });
             } else {
                 // shared without its key: named so the operator knows what to add
                 missingKeys.push(name);
@@ -167,7 +170,7 @@ class ModeShare {
                 autoAddContacts: data.r?.u === 1,
             },
             channels: channels,
-            rooms: (data.o ?? []).map((room) => ({ keyHex: room.k, name: room.n, answerPositions: room.a === 1 })),
+            rooms: (data.o ?? []).map((room) => ({ keyHex: room.k, name: room.n })),
             autoAnswerPositions: data.q === 1,
             adverts: { zeroHopMinutes: data.z ?? 0, floodMinutes: data.d ?? 0 },
             markDrill: data.x === 1,

@@ -133,23 +133,33 @@ class PositionService {
         return key ? Utils.bytesToHex(key) : null;
     }
 
-    /** { markedChannels: [slot indices], markedRooms: [room keys, hex], autoAnswer } for the connected node. */
+    /**
+     * { autoAnswer } for the connected node.
+     *
+     * Every channel and every room this station holds is answered. It used to be
+     * a list of ticked slots, and that list was a running sore: a slot is not a
+     * channel, so the marks had to be dragged from slot to slot on every mode
+     * switch, and three separate faults in one evening came from them being
+     * dragged wrong — a tick left on the channel that used to be in that slot, a
+     * tick lost when a channel came home to a different one, and the backup's own
+     * copy quietly overwriting the right answer with an old one.
+     *
+     * The operator's real question was never "which channels" but "am I asked
+     * first", so that is the only choice left: auto reply or manual reply, per
+     * mode. Manual is the default, and a request that arrives on a channel the
+     * operator does not care about is one press to decline.
+     */
     static settings(nodeKeyHex = this.nodeKeyHex()) {
         // read so a caller's computed follows changes
         void state.settingsRevision;
-        const fallback = { markedChannels: [], markedRooms: [], autoAnswer: false };
         if(nodeKeyHex == null){
-            return fallback;
+            return { autoAnswer: false };
         }
         try {
             const stored = JSON.parse(window.localStorage.getItem(this.storageKey(nodeKeyHex)) ?? "null");
-            return {
-                markedChannels: Array.isArray(stored?.markedChannels) ? stored.markedChannels.filter(Number.isInteger) : [],
-                markedRooms: Array.isArray(stored?.markedRooms) ? stored.markedRooms.filter((k) => typeof k === "string") : [],
-                autoAnswer: stored?.autoAnswer === true,
-            };
+            return { autoAnswer: stored?.autoAnswer === true };
         } catch(e) {
-            return fallback;
+            return { autoAnswer: false };
         }
     }
 
@@ -159,8 +169,6 @@ class PositionService {
         }
         try {
             window.localStorage.setItem(this.storageKey(nodeKeyHex), JSON.stringify({
-                markedChannels: [...new Set(settings.markedChannels ?? [])].sort((a, b) => a - b),
-                markedRooms: [...new Set(settings.markedRooms ?? [])].sort(),
                 autoAnswer: settings.autoAnswer === true,
             }));
             state.settingsRevision++;
@@ -171,22 +179,13 @@ class PositionService {
         }
     }
 
-    static isChannelMarked(channelIdx) {
-        return this.settings().markedChannels.includes(channelIdx);
-    }
-
-    static isRoomMarked(roomKeyHex) {
-        return this.settings().markedRooms.includes(roomKeyHex);
-    }
-
-    /** Whether this station answers requests arriving by this route. Direct ones always are. */
+    /**
+     * Whether this station answers requests arriving by this route.
+     *
+     * Everything, now: direct, any channel it holds, any room it is in. What the
+     * operator chooses is whether they are asked first, not where.
+     */
     static answersOn(via) {
-        if(via.kind === "channel"){
-            return this.isChannelMarked(via.idx);
-        }
-        if(via.kind === "room"){
-            return this.isRoomMarked(via.contactKeyHex);
-        }
         return true;
     }
 

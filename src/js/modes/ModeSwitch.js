@@ -284,7 +284,7 @@ class ModeSwitch {
             if(carried.length > 0){
                 profile.channels = [
                     ...profile.channels,
-                    ...carried.map((c) => ({ name: c.name, secret: c.secret, answerPositions: false })),
+                    ...carried.map((c) => ({ name: c.name, secret: c.secret })),
                 ].slice(0, MAX_CHANNEL_SLOTS);
                 ModeProfiles.saveProfile(mode, profile, nodeKeyHex);
                 for(const channel of carried){
@@ -300,7 +300,7 @@ class ModeSwitch {
                 if(kept.length > 0){
                     leaving.channels = [
                         ...leaving.channels,
-                        ...kept.map((c) => ({ name: c.name, secret: c.secret, answerPositions: false })),
+                        ...kept.map((c) => ({ name: c.name, secret: c.secret })),
                     ].slice(0, MAX_CHANNEL_SLOTS);
                     ModeProfiles.saveProfile(from, leaving, nodeKeyHex);
                     warnings.push(`${kept.map((c) => c.name).join(", ")} ${kept.length === 1 ? "was" : "were"} on the radio but in no mode, so ${kept.length === 1 ? "it was" : "they were"} kept in ${ModeProfiles.label(from)} rather than lost.`);
@@ -345,14 +345,10 @@ class ModeSwitch {
         const homeBackup = mode === "normal" ? NodeBackup.load(nodeKeyHex, NodeBackup.SLOT_PRE_EMCOMM) : null;
         const backupOwnsChannels = (homeBackup?.channels?.length ?? 0) > 0;
 
-        const marked = [];
         for(let idx = 0; channelsRead && idx < slotCount; idx++){
             const channel = backupOwnsChannels ? null : profile.channels[idx];
             if(channel){
                 await attempt(`the channel ${channel.name}`, () => Connection.setChannel(idx, channel.name, Utils.hexToBytes(channel.secret)));
-                if(channel.answerPositions){
-                    marked.push(idx);
-                }
             } else {
                 // clearing a slot that is already empty costs one write and keeps
                 // this simple; the radio does not mind
@@ -379,22 +375,14 @@ class ModeSwitch {
             })
             : [];
 
-        // the marks follow the slots the backup will write, so a channel answering
-        // position requests keeps doing it at the slot it comes back in
-        if(backupOwnsChannels){
-            const answering = new Set(profile.channels.filter((c) => c.answerPositions).map((c) => c.name));
-            for(const channel of homeBackup.channels){
-                if(answering.has(channel.name) && channel.idx != null){
-                    marked.push(channel.idx);
-                }
-            }
-        }
-
         // --- this app's own settings for the node
+        //
+        // Every channel and room is answered, so there is nothing to carry from
+        // slot to slot any more. That list was the source of three faults in one
+        // evening and it is gone; what a mode still owns is whether the operator
+        // is asked before their position goes out.
 
         const saveAnswerChoices = () => PositionService.saveSettings({
-            markedChannels: marked,
-            markedRooms: profile.rooms.filter((r) => r.answerPositions).map((r) => r.keyHex),
             autoAnswer: profile.autoAnswerPositions === true,
         }, nodeKeyHex);
 
@@ -439,9 +427,6 @@ class ModeSwitch {
                                 () => Connection.setChannel(idx, channel.name, Utils.hexToBytes(channel.secret)));
                             if(wrote !== false){
                                 restored.push(channel.name);
-                                if(channel.answerPositions){
-                                    marked.push(idx);
-                                }
                             }
                         }
                         if(restored.length > 0){
