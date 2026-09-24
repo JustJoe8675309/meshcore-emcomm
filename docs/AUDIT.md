@@ -361,7 +361,11 @@ size turned up, not just at a narrow window.
       Everything used to stop at 16 while the radios report 40, so such a channel
       was invisible to modes and missing from the way home.
 - [ ] **Favourites survive a round trip.** Favourite a contact and a channel, round
-      trip a mode, and both must still be favourited. Proven by test only so far.
+      trip a mode, and both must still be favourited. **Proven 23 Sep** on node 2:
+      the five contacts its backup recorded as favourited were still at the top of
+      the list after Emcomm-Training and back, through the 90 day trim and the
+      restore. The flag lives on the radio, bit 0 of the contact's flags byte, so
+      the backup is the list of what to expect at the top.
 - [ ] **A room with a real password.** Every login on the bench has used a blank
       field, which works because both nodes are already in that room's ACL — and
       that ACL path is exactly what makes the keep-alive necessary. Joining a
