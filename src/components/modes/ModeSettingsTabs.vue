@@ -213,6 +213,10 @@
             </SettingsSection>
 
             <div class="p-2 space-y-2">
+                <div v-if="unsaved" role="status" class="text-xs text-amber-800">
+                    Not saved yet. This tab keeps what you typed while the app is open, including if you look
+                    at another mode, but a reload starts again from what is written down.
+                </div>
                 <div v-if="message" role="status" class="text-xs text-gray-600">{{ message }}</div>
                 <!-- the wizard shows this editor in a dialog, so the page's Save
                      is behind it: there, Next is what saves -->
@@ -264,6 +268,8 @@ export default {
             newChannelName: "",
             // counts the reads, so a slow one cannot land on a later tab
             loadToken: 0,
+            // edits on tabs that were left without saving, by mode
+            drafts: {},
             // index of the channel being edited, or null
             editingChannel: null,
             editChannelName: "",
@@ -293,6 +299,16 @@ export default {
             return MODE_CLASSES[mode] ?? MODE_CLASSES.normal;
         },
         select(mode) {
+            // Keep what was typed into the tab being left.
+            //
+            // Reading a mode reads the radio, so every tab switch used to throw
+            // away the edits on the tab you left, silently. An operator setting up
+            // a mode who taps another tab to check something loses their work and
+            // is not told. Held in memory only: a reload starts from what is
+            // written down, which is the truth about the radio.
+            if(this.profile != null){
+                this.drafts[this.tab] = JSON.parse(JSON.stringify(this.profile));
+            }
             this.tab = mode;
             this.message = null;
             this.load();
@@ -316,6 +332,11 @@ export default {
             if(this.tab === "normal" && ModeProfiles.normalUnknown()){
                 return;
             }
+            // what was typed into this tab before, if it was left without saving
+            if(this.drafts[this.tab] != null){
+                this.profile = JSON.parse(JSON.stringify(this.drafts[this.tab]));
+                return;
+            }
             try {
                 const profile = await ModeProfiles.profileOrDefault(this.tab);
                 if(token === this.loadToken){
@@ -334,6 +355,7 @@ export default {
             }
 
             ModeProfiles.saveProfile(this.tab, JSON.parse(JSON.stringify(this.profile)));
+            delete this.drafts[this.tab];
 
             // Another mode is a promise about later. The mode the station is in is
             // the radio, so saving it writes it: an operator who changes the power
@@ -414,6 +436,15 @@ export default {
         },
         canAddChannel() {
             return this.profile != null && this.newChannelName.trim() !== "" && this.profile.channels.length < 16;
+        },
+        /** Whether this tab holds edits that are not written down yet. */
+        unsaved() {
+            void ModeProfiles.state.revision;
+            if(this.profile == null){
+                return false;
+            }
+            const stored = ModeProfiles.profile(this.tab);
+            return stored == null || JSON.stringify(stored) !== JSON.stringify(this.profile);
         },
         /** Normal, on a station away from home, with nothing written down. */
         normalUnknown() {

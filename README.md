@@ -736,7 +736,12 @@ shows what that mode will write to the radio when it is entered. **Any of them c
 any other**, so a station working a drill can set up what it comes home to.
 
 **There is one Save, at the top of the page.** It saves the mode tab on show and the position
-together. There used to be two — one in the corner for the live fields and one inside the tab for
+together, and says what it did in a line on the page rather than a box that stops the tab.
+
+**A tab keeps what was typed into it** while the app is open, so looking at another mode and
+coming back does not lose it, and the tab says "Not saved yet" until it is saved. A reload starts
+again from what is written down, which is the truth about the radio. Reading a mode reads the
+radio, and every tab switch used to throw the edits away without a word. There used to be two — one in the corner for the live fields and one inside the tab for
 the mode — and an operator who pressed the wrong one saved half of what they had changed.
 
 **Saving the mode the station is in writes it to the radio.** Saving any other mode is a promise

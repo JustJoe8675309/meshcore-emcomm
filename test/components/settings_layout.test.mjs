@@ -73,6 +73,15 @@ describe("the shape of the settings page", () => {
         expect(tabs).toContain('this.only == null ? "Save, at the top of the page," : "Next, below,"');
     });
 
+    it("says what Save did on the page, rather than stopping the tab", () => {
+        // alert() blocks the whole tab until it is dismissed: on the bench that
+        // meant an operator could not tell a slow radio from a finished save
+        expect(source).not.toContain('alert("Settings saved.")');
+        expect(source).not.toContain('alert("Failed to save settings!")');
+        expect(source).toContain("this.saveMessage");
+        expect(source).toContain("this.saveError");
+    });
+
     it("has one Save, which saves the page and the mode tab on show", () => {
         // it used to have two: the corner one for the live fields, and one inside
         // the tab for the mode

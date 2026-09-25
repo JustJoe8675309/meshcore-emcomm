@@ -484,6 +484,14 @@ size turned up, not just at a narrow window.
 - [ ] **Operator is under Radio and reads the same in every tab.** Type a
       callsign, switch tabs, switch modes: it is still there, and a report form
       prefills with it. There is no Save in that group.
+- [ ] **Save says so on the page**, in a green line, and a failure in a red one.
+      Nothing blocks the tab: an alert stopped everything until it was dismissed,
+      so a slow radio and a finished save looked the same.
+- [ ] **A tab keeps what was typed into it.** Change the power on one mode's tab,
+      look at another mode, come back: it is still there and the tab says "Not
+      saved yet". Save, and that line goes. A page reload starts again from what
+      is written down.
+
 - [ ] **There is one Save**, at the top of the page. It saves the tab on show and
       the position together, and there is no second Save inside the tab.
 - [ ] **A request on a channel the station does not hold** says so: "A station

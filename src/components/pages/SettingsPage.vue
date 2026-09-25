@@ -40,6 +40,13 @@
                         {{ loadError }}
                     </div>
 
+                    <div v-if="saveError" role="status" class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg m-2 p-2">
+                        {{ saveError }}
+                    </div>
+                    <div v-else-if="saveMessage" role="status" class="bg-green-50 border border-green-200 text-green-800 text-sm rounded-lg m-2 p-2">
+                        {{ saveMessage }}
+                    </div>
+
                     <!-- the read waits its turn behind whatever else the radio is
                          doing, which after an advert can be a few seconds of
                          contact reload. Say so, rather than show empty fields -->
@@ -299,6 +306,12 @@ export default {
         return {
             firstRunOpen: false,
             isSaving: false,
+            // what the last Save did, said on the page. It was an alert(), which
+            // stops the whole tab until it is dismissed: on the bench that meant
+            // an operator could not tell a slow radio from a finished save, and
+            // nothing else on the page could be read while it was up
+            saveMessage: null,
+            saveError: null,
             latitude: null,
             longitude: null,
             deviceInfo: null,
@@ -619,8 +632,9 @@ Settings, channels and ${backup.contacts.length} contacts will be written to thi
                 return;
             }
 
-            // show loading
             this.isSaving = true;
+            this.saveMessage = null;
+            this.saveError = null;
 
             try {
 
@@ -645,11 +659,13 @@ Settings, channels and ${backup.contacts.length} contacts will be written to thi
                 // pressed the wrong one saved half of what they had changed.
                 await this.$refs.modes?.save();
 
-                alert("Settings saved.");
+                this.saveMessage = "Saved.";
+                this.saveError = null;
 
             } catch(e) {
                 console.log(e);
-                alert("Failed to save settings!");
+                this.saveMessage = null;
+                this.saveError = `Could not save: ${e?.message ?? e}`;
             } finally {
 
                 // show loading

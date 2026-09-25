@@ -931,6 +931,40 @@ describe("the settings tabs", () => {
         expect(wrapper.vm.canSaveChannel).toBe(true);
     });
 
+    // Reading a mode reads the radio, so a tab switch used to throw away whatever
+    // had been typed into the tab being left, without saying so.
+    it("keeps what was typed into a tab that is left without saving", async () => {
+        const wrapper = mount(ModeSettingsTabs);
+        await flushPromises();
+        await open(wrapper, "live");
+
+        wrapper.vm.profile.radio.txPower = 17;
+        expect(wrapper.vm.unsaved).toBe(true);
+        await flushPromises();
+        expect(wrapper.text()).toContain("Not saved yet");
+
+        await open(wrapper, "training");
+        expect(wrapper.vm.profile.radio.txPower).not.toBe(17);
+
+        await open(wrapper, "live");
+        expect(wrapper.vm.profile.radio.txPower).toBe(17);
+        // and still nothing written down until Save
+        expect(ModeProfiles.profile("live", NODE).radio.txPower).not.toBe(17);
+    });
+
+    it("stops calling a tab unsaved once it is saved", async () => {
+        const wrapper = mount(ModeSettingsTabs);
+        await flushPromises();
+        await open(wrapper, "live");
+
+        wrapper.vm.profile.radio.txPower = 19;
+        await wrapper.vm.save();
+        await flushPromises();
+
+        expect(wrapper.vm.unsaved).toBe(false);
+        expect(wrapper.text()).not.toContain("Not saved yet");
+    });
+
     it("keeps no list of rooms a mode uses", async () => {
         const wrapper = mount(ModeSettingsTabs);
         await flushPromises();
