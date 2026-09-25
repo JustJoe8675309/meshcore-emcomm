@@ -183,7 +183,11 @@ export default {
             if(!this.repeats || this.intervalTooShort || this.windowTooShort){
                 return 1;
             }
-            return 1 + Math.floor(this.forMinutes / this.interval);
+            // the service's own rule, so the promise and the sending cannot drift:
+            // they did, and it sent two of the three this line had promised
+            return PositionService.askCount({
+                type: "repeat", intervalMinutes: this.interval, forMinutes: this.forMinutes,
+            });
         },
         lastAskAfter() {
             return (this.askCount - 1) * this.interval;

@@ -323,6 +323,22 @@ class PositionService {
      * leave on a net, and a count is arithmetic the operator has to do in their
      * head to know when it stops. A window says when it stops.
      */
+    /**
+     * How many requests a mode sends if nobody answers.
+     *
+     * Asks at 0, then every interval, for as long as the window lasts: "every 5
+     * minutes for 30 minutes" asks at 0, 5, 10, 15, 20 and 25, and at 30 the
+     * window is spent. The dialog shows this number before anything is sent, and
+     * the request counts down from it, so what was promised is what goes out.
+     */
+    static askCount(mode) {
+        const normalised = this.normaliseMode(mode);
+        if(normalised.type !== "repeat"){
+            return 1;
+        }
+        return Math.max(1, Math.ceil(normalised.forMinutes / normalised.intervalMinutes));
+    }
+
     static start(target, via, mode) {
 
         const normalised = this.normaliseMode(mode);
@@ -339,6 +355,19 @@ class PositionService {
             mode: normalised,
             nodeKeyHex: this.nodeKeyHex(),
             sent: 0,
+            // How many will go out if nobody answers, worked out once, here.
+            //
+            // It used to be decided each time by asking whether another interval
+            // still fitted inside the window. On the bench that sent 2 of the 3 the
+            // dialog had promised: after the second send the clock was a fraction
+            // past the one minute mark, so "now + 1 minute" fell outside a two
+            // minute window by that fraction. Worse, which way it fell depended on
+            // how fast the radio had answered, so the same request did not give the
+            // same number of tries twice.
+            //
+            // Counting down from a number fixed at the start is repeatable, and it
+            // is the number the operator was shown before pressing Request.
+            remaining: this.askCount(normalised),
             startedAt: Date.now(),
             // when the asking stops, whatever happens. Null for a single request.
             endsAt: normalised.type === "repeat" ? Date.now() + normalised.forMinutes * MINUTE : null,
@@ -680,10 +709,9 @@ class PositionService {
         this.scheduleFallback(request);
 
         const { mode } = request;
-        // one more only if it lands inside the window the operator asked for
-        const more = mode.type === "repeat"
-            && request.endsAt != null
-            && Date.now() + mode.intervalMinutes * MINUTE <= request.endsAt;
+        // one more only if the count fixed when the request was made has one left
+        request.remaining = Math.max(0, (request.remaining ?? 1) - 1);
+        const more = mode.type === "repeat" && request.remaining > 0;
         if(!more){
             // the last one: wait for the station's app, then its radio, then give up
             request.nextAt = null;

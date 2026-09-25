@@ -1203,6 +1203,14 @@ someone has to do in their head to know when it stops. A window says when it sto
 how many requests that will be if nobody answers, and when the last one goes, before any of them
 do.
 
+**Asking happens while the window lasts**: every 5 minutes for 30 asks at 0, 5, 10, 15, 20 and
+25, and at 30 the window is spent — six requests, not seven. The count is worked out once, when
+the request is made, and counted down. It used to be decided each time round by asking whether
+another interval still fitted before the end, which on the radios sent two of the three the form
+had promised: by the second send the clock was a fraction past the minute, and a fraction was
+enough to fall outside a two minute window. Which way it fell depended on how fast the radio had
+answered, so the same request did not give the same number of tries twice.
+
 Each request floods the whole mesh like a flood advert, so the shortest interval is a minute, the
 form warns under five, a repeat cannot run longer than a day, and a window shorter than one
 interval is refused rather than quietly sending once. Repeats run on a browser timer, so like

@@ -839,18 +839,37 @@ describe("asking", () => {
 
     // "every 1 minute for 2 minutes" is three asks: now, and at each minute
     // inside the window. The operator is told the number before they send.
+    // "Every 1 minute for 2 minutes" asks now and in a minute; at two minutes the
+    // window is spent. Six for "every 5 minutes for 30", at 0, 5, 10, 15, 20, 25.
     it("repeat: stops when the window closes, and says so", async () => {
         const request = PositionService.start(THEM_CONTACT, channel, { type: "repeat", intervalMinutes: 1, forMinutes: 2 });
         await vi.advanceTimersByTimeAsync(0);
         await vi.advanceTimersByTimeAsync(60000);
-        await vi.advanceTimersByTimeAsync(60000);
-        expect(sent).toHaveLength(3);
+        expect(sent).toHaveLength(2);
 
         // and nothing after the window, however long anyone waits
         await vi.advanceTimersByTimeAsync(10 * 60000);
-        expect(sent).toHaveLength(3);
+        expect(sent).toHaveLength(2);
         expect(request.status).toBe("gave up");
-        expect(request.outcome).toBe("No answer after 3 requests.");
+        expect(request.outcome).toBe("No answer after 2 requests.");
+    });
+
+    // The count used to be decided each time round, by asking whether another
+    // interval still fitted inside the window. It sent 2 of the 3 the dialog had
+    // promised on the bench, because by the second send the clock was a fraction
+    // past the minute — and under fake timers, which advance exactly, it sent 3.
+    // So the test agreed with the dialog while the radios did not.
+    it("repeat: sends the same number however slow the radio is", async () => {
+        const request = PositionService.start(THEM_CONTACT, channel, { type: "repeat", intervalMinutes: 5, forMinutes: 30 });
+
+        // a second and a half of send latency on every one of them
+        for(let i = 0; i < 8; i++){
+            await vi.advanceTimersByTimeAsync(1500);
+            await vi.advanceTimersByTimeAsync(5 * 60000);
+        }
+
+        expect(sent).toHaveLength(6);
+        expect(request.outcome).toBe("No answer after 6 requests.");
     });
 
     it("repeat: a window shorter than the interval still sends once", async () => {
@@ -1099,9 +1118,27 @@ describe("the request form", () => {
         wrapper.vm.presetInterval = 5;
         wrapper.vm.presetFor = 30;
         await flushPromises();
-        // now, then every five minutes to the half hour
-        expect(wrapper.text()).toContain("7 requests");
-        expect(wrapper.text()).toContain("30 minutes from now");
+        // now, then every five minutes while the half hour lasts: 0 to 25
+        expect(wrapper.text()).toContain("6 requests");
+        expect(wrapper.text()).toContain("25 minutes from now");
+    });
+
+    // The promise and the sending are the same rule now. They were not, and the
+    // difference only showed on the radios.
+    it("promises exactly what the service will send", async () => {
+        const wrapper = mount(PositionRequestDialog, { global: { mocks: { $router: { push() {} } } } });
+        PositionService.openRequest(THEM_CONTACT);
+        await flushPromises();
+
+        for(const [interval, forMinutes] of [[1, 2], [5, 30], [15, 60], [1, 1]]){
+            wrapper.vm.modeType = "custom";
+            wrapper.vm.customInterval = interval;
+            wrapper.vm.customFor = forMinutes;
+            await flushPromises();
+            expect(wrapper.vm.askCount, `every ${interval} for ${forMinutes}`).toBe(
+                PositionService.askCount({ type: "repeat", intervalMinutes: interval, forMinutes: forMinutes }),
+            );
+        }
     });
 
     it("refuses a window shorter than the gap between requests", async () => {

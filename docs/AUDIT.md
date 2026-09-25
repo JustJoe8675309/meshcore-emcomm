@@ -474,6 +474,11 @@ size turned up, not just at a narrow window.
       prefills with it. There is no Save in that group.
 - [ ] **There is one Save**, at the top of the page. It saves the tab on show and
       the position together, and there is no second Save inside the tab.
+- [ ] **A repeat sends what the form promised.** Ask every 1 minute for 2
+      minutes with nobody answering: the form says 2 requests and 2 go out, and
+      the tab says "No answer after 2 requests". Every 15 minutes for 5 is
+      refused, with the arithmetic shown rather than just "invalid".
+
 - [ ] **Setup wizard is a row under Commands**, with the RX Log and Reboot, and
       opens the same walkthrough that runs on a first connection.
 - [ ] **A wizard step keeps what was typed into it.** Change the transmit power
