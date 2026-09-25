@@ -839,6 +839,29 @@ describe("asking", () => {
 
     // "every 1 minute for 2 minutes" is three asks: now, and at each minute
     // inside the window. The operator is told the number before they send.
+    // On the bench a request went out on a channel the asked station does not
+    // hold. It heard nothing, correctly, and the asking station was told "it has
+    // no working GPS, or its owner does not share location" — true of the radio
+    // asked as a fallback, and the wrong thing to go and check.
+    it("names the channel when nothing came back on one", async () => {
+        const request = PositionService.start(THEM_CONTACT, channel, { type: "once" });
+        await vi.advanceTimersByTimeAsync(0);
+        await vi.advanceTimersByTimeAsync(10 * 60000);
+
+        expect(request.status).toBe("gave up");
+        expect(request.routeNote).toContain("only hears a channel it holds");
+        expect(request.routeNote).toContain(channel.name);
+    });
+
+    it("says nothing about channels when the request went direct", async () => {
+        const request = PositionService.start(THEM_CONTACT, { kind: "direct", contact: THEM_CONTACT }, { type: "once" });
+        await vi.advanceTimersByTimeAsync(0);
+        await vi.advanceTimersByTimeAsync(10 * 60000);
+
+        expect(request.status).toBe("gave up");
+        expect(request.routeNote).toBe(null);
+    });
+
     // "Every 1 minute for 2 minutes" asks now and in a minute; at two minutes the
     // window is spent. Six for "every 5 minutes for 30", at 0, 5, 10, 15, 20, 25.
     it("repeat: stops when the window closes, and says so", async () => {

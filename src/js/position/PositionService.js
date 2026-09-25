@@ -794,6 +794,21 @@ class PositionService {
             : "Its radio did not answer either: it may not share location, or may be out of range.";
 
         if(isLast){
+            // Said before the radio's note, because it is the likelier answer and
+            // the note points somewhere else.
+            //
+            // On the bench a request went out on a channel the asked station does
+            // not hold. It heard nothing, correctly, and showed no prompt. What the
+            // asking station read was "it has no working GPS, or its owner does not
+            // share location" — every word true of the radio that was asked as a
+            // fallback, and every word pointing the operator at the wrong thing to
+            // go and check.
+            //
+            // This app cannot know which channels another station holds, so this
+            // names the possibility rather than claiming it.
+            request.routeNote = request.via.kind === "channel"
+                ? `A station only hears a channel it holds. Check that they are on ${request.via.name}.`
+                : null;
             this.finish(request, "gave up", `No answer after ${request.sent} ${request.sent === 1 ? "request" : "requests"}.`);
         }
 
@@ -1080,6 +1095,7 @@ class PositionService {
         }
         const late = request.status === "gave up" ? " The answer came after this app had stopped asking." : "";
         request.radioNote = null;
+        request.routeNote = null;
         if(message.kind === Protocol.KIND.DECLINED){
             this.finish(request, "declined", `Declined by ${name}.${late}`);
         } else if(!message.hasPosition){

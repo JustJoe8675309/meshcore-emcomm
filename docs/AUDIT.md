@@ -474,6 +474,12 @@ size turned up, not just at a narrow window.
       prefills with it. There is no Save in that group.
 - [ ] **There is one Save**, at the top of the page. It saves the tab on show and
       the position together, and there is no second Save inside the tab.
+- [ ] **A request on a channel the station does not hold** says so: "A station
+      only hears a channel it holds. Check that they are on #x." The asked
+      station shows no prompt at all, which is correct. Without that line the
+      only explanation on screen is the radio fallback's, which sends the
+      operator off to check a GPS.
+
 - [ ] **A repeat sends what the form promised.** Ask every 1 minute for 2
       minutes with nobody answering: the form says 2 requests and 2 go out, and
       the tab says "No answer after 2 requests". Every 15 minutes for 5 is

@@ -93,6 +93,10 @@
                     </template>
 
                     <div v-if="request.outcome" class="text-xs text-gray-800">{{ request.outcome }}</div>
+                    <!-- the likelier reason first: the radio note is about the
+                         fallback, and on its own it sends the operator to check a
+                         GPS when they asked on a channel that station is not on -->
+                    <div v-if="request.routeNote && request.status !== 'answered'" class="text-xs text-gray-800">{{ request.routeNote }}</div>
                     <div v-if="request.radioNote && request.status !== 'answered'" class="text-xs text-gray-600">{{ request.radioNote }}</div>
                     <div v-if="request.error" class="text-xs text-red-600">Last request not sent: {{ request.error }}</div>
                     <div class="pt-1">
