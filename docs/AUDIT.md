@@ -476,6 +476,12 @@ size turned up, not just at a narrow window.
       the position together, and there is no second Save inside the tab.
 - [ ] **Setup wizard is a row under Commands**, with the RX Log and Reboot, and
       opens the same walkthrough that runs on a first connection.
+- [ ] **A wizard step keeps what was typed into it.** Change the transmit power
+      on the Normal step, press Next, then come back with Back: it is still
+      there, and the Normal tab in Settings holds it too. The editor's own Save
+      is the one at the top of the settings page, which is behind the dialog, so
+      Next is what saves; the step says so rather than naming a button that
+      cannot be pressed.
 - [ ] **The contact groups read the same in all three tabs**, and each says it is
       not part of a mode. Switch modes and look again: the same contacts.
 - [ ] **Rename a repeater** from its group, then pull the contact list down: the

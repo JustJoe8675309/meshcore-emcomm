@@ -67,6 +67,12 @@ describe("the shape of the settings page", () => {
         expect(wizard).toContain(">Setup wizard<");
     });
 
+    it("points at the page's Save from a tab, and at Next inside the wizard", () => {
+        // the wizard shows the same editor in a dialog, over the page's Save
+        const tabs = readFileSync(resolve("src/components/modes/ModeSettingsTabs.vue"), "utf8");
+        expect(tabs).toContain('this.only == null ? "Save, at the top of the page," : "Next, below,"');
+    });
+
     it("has one Save, which saves the page and the mode tab on show", () => {
         // it used to have two: the corner one for the live fields, and one inside
         // the tab for the mode

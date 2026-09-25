@@ -109,8 +109,8 @@ export default {
             shortfall: null,
             descriptions: {
                 normal: "The radio as it was when this app first saw it: its own settings, channels and contacts.",
-                live: "A real incident: the net's channels and rooms, and the settings an incident wants.",
-                training: "A drill: its own channels and rooms, and everything sent marked DRILL.",
+                live: "A real incident: the net's channels, and the settings an incident wants.",
+                training: "A drill: its own channels, and everything sent marked DRILL.",
             },
         };
     },

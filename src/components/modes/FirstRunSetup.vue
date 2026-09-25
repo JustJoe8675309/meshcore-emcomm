@@ -31,7 +31,7 @@
                  there is no second copy of these fields to drift from the first -->
             <template v-else-if="stepMode">
                 <div class="p-3 text-xs text-gray-600">{{ noteFor(stepMode) }}</div>
-                <ModeSettingsTabs :only="stepMode"/>
+                <ModeSettingsTabs :only="stepMode" ref="tab"/>
             </template>
 
             <div v-else class="p-3 space-y-2 text-sm text-gray-700">
@@ -74,8 +74,13 @@
  * questions once, in the order the modes matter, and can be reopened from
  * Settings.
  *
- * It edits the mode profiles and writes nothing to the radio: entering a mode is
- * what writes it, with its own confirmation of what will change. Saying so
+ * Next saves the step it is leaving. The editor's own Save is the one at the top
+ * of the settings page, which is behind this dialog, so without that an operator
+ * walks through all three modes and keeps none of it.
+ *
+ * What a step writes is a mode profile. Only the mode the station is already in
+ * reaches the radio, which is true of saving a mode anywhere. Entering a mode is
+ * what writes the rest, with its own confirmation of what will change. Saying so
  * plainly is part of the point, because "set the name" reads like "rename my
  * radio" otherwise.
  */
@@ -86,9 +91,9 @@ import ModeSettingsTabs from "./ModeSettingsTabs.vue";
 const NOTES = {
     normal: "The radio as this app first read it: its name, its settings and its channels. "
         + "Coming home from a mode writes this back, so it is worth a look even if you change nothing.",
-    training: "A drill. Its own channels and rooms, and everything sent from this mode is marked DRILL "
+    training: "A drill. Its own channels, and everything sent from this mode is marked DRILL "
         + "so nobody mistakes an exercise for the real thing.",
-    live: "A real incident. The net's channels and rooms, the settings an incident wants, and the "
+    live: "A real incident. The net's channels, the settings an incident wants, and the "
         + "name other stations will see while you are in it.",
 };
 
@@ -123,14 +128,16 @@ export default {
         noteFor(mode) {
             return NOTES[mode] ?? "";
         },
-        next() {
+        async next() {
+            await this.saveStep();
             if(this.step === "done"){
                 this.finish();
                 return;
             }
             this.index = Math.min(this.steps.length - 1, this.index + 1);
         },
-        back() {
+        async back() {
+            await this.saveStep();
             this.index = Math.max(0, this.index - 1);
         },
         /** Marked done either way: an operator who skipped it was asked. */
@@ -140,6 +147,31 @@ export default {
         finish() {
             FirstRunSetup.markDone();
             this.$emit("close");
+        },
+
+        /**
+         * Saves the mode this step is about, on the way out of it.
+         *
+         * Each step is the settings page's own mode editor, and that editor's Save
+         * is the one at the top of the settings page — which is behind this
+         * dialog. So Next is this wizard's Save. Without it an operator walks
+         * through all three modes at a muster point and keeps none of it, which is
+         * exactly the situation the wizard exists to prevent.
+         *
+         * Leaving a step saves it rather than a Save of its own, because a step
+         * has nothing else to press: Next is the only way on.
+         */
+        async saveStep() {
+            if(this.stepMode == null){
+                return;
+            }
+            try {
+                await this.$refs.tab?.save();
+            } catch(e) {
+                // the profile is written before the radio is touched, so what was
+                // typed is kept even here
+                console.log("could not save this step", e);
+            }
         },
     },
     computed: {

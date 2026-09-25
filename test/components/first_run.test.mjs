@@ -16,6 +16,7 @@ import Header from "../../src/components/Header.vue";
 import Connection from "../../src/js/Connection.js";
 import GlobalState from "../../src/js/GlobalState.js";
 import ModeProfiles from "../../src/js/modes/ModeProfiles.js";
+import ModeSettingsTabs from "../../src/components/modes/ModeSettingsTabs.vue";
 import Utils from "../../src/js/Utils.js";
 
 const KEY = new Uint8Array(32).fill(0x39);
@@ -255,6 +256,91 @@ describe("when the walkthrough is offered", () => {
         GlobalState.selfInfo = SELF_INFO;
         await flushPromises();
         expect(wizardShowing(wrapper)).toBe(true);
+    });
+
+});
+
+// What a step does with what was typed into it.
+//
+// Found on the bench: the editor's own Save is the one at the top of the settings
+// page, and that is behind this dialog. Until Next saved the step, an operator
+// walked all three modes at a muster point and kept none of it.
+describe("a wizard step and the real editor", () => {
+
+    beforeEach(() => {
+        window.localStorage.clear();
+        connect();
+        quietRadio();
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        window.localStorage.clear();
+        GlobalState.connection = null;
+        GlobalState.selfInfo = null;
+        GlobalState.channels = [];
+    });
+
+    /** The real editor, rather than the stub the step order tests use. */
+    function mountReal() {
+        return mount(FirstRunSetup, { props: { open: true } });
+    }
+
+    /** Reading a mode is a chain of channel reads, not one turn of the loop. */
+    async function editorReady(wrapper) {
+        const deadline = Date.now() + 5000;
+        while(Date.now() < deadline){
+            await flushPromises();
+            const tab = wrapper.findComponent(ModeSettingsTabs);
+            if(tab.exists() && tab.vm.profile != null){
+                return tab;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+        throw new Error("the mode editor never finished reading");
+    }
+
+    it("saves the step it is leaving, since Next is the only way on", async () => {
+        const wrapper = mountReal();
+        await buttonSaying(wrapper, "Start").trigger("click");
+        const tab = await editorReady(wrapper);
+
+        tab.vm.profile.radio.txPower = 17;
+        await buttonSaying(wrapper, "Next").trigger("click");
+        await flushPromises();
+
+        expect(ModeProfiles.profile("normal", NODE).radio.txPower).toBe(17);
+    });
+
+    it("saves on the way back as well as on the way on", async () => {
+        const wrapper = mountReal();
+        await buttonSaying(wrapper, "Start").trigger("click");
+        await editorReady(wrapper);
+        await buttonSaying(wrapper, "Next").trigger("click");
+        const tab = await editorReady(wrapper);
+
+        tab.vm.profile.radio.txPower = 19;
+        await buttonSaying(wrapper, "Back").trigger("click");
+        await flushPromises();
+
+        expect(ModeProfiles.profile("training", NODE).radio.txPower).toBe(19);
+    });
+
+    it("tells the operator to press Next, not a button behind the dialog", async () => {
+        const wrapper = mountReal();
+        await buttonSaying(wrapper, "Start").trigger("click");
+        await editorReady(wrapper);
+
+        expect(wrapper.text()).toContain("Next, below, saves this tab");
+        expect(wrapper.text()).not.toContain("Save, at the top of the page");
+    });
+
+    it("has no Save of its own inside the dialog", async () => {
+        const wrapper = mountReal();
+        await buttonSaying(wrapper, "Start").trigger("click");
+        await editorReady(wrapper);
+
+        expect(wrapper.findAll("button").some((b) => b.text().startsWith("Save "))).toBe(false);
     });
 
 });

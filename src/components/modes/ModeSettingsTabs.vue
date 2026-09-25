@@ -197,14 +197,16 @@
 
             <div class="p-2 space-y-2">
                 <div v-if="message" role="status" class="text-xs text-gray-600">{{ message }}</div>
+                <!-- the wizard shows this editor in a dialog, so the page's Save
+                     is behind it: there, Next is what saves -->
                 <div v-if="tab === current" class="text-xs text-gray-500">
-                    <span class="font-medium">Save</span>, at the top of the page, saves this tab. This station
-                    is in this mode, so saving writes these settings to the radio. Channels are written when a
-                    mode is entered, from the banner.
+                    <span class="font-medium">{{ savedBy }}</span> saves this tab. This station is in this mode,
+                    so saving writes these settings to the radio. Channels are written when a mode is entered,
+                    from the banner.
                 </div>
                 <div v-else class="text-xs text-gray-500">
-                    <span class="font-medium">Save</span>, at the top of the page, saves this tab. Nothing here
-                    reaches the radio until this station enters {{ labelFor(tab) }}.
+                    <span class="font-medium">{{ savedBy }}</span> saves this tab. Nothing here reaches the
+                    radio until this station enters {{ labelFor(tab) }}.
                 </div>
             </div>
 
@@ -367,6 +369,10 @@ export default {
         },
         notConnected() {
             return GlobalState.connection == null || GlobalState.selfInfo == null;
+        },
+        /** What the operator should press, which is not the same in the wizard. */
+        savedBy() {
+            return this.only == null ? "Save, at the top of the page," : "Next, below,";
         },
         canAddChannel() {
             return this.profile != null && this.newChannelName.trim() !== "" && this.profile.channels.length < 16;
