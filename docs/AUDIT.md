@@ -462,15 +462,18 @@ size turned up, not just at a narrow window.
 
 ### The settings page
 
-- [ ] **Operator is first**, folded: callsign, SKYWARN number, date-time zone.
-      It is the one group on the page that is not about the node.
-- [ ] **Then a tab per mode** — Normal, Emcomm-Training, Emcomm-Live — coloured
-      as the banner is, with the mode in use marked. All three hold the same
-      fields in the same layout. This radio now, Backups and Commands are
+- [ ] **It opens on a tab per mode** — Normal, Emcomm-Training, Emcomm-Live —
+      coloured as the banner is, with the mode in use marked. All three hold the
+      same fields in the same layout. This radio now, Backups and Commands are
       folded below them.
-- [ ] **Inside a tab the headings fold**: Radio open, then Companions, Repeaters,
-      Channels, Rooms and Also shut. Every tick is under Also, and none is left
-      beside the frequency and power fields.
+- [ ] **Inside a tab the headings fold and all start shut**: Radio, Operator,
+      Companions, Repeaters, Channels, Rooms, Also. Every tick is under Also, and
+      none is left beside the frequency and power fields.
+- [ ] **Operator is under Radio and reads the same in every tab.** Type a
+      callsign, switch tabs, switch modes: it is still there, and a report form
+      prefills with it. There is no Save in that group.
+- [ ] **There is one Save**, at the top of the page. It saves the tab on show and
+      the position together, and there is no second Save inside the tab.
 - [ ] **The contact groups read the same in all three tabs**, and each says it is
       not part of a mode. Switch modes and look again: the same contacts.
 - [ ] **Rename a repeater** from its group, then pull the contact list down: the

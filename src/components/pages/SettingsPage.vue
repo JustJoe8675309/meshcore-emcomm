@@ -47,57 +47,6 @@
                         Reading settings from the radio. Save is off until they have loaded.
                     </div>
 
-                    <!-- Who is operating, before anything about the radio. It is
-                         the first thing to set on a station being handed over, it
-                         prefills every report form, and it is the one group on this
-                         page that is not about the node at all. -->
-                    <SettingsSection title="Operator"
-                                     note="You, rather than the radio. Kept in this browser.">
-
-                        <div class="w-full p-2">
-                            <div class="block mb-2 text-sm font-medium text-gray-900">Operator callsign</div>
-                            <input
-                                :value="operatorCallsign"
-                                @input="onOperatorCallsignInput"
-                                type="text"
-                                placeholder="e.g: KJ5HBN"
-                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                            <div class="mt-1 text-xs text-gray-500">
-                                Used to prefill callsign fields on report forms. Separate from the device
-                                name above, which names the radio.
-                            </div>
-                        </div>
-
-                        <div class="w-full p-2">
-                            <div class="block mb-2 text-sm font-medium text-gray-900">SKYWARN spotter number</div>
-                            <input
-                                :value="operatorSkywarnNumber"
-                                @input="onOperatorSkywarnNumberInput"
-                                type="text"
-                                placeholder="Optional"
-                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                            <div class="mt-1 text-xs text-gray-500">
-                                If set, SKYWARN reports identify you as callsign/number. Left blank, they
-                                use your callsign alone.
-                            </div>
-                        </div>
-
-                        <div class="w-full p-2">
-                            <div class="block mb-2 text-sm font-medium text-gray-900">Date time group</div>
-                            <select
-                                :value="operatorDtgZone"
-                                @change="onOperatorDtgZoneChange"
-                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                                <option value="local">Local time (191830L SEP)</option>
-                                <option value="zulu">Zulu / UTC (190030Z SEP)</option>
-                            </select>
-                            <div class="mt-1 text-xs text-gray-500">
-                                Applies to the DTG fields on report forms. Match whatever your net runs on.
-                            </div>
-                        </div>
-
-                    </SettingsSection>
-
                     <!-- Everything that takes effect the moment it is saved. Public
                          Info, Radio Settings and EMCOMM Settings were three groups
                          editing the same radio, transmit power appearing in all
@@ -106,7 +55,7 @@
                          write to the radio when it is entered. Any of them can be
                          edited from any other, so a station in a drill can set up
                          what it comes home to. -->
-                    <ModeSettingsTabs/>
+                    <ModeSettingsTabs ref="modes"/>
 
                     <!-- the walkthrough again, for a station set up in a hurry -->
                     <div class="bg-white p-2 border-t">
@@ -311,7 +260,6 @@ import AppBar from "../AppBar.vue";
 import SaveButton from "../SaveButton.vue";
 import Page from "./Page.vue";
 import Utils from "../../js/Utils.js";
-import OperatorSettings from "../../js/reports/OperatorSettings.js";
 import AdvertSchedule from "../../js/AdvertSchedule.js";
 import PositionService from "../../js/position/PositionService.js";
 import NodeBackup from "../../js/NodeBackup.js";
@@ -593,17 +541,11 @@ Settings, channels and ${backup.contacts.length} contacts will be written to thi
         },
 
 
-        onOperatorCallsignInput(event) {
-            OperatorSettings.setCallsign(event.target.value);
-        },
 
-        onOperatorSkywarnNumberInput(event) {
-            OperatorSettings.setSkywarnNumber(event.target.value);
-        },
 
-        onOperatorDtgZoneChange(event) {
-            OperatorSettings.setDtgZone(event.target.value);
-        },
+
+
+
 
         async load() {
 
@@ -678,8 +620,12 @@ Settings, channels and ${backup.contacts.length} contacts will be written to thi
                 // here show what it says
                 await Connection.loadSelfInfo(Connection.READ_TIMEOUT_MILLIS);
 
-                // show success alert
-                alert("Position saved.");
+                // and the mode tab on show, which used to carry a Save of its own.
+                // Two Save buttons on one page is one too many: an operator who
+                // pressed the wrong one saved half of what they had changed.
+                await this.$refs.modes?.save();
+
+                alert("Settings saved.");
 
             } catch(e) {
                 console.log(e);
@@ -776,17 +722,11 @@ Settings, channels and ${backup.contacts.length} contacts will be written to thi
         },
 
 
-        operatorCallsign() {
-            return OperatorSettings.state.callsign;
-        },
 
-        operatorDtgZone() {
-            return OperatorSettings.state.dtgZone;
-        },
 
-        operatorSkywarnNumber() {
-            return OperatorSettings.state.skywarnNumber;
-        },
+
+
+
 
         GlobalState() {
             return GlobalState;

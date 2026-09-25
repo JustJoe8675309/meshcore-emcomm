@@ -13,6 +13,7 @@ import { mount, flushPromises } from "@vue/test-utils";
 import SettingsPage from "../../src/components/pages/SettingsPage.vue";
 import Connection from "../../src/js/Connection.js";
 import GlobalState from "../../src/js/GlobalState.js";
+import ModeSettingsTabs from "../../src/components/modes/ModeSettingsTabs.vue";
 
 const SELF_INFO = {
     name: "KJ5HBN-EMCOMM",
@@ -218,6 +219,63 @@ describe("SettingsPage position fields", () => {
         await wrapper.vm.save();
 
         expect(latLong).toHaveBeenCalledWith(0, 0);
+    });
+
+});
+
+// One Save. The page used to have two: this one for the live fields, and another
+// inside the mode tab for the mode. An operator who pressed the wrong one saved
+// half of what they had changed.
+describe("the one Save", () => {
+
+    beforeEach(() => {
+        window.localStorage.clear();
+        GlobalState.connection = { on() {}, off() {} };
+        GlobalState.selfInfo = null;
+        GlobalState.contacts = [];
+        GlobalState.channels = [];
+        vi.spyOn(Connection, "loadSelfInfo").mockImplementation(async () => {
+            GlobalState.selfInfo = SELF_INFO;
+        });
+        vi.spyOn(Connection, "deviceQuery").mockResolvedValue(null);
+        vi.spyOn(Connection, "setAdvertLatLong").mockResolvedValue(undefined);
+        vi.spyOn(Connection, "getChannel").mockResolvedValue({ channelIdx: 0, name: "", secret: new Uint8Array(16) });
+        window.alert = vi.fn();
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        window.localStorage.clear();
+        GlobalState.connection = null;
+        GlobalState.selfInfo = null;
+    });
+
+    it("saves the mode tab on show as well as the position", async () => {
+        const wrapper = mountPage();
+        await flushPromises();
+
+        const tabs = wrapper.findComponent(ModeSettingsTabs);
+        const savedTab = vi.spyOn(tabs.vm, "save").mockResolvedValue(undefined);
+
+        await wrapper.vm.save();
+
+        expect(Connection.setAdvertLatLong).toHaveBeenCalled();
+        expect(savedTab).toHaveBeenCalled();
+    });
+
+    it("does neither before the radio has answered", async () => {
+        // the fields are blank then, and a blank position is written as 0, 0
+        Connection.loadSelfInfo.mockImplementation(() => new Promise(() => {}));
+        const wrapper = mountPage();
+        await flushPromises();
+
+        const tabs = wrapper.findComponent(ModeSettingsTabs);
+        const savedTab = vi.spyOn(tabs.vm, "save").mockResolvedValue(undefined);
+
+        await wrapper.vm.save();
+
+        expect(Connection.setAdvertLatLong).not.toHaveBeenCalled();
+        expect(savedTab).not.toHaveBeenCalled();
     });
 
 });

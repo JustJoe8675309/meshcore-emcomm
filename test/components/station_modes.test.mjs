@@ -645,7 +645,14 @@ describe("the mode switch dialog", () => {
         expect(wrapper.text()).toContain("this station is in this mode");
 
         wrapper.vm.chosen = "live";
-        await flushPromises();
+        // describing a switch reads the radio's channels, which is a chain of
+        // awaits rather than one: a single flush drained it most of the time and
+        // not always, which is a flake in the test and not in the dialog
+        const deadline = Date.now() + 5000;
+        while(Date.now() < deadline && !wrapper.text().includes("Channels become: #Emcomm")){
+            await flushPromises();
+            await new Promise((resolve) => setTimeout(resolve, 10));
+        }
         expect(wrapper.text()).toContain("Channels become: #Emcomm");
         // nothing written by looking
         expect(Connection.setAdvertName).not.toHaveBeenCalled();
@@ -842,20 +849,22 @@ describe("the settings tabs", () => {
     // mode "uses" named them and did nothing else. What replaced it manages the
     // room contacts themselves, which is the thing an operator could not do.
     // A mode is a long form and an operator comes to it for one thing, so it
-    // opens as a list of headings. Radio is the exception: it is what the tab is
-    // mostly about.
-    it("folds every heading, with the radio open and the rest shut", async () => {
+    // opens as a list of headings and nothing else.
+    it("folds every heading, and opens none of them", async () => {
         const wrapper = mount(ModeSettingsTabs);
         await flushPromises();
         await open(wrapper, "live");
 
         // a heading button reads as its title and its note run together
         const fold = (heading) => wrapper.findAll("button[aria-expanded]").find((b) => b.text().startsWith(heading));
-        for(const heading of ["Radio", "Companions", "Repeaters", "Channels", "Rooms", "Also"]){
-            expect(fold(heading), heading).not.toBe(undefined);
+        // Operator sits under Radio: the person at the radio, then who it knows,
+        // then what it can hear
+        const headings = ["Radio", "Operator", "Companions", "Repeaters", "Channels", "Rooms", "Also"];
+        for(const heading of headings){
+            const found = fold(heading);
+            expect(found, heading).not.toBe(undefined);
+            expect(found.attributes("aria-expanded"), heading).toBe("false");
         }
-        expect(fold("Radio").attributes("aria-expanded")).toBe("true");
-        expect(fold("Also").attributes("aria-expanded")).toBe("false");
 
         await fold("Also").trigger("click");
         expect(fold("Also").attributes("aria-expanded")).toBe("true");
@@ -985,6 +994,17 @@ describe("the settings tabs", () => {
         await flushPromises();
         await open(wrapper, "normal");
         expect(wrapper.text()).toContain("Channels are written when a mode is entered");
+    });
+
+    it("has no Save of its own, and says where the one Save is", async () => {
+        // two Save buttons on one page is one too many: the operator who pressed
+        // the wrong one saved half of what they had changed
+        const wrapper = mount(ModeSettingsTabs);
+        await flushPromises();
+        await open(wrapper, "normal");
+
+        expect(wrapper.findAll("button").some((b) => b.text().startsWith("Save "))).toBe(false);
+        expect(wrapper.text()).toContain("at the top of the page, saves this tab");
     });
 
 });

@@ -15,6 +15,8 @@ import { mount, flushPromises } from "@vue/test-utils";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import SettingsSection from "../../src/components/settings/SettingsSection.vue";
+import OperatorSettingsGroup from "../../src/components/settings/OperatorSettingsGroup.vue";
+import OperatorSettings from "../../src/js/reports/OperatorSettings.js";
 import LeftInModeDialog from "../../src/components/modes/LeftInModeDialog.vue";
 import NodeBackup from "../../src/js/NodeBackup.js";
 import EmcommMode from "../../src/js/EmcommMode.js";
@@ -37,17 +39,28 @@ describe("the shape of the settings page", () => {
         // comes home to.
         const tabs = readFileSync(resolve("src/components/modes/ModeSettingsTabs.vue"), "utf8");
         expect(tabs).toMatch(/v-for="mode of modes"/);
-        expect(source).toMatch(/<ModeSettingsTabs\/>/);
+        expect(source).toMatch(/<ModeSettingsTabs ref="modes"\/>/);
         // and no second, cut-down copy of the form for one of them
         expect(source).not.toContain("channels-only");
         expect(tabs).not.toContain("channelsOnly");
     });
 
-    it("asks who is operating first, and keeps the live radio below the modes", () => {
-        // the operator is the first thing to set on a station being handed over,
-        // and the one group here that is not about the node at all
-        expect(sectionTitles).toEqual(["Operator", "This radio now", "Backups", "Commands"]);
-        expect(source.indexOf('title="Operator"')).toBeLessThan(source.indexOf("<ModeSettingsTabs/>"));
+    it("keeps the live radio below the modes, and the operator inside them", () => {
+        expect(sectionTitles).toEqual(["This radio now", "Backups", "Commands"]);
+
+        // Operator moved under Radio, inside the tabs, where it reads the same in
+        // every mode: a drill does not put someone else in the chair
+        const tabs = readFileSync(resolve("src/components/modes/ModeSettingsTabs.vue"), "utf8");
+        expect(tabs.indexOf("<OperatorSettingsGroup/>")).toBeGreaterThan(tabs.indexOf('title="Radio"'));
+        expect(tabs.indexOf("<OperatorSettingsGroup/>")).toBeLessThan(tabs.indexOf('kind="companion"'));
+    });
+
+    it("has one Save, which saves the page and the mode tab on show", () => {
+        // it used to have two: the corner one for the live fields, and one inside
+        // the tab for the mode
+        expect(source).toContain("this.$refs.modes?.save()");
+        const tabs = readFileSync(resolve("src/components/modes/ModeSettingsTabs.vue"), "utf8");
+        expect(tabs).not.toContain("Save {{ labelFor(tab) }}");
     });
 
     it("has one place to edit each thing", () => {
@@ -78,6 +91,34 @@ describe("the shape of the settings page", () => {
         expect(live).toContain("Not held by a mode");
         // and the operator is told where the fields that left have gone
         expect(source).toContain("set on its tab above");
+    });
+
+});
+
+// Who is operating: under Radio inside every mode tab, because the person at the
+// radio is not part of a mode's configuration.
+describe("the operator group", () => {
+
+    afterEach(() => {
+        window.localStorage.clear();
+    });
+
+    it("saves each field as it is typed, so there is nothing here to Save", async () => {
+        const wrapper = mount(OperatorSettingsGroup);
+        await wrapper.find("button[aria-expanded]").trigger("click");
+
+        await wrapper.find("input[placeholder='e.g: KJ5HBN']").setValue("KJ5HBN");
+        expect(OperatorSettings.state.callsign).toBe("KJ5HBN");
+
+        await wrapper.find("select").setValue("zulu");
+        expect(OperatorSettings.state.dtgZone).toBe("zulu");
+
+        expect(wrapper.text()).toContain("nothing here to Save");
+    });
+
+    it("says it is the person rather than the station", () => {
+        const wrapper = mount(OperatorSettingsGroup);
+        expect(wrapper.text()).toContain("The same in every mode");
     });
 
 });

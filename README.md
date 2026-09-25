@@ -730,14 +730,14 @@ radio. Messages saved before this build have no key; a switch attributes them to
 channel is in their slot at the time, which the preview says before it happens, and a conversation
 that is already mixed is cleared with Delete Message History on that channel.
 
-**Settings opens on Operator** — callsign, SKYWARN number and date-time zone, folded. It is the
-first thing to set on a station being handed over, it prefills every report form, and it is the
-only group on the page that is about you rather than the node.
-
-**Below it, a tab for each mode** — Normal, Emcomm-Training, Emcomm-Live — coloured as
+**Settings opens on a tab for each mode** — Normal, Emcomm-Training, Emcomm-Live — coloured as
 the banner is, with the mode in use marked. They hold the same fields in the same layout, and each
 shows what that mode will write to the radio when it is entered. **Any of them can be edited from
 any other**, so a station working a drill can set up what it comes home to.
+
+**There is one Save, at the top of the page.** It saves the mode tab on show and the position
+together. There used to be two — one in the corner for the live fields and one inside the tab for
+the mode — and an operator who pressed the wrong one saved half of what they had changed.
 
 **Saving the mode the station is in writes it to the radio.** Saving any other mode is a promise
 about later, and the tab says which it is doing. That is what an operator means by Save: they
@@ -749,11 +749,15 @@ Normal mode is re-read from the radio on every connect, so there is no button fo
 to be one, and it was a footgun: it sat on the Normal tab, so a station actually sitting in a
 drill could have the drill written down as its home with one press.
 
-**Inside a tab, every heading folds.** A mode is a long form and an operator comes to it for one
-thing, so it opens as a list of headings: **Radio** (open, since it is what the tab is mostly
-about), **Companions**, **Repeaters**, **Channels**, **Rooms** and **Also**. Every yes-or-no a
-mode holds is under Also, together — the radio's four used to sit among the frequency and power
+**Inside a tab, every heading folds, and all of them start shut.** A mode is a long form and an
+operator comes to it for one thing, so it opens as a list of headings and nothing else: **Radio**,
+**Operator**, **Companions**, **Repeaters**, **Channels**, **Rooms** and **Also**. Every yes-or-no
+a mode holds is under Also, together — the radio's four used to sit among the frequency and power
 fields, where a tick beside a number reads as part of it.
+
+**Operator** — callsign, SKYWARN number and date-time zone — sits under Radio and reads the same
+in every tab, because the person at the radio is not part of a mode: a drill does not put someone
+else in the chair. Its fields save as they are typed and never go to the radio.
 
 **Companions, Repeaters and Rooms are the radio's contacts, not the mode's.** They read the same
 in all three tabs and a change reaches the radio at once, which the note under each heading says,

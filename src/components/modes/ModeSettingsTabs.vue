@@ -34,7 +34,7 @@
                  it for one thing, so it opens as a list of headings rather than a
                  page they have to scroll past. Radio opens by default: it is what
                  the tab is mostly about. -->
-            <SettingsSection title="Radio" note="What this mode writes to the radio when it is entered." open-by-default sub>
+            <SettingsSection title="Radio" note="What this mode writes to the radio when it is entered." sub>
                 <div class="p-2 space-y-2">
 
                     <label class="block text-xs text-gray-700">Node name
@@ -62,6 +62,10 @@
 
                 </div>
             </SettingsSection>
+
+            <!-- Who is operating. Not part of a mode either: a drill does not put
+                 someone else in the chair, so this reads the same in every tab. -->
+            <OperatorSettingsGroup/>
 
             <!-- Who the radio knows. Not part of a mode: a switch does not write
                  them and coming home does not take them away, so these read the
@@ -192,16 +196,15 @@
             </SettingsSection>
 
             <div class="p-2 space-y-2">
-                <button @click="save" :disabled="busy" type="button"
-                        class="w-full text-white bg-blue-700 hover:bg-blue-800 disabled:bg-gray-400 font-medium rounded-lg text-sm px-5 py-2.5">Save {{ labelFor(tab) }}</button>
-
                 <div v-if="message" role="status" class="text-xs text-gray-600">{{ message }}</div>
                 <div v-if="tab === current" class="text-xs text-gray-500">
-                    This station is in this mode, so saving writes these settings to the radio. Channels
-                    are written when a mode is entered, from the banner.
+                    <span class="font-medium">Save</span>, at the top of the page, saves this tab. This station
+                    is in this mode, so saving writes these settings to the radio. Channels are written when a
+                    mode is entered, from the banner.
                 </div>
                 <div v-else class="text-xs text-gray-500">
-                    Nothing here reaches the radio until this station enters {{ labelFor(tab) }}.
+                    <span class="font-medium">Save</span>, at the top of the page, saves this tab. Nothing here
+                    reaches the radio until this station enters {{ labelFor(tab) }}.
                 </div>
             </div>
 
@@ -219,12 +222,14 @@ import ModeProfiles, { MODES, MODE_CLASSES } from "../../js/modes/ModeProfiles.j
 import ModeSwitch from "../../js/modes/ModeSwitch.js";
 import SettingsSection from "../settings/SettingsSection.vue";
 import ContactsGroup from "../settings/ContactsGroup.vue";
+import OperatorSettingsGroup from "../settings/OperatorSettingsGroup.vue";
 
 export default {
     name: 'ModeSettingsTabs',
     components: {
         SettingsSection,
         ContactsGroup,
+        OperatorSettingsGroup,
     },
     props: {
         /** One mode only, with no tab strip: what the first run wizard asks for. */
@@ -283,6 +288,10 @@ export default {
             }
         },
         async save() {
+
+            if(this.profile == null){
+                return;
+            }
 
             ModeProfiles.saveProfile(this.tab, JSON.parse(JSON.stringify(this.profile)));
 

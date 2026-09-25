@@ -13,7 +13,7 @@
             <div v-if="step === 'intro'" class="p-3 space-y-2 text-sm text-gray-700">
                 <p>
                     This station has three modes, and each one holds its own node name, radio
-                    settings, channels and rooms. This walks through them once so they are ready
+                    settings and channels. This walks through them once so they are ready
                     before an incident, rather than being set up during one.
                 </p>
                 <ul class="list-disc pl-5 space-y-1 text-xs">
@@ -38,8 +38,8 @@
                 <p>Set up. Each mode holds its own settings, and you can come back to them from Settings at any time.</p>
                 <p v-if="radioName" class="text-xs text-gray-600">
                     The radio is still named <span class="font-semibold">{{ radioName }}</span>. Entering a mode
-                    writes that mode's name; to rename the radio now without switching mode, use the Name
-                    field on the Settings page.
+                    writes that mode's name. To rename it now, save the mode this station is already in: saving
+                    the mode in use writes it to the radio.
                 </p>
             </div>
 
