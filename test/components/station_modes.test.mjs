@@ -1030,6 +1030,42 @@ describe("the settings tabs", () => {
         expect(wrapper.text()).toContain("Channels are written when a mode is entered");
     });
 
+    // It had a section of its own, with a button that acted at once. It is a tick
+    // in Also now, because it is a mode setting like the others and saving the
+    // mode in use writes it — but it is the one tick with a consequence while the
+    // app is shut, so the explanation came with it.
+    it("carries the tick that answers from the radio itself, and says what it means", async () => {
+        const wrapper = mount(ModeSettingsTabs);
+        await flushPromises();
+        await open(wrapper, "normal");
+
+        expect(wrapper.text()).toContain("Answer from the radio itself");
+        expect(wrapper.text()).toContain("with this app closed");
+        expect(wrapper.text()).toContain("stock app");
+    });
+
+    it("writes that tick to the radio when the mode in use is saved", async () => {
+        quietRadio();
+        const wrapper = mount(ModeSettingsTabs);
+        await flushPromises();
+        await open(wrapper, "normal");
+
+        wrapper.vm.profile.radio.shareLocation = true;
+        await wrapper.vm.save();
+        await flushPromises();
+
+        expect(EmcommMode.applyRadioPolicies).toHaveBeenCalledWith(expect.objectContaining({ shareLocation: true }));
+    });
+
+    it("explains manual and automatic answering beside its tick", async () => {
+        const wrapper = mount(ModeSettingsTabs);
+        await flushPromises();
+        await open(wrapper, "normal");
+
+        expect(wrapper.text()).toContain("each request asks you first");
+        expect(wrapper.text()).toContain("the only choice is whether you are asked");
+    });
+
     it("has no Save of its own, and says where the one Save is", async () => {
         // two Save buttons on one page is one too many: the operator who pressed
         // the wrong one saved half of what they had changed

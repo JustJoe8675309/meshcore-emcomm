@@ -76,6 +76,12 @@
                     <label class="block text-xs text-gray-700">Transmit power (dBm)
                         <input v-model.number="profile.radio.txPower" type="number" class="mt-0.5 w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
                     </label>
+                    <!-- what the radio is at now, beside what this mode would set it
+                         to. There was a button elsewhere that raised it to maximum;
+                         it is this field and Save -->
+                    <div v-if="radioNow" class="text-xs text-gray-500">
+                        The radio is at {{ radioNow.txPower }} of {{ radioNow.maxTxPower }} dBm now.
+                    </div>
 
                 </div>
             </SettingsSection>
@@ -83,6 +89,10 @@
             <!-- Who is operating. Not part of a mode either: a drill does not put
                  someone else in the chair, so this reads the same in every tab. -->
             <OperatorSettingsGroup/>
+
+            <!-- where the station is, and its clock: the radio now, held by no
+                 mode, acting when pressed rather than waiting for Save -->
+            <RadioNowGroup/>
 
             <!-- Who the radio knows. Not part of a mode: a switch does not write
                  them and coming home does not take them away, so these read the
@@ -167,10 +177,25 @@
             <SettingsSection title="Also" note="Everything this mode turns on or off." sub>
                 <div class="p-2 space-y-2">
 
+                    <!-- a permission in the radio's own firmware, and the one
+                         tick here with a consequence when the app is shut -->
                     <label class="flex items-start space-x-2 text-xs text-gray-700">
                         <input v-model="profile.radio.shareLocation" type="checkbox" class="mt-0.5">
-                        <span>Share location with stations that ask</span>
+                        <span>Answer from the radio itself</span>
                     </label>
+                    <div class="pl-6 text-xs text-gray-500 space-y-1">
+                        <p>
+                            On, the radio answers any station asking for its position and battery voltage
+                            <span class="font-medium">by itself, with this app closed</span>, from a live GPS fix.
+                            It answers immediately and with no record, so it is the tick to think about if you
+                            would rather not be found.
+                        </p>
+                        <p>
+                            It is also how this app reaches a station whose own app is shut — it falls back to
+                            asking the radio after 30 seconds — and the only way a station running the stock app
+                            can ever get your position, since the datagrams this app sends are invisible to it.
+                        </p>
+                    </div>
                     <label class="flex items-start space-x-2 text-xs text-gray-700">
                         <input v-model="profile.radio.advertPosition" type="checkbox" class="mt-0.5">
                         <span>Put this station's position in every advert</span>
@@ -188,6 +213,13 @@
                         <input v-model="profile.autoAnswerPositions" type="checkbox" class="mt-0.5">
                         <span>Answer position requests automatically, without asking each time</span>
                     </label>
+                    <div class="pl-6 text-xs text-gray-500">
+                        Off, each request asks you first — send, send with a message to follow, or decline, and
+                        nothing goes out until you say so. On, the position goes with no prompt. Every channel
+                        this radio holds is answered, every room it is in, and any station asking directly: the
+                        only choice is whether you are asked. Each mode has its own, so a drill can answer by
+                        itself while everyday operating asks first.
+                    </div>
 
                     <label class="flex items-start space-x-2 text-xs text-gray-700">
                         <input v-model="profile.markDrill" type="checkbox" class="mt-0.5">
@@ -208,6 +240,10 @@
                             <input v-model.number="profile.adverts.floodMinutes" type="number" min="0" class="mt-0.5 w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
                         </label>
                     </div>
+
+                    <!-- and what they have actually done, which is the half a
+                         setting cannot tell you -->
+                    <AdvertProgressGroup v-if="tab === current"/>
 
                 </div>
             </SettingsSection>
@@ -246,6 +282,8 @@ import ModeSwitch from "../../js/modes/ModeSwitch.js";
 import SettingsSection from "../settings/SettingsSection.vue";
 import ContactsGroup from "../settings/ContactsGroup.vue";
 import OperatorSettingsGroup from "../settings/OperatorSettingsGroup.vue";
+import RadioNowGroup from "../settings/RadioNowGroup.vue";
+import AdvertProgressGroup from "../settings/AdvertProgressGroup.vue";
 
 export default {
     name: 'ModeSettingsTabs',
@@ -253,6 +291,8 @@ export default {
         SettingsSection,
         ContactsGroup,
         OperatorSettingsGroup,
+        RadioNowGroup,
+        AdvertProgressGroup,
     },
     props: {
         /** One mode only, with no tab strip: what the first run wizard asks for. */
@@ -436,6 +476,10 @@ export default {
         },
         canAddChannel() {
             return this.profile != null && this.newChannelName.trim() !== "" && this.profile.channels.length < 16;
+        },
+        /** The radio as it stands, for the readouts beside a mode's fields. */
+        radioNow() {
+            return GlobalState.selfInfo ?? null;
         },
         /** Whether this tab holds edits that are not written down yet. */
         unsaved() {

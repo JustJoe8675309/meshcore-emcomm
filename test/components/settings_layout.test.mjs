@@ -45,14 +45,16 @@ describe("the shape of the settings page", () => {
         expect(tabs).not.toContain("channelsOnly");
     });
 
-    it("keeps the live radio below the modes, and the operator inside them", () => {
-        expect(sectionTitles).toEqual(["This radio now", "Backups", "Commands"]);
+    it("is the modes, then what is not about the radio at all", () => {
+        // "This radio now" is gone: most of it was the mode's own settings a
+        // second time, and what was left — the position and the clock — is in the
+        // tabs with the operator and the contacts
+        expect(sectionTitles).toEqual(["Backups", "Commands"]);
 
-        // Operator moved under Radio, inside the tabs, where it reads the same in
-        // every mode: a drill does not put someone else in the chair
         const tabs = readFileSync(resolve("src/components/modes/ModeSettingsTabs.vue"), "utf8");
         expect(tabs.indexOf("<OperatorSettingsGroup/>")).toBeGreaterThan(tabs.indexOf('title="Radio"'));
-        expect(tabs.indexOf("<OperatorSettingsGroup/>")).toBeLessThan(tabs.indexOf('kind="companion"'));
+        expect(tabs.indexOf("<RadioNowGroup/>")).toBeGreaterThan(tabs.indexOf("<OperatorSettingsGroup/>"));
+        expect(tabs.indexOf("<RadioNowGroup/>")).toBeLessThan(tabs.indexOf('kind="companion"'));
     });
 
     it("keeps the setup wizard with the other things you go and do", () => {
@@ -91,19 +93,24 @@ describe("the shape of the settings page", () => {
     });
 
     it("has one place to edit each thing", () => {
-        // The three groups that each used to edit the radio are gone, and so is
-        // the copy that replaced them: a mode's fields are edited on its tab, and
-        // saving the mode the station is in writes them to the radio. Transmit
-        // power was once editable in three groups on this page.
+        // Transmit power was once editable in three groups on this page, then in
+        // two, and the second copy only existed because saving a mode did not
+        // reach the radio. The page edits nothing about the radio at all now.
         expect(source).not.toContain(">Public Info<");
         expect(source).not.toContain(">Radio Settings<");
         expect(source).not.toContain("Transmit Power (dBm)");
         expect(source).not.toContain('v-model="radioFreq"');
         expect(source).not.toContain('v-model="name"');
+        expect(source).not.toContain('v-model="latitude"');
+        expect(source).not.toContain("EmcommSettingsGroup");
+        expect(source).not.toContain("PositionSettingsGroup");
+    });
 
-        // what is left is what no mode holds: where the station is
-        expect((source.match(/v-model="latitude"/g) ?? []).length).toBe(1);
-        expect((source.match(/v-model="longitude"/g) ?? []).length).toBe(1);
+    it("keeps each of those settings, in the mode tab, once", () => {
+        const tabs = readFileSync(resolve("src/components/modes/ModeSettingsTabs.vue"), "utf8");
+        for(const once of ["Transmit power (dBm)", "Answer from the radio itself", "Add contacts automatically"]){
+            expect((tabs.match(new RegExp(once.replace(/[()]/g, "\\$&"), "g")) ?? []).length, once).toBe(1);
+        }
     });
 
     it("no longer has two headings called Emcomm", () => {
@@ -113,11 +120,11 @@ describe("the shape of the settings page", () => {
         expect(sectionTitles.filter((t) => /emcomm/i.test(t))).toEqual([]);
     });
 
-    it("says what is left here is not a mode's, and where the rest went", () => {
-        const live = source.match(/<SettingsSection title="This radio now"[\s\S]{0,400}?>/)?.[0] ?? "";
-        expect(live).toContain("Not held by a mode");
-        // and the operator is told where the fields that left have gone
-        expect(source).toContain("set on its tab above");
+    it("says which of the tab's groups are not the mode's", () => {
+        const tabs = readFileSync(resolve("src/components/modes/ModeSettingsTabs.vue"), "utf8");
+        const group = readFileSync(resolve("src/components/settings/RadioNowGroup.vue"), "utf8");
+        expect(group).toContain("Not part of a mode");
+        expect(tabs).toContain("Not part of a mode");
     });
 
 });
@@ -237,20 +244,21 @@ describe("a live change and the mode in use", () => {
         expect(ModeProfiles.profile("training", NODE)).toBe(null);
     });
 
-    it("is not needed by this page any more, which only writes the position", () => {
+    it("is not needed by this page at all any more", () => {
         // the page used to hold a second copy of every mode field, so it wrote the
         // radio and then told the mode. The mode tab does both now
-        expect(source).toContain("Connection.setAdvertLatLong(latitude, longitude)");
         expect(source).not.toContain("Connection.setTxPower");
         expect(source).not.toContain("Connection.setRadioParams");
+        expect(source).not.toContain("Connection.setAdvertLatLong");
         expect(source).not.toContain("ModeProfiles.noteRadioSettings({");
     });
 
-    it("is called by the live toggles too, which change the radio one at a time", () => {
-        const group = readFileSync(resolve("src/components/settings/EmcommSettingsGroup.vue"), "utf8");
-        expect(group).toContain("noteRadioSettings({ txPower: power })");
-        expect(group).toContain("noteRadioSettings({ shareLocation: turningOn })");
-        expect(group).toContain("noteRadioSettings({ autoAddContacts: !turningOff })");
+    // The live toggles that used to call it are gone: they were the mode's own
+    // settings a second time, each with a button that wrote the radio and then
+    // told the mode. Saving the mode in use does both, in one press.
+    it("is no longer called from anywhere but a mode save", () => {
+        const group = readFileSync(resolve("src/components/settings/RadioNowGroup.vue"), "utf8");
+        expect(group).not.toContain("noteRadioSettings");
     });
 
 });

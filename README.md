@@ -778,13 +778,20 @@ channel works the new key out from the new name, since that is where a # channel
 from, and a private channel's key has to be 32 hex characters — a short one is not refused by the
 radio, it simply hears nothing.
 
+**Position and Clock are folds in the tab too**, beside Operator and the contact groups, and for
+the same reason: where the station is and what its clock says are facts about the radio, not
+settings a mode writes. They act when you press them rather than waiting for Save.
+
+There was a whole section below the tabs called "This radio now", and most of it was the mode's
+own settings a second time: transmit power, location sharing, automatic contacts, the advert
+intervals, position answering, each with a button that wrote the radio and then told the mode.
+They existed because saving a mode did not reach the radio. Saving the mode in use does, so the
+duplicates are gone and each setting is in one place — its mode's tab — with the readouts beside
+the fields they describe: what power the radio is at now, and what the repeating adverts have
+actually sent.
+
 Below the tabs, folded:
 
-- **This radio now** — what no mode holds: where the station is, and the one-press jobs against
-  the radio as it stands — raise to maximum power, set the position from a live GPS fix, sync the
-  clock, what the repeating adverts have actually sent, and Manual or Auto reply to position
-  requests. The station's position stays as it is through every switch, which is why it is here
-  and not on a mode tab.
 - **Backups**, and **Commands** — the RX Log, Reboot, and the **Setup wizard**, which walks
   through the three modes one at a time. It runs by itself the first time this browser sees a
   radio; the row is how to run it again, for a station handed to someone who has not used the app.

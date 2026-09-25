@@ -64,41 +64,6 @@
                          what it comes home to. -->
                     <ModeSettingsTabs ref="modes"/>
 
-                    <!-- What is not a mode, and so has nowhere else to live: where
-                         this station is, and the one press jobs against the radio as
-                         it stands. The mode fields used to be repeated here too,
-                         because saving a mode did not reach the radio. Saving the
-                         mode in use does now, so they are gone from here. -->
-                    <SettingsSection title="This radio now"
-                                     note="Where this station is, and jobs done to the radio as it stands. Not held by a mode.">
-
-                        <div class="bg-white divide-y">
-
-                            <div class="w-full p-2">
-                                <div class="block mb-2 text-sm font-medium text-gray-900">Latitude</div>
-                                <input v-model="latitude" type="number" placeholder="e.g: -38.664646" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                            </div>
-
-                            <div class="w-full p-2">
-                                <div class="block mb-2 text-sm font-medium text-gray-900">Longitude</div>
-                                <input v-model="longitude" type="number" placeholder="e.g: 178.023507" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                            </div>
-
-                            <div class="w-full p-2 text-xs text-gray-500">
-                                Where the station is, which is a fact about the station rather than a mode:
-                                it stays as it is through every switch. The node name, frequency, bandwidth,
-                                spreading factor, coding rate and transmit power belong to a mode, and are
-                                set on its tab above.
-                            </div>
-
-                        </div>
-
-                        <EmcommSettingsGroup bare/>
-
-                        <PositionSettingsGroup bare/>
-
-                    </SettingsSection>
-
                     <SettingsSection title="Backups"
                                      note="Contacts, channels and their keys, and the radio settings.">
 
@@ -291,17 +256,15 @@ import AdvertSchedule from "../../js/AdvertSchedule.js";
 import PositionService from "../../js/position/PositionService.js";
 import NodeBackup from "../../js/NodeBackup.js";
 import EmcommMode from "../../js/EmcommMode.js";
-import EmcommSettingsGroup from "../settings/EmcommSettingsGroup.vue";
 import SettingsSection from "../settings/SettingsSection.vue";
 import ModeSettingsTabs from "../modes/ModeSettingsTabs.vue";
 import FirstRunSetup from "../modes/FirstRunSetup.vue";
 import ModeProfiles from "../../js/modes/ModeProfiles.js";
 import BusyOverlay from "../BusyOverlay.vue";
-import PositionSettingsGroup from "../settings/PositionSettingsGroup.vue";
 
 export default {
     name: 'SettingsPage',
-    components: {Page, SaveButton, AppBar, EmcommSettingsGroup, BusyOverlay, PositionSettingsGroup, ModeSettingsTabs, FirstRunSetup, SettingsSection},
+    components: {Page, SaveButton, AppBar, BusyOverlay, ModeSettingsTabs, FirstRunSetup, SettingsSection},
     data() {
         return {
             firstRunOpen: false,
@@ -312,8 +275,6 @@ export default {
             // nothing else on the page could be read while it was up
             saveMessage: null,
             saveError: null,
-            latitude: null,
-            longitude: null,
             deviceInfo: null,
             loadError: null,
             // a read of the radio's settings is in flight
@@ -600,15 +561,6 @@ Settings, channels and ${backup.contacts.length} contacts will be written to thi
                 return;
             }
 
-            // convert latitude and longitude from integer to decimal
-            // e.g: -38664646, 178023507 -> -38.664646, 178.023507
-            // 0, 0 is how a node with no position reports, and it is a real place in
-            // the Gulf of Guinea. Shown as blank, as the EMCOMM group already calls it
-            // "Not set". Saving blank writes 0, 0 again, so the position stays unset
-            const unset = GlobalState.selfInfo.advLat === 0 && GlobalState.selfInfo.advLon === 0;
-            this.latitude = unset ? null : GlobalState.selfInfo.advLat / 1000000;
-            this.longitude = unset ? null : GlobalState.selfInfo.advLon / 1000000;
-
             this.hasLoaded = true;
             this.isLoading = false;
 
@@ -638,25 +590,12 @@ Settings, channels and ${backup.contacts.length} contacts will be written to thi
 
             try {
 
-                // a blank field means no position, which the radio stores as zero. A
-                // number box that has been cleared holds "", not null, so both count
-                const latitudeInput = this.latitude == null || this.latitude === "" ? 0 : this.latitude;
-                const longitudeInput = this.longitude == null || this.longitude === "" ? 0 : this.longitude;
-
-                // convert latitude and longitude from decimal to integer
-                // e.g: -38.664646, 178.023507 -> -38664646, 178023507
-                const latitude = Math.floor(latitudeInput * 1000000);
-                const longitude = Math.floor(longitudeInput * 1000000);
-
-                await Connection.setAdvertLatLong(latitude, longitude);
-
-                // reload self info: the radio owns what it holds, and the fields
-                // here show what it says
-                await Connection.loadSelfInfo(Connection.READ_TIMEOUT_MILLIS);
-
-                // and the mode tab on show, which used to carry a Save of its own.
-                // Two Save buttons on one page is one too many: an operator who
-                // pressed the wrong one saved half of what they had changed.
+                // The one Save on the page, and it saves the mode tab on show.
+                //
+                // Everything else here acts when it is pressed: the operator's
+                // details as they are typed, the contacts, the position and the
+                // clock. Those are not promises about a mode, so there is nothing
+                // for a Save to hold back.
                 await this.$refs.modes?.save();
 
                 this.saveMessage = "Saved.";

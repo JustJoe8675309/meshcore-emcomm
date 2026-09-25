@@ -8,13 +8,11 @@
 // back as it was. meshcore.js sends only the first of them.
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mount, flushPromises } from "@vue/test-utils";
 import { Constants } from "@liamcottle/meshcore.js";
 import Connection from "../../src/js/Connection.js";
 import EmcommMode from "../../src/js/EmcommMode.js";
 import NodeBackup from "../../src/js/NodeBackup.js";
 import GlobalState from "../../src/js/GlobalState.js";
-import EmcommSettingsGroup from "../../src/components/settings/EmcommSettingsGroup.vue";
 import SettingsPage from "../../src/components/pages/SettingsPage.vue";
 
 const KEY = new Uint8Array(32).fill(0x39);
@@ -160,31 +158,7 @@ describe("leaving EMCOMM mode puts sharing back", () => {
 
 });
 
-describe("the EMCOMM settings group", () => {
-
-    afterEach(() => {
-        vi.restoreAllMocks();
-        GlobalState.connection = null;
-        GlobalState.selfInfo = null;
-    });
-
-    it("shows location sharing and turns it on", async () => {
-        GlobalState.connection = { on() {}, off() {} };
-        GlobalState.selfInfo = selfInfo();
-        vi.spyOn(Connection, "getDeviceTime").mockResolvedValue(null);
-        vi.spyOn(Connection, "loadSelfInfo").mockResolvedValue(undefined);
-        const share = vi.spyOn(EmcommMode, "setLocationSharing").mockResolvedValue(undefined);
-        const wrapper = mount(EmcommSettingsGroup);
-        await flushPromises();
-        // named for what it does rather than for the firmware flag: the radio
-        // answers by itself, with this app closed, which is the part that matters
-        expect(wrapper.text()).toContain("Answer from the radio itself");
-        expect(wrapper.text()).toContain("with this app closed");
-        expect(wrapper.text()).toContain("Off");
-        const button = wrapper.findAll("button").find((b) => b.text() === "Turn on" && b.element.closest("div").textContent.includes("Answer from the radio itself"));
-        await button.trigger("click");
-        await flushPromises();
-        expect(share).toHaveBeenCalledWith(true);
-    });
-
-});
+// The toggle that used to live in a section of its own is a tick in the mode
+// tab's Also fold now, with the same explanation beside it, and it reaches the
+// radio when the mode in use is saved. Covered in station_modes.test.mjs,
+// "the tick that answers from the radio itself".

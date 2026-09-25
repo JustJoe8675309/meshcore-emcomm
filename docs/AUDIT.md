@@ -487,6 +487,17 @@ size turned up, not just at a narrow window.
 - [ ] **Save says so on the page**, in a green line, and a failure in a red one.
       Nothing blocks the tab: an alert stopped everything until it was dismissed,
       so a slow radio and a finished save looked the same.
+- [ ] **Each setting is in one place.** Transmit power, "Answer from the radio
+      itself", automatic contacts, the advert intervals and position answering
+      appear on the mode tab and nowhere else. There is no "This radio now"
+      section below the tabs.
+- [ ] **Position and Clock are folds in the tab**, and act when pressed: write a
+      position, take a live GPS fix, sync the clock, all without Save. They read
+      the same in every mode tab.
+- [ ] **The readouts sit beside their fields**: "The radio is at X of Y dBm now"
+      under the transmit power field, and what the repeating adverts have
+      actually sent under the interval fields.
+
 - [ ] **A tab keeps what was typed into it.** Change the power on one mode's tab,
       look at another mode, come back: it is still there and the tab says "Not
       saved yet". Save, and that line goes. A page reload starts again from what

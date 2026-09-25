@@ -13,7 +13,6 @@ import PositionService, { GROUP_MIN_INTERVAL_MINUTES } from "../../src/js/positi
 import GroupPositionDialog from "../../src/components/position/GroupPositionDialog.vue";
 import PositionsPanel from "../../src/components/position/PositionsPanel.vue";
 import PositionPrompt from "../../src/components/position/PositionPrompt.vue";
-import PositionSettingsGroup from "../../src/components/settings/PositionSettingsGroup.vue";
 import Connection from "../../src/js/Connection.js";
 import Database from "../../src/js/Database.js";
 import NotificationUtils from "../../src/js/NotificationUtils.js";
@@ -646,25 +645,18 @@ describe("the settings, for rooms", () => {
         connect();
     });
 
-    it("offers manual or auto, and nothing else to choose", async () => {
-        const wrapper = mount(PositionSettingsGroup);
-
-        // no list of channels or rooms to pick from any more
-        expect(wrapper.text()).not.toContain("Answer in these rooms");
-        expect(wrapper.text()).not.toContain("Answer on these channels");
-
-        const labels = wrapper.findAll("button").map((b) => b.text());
-        expect(labels).toEqual(["Manual reply", "Auto reply"]);
-    });
-
-    it("saves the choice, and says what it means", async () => {
-        const wrapper = mount(PositionSettingsGroup);
+    // The Manual / Auto pair had a group of its own, which was the mode's own
+    // "answer automatically" tick over again. It is that tick now, in the Also
+    // fold, with its explanation beside it — see station_modes.test.mjs,
+    // "explains manual and automatic answering beside its tick".
+    it("is the mode's own setting, and there is nothing else to choose", () => {
+        // no list of channels or rooms to pick from, and none to pick from anywhere
         expect(PositionService.settings().autoAnswer).toBe(false);
-        expect(wrapper.text()).toContain("each request asks you first");
+        expect(PositionService.answersOn({ kind: "channel", idx: 3 })).toBe(true);
+        expect(PositionService.answersOn({ kind: "direct" })).toBe(true);
 
-        await wrapper.findAll("button").find((b) => b.text() === "Auto reply").trigger("click");
+        PositionService.saveSettings({ autoAnswer: true });
         expect(PositionService.settings().autoAnswer).toBe(true);
-        expect(wrapper.text()).toContain("with no prompt");
     });
 
 });

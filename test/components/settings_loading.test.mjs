@@ -50,12 +50,10 @@ function mountPage() {
 }
 
 const saveButton = (wrapper) => wrapper.findAll("button").find((b) => ["Save", "Saving..."].includes(b.text().trim()));
-const latitudeField = (wrapper) => wrapper.findAll("input").find((i) => i.attributes("placeholder") === "e.g: -38.664646");
 
 describe("SettingsPage while reading the radio", () => {
 
     let read;
-    let setPosition;
 
     beforeEach(() => {
         window.localStorage.clear();
@@ -67,7 +65,7 @@ describe("SettingsPage while reading the radio", () => {
             GlobalState.selfInfo = await read.promise;
         });
         vi.spyOn(Connection, "deviceQuery").mockResolvedValue(null);
-        setPosition = vi.spyOn(Connection, "setAdvertLatLong").mockResolvedValue(undefined);
+        vi.spyOn(Connection, "setAdvertLatLong").mockResolvedValue(undefined);
     });
 
     afterEach(() => {
@@ -82,7 +80,6 @@ describe("SettingsPage while reading the radio", () => {
 
         expect(wrapper.text()).toContain("Reading settings from the radio");
         expect(saveButton(wrapper).attributes("disabled")).toBeDefined();
-        expect(latitudeField(wrapper).element.value).toBe("");
     });
 
     it("reads with the short bound, so a silent radio is reported in seconds", async () => {
@@ -93,17 +90,16 @@ describe("SettingsPage while reading the radio", () => {
         expect(Connection.loadSelfInfo).toHaveBeenCalledWith(Connection.READ_TIMEOUT_MILLIS);
     });
 
-    it("fills the fields and turns Save on once the radio answers", async () => {
+    it("turns Save on once the radio answers", async () => {
         const wrapper = mountPage();
         read.resolve(SELF_INFO);
         await flushPromises();
 
-        expect(latitudeField(wrapper).element.value).toBe("31.926949");
         expect(wrapper.text()).not.toContain("Reading settings from the radio");
         expect(saveButton(wrapper).attributes("disabled")).toBeUndefined();
     });
 
-    it("fills the fields without waiting for the firmware details", async () => {
+    it("is ready without waiting for the firmware details", async () => {
         // those are one more turn in the queue, and nothing in the form needs them
         Connection.deviceQuery.mockReturnValue(new Promise(() => {}));
 
@@ -111,7 +107,6 @@ describe("SettingsPage while reading the radio", () => {
         read.resolve(SELF_INFO);
         await flushPromises();
 
-        expect(latitudeField(wrapper).element.value).toBe("31.926949");
         expect(saveButton(wrapper).attributes("disabled")).toBeUndefined();
     });
 
@@ -125,14 +120,16 @@ describe("SettingsPage while reading the radio", () => {
         expect(saveButton(wrapper).attributes("disabled")).toBeDefined();
     });
 
-    it("writes nothing if save is reached before the fields have loaded", async () => {
+    it("writes nothing if save is reached before the radio has answered", async () => {
         // the button is disabled, but save must not trust that it is the only way in
+        Connection.loadSelfInfo.mockImplementation(() => new Promise(() => {}));
         const wrapper = mountPage();
         await flushPromises();
 
+        const savedTab = vi.spyOn(wrapper.findComponent(ModeSettingsTabs).vm, "save").mockResolvedValue(undefined);
         await wrapper.vm.save();
 
-        expect(setPosition).not.toHaveBeenCalled();
+        expect(savedTab).not.toHaveBeenCalled();
     });
 
     it("turns Save off again when a later re-read fails", async () => {
@@ -174,52 +171,14 @@ describe("SettingsPage position fields", () => {
         GlobalState.selfInfo = null;
     });
 
-    const withPosition = (advLat, advLon) => vi.spyOn(Connection, "loadSelfInfo").mockImplementation(async () => {
-        GlobalState.selfInfo = { ...SELF_INFO, advLat, advLon };
-    });
-
-    const field = (wrapper, placeholder) => wrapper.findAll("input").find((i) => i.attributes("placeholder") === placeholder);
-
-    it("shows no position as blank, not as a place in the Gulf of Guinea", async () => {
-        withPosition(0, 0);
+    // Where this station is moved into the mode tabs with the clock, and is
+    // written when pressed rather than by Save. Covered in radio_now.test.mjs.
+    it("has no fields of its own to fill", async () => {
         const wrapper = mountPage();
         await flushPromises();
-
-        expect(field(wrapper, "e.g: -38.664646").element.value).toBe("");
-        expect(field(wrapper, "e.g: 178.023507").element.value).toBe("");
+        expect(wrapper.findAll("input[type=number]")).toHaveLength(0);
     });
 
-    it("still shows a real position", async () => {
-        withPosition(31926949, -106400091);
-        const wrapper = mountPage();
-        await flushPromises();
-
-        expect(field(wrapper, "e.g: -38.664646").element.value).toBe("31.926949");
-        expect(field(wrapper, "e.g: 178.023507").element.value).toBe("-106.400091");
-    });
-
-    it("keeps no position unset when saved blank", async () => {
-        withPosition(0, 0);
-        const wrapper = mountPage();
-        await flushPromises();
-
-        await wrapper.vm.save();
-
-        expect(latLong).toHaveBeenCalledWith(0, 0);
-    });
-
-    it("treats a cleared field the same as an empty one", async () => {
-        // a number box that has been cleared holds "" rather than null
-        withPosition(31926949, -106400091);
-        const wrapper = mountPage();
-        await flushPromises();
-        await field(wrapper, "e.g: -38.664646").setValue("");
-        await field(wrapper, "e.g: 178.023507").setValue("");
-
-        await wrapper.vm.save();
-
-        expect(latLong).toHaveBeenCalledWith(0, 0);
-    });
 
 });
 
@@ -250,7 +209,7 @@ describe("the one Save", () => {
         GlobalState.selfInfo = null;
     });
 
-    it("saves the mode tab on show as well as the position", async () => {
+    it("saves the mode tab on show", async () => {
         const wrapper = mountPage();
         await flushPromises();
 
@@ -259,12 +218,10 @@ describe("the one Save", () => {
 
         await wrapper.vm.save();
 
-        expect(Connection.setAdvertLatLong).toHaveBeenCalled();
         expect(savedTab).toHaveBeenCalled();
     });
 
-    it("does neither before the radio has answered", async () => {
-        // the fields are blank then, and a blank position is written as 0, 0
+    it("does not before the radio has answered", async () => {
         Connection.loadSelfInfo.mockImplementation(() => new Promise(() => {}));
         const wrapper = mountPage();
         await flushPromises();
@@ -274,7 +231,6 @@ describe("the one Save", () => {
 
         await wrapper.vm.save();
 
-        expect(Connection.setAdvertLatLong).not.toHaveBeenCalled();
         expect(savedTab).not.toHaveBeenCalled();
     });
 

@@ -15,7 +15,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mount } from "@vue/test-utils";
 import AdvertSchedule from "../../src/js/AdvertSchedule.js";
 import GlobalState from "../../src/js/GlobalState.js";
-import EmcommSettingsGroup from "../../src/components/settings/EmcommSettingsGroup.vue";
+import AdvertProgressGroup from "../../src/components/settings/AdvertProgressGroup.vue";
 
 const NODE = "aa".repeat(32);
 const OTHER = "bb".repeat(32);
@@ -281,7 +281,7 @@ describe("the settings group reports it", () => {
     it("says when the first one is due before any has gone", async () => {
         AdvertSchedule.set(NODE, { zeroHopMinutes: 1, floodMinutes: 0 });
         AdvertSchedule.start(NODE);
-        const wrapper = mount(EmcommSettingsGroup);
+        const wrapper = mount(AdvertProgressGroup);
         await wrapper.vm.$nextTick();
 
         expect(wrapper.text()).toContain("Zero hop: first due");
@@ -291,7 +291,7 @@ describe("the settings group reports it", () => {
         AdvertSchedule.set(NODE, { zeroHopMinutes: 1, floodMinutes: 0 });
         AdvertSchedule.start(NODE);
         GlobalState.advertLastSent = { zeroHop: Date.now(), flood: null };
-        const wrapper = mount(EmcommSettingsGroup);
+        const wrapper = mount(AdvertProgressGroup);
         await wrapper.vm.$nextTick();
 
         expect(wrapper.text()).toContain("Zero hop: last sent");
@@ -303,7 +303,7 @@ describe("the settings group reports it", () => {
         AdvertSchedule.start(NODE);
         const sent = Date.now();
         GlobalState.advertLastSent = { zeroHop: sent, flood: null };
-        const wrapper = mount(EmcommSettingsGroup);
+        const wrapper = mount(AdvertProgressGroup);
 
         // ten minutes on: what the bench saw with the phone locked
         wrapper.vm.now = sent + 10 * 60 * 1000;
@@ -318,14 +318,14 @@ describe("the settings group reports it", () => {
     it("warns when the screen cannot be kept on", async () => {
         AdvertSchedule.set(NODE, { zeroHopMinutes: 1, floodMinutes: 0 });
         AdvertSchedule.start(NODE);
-        const wrapper = mount(EmcommSettingsGroup);
+        const wrapper = mount(AdvertProgressGroup);
         await wrapper.vm.$nextTick();
 
         expect(wrapper.text()).toContain("This browser cannot keep the screen on");
     });
 
     it("says nothing about the screen when nothing is scheduled", async () => {
-        const wrapper = mount(EmcommSettingsGroup);
+        const wrapper = mount(AdvertProgressGroup);
         await wrapper.vm.$nextTick();
 
         expect(wrapper.text()).not.toContain("screen");
