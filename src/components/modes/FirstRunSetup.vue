@@ -1,9 +1,9 @@
 <template>
     <div v-if="open" class="fixed inset-0 z-50 flex bg-black/40 p-3 overflow-y-auto" @click.self="skip">
-        <div role="dialog" aria-label="Set up this station" class="m-auto w-full max-w-lg bg-white rounded-lg shadow divide-y">
+        <div role="dialog" aria-label="Setup wizard" class="m-auto w-full max-w-lg bg-white rounded-lg shadow divide-y">
 
             <div class="p-3">
-                <div class="font-semibold">Set up this station</div>
+                <div class="font-semibold">Setup wizard</div>
                 <div class="text-xs text-gray-500">
                     Step {{ stepNumber }} of {{ steps.length }}<span v-if="stepMode"> · {{ labelFor(stepMode) }}</span>
                 </div>

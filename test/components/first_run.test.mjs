@@ -75,7 +75,7 @@ describe("the first run walkthrough", () => {
 
     it("opens on what this is, and says the radio is not being written to", () => {
         const wrapper = mountWizard();
-        expect(wrapper.text()).toContain("Set up this station");
+        expect(wrapper.text()).toContain("Setup wizard");
         expect(wrapper.text()).toContain("Nothing here is written to the radio");
         expect(shownMode(wrapper)).toBe(null);
     });
@@ -213,7 +213,7 @@ describe("when the walkthrough is offered", () => {
         });
     }
 
-    const wizardShowing = (wrapper) => wrapper.text().includes("Set up this station");
+    const wizardShowing = (wrapper) => wrapper.text().includes("Setup wizard");
 
     beforeEach(() => {
         window.localStorage.clear();

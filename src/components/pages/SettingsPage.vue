@@ -57,14 +57,6 @@
                          what it comes home to. -->
                     <ModeSettingsTabs ref="modes"/>
 
-                    <!-- the walkthrough again, for a station set up in a hurry -->
-                    <div class="bg-white p-2 border-t">
-                        <button @click="firstRunOpen = true" type="button"
-                                class="w-full text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 font-medium rounded-lg text-sm px-4 py-2">
-                            Walk through the modes again
-                        </button>
-                    </div>
-
                     <!-- What is not a mode, and so has nowhere else to live: where
                          this station is, and the one press jobs against the radio as
                          it stands. The mode fields used to be repeated here too,
@@ -194,6 +186,34 @@
 
                     <!-- commands -->
                     <div class="flex flex-col divide-y bg-white">
+
+                        <!-- The first run walkthrough, on demand. It sat as a full
+                             width button between the tabs and the live settings,
+                             which read as part of the form above it. It is a thing
+                             you go and do, like the RX Log, so it is a row here. -->
+                        <div @click="firstRunOpen = true" class="flex cursor-pointer px-2 py-3 bg-white hover:bg-gray-50">
+
+                            <!-- leading -->
+                            <div class="my-auto ml-2 mr-4 text-gray-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.091 3.091ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.455L18 2.25l.259 1.036a3.375 3.375 0 0 0 2.456 2.455L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
+                                </svg>
+                            </div>
+
+                            <!-- title -->
+                            <div class="my-auto mr-auto">
+                                <div>Setup wizard</div>
+                                <div class="text-xs text-gray-500">Walks through the three modes, one at a time</div>
+                            </div>
+
+                            <!-- trailing -->
+                            <div class="my-auto mr-2 text-gray-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                                </svg>
+                            </div>
+
+                        </div>
 
                         <RouterLink :to="{ name: 'rxlog' }">
                             <div class="flex cursor-pointer px-2 py-3 bg-white hover:bg-gray-50">

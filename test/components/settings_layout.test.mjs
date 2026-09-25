@@ -55,6 +55,18 @@ describe("the shape of the settings page", () => {
         expect(tabs.indexOf("<OperatorSettingsGroup/>")).toBeLessThan(tabs.indexOf('kind="companion"'));
     });
 
+    it("keeps the setup wizard with the other things you go and do", () => {
+        // it was a full width button between the tabs and the live settings, where
+        // it read as part of the form above it. It is an errand, like the RX Log
+        const commands = source.slice(source.indexOf('<SettingsSection title="Commands"'));
+        expect(commands).toContain("Setup wizard");
+        expect(commands).toContain('@click="firstRunOpen = true"');
+        expect(source).not.toContain("Walk through the modes again");
+        // and the wizard calls itself the same thing the row does
+        const wizard = readFileSync(resolve("src/components/modes/FirstRunSetup.vue"), "utf8");
+        expect(wizard).toContain(">Setup wizard<");
+    });
+
     it("has one Save, which saves the page and the mode tab on show", () => {
         // it used to have two: the corner one for the live fields, and one inside
         // the tab for the mode

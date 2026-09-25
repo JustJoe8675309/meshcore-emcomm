@@ -474,6 +474,8 @@ size turned up, not just at a narrow window.
       prefills with it. There is no Save in that group.
 - [ ] **There is one Save**, at the top of the page. It saves the tab on show and
       the position together, and there is no second Save inside the tab.
+- [ ] **Setup wizard is a row under Commands**, with the RX Log and Reboot, and
+      opens the same walkthrough that runs on a first connection.
 - [ ] **The contact groups read the same in all three tabs**, and each says it is
       not part of a mode. Switch modes and look again: the same contacts.
 - [ ] **Rename a repeater** from its group, then pull the contact list down: the

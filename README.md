@@ -780,7 +780,10 @@ Below the tabs, folded:
   clock, what the repeating adverts have actually sent, and Manual or Auto reply to position
   requests. The station's position stays as it is through every switch, which is why it is here
   and not on a mode tab.
-- **Backups**, and **Commands**.
+- **Backups**, and **Commands** — the RX Log, Reboot, and the **Setup wizard**, which walks
+  through the three modes one at a time. It runs by itself the first time this browser sees a
+  radio; the row is how to run it again, for a station handed to someone who has not used the app.
+  It teaches rather than adding anything: everything in it is on the tabs above.
 
 Every setting is in one place. The page used to carry a second copy of every mode field here,
 because saving a mode did not reach the radio; now that it does, the copy is gone. Before that it
