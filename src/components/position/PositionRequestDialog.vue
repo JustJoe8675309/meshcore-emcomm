@@ -60,7 +60,7 @@
 
             <div v-if="repeats" class="text-xs text-gray-500">
                 That is {{ askCount }} request{{ askCount === 1 ? "" : "s" }} if nobody answers, the last one
-                about {{ lastAskAfter }} minutes from now.
+                about {{ lastAskAfter }} minute{{ lastAskAfter === 1 ? "" : "s" }} from now.
             </div>
 
             <div v-if="intervalTooShort" role="status" class="text-xs text-red-600">
@@ -71,8 +71,9 @@
                 give it at least {{ interval }} minutes.
             </div>
             <div v-else-if="intervalCaution" role="status" class="text-xs text-amber-800">
-                Every request floods the whole mesh, like a flood advert. Under {{ cautionInterval }} minutes
-                is a lot of traffic on a busy net.
+                <span v-if="floods">Every request floods the whole mesh, like a flood advert.</span>
+                <span v-else>Every request goes out to that station and comes back.</span>
+                Under {{ cautionInterval }} minutes is a lot of traffic on a busy net.
             </div>
 
             <div v-if="repeats" class="text-xs text-gray-500">
@@ -103,6 +104,7 @@
 <script>
 import GlobalState from "../../js/GlobalState.js";
 import PositionService, { MIN_INTERVAL_MINUTES, CAUTION_INTERVAL_MINUTES, INTERVAL_CHOICES } from "../../js/position/PositionService.js";
+import PathInfo from "../../js/PathInfo.js";
 
 export default {
     name: 'PositionRequestDialog',
@@ -206,6 +208,22 @@ export default {
         },
         intervalCaution() {
             return this.repeats && this.interval < CAUTION_INTERVAL_MINUTES;
+        },
+        /**
+         * Whether a request would be flooded across the whole mesh.
+         *
+         * A channel or a room is a group message, which floods. A direct request
+         * goes along the path to that station when the radio knows one, and only
+         * floods when it does not. Saying "floods the whole mesh" of a direct
+         * request to a station one hop away — which is what the bench was doing —
+         * talks an operator out of asking when the cost is two packets.
+         */
+        floods() {
+            if(this.viaKey !== "direct"){
+                return true;
+            }
+            const path = PathInfo.decode(this.target?.outPathLen);
+            return path == null || path.flood;
         },
         canSend() {
             return !this.notConnected && !this.intervalTooShort && !this.windowTooShort;

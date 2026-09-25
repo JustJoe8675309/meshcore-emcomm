@@ -1123,6 +1123,41 @@ describe("the request form", () => {
         expect(wrapper.text()).toContain("25 minutes from now");
     });
 
+    // A channel or a room is a group message, which floods. A direct request goes
+    // along the path the radio knows to that station, and only floods without one.
+    it("warns about flooding only when the request would flood", async () => {
+        const wrapper = mount(PositionRequestDialog, { global: { mocks: { $router: { push() {} } } } });
+        PositionService.openRequest({ ...THEM_CONTACT, outPathLen: 0 });
+        await flushPromises();
+
+        wrapper.vm.modeType = "preset";
+        wrapper.vm.presetInterval = 1;
+        wrapper.vm.presetFor = 30;
+        await flushPromises();
+
+        // one hop away, asked directly: two packets, not a flood
+        expect(wrapper.text()).toContain("goes out to that station and comes back");
+        expect(wrapper.text()).not.toContain("floods the whole mesh");
+
+        // the same station asked on a channel is a group message
+        wrapper.vm.viaKey = "channel:0";
+        await flushPromises();
+        expect(wrapper.text()).toContain("floods the whole mesh");
+    });
+
+    it("says minute rather than minutes when there is one", async () => {
+        const wrapper = mount(PositionRequestDialog, { global: { mocks: { $router: { push() {} } } } });
+        PositionService.openRequest(THEM_CONTACT);
+        await flushPromises();
+
+        wrapper.vm.modeType = "preset";
+        wrapper.vm.presetInterval = 1;
+        wrapper.vm.presetFor = 2;
+        await flushPromises();
+
+        expect(wrapper.text()).toContain("about 1 minute from now");
+    });
+
     // The promise and the sending are the same rule now. They were not, and the
     // difference only showed on the radios.
     it("promises exactly what the service will send", async () => {
