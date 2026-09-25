@@ -18,8 +18,9 @@
                         Only the two of you see the answer. Without this app, they see the request as a line of text.
                     </template>
                     <template v-else>
-                        Every station on the channel running this app sees the answer. They answer only if
-                        they have ticked this channel for position requests. Stock apps show nothing.
+                        Every station on the channel running this app sees the answer. Every channel is
+                        answered; whether their operator is asked first is their own setting. Stock apps
+                        show nothing.
                     </template>
                 </div>
             </div>

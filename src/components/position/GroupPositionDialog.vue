@@ -74,11 +74,16 @@
                     {{ cautionInterval }} minutes is a lot of traffic on a busy net.
                 </div>
 
+                <!-- there was a tick per channel and per room once, and this told
+                     the operator a quiet roll call meant the others had not set it.
+                     Every channel and room is answered now: the only choice a
+                     station has is whether its operator is asked first. -->
                 <div class="text-xs text-gray-500">
-                    Only stations that have ticked this {{ isRoom ? "room" : "channel" }} for position requests
-                    answer. Those answering automatically wait a random moment, up to {{ spreadSeconds }} s, so
-                    their answers do not collide. Answers are listed in Positions, and it listens for 5 minutes
-                    after the last roll call.
+                    Every station on this {{ isRoom ? "room" : "channel" }} running this app answers, unless its
+                    operator declines: whether they are asked first is their own setting. Those answering
+                    automatically wait a random moment, up to {{ spreadSeconds }} s, so their answers do not
+                    collide. Answers are listed in Positions, and it listens for 5 minutes after the last roll
+                    call.
                 </div>
             </template>
 
