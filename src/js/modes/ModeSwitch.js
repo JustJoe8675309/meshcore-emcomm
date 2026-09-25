@@ -46,6 +46,30 @@ class ModeSwitch {
         const current = GlobalState.selfInfo;
         const changes = [];
 
+        // No record of home, and none can be made from a radio that is not at
+        // home. The backup is the only way back; say what it holds, or that there
+        // is nothing at all, rather than describing settings invented from a drill.
+        if(profile == null){
+            const backup = NodeBackup.load(nodeKeyHex, NodeBackup.SLOT_PRE_EMCOMM);
+            if(backup == null){
+                return {
+                    profile: null,
+                    blocked: "This computer has no record of this station's normal settings and no backup to put back.",
+                    changes: [
+                        "Nothing would be written, because nothing here knows what this station's normal settings are.",
+                        "Take it home from the computer you left it on, or load a backup file under Settings.",
+                    ],
+                };
+            }
+            return {
+                profile: null,
+                changes: [
+                    "The settings and channels come from the backup taken before this station left normal mode.",
+                    "This computer has no mode record for normal, so nothing else is written.",
+                ],
+            };
+        }
+
         if(profile.radio.name && profile.radio.name !== current?.name){
             changes.push(`Name becomes ${profile.radio.name}, from ${current?.name ?? "unknown"}.`);
         }
@@ -218,9 +242,18 @@ class ModeSwitch {
         const from = ModeProfiles.current(nodeKeyHex);
         // what other stations know this node as, to tell whether to advert after
         const nameBefore = GlobalState.selfInfo?.name ?? null;
-        const profile = await ModeProfiles.profileOrDefault(mode, nodeKeyHex);
+        const profileOrNone = await ModeProfiles.profileOrDefault(mode, nodeKeyHex);
         const failures = [];
         const warnings = [];
+
+        // Going home with no record of home. The backup is the way back and owns
+        // the channels and contacts; this writes nothing of its own rather than
+        // inventing settings from the radio as it stands, which is a drill.
+        if(profileOrNone == null && NodeBackup.load(nodeKeyHex, NodeBackup.SLOT_PRE_EMCOMM) == null){
+            throw new Error("This computer has no record of this station's normal settings and no backup to put back. "
+                + "Take it home from the computer you left it on, or load a backup file under Settings.");
+        }
+        const profile = profileOrNone ?? ModeProfiles.backupOnlyNormal();
 
         // The way home, before the first change of any kind.
         //
@@ -297,12 +330,14 @@ class ModeSwitch {
         if(profile.radio.txPower != null){
             await attempt("transmit power", () => Connection.setTxPower(profile.radio.txPower));
         }
-        await attempt("sharing, adverts and acknowledgements", () => EmcommMode.applyRadioPolicies({
-            shareLocation: profile.radio.shareLocation,
-            advertPosition: profile.radio.advertPosition,
-            multiAcks: profile.radio.multiAcks,
-        }));
-        await attempt("how contacts are added", () => EmcommMode.setManualAddContacts(!profile.radio.autoAddContacts));
+        if(!profile.fromBackupOnly){
+            await attempt("sharing, adverts and acknowledgements", () => EmcommMode.applyRadioPolicies({
+                shareLocation: profile.radio.shareLocation,
+                advertPosition: profile.radio.advertPosition,
+                multiAcks: profile.radio.multiAcks,
+            }));
+            await attempt("how contacts are added", () => EmcommMode.setManualAddContacts(!profile.radio.autoAddContacts));
+        }
 
         if(profile.syncClock){
             await attempt("the radio's clock", () => Connection.syncDeviceTime());
@@ -459,10 +494,13 @@ class ModeSwitch {
             autoAnswer: profile.autoAnswerPositions === true,
         }, nodeKeyHex);
 
-        saveAnswerChoices();
-
-        AdvertSchedule.set(nodeKeyHex, profile.adverts);
-        AdvertSchedule.start(nodeKeyHex);
+        // a profile-less trip home has nothing to say about these, so they are
+        // left as they are rather than reset to something invented
+        if(!profile.fromBackupOnly){
+            saveAnswerChoices();
+            AdvertSchedule.set(nodeKeyHex, profile.adverts);
+            AdvertSchedule.start(nodeKeyHex);
+        }
 
         // --- contacts: back from the backup, or trimmed for an incident
 

@@ -1451,3 +1451,119 @@ describe("the refusal does not follow the operator to another mode", () => {
     });
 
 });
+
+// A station left in a mode, on a computer that has never seen it at home.
+//
+// Found on a second computer with node 1 left in Emcomm-Training. The connect
+// dialog asked, the operator said it was in a drill, and the app promised to
+// record nothing. Then the settings page and the setup wizard each filled their
+// Normal tab by asking for "normal, or a default" — which read the radio as it
+// stood, which was the drill, and saved it as this station's home. A later trip
+// home would have written a drill to the radio and cleared the real channels.
+describe("normal mode on a station that is not at home", () => {
+
+    beforeEach(() => {
+        window.localStorage.clear();
+        connect();
+        radioChannels({ 0: { name: "#Emcomm-Training", secret: "11".repeat(16) } });
+        quietRadio();
+        ModeProfiles.setCurrent("training", NODE);
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        GlobalState.connection = null;
+        GlobalState.selfInfo = null;
+        window.localStorage.clear();
+    });
+
+    it("is not invented from the radio, and nothing is written down", async () => {
+        expect(await ModeProfiles.profileOrDefault("normal", NODE)).toBe(null);
+        expect(ModeProfiles.profile("normal", NODE)).toBe(null);
+        expect(ModeProfiles.normalUnknown(NODE)).toBe(true);
+    });
+
+    it("is read from the radio as usual when the station is in normal mode", async () => {
+        ModeProfiles.setCurrent("normal", NODE);
+        const profile = await ModeProfiles.profileOrDefault("normal", NODE);
+        expect(profile).not.toBe(null);
+        expect(ModeProfiles.profile("normal", NODE)).not.toBe(null);
+        expect(ModeProfiles.normalUnknown(NODE)).toBe(false);
+    });
+
+    it("says so on the Normal tab, with nothing to save", async () => {
+        const tabButton = (wrapper, mode) => wrapper.findAll("button").find((b) => b.text().includes(MODE_LABELS[mode]));
+        const wrapper = mount(ModeSettingsTabs);
+        await flushPromises();
+        await tabButton(wrapper, "normal").trigger("click");
+        await flushPromises();
+
+        expect(wrapper.text()).toContain("no record of this station's normal settings");
+        expect(wrapper.text()).not.toContain("Transmit power (dBm)");
+        // and looking at it wrote nothing
+        expect(ModeProfiles.profile("normal", NODE)).toBe(null);
+
+        // saving cannot reach the radio either
+        await wrapper.vm.save();
+        expect(ModeProfiles.profile("normal", NODE)).toBe(null);
+    });
+
+    // Caught by the test above, not by looking: reading a mode reads the radio's
+    // channel slots, and a tab tapped while that runs used to get the first
+    // mode's profile when the slow read came back.
+    it("does not let a slow read land on a tab the operator has left", async () => {
+        const wrapper = mount(ModeSettingsTabs);
+        await flushPromises();
+
+        // training is on show and reading; the operator taps Normal, which has
+        // nothing to show at all
+        const tabButton = (mode) => wrapper.findAll("button").find((b) => b.text().includes(MODE_LABELS[mode]));
+        await tabButton("normal").trigger("click");
+        await flushPromises();
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        await flushPromises();
+
+        expect(wrapper.vm.tab).toBe("normal");
+        expect(wrapper.vm.profile).toBe(null);
+        expect(wrapper.text()).toContain("no record of this station's normal settings");
+    });
+
+    it("refuses to go home when there is no backup either", async () => {
+        await expect(ModeSwitch.apply("normal")).rejects.toThrow("no record of this station's normal settings");
+        // and nothing was written on the way to refusing
+        expect(Connection.setChannel).not.toHaveBeenCalled();
+        expect(Connection.setTxPower).not.toHaveBeenCalled();
+    });
+
+    it("goes home from the backup, writing nothing of its own", async () => {
+        NodeBackup.save({
+            nodePublicKey: NODE,
+            channels: [{ name: "Public", secret: "8b3387e9c5cdea6ac9e5edbaa115cd72" }],
+            contacts: [],
+            settings: {},
+            takenAt: new Date().toISOString(),
+        }, NodeBackup.SLOT_PRE_EMCOMM);
+        vi.spyOn(NodeBackup, "restore").mockResolvedValue({ failures: [], added: 0, warnings: [] });
+
+        const result = await ModeSwitch.apply("normal");
+
+        expect(NodeBackup.restore).toHaveBeenCalled();
+        // the drill's settings are not written as home
+        expect(Connection.setTxPower).not.toHaveBeenCalled();
+        expect(Connection.setAdvertName).not.toHaveBeenCalled();
+        expect(EmcommMode.applyRadioPolicies).not.toHaveBeenCalled();
+        expect(result.mode).toBe("normal");
+    });
+
+    it("says what a trip home would do, rather than describing invented settings", async () => {
+        const blocked = await ModeSwitch.describe("normal", NODE);
+        expect(blocked.profile).toBe(null);
+        expect(blocked.blocked).toContain("no record");
+
+        NodeBackup.save({ nodePublicKey: NODE, channels: [], contacts: [], settings: {}, takenAt: new Date().toISOString() }, NodeBackup.SLOT_PRE_EMCOMM);
+        const fromBackup = await ModeSwitch.describe("normal", NODE);
+        expect(fromBackup.blocked).toBe(undefined);
+        expect(fromBackup.changes.join(" ")).toContain("from the backup");
+    });
+
+});

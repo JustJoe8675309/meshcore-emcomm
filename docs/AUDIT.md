@@ -469,6 +469,18 @@ size turned up, not just at a narrow window.
 - [ ] **Inside a tab the headings fold and all start shut**: Radio, Operator,
       Companions, Repeaters, Channels, Rooms, Also. Every tick is under Also, and
       none is left beside the frequency and power fields.
+- [ ] **A station left in a mode, on a computer that has never seen it at home.**
+      Connect it on a second machine (or a private window). It asks "Is this
+      station in a mode?"; answer that it is. Then, before anything else, open
+      **every** mode tab and the setup wizard. The Normal tab must say this
+      computer has no record of its normal settings and offer nothing to save,
+      and no normal record may appear. A trip home must refuse when there is no
+      backup either, and use the backup alone when there is one. The app once
+      invented normal from the radio as it stood — which was the drill — and
+      saved it, from four different places.
+- [ ] **Tapping another mode tab while one is still reading** leaves the tab you
+      tapped showing its own mode, never the one you left.
+
 - [ ] **Operator is under Radio and reads the same in every tab.** Type a
       callsign, switch tabs, switch modes: it is still there, and a report form
       prefills with it. There is no Save in that group.

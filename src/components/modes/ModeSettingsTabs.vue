@@ -26,6 +26,23 @@
         </div>
 
         <div v-if="notConnected" class="p-2 text-xs text-red-600">No radio connected.</div>
+
+        <!-- No record of home, on a station that is not at home. There is nothing
+             to show and nothing that could be saved: a form filled from the radio
+             as it stands would be the drill, written down as this station's own. -->
+        <div v-else-if="normalUnknown" class="p-2 space-y-2">
+            <div class="text-sm font-medium text-gray-900">This computer has no record of this station's normal settings</div>
+            <div class="text-xs text-gray-700">
+                Normal mode is the radio as its owner has it, and the only way to learn it is to read a
+                radio that is in it. This station is in {{ labelFor(current) }}, so there is nothing here
+                to show and nothing to save.
+            </div>
+            <div class="text-xs text-gray-700">
+                Take it home from the computer you left it on, or load a backup file under Settings. Once
+                it is in normal mode, connecting records it.
+            </div>
+        </div>
+
         <div v-else-if="profile == null" class="p-2 text-xs text-gray-500">Reading this mode...</div>
 
         <template v-else>
@@ -245,6 +262,8 @@ export default {
             tab: "normal",
             profile: null,
             newChannelName: "",
+            // counts the reads, so a slow one cannot land on a later tab
+            loadToken: 0,
             // index of the channel being edited, or null
             editingChannel: null,
             editChannelName: "",
@@ -278,15 +297,34 @@ export default {
             this.message = null;
             this.load();
         },
+        /**
+         * Reads the tab's mode, and only shows it if it is still the tab on show.
+         *
+         * Reading a mode reads the radio's channel slots, which takes seconds. An
+         * operator who taps another tab while that is running used to get the
+         * first mode's profile written onto the second tab when the slow read
+         * finally came back — and then Save would save it under the wrong mode.
+         * Caught by a test for something else: the Normal tab of a station with no
+         * record of home showed the drill's profile.
+         */
         async load() {
+            const token = ++this.loadToken;
             if(this.notConnected){
                 return;
             }
             this.profile = null;
+            if(this.tab === "normal" && ModeProfiles.normalUnknown()){
+                return;
+            }
             try {
-                this.profile = await ModeProfiles.profileOrDefault(this.tab);
+                const profile = await ModeProfiles.profileOrDefault(this.tab);
+                if(token === this.loadToken){
+                    this.profile = profile;
+                }
             } catch(e) {
-                this.message = `Could not read this mode: ${e?.message ?? e}`;
+                if(token === this.loadToken){
+                    this.message = `Could not read this mode: ${e?.message ?? e}`;
+                }
             }
         },
         async save() {
@@ -376,6 +414,12 @@ export default {
         },
         canAddChannel() {
             return this.profile != null && this.newChannelName.trim() !== "" && this.profile.channels.length < 16;
+        },
+        /** Normal, on a station away from home, with nothing written down. */
+        normalUnknown() {
+            void ModeProfiles.state.revision;
+            void GlobalState.emcommModeRevision;
+            return this.tab === "normal" && !this.notConnected && ModeProfiles.normalUnknown();
         },
         canSaveChannel() {
             const name = this.editChannelName.trim();

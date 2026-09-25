@@ -314,18 +314,7 @@ class ModeProfiles {
 
         const profile = {
             ...this.blank(),
-            radio: {
-                name: selfInfo.name,
-                radioFreq: selfInfo.radioFreq,
-                radioBw: selfInfo.radioBw,
-                radioSf: selfInfo.radioSf,
-                radioCr: selfInfo.radioCr,
-                txPower: selfInfo.txPower,
-                shareLocation: EmcommMode.locationSharing(selfInfo) === "all",
-                advertPosition: EmcommMode.advertsCarryPosition(selfInfo),
-                multiAcks: EmcommMode.multiAcksOn(selfInfo),
-                autoAddContacts: !params.manualAddContacts,
-            },
+            radio: await this.radioNow(),
             channels: channels,
             capturedAt: Date.now(),
         };
@@ -414,9 +403,53 @@ class ModeProfiles {
      * settings an incident wants, and its own channel. The operator edits it in
      * settings before ever switching, and nothing is written to the radio here.
      */
+    /**
+     * The radio's settings as they stand, written down nowhere.
+     *
+     * Shared with captureNormal, which is the same read plus the claim that this
+     * is the station's home. Anything that only wants a starting point uses this
+     * one, because making that claim about a radio in a drill is how a drill ends
+     * up recorded as home.
+     */
+    static async radioNow() {
+
+        const selfInfo = GlobalState.selfInfo;
+        if(selfInfo == null){
+            throw new Error("the radio has not been read yet");
+        }
+
+        const Connection = (await import("../Connection.js")).default;
+        const params = Connection.otherParams(selfInfo);
+
+        return {
+            name: selfInfo.name,
+            radioFreq: selfInfo.radioFreq,
+            radioBw: selfInfo.radioBw,
+            radioSf: selfInfo.radioSf,
+            radioCr: selfInfo.radioCr,
+            txPower: selfInfo.txPower,
+            shareLocation: EmcommMode.locationSharing(selfInfo) === "all",
+            advertPosition: EmcommMode.advertsCarryPosition(selfInfo),
+            multiAcks: EmcommMode.multiAcksOn(selfInfo),
+            autoAddContacts: !params.manualAddContacts,
+        };
+
+    }
+
     static async defaultEmcommProfile(mode, nodeKeyHex = this.nodeKeyHex()) {
 
-        const normal = this.profile("normal", nodeKeyHex) ?? await this.captureNormal(nodeKeyHex);
+        // A starting point for the radio settings: what is written down for
+        // normal mode, or failing that the radio as it stands.
+        //
+        // This used to capture normal mode when there was no record of it, which
+        // on a station sitting in a drill wrote the drill down as that station's
+        // home — and it fired on opening any mode tab at all, not just Normal.
+        // Reading the radio for a starting point is fine; saving that reading as
+        // "the radio as its owner has it" is what was wrong.
+        const stored = this.profile("normal", nodeKeyHex);
+        const normal = stored ?? (this.current(nodeKeyHex) === "normal"
+            ? await this.captureNormal(nodeKeyHex)
+            : { radio: await this.radioNow() });
         const channelName = DEFAULT_CHANNELS[mode] ?? DEFAULT_CHANNELS.live;
         const secret = Utils.bytesToHex(await EmcommMode.hashtagChannelKey(channelName));
 
@@ -454,12 +487,55 @@ class ModeProfiles {
             return existing;
         }
 
+        // Normal mode is the radio as its owner has it, and the only way to learn
+        // it is to read a radio that is in it. Reading one that is in a drill and
+        // calling the result "normal" is not a default, it is a lie that a later
+        // trip home would write to the radio.
+        //
+        // Found on a second computer, with a station left in Emcomm-Training. The
+        // dialog asked, the operator said it was in a drill, the app promised to
+        // record nothing — and then the settings page and the setup wizard each
+        // invented normal from the drill and saved it, because this is what they
+        // both call to fill a tab.
+        if(mode === "normal" && this.current(nodeKeyHex) !== "normal"){
+            return null;
+        }
+
         const profile = mode === "normal"
             ? await this.captureNormal(nodeKeyHex)
             : await this.defaultEmcommProfile(mode, nodeKeyHex);
         this.saveProfile(mode, profile, nodeKeyHex);
         return profile;
 
+    }
+
+    /**
+     * Whether this app has no record of the station's normal mode and cannot
+     * safely make one, because the station is not in normal mode now.
+     *
+     * The way back is the pre-emcomm backup, a backup file, or the computer the
+     * station was last in normal mode on.
+     */
+    /**
+     * A stand-in for normal mode when there is no record of it: the backup is the
+     * way home, and this writes nothing of its own.
+     */
+    static backupOnlyNormal() {
+        return {
+            ...this.blank(),
+            radio: {},
+            channels: [],
+            announce: "none",
+            trimContacts: false,
+            discoverRepeaters: false,
+            syncClock: false,
+            positionFromGps: false,
+            fromBackupOnly: true,
+        };
+    }
+
+    static normalUnknown(nodeKeyHex = this.nodeKeyHex()) {
+        return this.profile("normal", nodeKeyHex) == null && this.current(nodeKeyHex) !== "normal";
     }
 
     /** Whether traffic sent now should be marked DRILL. */
