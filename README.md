@@ -710,7 +710,9 @@ it stands, before anything is written, and every step is reported as it goes.
 the position in adverts, extra acknowledgements and automatic contacts; its channels; whether
 position requests are answered automatically; the repeating advert intervals; whether to trim
 contacts, announce the station and search for repeaters on entering; and whether everything sent
-is marked DRILL.
+is marked DRILL — which the emcomm modes offer and **normal mode does not**, because DRILL marks
+an exercise and a station's everyday operating is not one. A tick that puts DRILL on real traffic
+is a way to be disbelieved when it matters.
 
 **What does not:** the operator's callsign, the report time zone, message history, and contacts.
 Contacts come from the backup rather than from a mode, since they are not a setting. Rooms are

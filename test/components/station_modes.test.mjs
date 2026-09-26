@@ -1066,6 +1066,34 @@ describe("the settings tabs", () => {
         expect(wrapper.text()).toContain("the only choice is whether you are asked");
     });
 
+    // DRILL marks an exercise, and a station's everyday operating is not one. A
+    // tick that puts DRILL on real traffic is a way to be disbelieved when it
+    // matters.
+    it("does not offer the DRILL tick in normal mode", async () => {
+        const wrapper = mount(ModeSettingsTabs);
+        await flushPromises();
+        await open(wrapper, "normal");
+        expect(wrapper.text()).not.toContain("Mark everything sent DRILL");
+
+        await open(wrapper, "training");
+        expect(wrapper.text()).toContain("Mark everything sent DRILL");
+    });
+
+    it("leaves normal unmarked even if an older profile had it set", async () => {
+        ModeProfiles.saveProfile("normal", {
+            ...await ModeProfiles.profileOrDefault("normal", NODE),
+            markDrill: true,
+        }, NODE);
+
+        const wrapper = mount(ModeSettingsTabs);
+        await flushPromises();
+        await open(wrapper, "normal");
+        await wrapper.vm.save();
+        await flushPromises();
+
+        expect(ModeProfiles.profile("normal", NODE).markDrill).toBe(false);
+    });
+
     it("has no Save of its own, and says where the one Save is", async () => {
         // two Save buttons on one page is one too many: the operator who pressed
         // the wrong one saved half of what they had changed

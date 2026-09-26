@@ -481,6 +481,7 @@ size turned up, not just at a narrow window.
 - [ ] **Tapping another mode tab while one is still reading** leaves the tab you
       tapped showing its own mode, never the one you left.
 
+- [ ] **Normal mode has no DRILL tick** under Also; the two emcomm modes do.
 - [ ] **Operator is under Radio and reads the same in every tab.** Type a
       callsign, switch tabs, switch modes: it is still there, and a report form
       prefills with it. There is no Save in that group.

@@ -221,7 +221,11 @@
                         itself while everyday operating asks first.
                     </div>
 
-                    <label class="flex items-start space-x-2 text-xs text-gray-700">
+                    <!-- not offered in normal mode. DRILL marks an exercise, and
+                         a station's everyday operating is not one: a tick that puts
+                         DRILL on real traffic is a way to be disbelieved when it
+                         matters. -->
+                    <label v-if="tab !== 'normal'" class="flex items-start space-x-2 text-xs text-gray-700">
                         <input v-model="profile.markDrill" type="checkbox" class="mt-0.5">
                         <span>Mark everything sent DRILL</span>
                     </label>
@@ -405,6 +409,12 @@ export default {
 
             if(this.profile == null){
                 return;
+            }
+
+            // normal mode does not offer the DRILL tick, so it cannot be left
+            // set from an older profile where it would be invisible and still true
+            if(this.tab === "normal"){
+                this.profile.markDrill = false;
             }
 
             ModeProfiles.saveProfile(this.tab, JSON.parse(JSON.stringify(this.profile)));
