@@ -537,7 +537,10 @@ size turned up, not just at a narrow window.
 - [ ] **Forget a companion** and answer no: nothing changes. Answer yes on one
       that can be heard again, and it goes; it comes back when it next adverts.
 - [ ] **Add a room from a `meshcore://` link** in the Rooms group. It appears in
-      Contacts & Channels too, and can be logged into.
+      Contacts & Channels too, and can be logged into. It must report success:
+      the radio can be a moment behind its own acknowledgement, and a single read
+      back once reported "the radio accepted that link but the contact did not
+      appear" about a room that was already in the list.
 - [ ] **Edit a channel** in a mode: rename `#Emcomm-Training` to `#Emcomm` and the
       key shown changes to the one worked out from the new name. On a private
       channel, a key shorter than 32 hex characters must refuse to save.

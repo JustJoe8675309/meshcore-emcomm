@@ -53,6 +53,34 @@ describe("importing a contact from a link", () => {
         expect(result.alreadyKnown).toBe(false);
     });
 
+    // Found on the radios: a room added from a link appeared in the list and was
+    // reported as a failure in the same breath. The device can be a moment behind
+    // its own acknowledgement, and one read was all this gave it — so an operator
+    // at a muster point was told the link had not worked while the room sat there
+    // in front of them.
+    it("gives the radio time to catch up before calling it a failure", async () => {
+        let reads = 0;
+        Connection.loadContacts.mockImplementation(async () => {
+            reads++;
+            // the device only has it on the second read
+            GlobalState.contacts = reads >= 2 ? [aRoomContact()] : [];
+        });
+
+        const result = await Connection.importContact(asLink(advertBytes()));
+
+        expect(reads).toBeGreaterThan(1);
+        expect(result.contact.advName).toBe("Test Room");
+    });
+
+    it("still says so when the contact really never arrives", async () => {
+        Connection.loadContacts.mockImplementation(async () => {
+            GlobalState.contacts = [];
+        });
+
+        await expect(Connection.importContact(asLink(advertBytes())))
+            .rejects.toThrow("did not appear");
+    });
+
     it("accepts the bare hex without the scheme", async () => {
         await Connection.importContact(Utils.bytesToHex(advertBytes()));
         expect(imported).toHaveLength(1);

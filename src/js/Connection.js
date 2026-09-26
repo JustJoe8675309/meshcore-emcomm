@@ -1844,11 +1844,26 @@ class Connection {
 
         await this.withSettingTimeout("contact import", () => connection.importContact(bytes));
 
-        // read back rather than assume: the device owns the list, and this should
-        // report what it actually holds now
-        await this.loadContacts();
+        // Read back rather than assume: the device owns the list, and this should
+        // report what it actually holds now.
+        //
+        // More than once, because the device can be a moment behind its own
+        // acknowledgement. On the bench a room added from a link appeared in the
+        // list and was reported as a failure in the same breath: the first read
+        // came back without it, and an operator at a muster point would have been
+        // told the link did not work while the room sat there in front of them.
+        let contact = null;
+        for(const wait of [0, 400, 1200]){
+            if(wait > 0){
+                await new Promise((resolve) => setTimeout(resolve, wait));
+            }
+            await this.loadContacts();
+            contact = GlobalState.contacts.find((c) => Utils.bytesToHex(c.publicKey) === publicKeyHex);
+            if(contact != null){
+                break;
+            }
+        }
 
-        const contact = GlobalState.contacts.find((c) => Utils.bytesToHex(c.publicKey) === publicKeyHex);
         if(contact == null){
             throw new Error("The radio accepted that link but the contact did not appear.");
         }
