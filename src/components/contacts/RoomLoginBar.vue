@@ -31,6 +31,15 @@
                 class="shrink-0 text-white bg-blue-700 hover:bg-blue-800 disabled:bg-gray-400 font-medium rounded-lg text-sm px-4">{{ isLoggingIn ? "..." : "Log in" }}</button>
         </form>
 
+        <!-- A room three hops out answered at 12 seconds on the bench, and this
+             waits 45 before giving up. The button reading "..." is not enough to
+             stop an operator pressing it again and wondering which attempt took. -->
+        <div v-if="isLoggingIn" role="status" class="text-xs text-gray-700">
+            Waiting for the room. One three hops away answered in about 12 seconds, and this waits
+            up to {{ waitSeconds }} before it gives up — a wrong password is answered with silence,
+            so the wait is the same either way. Pressing again does not make it quicker.
+        </div>
+
         <!-- said here rather than filled in above. a prefilled box is a trap: type
              into it without clearing first and the default is silently prepended to
              what you typed, and the room answers a wrong password with silence, so
@@ -122,6 +131,12 @@ export default {
     methods: {
         async logIn() {
 
+            // pressing again while one is in flight starts a second login and
+            // leaves the operator watching two waits at once
+            if(this.isLoggingIn){
+                return;
+            }
+
             this.isLoggingIn = true;
             this.errorMessage = null;
 
@@ -181,6 +196,11 @@ export default {
         },
     },
     computed: {
+
+        /** How long this waits, from the one place that decides it. */
+        waitSeconds() {
+            return Math.round(Connection.ROOM_LOGIN_TIMEOUT_MILLIS / 1000) + " seconds";
+        },
         roleLabel() {
             if(this.isAdmin){
                 return "Logged in as admin";

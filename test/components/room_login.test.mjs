@@ -15,7 +15,7 @@
 // where a wrong password lands.
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { mount } from "@vue/test-utils";
+import { mount, flushPromises } from "@vue/test-utils";
 import { Constants } from "@liamcottle/meshcore.js";
 import Connection from "../../src/js/Connection.js";
 import GlobalState from "../../src/js/GlobalState.js";
@@ -226,6 +226,39 @@ describe("RoomLoginBar", () => {
     it("says plainly that the password is kept nowhere", () => {
         // the operator should know why they are typing it again
         expect(mountBar().text()).toMatch(/kept nowhere/);
+    });
+
+    // "..." on the button is all there was while a room took its time. One three
+    // hops out answered at 12 seconds on the bench, and this waits 45.
+    it("says it is waiting, and how long it will wait", async () => {
+        let release;
+        vi.spyOn(Connection, "loginToRoom").mockImplementation(() => new Promise((resolve) => { release = resolve; }));
+        const wrapper = mountBar();
+
+        expect(wrapper.text()).not.toMatch(/Waiting for the room/);
+        wrapper.vm.logIn();
+        await flushPromises();
+
+        expect(wrapper.text()).toMatch(/Waiting for the room/);
+        expect(wrapper.text()).toMatch(/45 seconds/);
+        // and says a wrong password waits just as long, because a room answers one
+        // with silence
+        expect(wrapper.text()).toMatch(/answered with silence/);
+
+        release({ isAdmin: false, canPost: true });
+        await flushPromises();
+        expect(wrapper.text()).not.toMatch(/Waiting for the room/);
+    });
+
+    it("ignores a second press while one login is in flight", async () => {
+        const login = vi.spyOn(Connection, "loginToRoom").mockImplementation(() => new Promise(() => {}));
+        const wrapper = mountBar();
+
+        wrapper.vm.logIn();
+        wrapper.vm.logIn();
+        await flushPromises();
+
+        expect(login).toHaveBeenCalledTimes(1);
     });
 
     it("blames the password when the room refused it", async () => {

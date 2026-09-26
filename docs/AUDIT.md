@@ -516,6 +516,10 @@ size turned up, not just at a narrow window.
       the tab says "No answer after 2 requests". Every 15 minutes for 5 is
       refused, with the arithmetic shown rather than just "invalid".
 
+- [ ] **Logging in to a room says it is waiting**, names the 45 second wait, and
+      says a wrong password is answered with silence so the wait is the same
+      either way. Pressing Log in again while one is in flight does nothing.
+
 - [ ] **Setup wizard is a row under Commands**, with the RX Log and Reboot, and
       opens the same walkthrough that runs on a first connection.
 - [ ] **The wizard writes nothing to the radio**, which its first screen
