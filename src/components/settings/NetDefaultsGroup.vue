@@ -15,7 +15,12 @@
                 the only preset it publishes. If your net is on something else, change it here and save.
             </div>
 
-            <!-- one at a time, named as the banner names them -->
+            <!-- Named for what they are, not for the modes they set up.
+                 They read "Emcomm-Training" and "Emcomm-Live" once, the same as
+                 the mode tabs further up the same page, and a button pressed in
+                 this strip looked exactly like one pressed in that one. The mode
+                 tab did not move, the wrong mode was edited and saved, and the
+                 only sign was a line of small print further down. -->
             <div class="p-2 flex space-x-1">
                 <button
                     v-for="mode of modes"
@@ -24,7 +29,7 @@
                     type="button"
                     :class="[ mode === tab ? classesFor(mode) + ' font-bold' : 'bg-gray-100 text-gray-600' ]"
                     class="w-full text-xs rounded px-2 py-1">
-                    {{ labelFor(mode) }}
+                    {{ shortLabelFor(mode) }} defaults
                     <span class="block font-normal">{{ saved[mode] ? "yours" : "as shipped" }}</span>
                 </button>
             </div>
@@ -251,6 +256,11 @@ export default {
 
         labelFor(mode) {
             return ModeProfiles.label(mode);
+        },
+
+        /** "Training" and "Live", so the strip cannot be read as the mode tabs. */
+        shortLabelFor(mode) {
+            return ModeProfiles.label(mode).replace(/^Emcomm-/, "");
         },
 
         classesFor(mode) {

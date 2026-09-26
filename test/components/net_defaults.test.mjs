@@ -257,6 +257,21 @@ describe("the net defaults editor", () => {
         expect(added.secret).toBe(Utils.bytesToHex(await EmcommMode.hashtagChannelKey("#Emcomm-Training")));
     });
 
+    // The strip read "Emcomm-Training" and "Emcomm-Live", the same as the mode
+    // tabs further up the same page. A button pressed here looked exactly like one
+    // pressed there: the mode tab did not move, the wrong mode was edited and
+    // saved to the radio, and the only sign was a line of small print.
+    it("is named for the defaults, not for the modes the tabs are named for", async () => {
+        const wrapper = await open();
+        const strip = wrapper.findAll("button").map((b) => b.text().replace(/\s+/g, " "));
+
+        expect(strip.some((t) => t.startsWith("Training defaults"))).toBe(true);
+        expect(strip.some((t) => t.startsWith("Live defaults"))).toBe(true);
+        // and nothing here reads as a mode tab
+        expect(strip.some((t) => t.startsWith("Emcomm-Training"))).toBe(false);
+        expect(strip.some((t) => t.startsWith("Emcomm-Live"))).toBe(false);
+    });
+
     it("only marks DRILL where DRILL belongs", async () => {
         const wrapper = await open();
         expect(wrapper.vm.tab).toBe("live");

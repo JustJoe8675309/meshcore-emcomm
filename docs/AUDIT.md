@@ -485,6 +485,10 @@ size turned up, not just at a narrow window.
 - [ ] **Also ends with "On entering this mode"** in every mode: announce, set the
       clock, take a GPS fix, search for repeaters. Change one, Save, and the
       switch preview or the switch itself must follow it.
+- [ ] **No two buttons on the settings page read the same.** The net defaults
+      strip says "Training defaults" and "Live defaults"; only the mode tabs say
+      "Emcomm-Training" and "Emcomm-Live". Pressing one must never be mistaken
+      for the other: it edited and saved the wrong mode on the bench.
 - [ ] **The net defaults offer transmit power** as either "as high as each radio
       goes" or a named number, and show what the connected radio is at.
 - [ ] **Emcomm-Live answers position requests automatically and Emcomm-Training
