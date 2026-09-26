@@ -112,10 +112,16 @@ describe("the net defaults editor", () => {
         vi.restoreAllMocks();
     });
 
+    // Filling the editor works out a channel key and, when a radio is there,
+    // reads it: a chain of awaits rather than one turn of the loop.
     const open = async () => {
         const wrapper = mount(NetDefaultsGroup);
         await wrapper.find("button[aria-expanded]").trigger("click");
-        await flushPromises();
+        const deadline = Date.now() + 5000;
+        while(Date.now() < deadline && wrapper.vm.draft == null){
+            await flushPromises();
+            await new Promise((resolve) => setTimeout(resolve, 10));
+        }
         return wrapper;
     };
 
@@ -125,6 +131,23 @@ describe("the net defaults editor", () => {
         expect(wrapper.text()).not.toContain("No radio connected");
         expect(wrapper.vm.draft).not.toBe(null);
         expect(wrapper.text()).toContain("Frequency (kHz)");
+    });
+
+    // It handed back a blank form when no radio was connected — every tick off,
+    // no channel, adverts at zero — because the whole default was built from a
+    // station. Only four of its fields actually need one.
+    it("starts from the app's answers, with only the radio's readings left blank", async () => {
+        const wrapper = await open();
+
+        expect(wrapper.vm.draft.channels.map((c) => c.name)).toEqual(["#Emcomm"]);
+        expect(wrapper.vm.draft.radio.shareLocation).toBe(true);
+        expect(wrapper.vm.draft.radio.multiAcks).toBe(true);
+        expect(wrapper.vm.draft.autoAnswerPositions).toBe(true);
+        expect(wrapper.vm.draft.adverts).toEqual({ zeroHopMinutes: 30, floodMinutes: 60 });
+        expect(wrapper.vm.draft.announce).toBe("flood");
+
+        // the net has to say what frequency it is on; nothing here can guess it
+        expect(wrapper.vm.draft.radio.radioFreq).toBe(null);
     });
 
     it("offers no node name and no transmit power, and says why", async () => {
@@ -210,7 +233,12 @@ describe("reaching the net defaults before a radio", () => {
     it("opens the same editor, already open", async () => {
         const wrapper = mount(ConnectButtons);
         await wrapper.findAll("button").find((b) => b.text() === "Net defaults").trigger("click");
-        await flushPromises();
+
+        const deadline = Date.now() + 5000;
+        while(Date.now() < deadline && !wrapper.text().includes("Frequency (kHz)")){
+            await flushPromises();
+            await new Promise((resolve) => setTimeout(resolve, 10));
+        }
 
         expect(wrapper.findComponent(NetDefaultsGroup).exists()).toBe(true);
         // and it is open rather than a heading to press again

@@ -450,15 +450,41 @@ class ModeProfiles {
         const normal = stored ?? (this.current(nodeKeyHex) === "normal"
             ? await this.captureNormal(nodeKeyHex)
             : { radio: await this.radioNow() });
+        return {
+            ...await this.emcommDefaults(mode),
+            radio: {
+                ...normal.radio,
+                // the radio settings an incident wants, per docs/EMCOMM-MODE.md
+                txPower: GlobalState.selfInfo?.maxTxPower ?? normal.radio.txPower,
+                shareLocation: true,
+                advertPosition: true,
+                multiAcks: true,
+                autoAddContacts: true,
+            },
+        };
+
+    }
+
+    /**
+     * Everything an emcomm mode starts as that does not need a radio to work out.
+     *
+     * Split from the profile above so the net defaults editor can offer the same
+     * answers with nothing connected. Only four things genuinely need a station:
+     * the frequency, bandwidth, spreading factor and coding rate, which come from
+     * the radio this app is looking at. The rest — the net's channel, the ticks,
+     * the advert intervals, what to announce — are decisions, not readings, and an
+     * operator writing their net defaults the night before should not be handed a
+     * blank form because no radio is plugged in.
+     */
+    static async emcommDefaults(mode) {
+
         const channelName = DEFAULT_CHANNELS[mode] ?? DEFAULT_CHANNELS.live;
         const secret = Utils.bytesToHex(await EmcommMode.hashtagChannelKey(channelName));
 
         return {
             ...this.blank(),
             radio: {
-                ...normal.radio,
-                // the radio settings an incident wants, per docs/EMCOMM-MODE.md
-                txPower: GlobalState.selfInfo?.maxTxPower ?? normal.radio.txPower,
+                ...this.blank().radio,
                 shareLocation: true,
                 advertPosition: true,
                 multiAcks: true,
