@@ -23,6 +23,7 @@
 
 import { reactive } from "vue";
 import ModeProfiles from "./ModeProfiles.js";
+import EmcommMode from "../EmcommMode.js";
 
 const KEY = "net_defaults";
 const MODES = ["training", "live"];
@@ -64,8 +65,43 @@ class NetDefaults {
         return this.all()[mode] ?? null;
     }
 
+    /** Whether the operator has written one of their own over the built-in. */
     static has(mode) {
         return this.get(mode) != null;
+    }
+
+    /**
+     * What a fresh install starts from, before anybody writes anything.
+     *
+     * The radio settings are MeshCore's published "USA/Canada (Recommended)"
+     * preset, which is the only one it publishes: a net that has not said
+     * otherwise is on those, and an app that starts blank makes every operator
+     * type the same four numbers. The rest is what an emcomm mode starts as
+     * anyway.
+     *
+     * A net on something else writes its own over the top, and the two are told
+     * apart everywhere it matters: this one is never "set".
+     */
+    static async builtIn(mode) {
+        if(!this.applies(mode)){
+            return null;
+        }
+        const defaults = await ModeProfiles.emcommDefaults(mode);
+        const { name, txPower, ...radio } = defaults.radio;
+        return {
+            ...defaults,
+            radio: { ...radio, ...EmcommMode.US_PRESET, name: "", txPower: null },
+        };
+    }
+
+    /** The one that counts: what the operator wrote, or the built-in. */
+    static async effective(mode) {
+        const stored = this.get(mode);
+        if(stored == null){
+            return await this.builtIn(mode);
+        }
+        const { savedAt, ...profile } = JSON.parse(JSON.stringify(stored));
+        return { ...ModeProfiles.blank(), ...profile };
     }
 
     /** Whether anything at all has been set up, for deciding what to offer. */
@@ -134,14 +170,12 @@ class NetDefaults {
      */
     static async forStation(mode, { name = null, maxTxPower = null } = {}) {
 
-        const stored = this.get(mode);
-        if(stored == null){
+        const profile = await this.effective(mode);
+        if(profile == null){
             return null;
         }
 
-        const { savedAt, ...profile } = stored;
         return {
-            ...ModeProfiles.blank(),
             ...profile,
             radio: {
                 ...profile.radio,
@@ -162,28 +196,7 @@ class NetDefaults {
      * is honest: the net has to say what frequency it is on.
      */
     static async startingPoint(mode) {
-
-        // The decisions, which need nothing: the net's channel, the ticks, the
-        // advert intervals, what to announce.
-        const defaults = await ModeProfiles.emcommDefaults(mode);
-        const { name, txPower, ...radio } = defaults.radio;
-        const starting = { ...defaults, radio: { ...radio, name: "", txPower: null } };
-
-        // and the four readings, from a station if one is here to read. The net
-        // has to say what frequency it is on, and a radio in front of us is a
-        // better first guess than an empty box.
-        try {
-            const station = await ModeProfiles.defaultEmcommProfile(mode);
-            starting.radio.radioFreq = station.radio.radioFreq;
-            starting.radio.radioBw = station.radio.radioBw;
-            starting.radio.radioSf = station.radio.radioSf;
-            starting.radio.radioCr = station.radio.radioCr;
-        } catch(e) {
-            // no radio to read, which is the case this editor exists for
-        }
-
-        return starting;
-
+        return await this.effective(mode);
     }
 
 }

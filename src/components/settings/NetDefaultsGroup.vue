@@ -10,6 +10,11 @@
                 mode tab, and entering the mode from the banner is what writes it.
             </div>
 
+            <div v-if="!saved[tab]" class="p-2 text-xs text-gray-500">
+                This is what the app ships with: MeshCore's published USA and Canada settings, which is
+                the only preset it publishes. If your net is on something else, change it here and save.
+            </div>
+
             <!-- one at a time, named as the banner names them -->
             <div class="p-2 flex space-x-1">
                 <button
@@ -20,7 +25,7 @@
                     :class="[ mode === tab ? classesFor(mode) + ' font-bold' : 'bg-gray-100 text-gray-600' ]"
                     class="w-full text-xs rounded px-2 py-1">
                     {{ labelFor(mode) }}
-                    <span v-if="saved[mode]" class="block font-normal">set</span>
+                    <span class="block font-normal">{{ saved[mode] ? "yours" : "as shipped" }}</span>
                 </button>
             </div>
 
@@ -132,12 +137,22 @@
                 </div>
 
                 <div class="p-2 space-y-2">
+                    <!-- The page has a Save of its own, and it saves the mode tab
+                         above, not this. Two Saves on one page was a fault worth
+                         fixing once already; they are different acts — one is this
+                         station's mode, this is the net — so they stay apart and
+                         the page says which is which. -->
+                    <div class="text-xs text-gray-500">
+                        Save at the top of the page saves the mode tab above, not this. This button is
+                        the one that writes the net defaults.
+                    </div>
+
                     <button @click="save" type="button"
                             class="w-full text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5">Save as the net default for {{ labelFor(tab) }}</button>
 
                     <button v-if="saved[tab]" @click="forget" type="button"
                             class="w-full bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 text-xs font-medium rounded-lg px-3 py-2">
-                        Forget this net default
+                        Go back to the settings the app ships with
                     </button>
 
                     <div v-if="message" role="status" class="text-xs text-green-700">{{ message }}</div>
@@ -211,13 +226,6 @@ export default {
 
         async load() {
             this.draft = null;
-            const stored = NetDefaults.get(this.tab);
-            if(stored != null){
-                const { savedAt, ...profile } = JSON.parse(JSON.stringify(stored));
-                this.draft = { ...ModeProfiles.blank(), ...profile };
-                return;
-            }
-            // nothing written yet: start from what the app would have done
             this.draft = await NetDefaults.startingPoint(this.tab);
         },
 
@@ -245,7 +253,8 @@ export default {
 
         async forget() {
             NetDefaults.clear(this.tab);
-            this.message = `The net default for ${this.labelFor(this.tab)} is gone. Stations already set up keep what they have.`;
+            this.message = `${this.labelFor(this.tab)} is back to the settings the app ships with. `
+                + "Stations already set up keep what they have.";
             await this.load();
         },
 

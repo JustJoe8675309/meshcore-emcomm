@@ -1156,17 +1156,18 @@ describe("the settings tabs", () => {
 
     // The editing lives in Settings; a mode tab only offers to load, because a tab
     // is about one station and a net default is about the net.
-    it("offers the net default only when one has been written", async () => {
+    it("offers the net default on an emcomm mode and never on normal", async () => {
         const wrapper = mount(ModeSettingsTabs);
         await flushPromises();
-        await open(wrapper, "live");
 
         const offered = () => wrapper.findAll("button").some((b) => b.text().startsWith("Load the net default"));
-        expect(offered()).toBe(false);
 
-        NetDefaults.save("live", { ...ModeProfiles.blank(), radio: { radioFreq: 915000, name: "x", txPower: 22 }, channels: [] });
-        await flushPromises();
+        // there is always one: the operator's, or the settings the app ships with
+        await open(wrapper, "live");
         expect(offered()).toBe(true);
+
+        await open(wrapper, "normal");
+        expect(offered()).toBe(false);
     });
 
     it("loads it while keeping the station's own name and ceiling", async () => {

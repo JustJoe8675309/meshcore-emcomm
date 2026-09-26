@@ -492,6 +492,9 @@ size turned up, not just at a narrow window.
       database is opened per node, so that door does not open without a radio —
       this is the way in, beside the crib sheet. It offers no node name and no transmit power,
       and says why.
+- [ ] **A fresh install already has net defaults**: the USA and Canada preset,
+      910.525 / 62.5 kHz / SF 7 / CR 5, with the mode's channel and the emcomm
+      answers. The strip says "as shipped" until you save your own, then "yours".
 - [ ] **A mode tab offers to load one, and does not edit it.** "Load the net
       default for Emcomm-Live" appears only once one is written. Loading keeps
       this station's name and its own maximum power, fills the tab, and writes

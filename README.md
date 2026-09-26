@@ -724,6 +724,13 @@ its own and two answering to one name is the fault mode sharing already refuses 
 **transmit power number**, because radios differ in what they manage — a station loads it as high
 as its own radio goes.
 
+**A fresh install is not empty.** Out of the box the net defaults hold MeshCore's published
+"USA/Canada (Recommended)" radio settings — 910.525 MHz, 62.5 kHz, SF 7, CR 5, the only preset it
+publishes — along with the net's own channel and the emcomm answers. An app that starts blank
+makes every operator type the same four numbers before anything works. A net on something else
+writes its own over the top, and the editor says which of the two it is showing: **yours** or **as
+shipped**. Going back is one button.
+
 Normal mode has none and never will. Normal is the radio as its owner has it, learnt by reading a
 radio that is in it; a net cannot agree on somebody else's everyday settings.
 

@@ -581,10 +581,13 @@ export default {
         canAddChannel() {
             return this.profile != null && this.newChannelName.trim() !== "" && this.profile.channels.length < 16;
         },
-        /** Whether the net has written down a starting point for this mode. */
+        /**
+         * Emcomm modes always have one: the operator's, or the settings the app
+         * ships with. Normal never does.
+         */
         hasNetDefault() {
             void NetDefaults.state.revision;
-            return this.tab !== "normal" && NetDefaults.has(this.tab);
+            return NetDefaults.applies(this.tab);
         },
         /** The radio as it stands, for the readouts beside a mode's fields. */
         radioNow() {

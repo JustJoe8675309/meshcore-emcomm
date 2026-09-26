@@ -86,8 +86,28 @@ describe("a net default", () => {
         expect(filled.channels.map((c) => c.name)).toEqual(["#Emcomm"]);
     });
 
-    it("hands back nothing for a mode with none written", async () => {
-        expect(await NetDefaults.forStation("training", {})).toBe(null);
+    // A fresh install is not empty: it ships with MeshCore's published USA and
+    // Canada settings, the only preset it publishes, so nobody types the same
+    // four numbers to get started.
+    it("ships with the USA settings until somebody writes their own", async () => {
+        expect(NetDefaults.has("training")).toBe(false);
+
+        const shipped = await NetDefaults.forStation("training", { name: "A station", maxTxPower: 17 });
+        expect(shipped.radio).toMatchObject({ radioFreq: 910525, radioBw: 62500, radioSf: 7, radioCr: 5 });
+        expect(shipped.radio.name).toBe("A station");
+        expect(shipped.radio.txPower).toBe(17);
+        expect(shipped.channels.map((c) => c.name)).toEqual(["#Emcomm-Training"]);
+        expect(shipped.markDrill).toBe(true);
+    });
+
+    it("prefers the operator's own once there is one", async () => {
+        NetDefaults.save("training", aNetProfile({ radio: { radioFreq: 869525, radioBw: 250000, radioSf: 10, radioCr: 5 } }));
+        const mine = await NetDefaults.forStation("training", {});
+        expect(mine.radio.radioFreq).toBe(869525);
+    });
+
+    it("has nothing at all for normal mode", async () => {
+        expect(await NetDefaults.forStation("normal", {})).toBe(null);
     });
 
     it("can be forgotten, and says stations keep what they have", () => {
@@ -136,7 +156,7 @@ describe("the net defaults editor", () => {
     // It handed back a blank form when no radio was connected — every tick off,
     // no channel, adverts at zero — because the whole default was built from a
     // station. Only four of its fields actually need one.
-    it("starts from the app's answers, with only the radio's readings left blank", async () => {
+    it("starts from the settings the app ships with, filled in", async () => {
         const wrapper = await open();
 
         expect(wrapper.vm.draft.channels.map((c) => c.name)).toEqual(["#Emcomm"]);
@@ -146,8 +166,10 @@ describe("the net defaults editor", () => {
         expect(wrapper.vm.draft.adverts).toEqual({ zeroHopMinutes: 30, floodMinutes: 60 });
         expect(wrapper.vm.draft.announce).toBe("flood");
 
-        // the net has to say what frequency it is on; nothing here can guess it
-        expect(wrapper.vm.draft.radio.radioFreq).toBe(null);
+        // and the four numbers nobody should have to type: MeshCore's published
+        // USA and Canada preset. It handed back a blank form once.
+        expect(wrapper.vm.draft.radio).toMatchObject({ radioFreq: 910525, radioBw: 62500, radioSf: 7, radioCr: 5 });
+        expect(wrapper.text()).toContain("what the app ships with");
     });
 
     it("offers no node name and no transmit power, and says why", async () => {
@@ -157,6 +179,14 @@ describe("the net defaults editor", () => {
         expect(wrapper.text()).not.toContain("Transmit power (dBm)");
         expect(wrapper.text()).toContain("two would answer to one");
         expect(wrapper.text()).toContain("as high as its own radio goes");
+    });
+
+    // The page has a Save of its own, which saves the mode tab and not this. Two
+    // Saves on one page was a fault worth fixing once already, so this one says
+    // which is which rather than leaving it to be found out.
+    it("says the page's Save is not this one", async () => {
+        const wrapper = await open();
+        expect(wrapper.text()).toContain("saves the mode tab above, not this");
     });
 
     it("saves what was typed, and says where to load it", async () => {
