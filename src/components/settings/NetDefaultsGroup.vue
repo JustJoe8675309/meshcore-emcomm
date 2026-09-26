@@ -1,5 +1,6 @@
 <template>
     <SettingsSection title="Net defaults"
+                     :open-by-default="openByDefault"
                      note="What your net starts from. Kept in this browser, editable with no radio connected, and loaded into a station from its mode tab.">
         <div class="bg-white divide-y">
 
@@ -172,6 +173,14 @@ export default {
     name: 'NetDefaultsGroup',
     components: {
         SettingsSection,
+    },
+    props: {
+        // opened straight away where there is nothing else on the screen, as on
+        // the connect screen, where this is the reason the operator came
+        openByDefault: {
+            type: Boolean,
+            default: false,
+        },
     },
     data() {
         return {

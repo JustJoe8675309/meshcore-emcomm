@@ -61,7 +61,27 @@
             <div class="text-xs text-gray-500 mt-0.5">What goes in each field of every report. Print it before you need it.</div>
         </div>
 
+        <!-- The other desk job. Settings needs a database, and the database is
+             opened per node, so with no radio to hand there was no way in to the
+             net defaults at all — which is exactly when an operator wants to write
+             them: the night before, on a phone, with the radios still in the bag. -->
+        <div class="text-center pt-2">
+            <button @click="netDefaultsOpen = true" type="button"
+                class="text-sm text-blue-700 hover:text-blue-900 underline">Net defaults</button>
+            <div class="text-xs text-gray-500 mt-0.5">What your net starts from. Set it up before a radio is to hand.</div>
+        </div>
+
         <ReportCribSheet :open="cribSheetOpen" @close="cribSheetOpen = false"/>
+
+        <div v-if="netDefaultsOpen" class="fixed inset-0 z-50 flex bg-black/40 p-3 overflow-y-auto">
+            <div role="dialog" aria-label="Net defaults" class="m-auto w-full max-w-lg bg-white rounded-lg shadow-lg">
+                <NetDefaultsGroup open-by-default/>
+                <div class="p-3 border-t">
+                    <button @click="netDefaultsOpen = false" type="button"
+                            class="w-full text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-sm px-4 py-2.5">Close</button>
+                </div>
+            </div>
+        </div>
 
     </div>
 </template>
@@ -70,15 +90,18 @@
 import Connection from "../../js/Connection.js";
 import GlobalState from "../../js/GlobalState.js";
 import ReportCribSheet from "../reports/ReportCribSheet.vue";
+import NetDefaultsGroup from "../settings/NetDefaultsGroup.vue";
 
 export default {
     name: 'ConnectButtons',
     components: {
         ReportCribSheet,
+        NetDefaultsGroup,
     },
     data() {
         return {
             cribSheetOpen: false,
+            netDefaultsOpen: false,
         };
     },
     computed: {

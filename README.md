@@ -713,7 +713,9 @@ incident needs against what a drill costs everyone else:
 
 **Net defaults** are the settings your net agreed on, as against the settings one station holds.
 They are edited under **Settings → Net defaults**, kept in this browser rather than on a radio, and
-so can be written on a phone at the kitchen table **with nothing connected**. A mode tab does not
+**also reachable from the connect screen** — the settings page needs a database and the database is
+opened per node, so with no radio to hand that door does not open, which is exactly when an
+operator wants to write them: the night before, on a phone, with the radios still in the bag. A mode tab does not
 edit them: it only offers to **load** one, because a tab is about a station and a net default is
 about the net.
 

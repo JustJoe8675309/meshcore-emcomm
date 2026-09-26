@@ -11,6 +11,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
 import NetDefaultsGroup from "../../src/components/settings/NetDefaultsGroup.vue";
+import ConnectButtons from "../../src/components/connect/ConnectButtons.vue";
 import NetDefaults from "../../src/js/modes/NetDefaults.js";
 import ModeProfiles from "../../src/js/modes/ModeProfiles.js";
 import GlobalState from "../../src/js/GlobalState.js";
@@ -185,3 +186,36 @@ describe("the net defaults editor", () => {
     });
 
 });
+
+// Settings needs a database, and the database is opened per node — so with no
+// radio to hand there was no way in to the net defaults at all. Which is exactly
+// when an operator wants to write them: the night before, on a phone, with the
+// radios still in the bag. Found by trying it.
+describe("reaching the net defaults before a radio", () => {
+
+    afterEach(() => {
+        window.localStorage.clear();
+        GlobalState.connection = null;
+        GlobalState.selfInfo = null;
+    });
+
+    it("is offered on the connect screen, beside the crib sheet", () => {
+        const wrapper = mount(ConnectButtons);
+        const button = wrapper.findAll("button").find((b) => b.text() === "Net defaults");
+
+        expect(button).not.toBe(undefined);
+        expect(wrapper.text()).toContain("Set it up before a radio is to hand");
+    });
+
+    it("opens the same editor, already open", async () => {
+        const wrapper = mount(ConnectButtons);
+        await wrapper.findAll("button").find((b) => b.text() === "Net defaults").trigger("click");
+        await flushPromises();
+
+        expect(wrapper.findComponent(NetDefaultsGroup).exists()).toBe(true);
+        // and it is open rather than a heading to press again
+        expect(wrapper.text()).toContain("Frequency (kHz)");
+    });
+
+});
+

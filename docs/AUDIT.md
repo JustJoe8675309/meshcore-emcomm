@@ -486,9 +486,11 @@ size turned up, not just at a narrow window.
       asks first**, out of the box. Check on a node whose modes are new.
 - [ ] **Entering Emcomm-Training sends a zero hop advert, not a flood**, and its
       repeating flood is off. Entering Emcomm-Live floods, and repeats hourly.
-- [ ] **Net defaults are editable with no radio connected.** Settings → Net
-      defaults, on a phone with nothing plugged in: pick a mode, set the
-      frequency and channels, Save. It offers no node name and no transmit power,
+- [ ] **Net defaults are editable with no radio connected.** On the connect
+      screen, with nothing plugged in, press **Net defaults**: pick a mode, set
+      the frequency and channels, Save. Settings itself needs a database and the
+      database is opened per node, so that door does not open without a radio —
+      this is the way in, beside the crib sheet. It offers no node name and no transmit power,
       and says why.
 - [ ] **A mode tab offers to load one, and does not edit it.** "Load the net
       default for Emcomm-Live" appears only once one is written. Loading keeps
