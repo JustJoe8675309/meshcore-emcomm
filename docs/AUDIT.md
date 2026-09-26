@@ -494,7 +494,7 @@ size turned up, not just at a narrow window.
       default for Emcomm-Live" appears only once one is written. Loading keeps
       this station's name and its own maximum power, fills the tab, and writes
       nothing down until Save.
-- [ ] **"Start Emcomm-Live again from the app'"'"'s defaults"** fills the tab, says nothing
+- [ ] **"Start Emcomm-Live again from the app's defaults"** fills the tab, says nothing
       is written until Save, and leaves the saved mode alone until you press it.
       No such button on the Normal tab.
 - [ ] **Operator is under Radio and reads the same in every tab.** Type a
