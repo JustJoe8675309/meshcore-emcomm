@@ -895,8 +895,9 @@ describe("the settings tabs", () => {
 
         const also = wrapper.findAll("button[aria-expanded]").find((b) => b.text().startsWith("Also"));
         const panel = also.element.parentElement.querySelector("div");
+        // the four radio ones, the mode's own, and what entering it does
         const ticks = panel.querySelectorAll("input[type=checkbox]");
-        expect(ticks.length).toBe(7);
+        expect(ticks.length).toBe(10);
 
         // and none is left beside the frequency and power fields
         const radio = wrapper.findAll("button[aria-expanded]").find((b) => b.text().startsWith("Radio"));
@@ -1087,6 +1088,40 @@ describe("the settings tabs", () => {
     // DRILL marks an exercise, and a station's everyday operating is not one. A
     // tick that puts DRILL on real traffic is a way to be disbelieved when it
     // matters.
+    // They were in every profile and ran on every switch with no screen offering
+    // them: an operator could not see that entering a mode would move their
+    // position or announce them to the whole mesh, let alone stop it.
+    it("offers what entering the mode does, in every mode", async () => {
+        const wrapper = mount(ModeSettingsTabs);
+        await flushPromises();
+
+        for(const mode of MODES){
+            await open(wrapper, mode);
+            expect(wrapper.text(), mode).toContain("On entering this mode");
+            expect(wrapper.text(), mode).toContain("Announce the station");
+            expect(wrapper.text(), mode).toContain("Set the radio's clock from this device");
+            expect(wrapper.text(), mode).toContain("Take the position from a live GPS fix");
+            expect(wrapper.text(), mode).toContain("Search for repeaters in direct range");
+        }
+    });
+
+    it("saves what entering the mode does, rather than losing it", async () => {
+        const wrapper = mount(ModeSettingsTabs);
+        await flushPromises();
+        await open(wrapper, "live");
+
+        wrapper.vm.profile.announce = "zerohop";
+        wrapper.vm.profile.syncClock = false;
+        wrapper.vm.profile.discoverRepeaters = false;
+        await wrapper.vm.save();
+        await flushPromises();
+
+        const saved = ModeProfiles.profile("live", NODE);
+        expect(saved.announce).toBe("zerohop");
+        expect(saved.syncClock).toBe(false);
+        expect(saved.discoverRepeaters).toBe(false);
+    });
+
     it("does not offer the DRILL tick in normal mode", async () => {
         const wrapper = mount(ModeSettingsTabs);
         await flushPromises();
@@ -1173,7 +1208,7 @@ describe("the settings tabs", () => {
     it("loads it while keeping the station's own name and ceiling", async () => {
         NetDefaults.save("live", {
             ...ModeProfiles.blank(),
-            radio: { name: "SOMEONE ELSE", txPower: 3, radioFreq: 915000, radioBw: 250000, radioSf: 10, radioCr: 5 },
+            radio: { name: "SOMEONE ELSE", txPower: null, radioFreq: 915000, radioBw: 250000, radioSf: 10, radioCr: 5 },
             channels: [{ name: "#Emcomm", secret: "22".repeat(16) }],
         });
 

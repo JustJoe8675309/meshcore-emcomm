@@ -747,6 +747,12 @@ settings and its channels into the radio's slots, clearing any channel the mode 
 what the radio can hear really changes. The dialog lists what a switch will do, from the radio as
 it stands, before anything is written, and every step is reported as it goes.
 
+**What entering a mode does is on its tab too**, under Also: whether to announce the station and
+how loudly, whether to set the radio's clock from this device, whether to take the position from a
+live GPS fix, and whether to search for repeaters in range. All four were in every profile and ran
+on every switch with nothing on screen offering them — an operator could not see that entering a
+mode would move their position or announce them to the whole mesh, let alone stop it.
+
 **What belongs to a mode:** the node name, radio settings and transmit power; location sharing,
 the position in adverts, extra acknowledgements and automatic contacts; its channels; whether
 position requests are answered automatically; the repeating advert intervals; whether to trim

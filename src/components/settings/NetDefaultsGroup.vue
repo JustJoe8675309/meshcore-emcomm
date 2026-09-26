@@ -38,8 +38,6 @@
                     <div class="text-xs text-gray-500">
                         Every station on a net must agree on these four or they cannot hear each other.
                         The node name is not here: each station keeps its own, or two would answer to one.
-                        Transmit power is not here either — a station loads this as high as its own radio
-                        goes.
                     </div>
 
                     <div class="grid grid-cols-2 gap-2">
@@ -55,6 +53,27 @@
                         <label class="block text-xs text-gray-700">Coding rate
                             <input v-model.number="draft.radio.radioCr" type="number" class="mt-0.5 w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
                         </label>
+                    </div>
+
+                    <!-- A net of handhelds and base nodes does not share a ceiling,
+                         so the usual answer is "as high as each one goes". A net
+                         with a reason to name a number can name one. -->
+                    <div class="pt-1 space-y-1">
+                        <div class="text-xs font-medium text-gray-900">Transmit power</div>
+                        <label class="flex items-start space-x-2 text-xs text-gray-700">
+                            <input type="radio" :checked="draft.radio.txPower == null" @change="setMaxPower" class="mt-0.5">
+                            <span>As high as each radio goes</span>
+                        </label>
+                        <label class="flex items-start space-x-2 text-xs text-gray-700">
+                            <input type="radio" :checked="draft.radio.txPower != null" @change="setFixedPower" class="mt-0.5">
+                            <span>This many dBm</span>
+                        </label>
+                        <input v-if="draft.radio.txPower != null" v-model.number="draft.radio.txPower" type="number" min="0"
+                               aria-label="Transmit power for the net"
+                               class="w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
+                        <div v-if="radioNow" class="text-xs text-gray-500">
+                            The radio connected now is at {{ radioNow.txPower }} of {{ radioNow.maxTxPower }} dBm.
+                        </div>
                     </div>
                 </div>
 
@@ -127,13 +146,32 @@
                         </label>
                     </div>
 
-                    <label class="block text-xs text-gray-700">Announce on entering
+
+                    <div class="pt-1 text-xs font-medium text-gray-900">On entering the mode</div>
+
+                    <label class="block text-xs text-gray-700">Announce the station
                         <select v-model="draft.announce" class="mt-0.5 w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
-                            <option value="none">Nothing</option>
+                            <option value="none">Say nothing</option>
                             <option value="zerohop">Zero hop, heard by neighbours</option>
                             <option value="flood">Flood, carried by every repeater</option>
                         </select>
                     </label>
+
+                    <label class="flex items-start space-x-2 text-xs text-gray-700">
+                        <input v-model="draft.syncClock" type="checkbox" class="mt-0.5">
+                        <span>Set the radio's clock from the operator's device</span>
+                    </label>
+
+                    <label class="flex items-start space-x-2 text-xs text-gray-700">
+                        <input v-model="draft.positionFromGps" type="checkbox" class="mt-0.5">
+                        <span>Take the position from a live GPS fix</span>
+                    </label>
+
+                    <label class="flex items-start space-x-2 text-xs text-gray-700">
+                        <input v-model="draft.discoverRepeaters" type="checkbox" class="mt-0.5">
+                        <span>Search for repeaters in direct range</span>
+                    </label>
+
                 </div>
 
                 <div class="p-2 space-y-2">
@@ -180,6 +218,7 @@
  */
 import SettingsSection from "./SettingsSection.vue";
 import NetDefaults from "../../js/modes/NetDefaults.js";
+import GlobalState from "../../js/GlobalState.js";
 import ModeProfiles, { MODE_CLASSES } from "../../js/modes/ModeProfiles.js";
 import EmcommMode from "../../js/EmcommMode.js";
 import Utils from "../../js/Utils.js";
@@ -241,6 +280,15 @@ export default {
             this.newChannelName = "";
         },
 
+        setMaxPower() {
+            this.draft.radio.txPower = null;
+        },
+
+        setFixedPower() {
+            // start from what this radio manages, if one is here to ask
+            this.draft.radio.txPower = GlobalState.selfInfo?.maxTxPower ?? 22;
+        },
+
         removeChannel(index) {
             this.draft.channels.splice(index, 1);
         },
@@ -263,6 +311,11 @@ export default {
 
         modes() {
             return NetDefaults.MODES;
+        },
+
+        /** Shown for reference when there is a radio, which there need not be. */
+        radioNow() {
+            return GlobalState.selfInfo ?? null;
         },
 
         /** Which modes have something written down, for the strip. */

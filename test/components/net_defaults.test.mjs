@@ -55,17 +55,26 @@ describe("a net default", () => {
         expect(NetDefaults.has("training")).toBe(false);
     });
 
-    it("keeps no node name and no power number", () => {
+    it("keeps no node name, whatever it was given", () => {
         NetDefaults.save("live", aNetProfile());
         const stored = NetDefaults.get("live");
 
         // two stations answering to one name is the fault mode sharing refuses
         expect(stored.radio.name).toBeUndefined();
-        // radios differ in what they manage, so the number is worked out on loading
-        expect(stored.radio.txPower).toBe(null);
         // and what a net does agree on is there
         expect(stored.radio.radioFreq).toBe(906875);
         expect(stored.channels[0].name).toBe("#Emcomm");
+    });
+
+    // A net of handhelds and base nodes does not share a ceiling, so the usual
+    // answer is "as high as each one goes" — but a net with a reason to name a
+    // number can name one.
+    it("keeps a power the net named, and null for as high as each radio goes", () => {
+        NetDefaults.save("live", aNetProfile({ radio: { ...aNetProfile().radio, txPower: 17 } }));
+        expect(NetDefaults.get("live").radio.txPower).toBe(17);
+
+        NetDefaults.save("live", aNetProfile({ radio: { ...aNetProfile().radio, txPower: null } }));
+        expect(NetDefaults.get("live").radio.txPower).toBe(null);
     });
 
     it("is not offered for normal mode, which no net can decide", () => {
@@ -75,11 +84,12 @@ describe("a net default", () => {
     });
 
     it("fills out into a station, keeping that station's name and ceiling", async () => {
-        NetDefaults.save("live", aNetProfile());
+        NetDefaults.save("live", aNetProfile({ radio: { ...aNetProfile().radio, txPower: null } }));
 
         const filled = await NetDefaults.forStation("live", { name: "KJ5HBN-EMCOMM", maxTxPower: 17 });
 
         expect(filled.radio.name).toBe("KJ5HBN-EMCOMM");
+        // the net named no number, so this radio's own ceiling
         expect(filled.radio.txPower).toBe(17);
         expect(filled.radio.radioFreq).toBe(906875);
         expect(filled.autoAnswerPositions).toBe(true);
@@ -172,13 +182,32 @@ describe("the net defaults editor", () => {
         expect(wrapper.text()).toContain("what the app ships with");
     });
 
-    it("offers no node name and no transmit power, and says why", async () => {
+    it("offers no node name, and says why", async () => {
         const wrapper = await open();
 
         expect(wrapper.text()).not.toContain("Node name");
-        expect(wrapper.text()).not.toContain("Transmit power (dBm)");
         expect(wrapper.text()).toContain("two would answer to one");
-        expect(wrapper.text()).toContain("as high as its own radio goes");
+    });
+
+    it("offers a power the net can name, or each radio's own ceiling", async () => {
+        const wrapper = await open();
+
+        expect(wrapper.text()).toContain("Transmit power");
+        expect(wrapper.text()).toContain("As high as each radio goes");
+        expect(wrapper.vm.draft.radio.txPower).toBe(null);
+
+        wrapper.vm.setFixedPower();
+        expect(wrapper.vm.draft.radio.txPower).toBe(22);
+        wrapper.vm.setMaxPower();
+        expect(wrapper.vm.draft.radio.txPower).toBe(null);
+    });
+
+    it("offers what entering the mode does, rather than doing it unannounced", async () => {
+        const wrapper = await open();
+        expect(wrapper.text()).toContain("On entering the mode");
+        expect(wrapper.text()).toContain("Announce the station");
+        expect(wrapper.text()).toContain("Set the radio's clock");
+        expect(wrapper.text()).toContain("Search for repeaters");
     });
 
     // The page has a Save of its own, which saves the mode tab and not this. Two

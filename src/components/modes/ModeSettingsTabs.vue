@@ -235,7 +235,40 @@
                         <span>Drop contacts not heard in 90 days when entering this mode. Favourites are kept, and the backup keeps everything</span>
                     </label>
 
-                    <div class="text-xs text-gray-700">Repeating adverts, in minutes. 0 turns one off.</div>
+
+                    <!-- What entering the mode does, as against what it writes.
+                         These were in every profile and ran on every switch with
+                         no screen offering them: an operator could not see that
+                         entering a mode would move their position or announce
+                         them to the whole mesh, let alone stop it. -->
+                    <div class="pt-1 text-xs font-medium text-gray-900">On entering this mode</div>
+
+                    <label class="block text-xs text-gray-700">Announce the station
+                        <select v-model="profile.announce" class="mt-0.5 w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
+                            <option value="none">Say nothing</option>
+                            <option value="zerohop">Zero hop, heard by neighbours</option>
+                            <option value="flood">Flood, carried by every repeater</option>
+                        </select>
+                    </label>
+
+                    <label class="flex items-start space-x-2 text-xs text-gray-700">
+                        <input v-model="profile.syncClock" type="checkbox" class="mt-0.5">
+                        <span>Set the radio's clock from this device. Message times come from the radio, so a
+                            clock that has drifted makes a log that disagrees with everyone else's</span>
+                    </label>
+
+                    <label class="flex items-start space-x-2 text-xs text-gray-700">
+                        <input v-model="profile.positionFromGps" type="checkbox" class="mt-0.5">
+                        <span>Take the position from a live GPS fix. A radio without one is left alone rather
+                            than moved to 0, 0</span>
+                    </label>
+
+                    <label class="flex items-start space-x-2 text-xs text-gray-700">
+                        <input v-model="profile.discoverRepeaters" type="checkbox" class="mt-0.5">
+                        <span>Search for repeaters in direct range, and say what answered</span>
+                    </label>
+
+                    <div class="pt-1 text-xs text-gray-700">Repeating adverts, in minutes. 0 turns one off.</div>
                     <div class="grid grid-cols-2 gap-2">
                         <label class="block text-xs text-gray-700">Zero hop
                             <input v-model.number="profile.adverts.zeroHopMinutes" type="number" min="0" class="mt-0.5 w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">

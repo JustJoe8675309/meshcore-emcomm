@@ -482,6 +482,11 @@ size turned up, not just at a narrow window.
       tapped showing its own mode, never the one you left.
 
 - [ ] **Normal mode has no DRILL tick** under Also; the two emcomm modes do.
+- [ ] **Also ends with "On entering this mode"** in every mode: announce, set the
+      clock, take a GPS fix, search for repeaters. Change one, Save, and the
+      switch preview or the switch itself must follow it.
+- [ ] **The net defaults offer transmit power** as either "as high as each radio
+      goes" or a named number, and show what the connected radio is at.
 - [ ] **Emcomm-Live answers position requests automatically and Emcomm-Training
       asks first**, out of the box. Check on a node whose modes are new.
 - [ ] **Entering Emcomm-Training sends a zero hop advert, not a flood**, and its

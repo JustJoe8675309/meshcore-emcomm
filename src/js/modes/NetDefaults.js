@@ -124,8 +124,13 @@ class NetDefaults {
 
         const { name, txPower, ...radio } = profile.radio ?? {};
 
+        // null means "as high as this radio goes", which is the sensible thing
+        // for a net to say when its stations are a mix of handhelds and base
+        // nodes. A number is kept when the net has a reason to name one.
+        const wanted = Number.isFinite(txPower) ? txPower : null;
+
         const stored = {
-            radio: { ...radio, txPower: null },
+            radio: { ...radio, txPower: wanted },
             channels: JSON.parse(JSON.stringify(profile.channels ?? [])),
             autoAnswerPositions: profile.autoAnswerPositions === true,
             adverts: { ...(profile.adverts ?? {}) },
@@ -175,12 +180,16 @@ class NetDefaults {
             return null;
         }
 
+        // the net's number when it named one, and otherwise as high as this
+        // particular radio manages
+        const wanted = Number.isFinite(profile.radio?.txPower) ? profile.radio.txPower : maxTxPower;
+
         return {
             ...profile,
             radio: {
                 ...profile.radio,
                 name: name ?? "",
-                txPower: maxTxPower,
+                txPower: wanted,
             },
             channels: JSON.parse(JSON.stringify(profile.channels)),
         };
