@@ -16,6 +16,7 @@ import Header from "../../src/components/Header.vue";
 import Connection from "../../src/js/Connection.js";
 import GlobalState from "../../src/js/GlobalState.js";
 import ModeProfiles from "../../src/js/modes/ModeProfiles.js";
+import ModeSwitch from "../../src/js/modes/ModeSwitch.js";
 import ModeSettingsTabs from "../../src/components/modes/ModeSettingsTabs.vue";
 import Utils from "../../src/js/Utils.js";
 
@@ -333,6 +334,40 @@ describe("a wizard step and the real editor", () => {
 
         expect(wrapper.text()).toContain("Next, below, saves this tab");
         expect(wrapper.text()).not.toContain("Save, at the top of the page");
+    });
+
+    // Its first screen promises "nothing here is written to the radio". Making
+    // Next save the step broke that: a wizard walks all three modes whether or not
+    // this browser has seen them, so on a fresh browser every step holds defaults
+    // invented seconds earlier — and a station sitting in that mode had its real
+    // settings replaced by them. Node 1 came back from another computer at the
+    // default maximum power instead of the 14 dBm it had been given.
+    it("keeps its promise: a step is written down, never written to the radio", async () => {
+        const applied = vi.spyOn(ModeSwitch, "applySettings").mockResolvedValue({ failures: [] });
+        ModeProfiles.setCurrent("normal", NODE);
+
+        const wrapper = mountReal();
+        await buttonSaying(wrapper, "Start").trigger("click");
+        const tab = await editorReady(wrapper);
+
+        // the step being left is the mode this station is in
+        expect(tab.vm.tab).toBe("normal");
+        tab.vm.profile.radio.txPower = 7;
+        await buttonSaying(wrapper, "Next").trigger("click");
+        await flushPromises();
+
+        expect(ModeProfiles.profile("normal", NODE).radio.txPower).toBe(7);
+        expect(applied).not.toHaveBeenCalled();
+    });
+
+    it("says so on the step, rather than that it writes the radio", async () => {
+        ModeProfiles.setCurrent("normal", NODE);
+        const wrapper = mountReal();
+        await buttonSaying(wrapper, "Start").trigger("click");
+        await editorReady(wrapper);
+
+        expect(wrapper.text()).toContain("Nothing here reaches the radio");
+        expect(wrapper.text()).not.toContain("saving writes these settings to the radio");
     });
 
     it("has no Save of its own inside the dialog", async () => {

@@ -750,6 +750,13 @@ raised the transmit power and want it raised, not after a round trip through ano
 back. Channels are the exception and wait for a switch, because writing them means clearing every
 slot the mode does not name — that is destructive, it is slow, and it is what the banner is for.
 
+**The wizard writes nothing to the radio.** Next saves the step it is leaving, so an operator
+setting up at a muster point keeps their work, but only as a mode profile: entering the mode is
+what writes it, from the banner, with its own account of what will change. That matters most on a
+browser that has never seen this station, where every step holds defaults invented moments
+earlier — writing those to a radio that is sitting in that mode would replace its real settings
+with ones nobody has looked at.
+
 Normal mode is re-read from the radio on every connect, so there is no button for it. There used
 to be one, and it was a footgun: it sat on the Normal tab, so a station actually sitting in a
 drill could have the drill written down as its home with one press.

@@ -518,6 +518,11 @@ size turned up, not just at a narrow window.
 
 - [ ] **Setup wizard is a row under Commands**, with the RX Log and Reboot, and
       opens the same walkthrough that runs on a first connection.
+- [ ] **The wizard writes nothing to the radio**, which its first screen
+      promises. On a station that is IN a mode, walk the wizard past that mode's
+      step: the radio must not change. It once did, and on a fresh browser the
+      step holds defaults this app invented seconds earlier — node 1 came back
+      from another computer at the default maximum power instead of its 14 dBm.
 - [ ] **A wizard step keeps what was typed into it.** Change the transmit power
       on the Normal step, press Next, then come back with Back: it is still
       there, and the Normal tab in Settings holds it too. The editor's own Save

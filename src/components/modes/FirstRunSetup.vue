@@ -78,11 +78,18 @@
  * of the settings page, which is behind this dialog, so without that an operator
  * walks through all three modes and keeps none of it.
  *
- * What a step writes is a mode profile. Only the mode the station is already in
- * reaches the radio, which is true of saving a mode anywhere. Entering a mode is
- * what writes the rest, with its own confirmation of what will change. Saying so
- * plainly is part of the point, because "set the name" reads like "rename my
- * radio" otherwise.
+ * What a step writes is a mode profile, and nothing else. It does not reach the
+ * radio even when the step is the mode the station is in — which the first screen
+ * promises, and which was briefly untrue. A wizard walks all three modes whether
+ * or not this browser has ever seen them, so on a fresh browser every step holds
+ * defaults invented seconds earlier; writing those to a station sitting in that
+ * mode replaced its real settings with ones nobody had looked at. A station left
+ * in Emcomm-Training came back from another computer at the default maximum power
+ * instead of the 14 dBm it had been given.
+ *
+ * Entering a mode is what writes it, with its own confirmation of what will
+ * change. Saying so plainly is part of the point, because "set the name" reads
+ * like "rename my radio" otherwise.
  */
 import GlobalState from "../../js/GlobalState.js";
 import ModeProfiles, { MODES } from "../../js/modes/ModeProfiles.js";
@@ -166,7 +173,9 @@ export default {
                 return;
             }
             try {
-                await this.$refs.tab?.save();
+                // written down, not written to the radio: see the promise on the
+                // first screen, and what breaking it cost on the bench
+                await this.$refs.tab?.save({ toRadio: false });
             } catch(e) {
                 // the profile is written before the radio is touched, so what was
                 // typed is kept even here

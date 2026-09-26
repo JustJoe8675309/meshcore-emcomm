@@ -256,7 +256,7 @@
                 <div v-if="message" role="status" class="text-xs text-gray-600">{{ message }}</div>
                 <!-- the wizard shows this editor in a dialog, so the page's Save
                      is behind it: there, Next is what saves -->
-                <div v-if="tab === current" class="text-xs text-gray-500">
+                <div v-if="savesToRadio" class="text-xs text-gray-500">
                     <span class="font-medium">{{ savedBy }}</span> saves this tab. This station is in this mode,
                     so saving writes these settings to the radio. Channels are written when a mode is entered,
                     from the banner.
@@ -388,7 +388,20 @@ export default {
                 }
             }
         },
-        async save() {
+        /**
+         * Saves the tab. `{ toRadio: false }` writes the profile down and stops
+         * there, whatever mode the station is in.
+         *
+         * The wizard needs that. Its first screen promises "nothing here is
+         * written to the radio", and it walks all three modes whether or not this
+         * browser has ever seen them — so on a fresh browser every step holds
+         * values invented from defaults seconds earlier. Writing those to a
+         * station that is sitting in that mode replaces its real settings with
+         * ones nobody has looked at. It happened on the bench: a station left in
+         * Emcomm-Training came back from another computer transmitting at the
+         * default maximum instead of the 14 dBm it had been set to.
+         */
+        async save({ toRadio = true } = {}) {
 
             if(this.profile == null){
                 return;
@@ -396,6 +409,11 @@ export default {
 
             ModeProfiles.saveProfile(this.tab, JSON.parse(JSON.stringify(this.profile)));
             delete this.drafts[this.tab];
+
+            if(!toRadio){
+                this.message = `${this.labelFor(this.tab)} saved. Entering the mode is what writes it to the radio.`;
+                return;
+            }
 
             // Another mode is a promise about later. The mode the station is in is
             // the radio, so saving it writes it: an operator who changes the power
@@ -473,6 +491,10 @@ export default {
         /** What the operator should press, which is not the same in the wizard. */
         savedBy() {
             return this.only == null ? "Save, at the top of the page," : "Next, below,";
+        },
+        /** The wizard writes nothing to the radio, and says so on every step. */
+        savesToRadio() {
+            return this.only == null && this.tab === this.current;
         },
         canAddChannel() {
             return this.profile != null && this.newChannelName.trim() !== "" && this.profile.channels.length < 16;
