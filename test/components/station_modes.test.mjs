@@ -9,6 +9,7 @@ import { mount, flushPromises } from "@vue/test-utils";
 import { Constants } from "@liamcottle/meshcore.js";
 import ModeProfiles, { MODES, MODE_LABELS } from "../../src/js/modes/ModeProfiles.js";
 import ModeSwitch from "../../src/js/modes/ModeSwitch.js";
+import NetDefaults from "../../src/js/modes/NetDefaults.js";
 import ModeBanner from "../../src/components/modes/ModeBanner.vue";
 import ModeSwitchDialog from "../../src/components/modes/ModeSwitchDialog.vue";
 import ModeSettingsTabs from "../../src/components/modes/ModeSettingsTabs.vue";
@@ -1151,6 +1152,43 @@ describe("the settings tabs", () => {
         expect(wrapper.text()).toContain("until you press Save");
         // and the operator can see it is not saved yet
         expect(wrapper.vm.unsaved).toBe(true);
+    });
+
+    // The editing lives in Settings; a mode tab only offers to load, because a tab
+    // is about one station and a net default is about the net.
+    it("offers the net default only when one has been written", async () => {
+        const wrapper = mount(ModeSettingsTabs);
+        await flushPromises();
+        await open(wrapper, "live");
+
+        const offered = () => wrapper.findAll("button").some((b) => b.text().startsWith("Load the net default"));
+        expect(offered()).toBe(false);
+
+        NetDefaults.save("live", { ...ModeProfiles.blank(), radio: { radioFreq: 915000, name: "x", txPower: 22 }, channels: [] });
+        await flushPromises();
+        expect(offered()).toBe(true);
+    });
+
+    it("loads it while keeping the station's own name and ceiling", async () => {
+        NetDefaults.save("live", {
+            ...ModeProfiles.blank(),
+            radio: { name: "SOMEONE ELSE", txPower: 3, radioFreq: 915000, radioBw: 250000, radioSf: 10, radioCr: 5 },
+            channels: [{ name: "#Emcomm", secret: "22".repeat(16) }],
+        });
+
+        const wrapper = mount(ModeSettingsTabs);
+        await flushPromises();
+        await open(wrapper, "live");
+        await wrapper.vm.loadNetDefault();
+        await flushPromises();
+
+        expect(wrapper.vm.profile.radio.radioFreq).toBe(915000);
+        // this station stays itself: its own name, and as high as its radio goes
+        expect(wrapper.vm.profile.radio.name).not.toBe("SOMEONE ELSE");
+        expect(wrapper.vm.profile.radio.txPower).toBe(22);
+        // and nothing is written down until Save
+        expect(ModeProfiles.profile("live", NODE).radio.radioFreq).not.toBe(915000);
+        expect(wrapper.text()).toContain("until you press Save");
     });
 
     it("offers no such button for normal mode, which has no default", async () => {

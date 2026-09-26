@@ -255,10 +255,17 @@
             <div class="p-2 space-y-2">
 
                 <!-- Only the emcomm modes have a default to go back to. Normal is
-                     the radio as its owner has it, which no app can invent. -->
+                     the radio as its owner has it, which no app can invent.
+                     Editing the net defaults is in Settings, not here: this tab is
+                     about one station, and they are about the net. -->
+                <button v-if="hasNetDefault" @click="loadNetDefault" :disabled="busy" type="button"
+                        class="w-full bg-white border border-gray-300 hover:bg-gray-100 disabled:opacity-60 text-gray-700 text-xs font-medium rounded-lg px-3 py-2">
+                    Load the net default for {{ labelFor(tab) }}
+                </button>
+
                 <button v-if="tab !== 'normal'" @click="resetToDefault" :disabled="busy" type="button"
                         class="w-full bg-white border border-gray-300 hover:bg-gray-100 disabled:opacity-60 text-gray-700 text-xs font-medium rounded-lg px-3 py-2">
-                    Start {{ labelFor(tab) }} again from the defaults
+                    Start {{ labelFor(tab) }} again from the app's defaults
                 </button>
 
                 <div v-if="unsaved" role="status" class="text-xs text-amber-800">
@@ -291,6 +298,7 @@ import Utils from "../../js/Utils.js";
 import EmcommMode from "../../js/EmcommMode.js";
 import ModeProfiles, { MODES, MODE_CLASSES } from "../../js/modes/ModeProfiles.js";
 import ModeSwitch from "../../js/modes/ModeSwitch.js";
+import NetDefaults from "../../js/modes/NetDefaults.js";
 import SettingsSection from "../settings/SettingsSection.vue";
 import ContactsGroup from "../settings/ContactsGroup.vue";
 import OperatorSettingsGroup from "../settings/OperatorSettingsGroup.vue";
@@ -474,6 +482,37 @@ export default {
             this.editingChannel = null;
         },
         /**
+         * Fills the tab from the net's own default, keeping what is this station's.
+         *
+         * The station's name stays its own — two stations answering to one name is
+         * the fault mode sharing already refuses — and the power becomes as high as
+         * this radio goes, because a net cannot know what each radio manages.
+         *
+         * Filled and not saved, like every other load here: the operator sees what
+         * they are about to accept before it is written down, and the radio is
+         * reached by entering the mode.
+         */
+        async loadNetDefault() {
+            this.busy = true;
+            this.message = null;
+            try {
+                const filled = await NetDefaults.forStation(this.tab, {
+                    name: this.profile?.radio?.name ?? GlobalState.selfInfo?.name ?? "",
+                    maxTxPower: GlobalState.selfInfo?.maxTxPower ?? this.profile?.radio?.txPower ?? null,
+                });
+                if(filled == null){
+                    this.message = "There is no net default for this mode yet. Settings has the place to write one.";
+                    return;
+                }
+                this.profile = filled;
+                this.message = `${this.labelFor(this.tab)} filled from the net default, keeping this station's name `
+                    + "and its own maximum power. Nothing is written down or sent to the radio until you press Save.";
+            } finally {
+                this.busy = false;
+            }
+        },
+
+        /**
          * Puts the tab back to what this mode starts out as, ready to look at.
          *
          * Not saved and not written: the operator sees what they are about to
@@ -541,6 +580,11 @@ export default {
         },
         canAddChannel() {
             return this.profile != null && this.newChannelName.trim() !== "" && this.profile.channels.length < 16;
+        },
+        /** Whether the net has written down a starting point for this mode. */
+        hasNetDefault() {
+            void NetDefaults.state.revision;
+            return this.tab !== "normal" && NetDefaults.has(this.tab);
         },
         /** The radio as it stands, for the readouts beside a mode's fields. */
         radioNow() {

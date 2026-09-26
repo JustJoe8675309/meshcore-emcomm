@@ -64,6 +64,10 @@
                          what it comes home to. -->
                     <ModeSettingsTabs ref="modes"/>
 
+                    <!-- the net's own starting point, which belongs to no radio
+                         and so is edited with or without one connected -->
+                    <NetDefaultsGroup/>
+
                     <SettingsSection title="Backups"
                                      note="Contacts, channels and their keys, and the radio settings.">
 
@@ -257,6 +261,7 @@ import PositionService from "../../js/position/PositionService.js";
 import NodeBackup from "../../js/NodeBackup.js";
 import EmcommMode from "../../js/EmcommMode.js";
 import SettingsSection from "../settings/SettingsSection.vue";
+import NetDefaultsGroup from "../settings/NetDefaultsGroup.vue";
 import ModeSettingsTabs from "../modes/ModeSettingsTabs.vue";
 import FirstRunSetup from "../modes/FirstRunSetup.vue";
 import ModeProfiles from "../../js/modes/ModeProfiles.js";
@@ -264,7 +269,7 @@ import BusyOverlay from "../BusyOverlay.vue";
 
 export default {
     name: 'SettingsPage',
-    components: {Page, SaveButton, AppBar, BusyOverlay, ModeSettingsTabs, FirstRunSetup, SettingsSection},
+    components: {Page, SaveButton, AppBar, BusyOverlay, ModeSettingsTabs, FirstRunSetup, SettingsSection, NetDefaultsGroup},
     data() {
         return {
             firstRunOpen: false,

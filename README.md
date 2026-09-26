@@ -711,7 +711,21 @@ incident needs against what a drill costs everyone else:
   **Emcomm-Training announces zero hop and sends no repeating flood at all** — its neighbours hear
   it and nobody relays it.
 
-**Either emcomm mode can be started again from its defaults** from a button on its tab. It fills
+**Net defaults** are the settings your net agreed on, as against the settings one station holds.
+They are edited under **Settings → Net defaults**, kept in this browser rather than on a radio, and
+so can be written on a phone at the kitchen table **with nothing connected**. A mode tab does not
+edit them: it only offers to **load** one, because a tab is about a station and a net default is
+about the net.
+
+Two things a net default deliberately does not hold. The **node name**, because every station is
+its own and two answering to one name is the fault mode sharing already refuses to carry. And a
+**transmit power number**, because radios differ in what they manage — a station loads it as high
+as its own radio goes.
+
+Normal mode has none and never will. Normal is the radio as its owner has it, learnt by reading a
+radio that is in it; a net cannot agree on somebody else's everyday settings.
+
+**Either emcomm mode can be started again from the app's defaults** from a button on its tab. It fills
 the tab and stops there: nothing is written down or sent to the radio until Save, so a mode edited
 into a mess is undone without a second mistake. Normal mode has no such button, because normal is
 the radio as its owner had it and no app can invent that.

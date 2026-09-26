@@ -173,10 +173,14 @@ describe("SettingsPage position fields", () => {
 
     // Where this station is moved into the mode tabs with the clock, and is
     // written when pressed rather than by Save. Covered in radio_now.test.mjs.
-    it("has no fields of its own to fill", async () => {
+    it("has none of the radio's own fields to fill", async () => {
+        // the position moved into the mode tabs with the clock; what number boxes
+        // remain on the page belong to the net defaults, which belong to no radio
         const wrapper = mountPage();
         await flushPromises();
-        expect(wrapper.findAll("input[type=number]")).toHaveLength(0);
+        for(const placeholder of ["e.g: -38.664646", "e.g: 178.023507", "e.g: 917.375", "e.g: 22"]){
+            expect(wrapper.findAll("input").some((i) => i.attributes("placeholder") === placeholder), placeholder).toBe(false);
+        }
     });
 
 
