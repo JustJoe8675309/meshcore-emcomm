@@ -253,6 +253,14 @@
             </SettingsSection>
 
             <div class="p-2 space-y-2">
+
+                <!-- Only the emcomm modes have a default to go back to. Normal is
+                     the radio as its owner has it, which no app can invent. -->
+                <button v-if="tab !== 'normal'" @click="resetToDefault" :disabled="busy" type="button"
+                        class="w-full bg-white border border-gray-300 hover:bg-gray-100 disabled:opacity-60 text-gray-700 text-xs font-medium rounded-lg px-3 py-2">
+                    Start {{ labelFor(tab) }} again from the defaults
+                </button>
+
                 <div v-if="unsaved" role="status" class="text-xs text-amber-800">
                     Not saved yet. This tab keeps what you typed while the app is open, including if you look
                     at another mode, but a reload starts again from what is written down.
@@ -465,6 +473,31 @@ export default {
             this.profile.channels.splice(index, 1);
             this.editingChannel = null;
         },
+        /**
+         * Puts the tab back to what this mode starts out as, ready to look at.
+         *
+         * Not saved and not written: the operator sees what they are about to
+         * accept and presses Save themselves, so a mistyped mode can be undone
+         * without a second mistake. The channels come back too, which is the part
+         * worth the warning — anything added to this mode goes with them.
+         */
+        async resetToDefault() {
+            if(this.tab === "normal"){
+                return;
+            }
+            this.busy = true;
+            this.message = null;
+            try {
+                this.profile = await ModeProfiles.defaultEmcommProfile(this.tab);
+                this.message = `${this.labelFor(this.tab)} is back to its defaults, including its channels. `
+                    + "Nothing is written down or sent to the radio until you press Save.";
+            } catch(e) {
+                this.message = `Could not read the radio: ${e?.message ?? e}`;
+            } finally {
+                this.busy = false;
+            }
+        },
+
         startEditChannel(index) {
             const channel = this.profile.channels[index];
             this.editingChannel = index;

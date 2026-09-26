@@ -482,6 +482,13 @@ size turned up, not just at a narrow window.
       tapped showing its own mode, never the one you left.
 
 - [ ] **Normal mode has no DRILL tick** under Also; the two emcomm modes do.
+- [ ] **Emcomm-Live answers position requests automatically and Emcomm-Training
+      asks first**, out of the box. Check on a node whose modes are new.
+- [ ] **Entering Emcomm-Training sends a zero hop advert, not a flood**, and its
+      repeating flood is off. Entering Emcomm-Live floods, and repeats hourly.
+- [ ] **"Start Emcomm-Live again from the defaults"** fills the tab, says nothing
+      is written until Save, and leaves the saved mode alone until you press it.
+      No such button on the Normal tab.
 - [ ] **Operator is under Radio and reads the same in every tab.** Type a
       callsign, switch tabs, switch modes: it is still there, and a report form
       prefills with it. There is no Save in that group.

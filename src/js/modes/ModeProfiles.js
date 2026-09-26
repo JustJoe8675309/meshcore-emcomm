@@ -466,14 +466,31 @@ class ModeProfiles {
             },
             // the net's own channel, plus anything the operator adds
             channels: [{ name: channelName, secret: secret }],
-            autoAnswerPositions: false,
-            adverts: { ...EmcommMode.ADVERT_SCHEDULE },
+
+            // A real incident answers by itself; a drill asks first.
+            //
+            // An operator driving, carrying a casualty or working a task cannot
+            // tap Send, so a roll call in a live net would get silence from
+            // exactly the stations whose position matters most — and net control
+            // cannot tell "busy" from "off the air". A drill is the other way
+            // round: the operator is at the radio, learning what the prompt does.
+            autoAnswerPositions: mode === "live",
+
+            // A drill should not be paid for by the whole mesh.
+            //
+            // Every repeater that hears a flood advert rebroadcasts it, so a
+            // flood on entering and another every hour bills every station in the
+            // region for someone's practice. Training keeps the zero hop advert,
+            // which its neighbours hear and nobody rebroadcasts.
+            adverts: mode === "training"
+                ? { ...EmcommMode.ADVERT_SCHEDULE, floodMinutes: 0 }
+                : { ...EmcommMode.ADVERT_SCHEDULE },
+            announce: mode === "training" ? "zerohop" : "flood",
+
             markDrill: mode === "training",
             trimContacts: true,
             syncClock: true,
             positionFromGps: true,
-            // every operator and repeater on the mesh learns the station is up
-            announce: "flood",
             discoverRepeaters: true,
         };
 

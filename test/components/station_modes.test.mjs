@@ -137,13 +137,28 @@ describe("what a mode is", () => {
 
         for(const profile of [live, training]){
             expect(profile.radio).toMatchObject({ txPower: 22, shareLocation: true, advertPosition: true, multiAcks: true, autoAddContacts: true });
-            expect(profile.adverts).toEqual({ zeroHopMinutes: 30, floodMinutes: 60 });
             expect(profile.trimContacts).toBe(true);
-            expect(profile.announce).toBe("flood");
+            expect(profile.adverts.zeroHopMinutes).toBe(30);
         }
 
         expect(live.channels.map((c) => c.name)).toEqual(["#Emcomm"]);
         expect(training.channels.map((c) => c.name)).toEqual(["#Emcomm-Training"]);
+
+        // A real incident answers a position request by itself: an operator
+        // driving or working a task cannot tap Send, and a roll call would get
+        // silence from the stations that matter most. A drill asks, because the
+        // operator is at the radio learning what the prompt does.
+        expect(live.autoAnswerPositions).toBe(true);
+        expect(training.autoAnswerPositions).toBe(false);
+
+        // And a drill is not paid for by the whole mesh: every repeater that
+        // hears a flood advert rebroadcasts it, so training keeps the zero hop
+        // and announces itself to its neighbours only.
+        expect(live.announce).toBe("flood");
+        expect(live.adverts.floodMinutes).toBe(60);
+        expect(training.announce).toBe("zerohop");
+        expect(training.adverts.floodMinutes).toBe(0);
+
         // the one real difference between them
         expect(live.markDrill).toBe(false);
         expect(training.markDrill).toBe(true);
@@ -334,8 +349,8 @@ describe("switching a station's mode", () => {
         expect(EmcommMode.applyRadioPolicies).toHaveBeenCalledWith({ shareLocation: true, advertPosition: true, multiAcks: true });
         expect(EmcommMode.setManualAddContacts).toHaveBeenCalledWith(false);
         // every channel is answered, so what the mode carries is whether the
-        // operator is asked first
-        expect(PositionService.settings(NODE)).toEqual({ autoAnswer: false });
+        // operator is asked first — and a live incident does not ask
+        expect(PositionService.settings(NODE)).toEqual({ autoAnswer: true });
         expect(AdvertSchedule.get(NODE)).toEqual({ zeroHopMinutes: 30, floodMinutes: 60 });
         expect(AdvertSchedule.start).toHaveBeenCalledWith(NODE);
     });
@@ -353,8 +368,10 @@ describe("switching a station's mode", () => {
 
     it("announces the station in an emcomm mode, and says what the repeater search found", async () => {
         Connection.discoverRepeaters.mockResolvedValue([{ name: "FEDF MC Repeater" }]);
+        // a drill announces to its neighbours; only a live incident is worth a
+        // flood, which every repeater that hears it rebroadcasts
         const result = await ModeSwitch.apply("training");
-        expect(EmcommMode.announce).toHaveBeenCalledWith(true);
+        expect(EmcommMode.announce).toHaveBeenCalledWith(false);
         expect(result.warnings.join(" ")).toContain("1 repeater(s) answered");
     });
 
@@ -1092,6 +1109,59 @@ describe("the settings tabs", () => {
         await flushPromises();
 
         expect(ModeProfiles.profile("normal", NODE).markDrill).toBe(false);
+    });
+
+    // A mode that has been edited into a mess needs a way back that does not mean
+    // remembering what it started as.
+    it("can start an emcomm mode again from its defaults", async () => {
+        const wrapper = mount(ModeSettingsTabs);
+        await flushPromises();
+        await open(wrapper, "live");
+
+        wrapper.vm.profile.radio.txPower = 3;
+        wrapper.vm.profile.channels = [];
+        await wrapper.vm.resetToDefault();
+        await flushPromises();
+
+        expect(wrapper.vm.profile.radio.txPower).toBe(22);
+        expect(wrapper.vm.profile.channels.map((c) => c.name)).toEqual(["#Emcomm"]);
+        expect(wrapper.vm.profile.autoAnswerPositions).toBe(true);
+    });
+
+    it("shows the defaults without writing them down or sending them", async () => {
+        const applied = vi.spyOn(ModeSwitch, "applySettings").mockResolvedValue({ failures: [] });
+        const wrapper = mount(ModeSettingsTabs);
+        await flushPromises();
+        await open(wrapper, "live");
+
+        // put the saved mode somewhere the defaults are not, so the reset has
+        // something to undo
+        wrapper.vm.profile.radio.txPower = 3;
+        await wrapper.vm.save();
+        await flushPromises();
+        expect(ModeProfiles.profile("live", NODE).radio.txPower).toBe(3);
+
+        await wrapper.vm.resetToDefault();
+        await flushPromises();
+
+        // on screen, not written down
+        expect(wrapper.vm.profile.radio.txPower).toBe(22);
+        expect(ModeProfiles.profile("live", NODE).radio.txPower).toBe(3);
+        expect(applied).not.toHaveBeenCalled();
+        expect(wrapper.text()).toContain("until you press Save");
+        // and the operator can see it is not saved yet
+        expect(wrapper.vm.unsaved).toBe(true);
+    });
+
+    it("offers no such button for normal mode, which has no default", async () => {
+        const wrapper = mount(ModeSettingsTabs);
+        await flushPromises();
+
+        await open(wrapper, "live");
+        expect(wrapper.findAll("button").some((b) => b.text().startsWith("Start "))).toBe(true);
+
+        await open(wrapper, "normal");
+        expect(wrapper.findAll("button").some((b) => b.text().startsWith("Start "))).toBe(false);
     });
 
     it("has no Save of its own, and says where the one Save is", async () => {

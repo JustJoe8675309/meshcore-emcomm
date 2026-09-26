@@ -698,6 +698,24 @@ battery line, and switched by tapping it:
 | **Emcomm-Live** | red | A real incident: the net's channels, and the settings an incident wants. |
 | **Emcomm-Training** | yellow | A drill: its own channels, and everything sent marked DRILL. |
 
+**The two emcomm modes differ in more than the DRILL mark**, and the differences are about what an
+incident needs against what a drill costs everyone else:
+
+- **Emcomm-Live answers position requests by itself.** An operator driving, carrying a casualty or
+  working a task cannot tap Send, so a roll call in a live net would get silence from exactly the
+  stations whose position matters most, and net control could not tell "busy" from "off the air".
+  **Emcomm-Training asks first**, because there the operator is at the radio learning what the
+  prompt does.
+- **A drill is not paid for by the whole mesh.** Every repeater that hears a flood advert
+  rebroadcasts it, so Emcomm-Live announces itself with a flood and repeats one hourly, while
+  **Emcomm-Training announces zero hop and sends no repeating flood at all** — its neighbours hear
+  it and nobody relays it.
+
+**Either emcomm mode can be started again from its defaults** from a button on its tab. It fills
+the tab and stops there: nothing is written down or sent to the radio until Save, so a mode edited
+into a mess is undone without a second mistake. Normal mode has no such button, because normal is
+the radio as its owner had it and no app can invent that.
+
 Black letters on each colour, and the words say it too, so it reads in sunlight and to an
 operator who cannot tell red from green.
 
