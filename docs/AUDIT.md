@@ -535,6 +535,14 @@ size turned up, not just at a narrow window.
 
 - [ ] **There is one Save**, at the top of the page. It saves the tab on show and
       the position together, and there is no second Save inside the tab.
+- [ ] **A direct request is visible to a stock station.** Ask a node running the
+      stock MeshCore app for its position: it must show "Position request from X
+      (answering needs Mesh-Emcomm)" followed by the code, as an ordinary
+      message. It showed nothing at all until the type changed on 27 Sep.
+- [ ] **A channel request is still invisible to it**, which is deliberate.
+- [ ] **A request from a station on an older build still works**, because the
+      code identifies it rather than the type.
+
 - [ ] **A request on a channel the station does not hold** says so: "A station
       only hears a channel it holds. Check that they are on #x." The asked
       station shows no prompt at all, which is correct. Without that line the

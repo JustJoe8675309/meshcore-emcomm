@@ -2226,6 +2226,23 @@ class Connection {
      * A direct message of text type 1, which the firmware calls command data. It
      * is sent once, with no acknowledgement, and is not kept in the conversation.
      */
+    /**
+     * A direct message carrying a position request, answer or roll call.
+     *
+     * Sent as plain text, which is the one byte that decides whether the station
+     * on the other end sees anything at all. It used to go as CliData, which the
+     * stock MeshCore app treats as data and does not show: a station running that
+     * app was asked for its position and never knew. The text carries a sentence
+     * before the payload for exactly this reason — "Position request from KJ5HBN
+     * (answering needs Mesh-Emcomm)" — and as CliData nobody could read it.
+     *
+     * The operator can then answer in words, which is worth more than silence
+     * from the stations whose position matters most.
+     *
+     * Channel and room traffic is deliberately not changed: those go to everyone,
+     * and a line of machine noise in every stock user's channel each time someone
+     * runs a roll call is how a net gets asked to stop.
+     */
     static async sendCommandData(publicKey, text) {
         const connection = GlobalState.connection;
         if(connection == null){
@@ -2233,7 +2250,7 @@ class Connection {
         }
         const reply = await this.sendAwaiting(
             connection,
-            () => connection.sendCommandSendTxtMsg(Constants.TxtTypes.CliData, 0, Math.floor(Date.now() / 1000), new Uint8Array(publicKey).subarray(0, 6), text),
+            () => connection.sendCommandSendTxtMsg(Constants.TxtTypes.Plain, 0, Math.floor(Date.now() / 1000), new Uint8Array(publicKey).subarray(0, 6), text),
             [Constants.ResponseCodes.Sent, Constants.ResponseCodes.Err],
         );
         if(reply.code !== Constants.ResponseCodes.Sent){
@@ -2432,10 +2449,16 @@ class Connection {
             return;
         }
 
-        // A position request or answer sent direct travels as text type 1 with a
-        // marker. It is handled, and kept out of the conversation: on the bench the
-        // test one landed in the chat as an ordinary message with a notification
-        if(message.txtType === Constants.TxtTypes.CliData && PositionService.onDirectText(contact, message.text)){
+        // A position request or answer sent direct carries a marker in its text.
+        // It is handled, and kept out of the conversation: on the bench the test
+        // one landed in the chat as an ordinary message with a notification.
+        //
+        // Either text type. It goes out as plain now, so a station on the stock
+        // app can read the sentence in front of the payload, but a station on an
+        // older build of this app still sends CliData and must still be heard.
+        // The marker is what identifies it, not the type.
+        if((message.txtType === Constants.TxtTypes.Plain || message.txtType === Constants.TxtTypes.CliData)
+            && PositionService.onDirectText(contact, message.text)){
             return;
         }
 

@@ -1246,19 +1246,27 @@ menu beside it in Contacts. Everything that comes back is on the **Positions** t
   every client on the channel receives but only this app shows. Stock clients show nothing at
   all. Every station on the channel running this app sees the answer, so a position asked for
   on the net is shared with the net.
-- **Direct,** there is no datagram, so it goes as a direct message of text type 1, which the
-  firmware calls command data. Only the two stations see the answer. This app reads it and keeps
-  it out of the conversation. The request does carry a readable line — "Position request from
-  KJ5HBN (answering needs Mesh-Emcomm)" — and for a long time this said a station without the app
-  would see it. **It does not.** Tested against the stock MeshCore app on 23 Sep: a direct request
-  showed nothing at all, while an ordinary message from the same station over the same path
-  arrived normally, so the packet is delivered and the stock app simply does not display text
-  type 1 as a message.
+- **Direct,** there is no datagram, so it goes as a direct message of **text type 0, plain text**.
+  Only the two stations see it. This app reads the code and keeps the message out of the
+  conversation; a station on the stock app sees the readable line in front of it — "Position
+  request from KJ5HBN (answering needs Mesh-Emcomm)" — followed by the code, and can answer in
+  words.
 
-**So a station running the stock app sees none of this app's position traffic**, on a channel or
-direct. The one place it is visible to them is a room, where posts must be text type 0 anyway.
-Worth knowing when planning a net with mixed clients: ask those stations by voice, or work the
-positions through a room.
+  It went as **type 1, command data** until 27 Sep, and that showed nothing at all. Tested against
+  the stock MeshCore app on 23 Sep: a direct request showed nothing, while an ordinary message
+  from the same station over the same path arrived normally, so the packet was delivered and the
+  stock app simply does not display type 1 as a message. The sentence had been written for exactly
+  that operator and nobody could read it. Changing the type costs nothing on air — same packet,
+  same length, one byte in the header.
+
+  Incoming traffic is taken on **either** type, because the code is what identifies it and a
+  station on an older build still sends type 1.
+
+**So a station on the stock app can see a direct request, and still sees nothing of channel
+traffic.** That asymmetry is deliberate: a channel goes to everyone, and a line of machine noise
+in every stock user's channel each time somebody runs a roll call is how a net gets asked to stop.
+For positions from a mixed net, ask those stations directly, by voice, or work through a room —
+where posts are plain text anyway.
 
 **Asking.** Three choices: **once**; **every 1, 5, 15, 30 or 60 minutes for N minutes**; or
 **every X minutes for Y minutes**, with your own numbers. Both repeating choices stop the moment
