@@ -409,6 +409,32 @@ describe("switching a station's mode", () => {
         expect(Connection.setAdvertName).not.toHaveBeenCalled();
     });
 
+    // Four settings used to run on every switch with nothing said about them, and
+    // were given lines of their own. The clock was a fifth and was missed: entering
+    // either emcomm mode sets the radio's clock by default, and message times come
+    // from the radio, so it is not a small thing to do unannounced.
+    //
+    // Written as everything apply() does to the radio without being asked again,
+    // rather than as one line about the clock, so that the next setting added to a
+    // profile has to be announced or fail here.
+    it("announces every setting that runs on entry, the clock included", async () => {
+        const text = (await ModeSwitch.describe("live")).changes.join(" ");
+
+        expect(text).toContain("The radio's clock is set from this device.");
+        expect(text).toContain("The advert position is taken from a live GPS fix");
+        expect(text).toContain("advert goes out");
+        expect(text).toContain("Repeaters in direct range are searched for.");
+    });
+
+    it("says nothing about the clock when the mode leaves it alone", async () => {
+        const profile = ModeProfiles.profileOrDefault("live", NODE);
+        ModeProfiles.saveProfile("live", { ...profile, syncClock: false }, NODE);
+
+        const text = (await ModeSwitch.describe("live")).changes.join(" ");
+
+        expect(text).not.toContain("clock");
+    });
+
     it("says what happens to the channels it is not keeping, not just that they go", async () => {
         // it used to read "Any other channel is cleared from the radio", which is
         // true of the slots and wrong about the consequence: an emcomm channel is

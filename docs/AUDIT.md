@@ -445,6 +445,16 @@ size turned up, not just at a narrow window.
 - [ ] **The switch preview says what happens to the channels it is not keeping**,
       not just that the slots are cleared: an emcomm-named channel is carried over,
       and anything else is kept in the mode being left, with its key.
+- [ ] **The preview names everything that runs on entry.** Switching into
+      Emcomm-Live, the dialog must list the radio's clock being set from this
+      device, the advert position being taken from a GPS fix, the advert going out
+      (flood or zero hop, whichever the mode says), and repeaters being searched
+      for. Untick one in the mode tab and its line must go. These four ran on
+      every switch with nothing said about them until 26 Sep; the clock was a
+      fifth and was still silent until 27 Sep. Message times come from the radio,
+      so setting its clock without saying so is not a small thing. If a setting is
+      ever added to a profile that acts on entry, it belongs here and in the
+      preview.
 - [ ] **The history a station already had is still there** after the first
       connect on this build. Channel messages moved to a new schema version, and
       RxDB runs that migration on open: each old row keeps its text and gets an

@@ -131,6 +131,11 @@ class ModeSwitch {
             changes.push("Contacts not heard in 90 days are dropped, whatever kind they are. Favourites are kept, and the backup keeps everything.");
         }
 
+        // in the order apply() runs them, so the dialog reads as the sequence the
+        // operator is about to set off
+        if(profile.syncClock){
+            changes.push("The radio's clock is set from this device.");
+        }
         if(profile.positionFromGps){
             changes.push("The advert position is taken from a live GPS fix, if there is one.");
         }
