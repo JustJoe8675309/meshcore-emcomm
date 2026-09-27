@@ -134,8 +134,21 @@ describe("the position and clock group", () => {
         expect(Connection.syncDeviceTime).toHaveBeenCalled();
     });
 
+    // The clock is pinned for this one. The test sets the radio 90 seconds behind
+    // by reading Date.now(), and the component works the drift out by reading
+    // Date.now() again when it renders. Nothing holds the wall clock still between
+    // those two reads, so if a second ticks over in the gap the drift is 91 and the
+    // assertion misses. It passed alone and failed in the full suite, which is the
+    // shape of that bug exactly: a loaded suite makes the gap wider.
+    //
+    // Date.now is spied rather than reaching for fake timers, because what is
+    // ambiguous here is the instant, not the passage of time -- mount and
+    // flushPromises should go on behaving normally.
     it("says a drifted clock in seconds", async () => {
-        Connection.getDeviceTime.mockResolvedValue({ epochSecs: Math.floor(Date.now() / 1000) - 90 });
+        const fixed = 1_700_000_000_000;
+        vi.spyOn(Date, "now").mockReturnValue(fixed);
+        Connection.getDeviceTime.mockResolvedValue({ epochSecs: Math.floor(fixed / 1000) - 90 });
+
         const wrapper = mount(RadioNowGroup);
         await flushPromises();
         await open(wrapper);
