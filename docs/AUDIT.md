@@ -477,11 +477,13 @@ size turned up, not just at a narrow window.
 
 - [ ] **It opens on a tab per mode** — Normal, Emcomm-Training, Emcomm-Live —
       coloured as the banner is, with the mode in use marked. All three hold the
-      same fields in the same layout. This radio now, Backups and Commands are
-      folded below them.
+      same fields in the same layout. Net defaults, Backups and Commands are
+      folded below them. There is no "This radio now" below the tabs: it was
+      dismantled into the tabs, and the item further down says so.
 - [ ] **Inside a tab the headings fold and all start shut**: Radio, Operator,
-      Companions, Repeaters, Channels, Rooms, Also. Every tick is under Also, and
-      none is left beside the frequency and power fields.
+      Position, Clock, Companions, Repeaters, Channels, Rooms, Also — nine of
+      them, in that order. Every tick is under Also, and none is left beside the
+      frequency and power fields.
 - [ ] **A station left in a mode, on a computer that has never seen it at home.**
       Connect it on a second machine (or a private window). It asks "Is this
       station in a mode?"; answer that it is. Then, before anything else, open
