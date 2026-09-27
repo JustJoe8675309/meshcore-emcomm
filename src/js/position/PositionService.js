@@ -897,8 +897,12 @@ class PositionService {
     }
 
     /**
-     * A direct message of text type 1. Returns true when it was one of ours, so
-     * the caller keeps it out of the conversation.
+     * A direct message carrying one of ours. Returns true when it was, so the
+     * caller keeps it out of the conversation.
+     *
+     * The caller checks the text type and allows either plain or type 1: these go
+     * out as plain since 27 Sep 2026, and a station on an older build still sends
+     * type 1. The marker in the text is what identifies it, not the type.
      */
     static onDirectText(contact, text) {
         const message = Protocol.fromDirectText(text);

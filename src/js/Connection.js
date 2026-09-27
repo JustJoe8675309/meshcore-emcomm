@@ -2223,10 +2223,6 @@ class Connection {
     }
 
     /**
-     * A direct message of text type 1, which the firmware calls command data. It
-     * is sent once, with no acknowledgement, and is not kept in the conversation.
-     */
-    /**
      * A direct message carrying a position request, answer or roll call.
      *
      * Sent as plain text, which is the one byte that decides whether the station
@@ -2242,20 +2238,13 @@ class Connection {
      * Channel and room traffic is deliberately not changed: those go to everyone,
      * and a line of machine noise in every stock user's channel each time someone
      * runs a roll call is how a net gets asked to stop.
+     *
+     * Nothing is written to the conversation here. The readable line is for the
+     * station at the other end, not for this operator's chat, and a request or an
+     * answer arriving is kept out of the conversation at the other end too.
      */
     static async sendCommandData(publicKey, text) {
-        const connection = GlobalState.connection;
-        if(connection == null){
-            throw new Error(this.DISCONNECTED);
-        }
-        const reply = await this.sendAwaiting(
-            connection,
-            () => connection.sendCommandSendTxtMsg(Constants.TxtTypes.Plain, 0, Math.floor(Date.now() / 1000), new Uint8Array(publicKey).subarray(0, 6), text),
-            [Constants.ResponseCodes.Sent, Constants.ResponseCodes.Err],
-        );
-        if(reply.code !== Constants.ResponseCodes.Sent){
-            throw new Error(reply.code == null ? "the radio did not answer" : "the radio would not send it");
-        }
+        return await this.sendPlainTextOnce(publicKey, text);
     }
 
     /**
@@ -2264,6 +2253,21 @@ class Connection {
      * it as a command when the sender is an admin, and drops it otherwise.
      */
     static async sendRoomPost(publicKey, text) {
+        return await this.sendPlainTextOnce(publicKey, text);
+    }
+
+    /**
+     * One plain text message to a contact, sent once, with no acknowledgement
+     * asked for and nothing kept in the conversation.
+     *
+     * The two callers above arrived at the same thing from opposite directions: a
+     * room post has to be plain because a room runs type 1 as a command, and a
+     * position request became plain on 27 Sep so that a stock app would show it.
+     * They are kept as separate names because the call sites read better for it,
+     * and because either could need to diverge again — but the wire format is one
+     * place, so a change cannot reach one and miss the other.
+     */
+    static async sendPlainTextOnce(publicKey, text) {
         const connection = GlobalState.connection;
         if(connection == null){
             throw new Error(this.DISCONNECTED);

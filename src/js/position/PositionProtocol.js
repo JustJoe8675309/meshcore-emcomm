@@ -7,16 +7,22 @@
  * firmware leaves free for testing without registration, 0xFF00 to 0xFFFE.
  *
  * Direct to a contact there is no datagram, so the same bytes go as a direct
- * message of text type 1, the firmware's "command data". Clients without this
- * app show that as ordinary text, so the text leads with a readable line saying
- * what it is, and the payload follows a marker this app looks for:
+ * message of plain text, type 0. It went as type 1, the firmware's "command
+ * data", until 27 Sep 2026: that was on the assumption that a client without
+ * this app would show it as ordinary text, and the bench proved otherwise --
+ * the stock app showed nothing at all, so the station was asked for its
+ * position and never knew. Plain text now, and the text leads with a readable
+ * line saying what it is, with the payload behind a marker this app looks for:
  *
  *     Position request from KJ5HBN (answering needs Mesh-Emcomm) #mce1:AQE...
  *
- * In a room server there are no datagrams, and text type 1 cannot be used: a
- * room runs text type 1 from an admin as a command. So in a room the same text
- * goes as an ordinary post, which the room relays to everyone in it, capped at
- * the room's 151 bytes.
+ * In a room server there are no datagrams, and text type 1 could never be used
+ * there either: a room runs text type 1 from an admin as a command. So in a room
+ * the same text goes as an ordinary post, which the room relays to everyone in
+ * it, capped at the room's 151 bytes.
+ *
+ * Incoming direct traffic is taken on either type, because the marker is what
+ * identifies it and a station on an older build still sends type 1.
  *
  * Payload, version 1, little endian:
  *

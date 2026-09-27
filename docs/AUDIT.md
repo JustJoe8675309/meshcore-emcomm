@@ -253,13 +253,26 @@ in settings on the one being asked.
 - [ ] **A stock client** on the channel shows nothing for the datagrams. **Proven
       23 Sep** on node 3 running the factory app: a position sent to a channel showed
       nothing, as designed.
-- [ ] **A stock client shows nothing for a direct request either**, which is not what
-      this checklist used to say. Proven the same evening: the direct request carries a
-      readable line but travels as text type 1, and the stock app does not display that
-      as a message. Checked against the alternative by sending an ordinary direct
-      message from the same station over the same path, which arrived normally — so it
-      is displayed, not delivery, that fails. If this is ever changed to text type 0,
-      test that it does not then clutter both stations' conversations.
+- [ ] **A stock client DOES show a direct request**, which is the point of sending it
+      as plain text. On node 3 running the factory app, a direct position request from
+      node 1 shows as an ordinary message: the readable line first — "Position request
+      from KJ5HBN (answering needs Mesh-Emcomm)" — then the code. The operator can
+      answer in words and node 1 gets the answer as a message. **Proven 27 Sep** on
+      build `d2602d7`: node 3 displayed the line and was answered from.
+      It went as text type 1 until then, and showed nothing at all: the sentence had
+      been written for exactly that operator and nobody could read it. That was itself
+      checked against the alternative by sending an ordinary direct message from the
+      same station over the same path, which arrived normally — so it was display, not
+      delivery, that failed.
+- [ ] **Plain text does not clutter either conversation.** This is what changing the
+      type risked, and it is the half still owed. On the **sending** station, node 1's
+      conversation with the station it asked shows no request and no code — the
+      readable line is for the other end, not for this operator's chat. On a
+      **receiving station running this app**, the request does not land in the
+      conversation either, and raises no notification; it is answered from the prompt.
+      Only a stock station sees it as a message, which is the whole intent. A unit test
+      holds both halves ([test/components/position_text_type.test.mjs]), but neither
+      has been watched on the radios since the type changed.
 
 ### Room servers
 

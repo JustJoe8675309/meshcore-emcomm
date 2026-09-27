@@ -64,6 +64,21 @@ describe("a direct position message on the air", () => {
         expect(sent[0].txtType).not.toBe(Constants.TxtTypes.CliData);
     });
 
+    // The risk the change carried, and the other half of it: the readable line is
+    // written for the station at the other end, not for this operator's chat. Going
+    // out as plain text is exactly what would make it look like an ordinary message
+    // worth keeping, so nothing must write it down here. It holds by construction
+    // today -- sendCommandData only sends -- which is precisely the kind of thing a
+    // later edit breaks in silence.
+    it("is not written into the sending station's own conversation", async () => {
+        const saved = vi.spyOn(Database.Message, "insert").mockResolvedValue({});
+
+        await Connection.sendCommandData(THEM, "Position request from KJ5HBN #mce1:abc");
+
+        expect(sent).toHaveLength(1);
+        expect(saved).not.toHaveBeenCalled();
+    });
+
 });
 
 describe("a direct position message coming back", () => {
