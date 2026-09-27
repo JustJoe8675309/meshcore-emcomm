@@ -737,7 +737,12 @@ one found so far came from a dropped frame, and the link that drops them is BLE.
       a phone: the app opens at an import screen naming the mode and its channels.
       Save it: it says nothing on the radio has changed, and the Live tab in
       Settings shows those channels. The radio is unchanged until the mode is
-      entered from the banner.
+      entered from the banner. **Proven 27 Sep** on build `d2602d7`, node 1 to node
+      2: Live was sent out at SF 9 with an extra channel and arrived as both, the
+      import screen read the profile back before saving, node 2 kept its own name
+      and stayed in Normal, and its radio stayed at 20 dBm while the profile asked
+      for 22. Still untried: reading the QR image with a phone camera -- the link
+      went between two tabs -- and the private-key warning below.
 - [ ] **Private keys.** With a private channel in the mode, the share screen warns
       that the code carries its key. Untick it: the import says the channel was
       shared without its key and names it.

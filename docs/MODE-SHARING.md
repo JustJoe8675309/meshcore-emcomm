@@ -1,6 +1,8 @@
 # Setting one station up, and handing it to the others
 
-**Built on 22 September 2026 and not yet tried on the radios.** The QR button beside
+**Built on 22 September 2026. Proven on the radios on 27 September 2026**, node 1 to
+node 2, with the receiving node's radio untouched and its Bluetooth link unbroken --
+see the note at the end. The QR button beside
 the settings gear holds it. What follows is the design and the reasoning; the code
 is `src/js/modes/ModeShare.js` and `src/components/modes/ModeSharing.vue`.
 
@@ -115,3 +117,36 @@ Two stations must already agree on the radio settings to hear each other at all.
 This hands over the settings; it cannot tell an operator standing on the wrong
 frequency that they are on the wrong frequency. The mode switch screen says what
 it is about to change, which is the closest thing to a warning.
+
+
+## What the bench run showed
+
+Handed over on 27 September 2026 from node 1 on serial to node 2 on Bluetooth, both
+sitting in Normal mode. Node 1's Emcomm-Live was made deliberately wrong for node 2
+first -- spreading factor 9 instead of 7, and a second channel `#Net-Handover-Test`
+-- so that anything arriving would be unmistakable.
+
+The import screen named the sender and read back the whole profile before anything
+was saved: the two channels, 910525 kHz, BW 62500, SF 9, CR 5, 22 dBm, and the
+advert intervals. The slot it offered was the one the sender had used, with the
+other mode selectable.
+
+After saving, node 2 held SF 9 and both channels in Emcomm-Live, and:
+
+- it kept its own node name. The sender's name did not travel.
+- its Normal profile was untouched, still SF 7.
+- the mode in use was still Normal.
+- **the radio was not written to.** Node 2's radio was at 20 dBm while the arriving
+  profile asked for 22, and the page's live reading still said 20 afterwards.
+- the Bluetooth link stayed up throughout. A share link is a URL hash, so taking one
+  in is a hash change rather than a page load, and a connected radio is not dropped.
+
+The screen then said "Saved as Emcomm-Live. Nothing on the radio has changed: switch
+into the mode from the banner when you are ready", and disabled its own Save button
+so a second press cannot apply the same profile twice.
+
+One part of the path is still untried: the payload went between two tabs as a link
+rather than through a phone camera reading the QR image. The code was drawn on
+screen, but nothing has yet decoded it optically. The private-key warning has not
+been tried on the radios either -- the test channel was a hashtag one, which carries
+only its name.
