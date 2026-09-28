@@ -374,6 +374,24 @@ rather than an error.
       Passed 28 Sep from the OPORD form: it opened on OPORD, no other form was
       listed, and "The list" was present.
 - [ ] **The booklet prints a page per form**, all 26, each starting on a fresh page.
+      **This found a real defect on 28 Sep and it is fixed** (`9113557`). The booklet
+      printed as **one page** holding ICS-213, ICS-211 and then the bare heading of
+      ICS-209 with nothing under it -- 23 of the 26 forms silently gone from the thing
+      an operator prints the night before and carries in a binder.
+      The cause was that CSS cannot lift the sheet out of its dialog. `#crib-sheet`
+      sits inside a `fixed inset-0 overflow-y-auto` backdrop with two more scrolling
+      containers above it, and the print rule used `position: absolute`, which resolves
+      against the nearest *positioned* ancestor -- that backdrop -- so it never escaped
+      its scroll box and only one page was ever emitted. **Single forms hid it**,
+      because every form fits on one page; the booklet was the only thing that could
+      show it. The sheet is now moved onto the body on `beforeprint` and put back on
+      `afterprint`.
+      After the fix: **27 pages** -- a contents page, then all 26 forms each starting
+      its own -- with no page ending on a bare field label.
+      Two traps when checking this. Count the **pages**, not the bytes or the look of
+      page one: the broken print was a perfectly tidy single page. And a keyword search
+      for the sheet's own buttons hits "5. Patients by type" in the 9-line, which is
+      form content, so read the match before believing it.
 
 ### Position requests
 
