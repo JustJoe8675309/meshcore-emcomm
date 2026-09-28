@@ -212,6 +212,12 @@ rather than an error.
       the previous run's results.
 - [ ] **A run that partly succeeds.** The loss percentage and averages are taken over
       the real replies only.
+      Passed 28 Sep twice over, and both are worth doing by hand. A run of 5 with one
+      timeout read `5 sent, 20% lost` and averaged the four replies:
+      (2.50+1.50+1.00+2.25)/4 = 1.81, which is what it printed. The cancelled run of 7
+      averaged its six: (1.00+2.25+3.25+0.00+3.25+2.25)/6 = 2.00, also as printed. A
+      wrong denominator is the failure this item is about, and it is invisible unless
+      the sum is actually done.
 - [ ] **Switch tabs mid send.** Transmission stops. Nothing should keep talking to the
       radio with no display and no way to cancel. Then go back to Reports: it must say
       the report was interrupted, how many parts went out and to where, and offer to
