@@ -627,6 +627,11 @@ size turned up, not just at a narrow window.
       itself", automatic contacts, the advert intervals and position answering
       appear on the mode tab and nowhere else. There is no "This radio now"
       section below the tabs.
+      **Net defaults is not a second copy of any of them.** It holds what the net
+      starts from, for loading into whatever radio turns up; a station's own
+      setting still lives only on its mode tab. So transmit power appearing both
+      on the tab and under Net defaults is correct, and was counted as a failure
+      once by reading this item literally.
 - [ ] **Position and Clock are folds in the tab**, and act when pressed: write a
       position, take a live GPS fix, sync the clock, all without Save. They read
       the same in every mode tab.
@@ -697,7 +702,8 @@ size turned up, not just at a narrow window.
       and it takes effect. That is the point of the tabs.
 - [ ] **Each setting is in one place.** Transmit power used to be editable in
       three groups, the node name and the radio settings in two each. Look for a
-      second copy of any of them.
+      second copy of any of them. Net defaults does not count: it is the net's
+      starting point rather than this station's setting, and has its own items.
 - [ ] **Saving the mode in use reaches the radio.** In Normal, change the
       transmit power on the Normal tab and Save. The radio is at the new power
       before any switch — check it on the node itself, not only on screen.
