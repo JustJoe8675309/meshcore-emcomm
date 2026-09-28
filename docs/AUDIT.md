@@ -506,6 +506,19 @@ other station's configuration, which is the wrong place to look during a net.
       an answer every time it happens. The prompt's own buttons are Send, Send with
       message, Decline, Not now -- scoping to that group is what makes it unambiguous,
       and is what a person cannot do by eye.
+- [ ] **A roll call in a room with two answerers.** Needs all three logged in, and
+      auto-answer turned on in both answerers' mode tabs -- off by default, and with it
+      off you time the operator rather than the stagger. Put it back afterwards.
+      Passed 28 Sep: both answered automatically and node 1's card read "2 answered",
+      with the two landing 3.70 s apart and no collision.
+      **The absolute times mean something different here.** They arrived at 25.1 s and
+      28.8 s, against 1.5-10 s for the same test on a channel, while the stagger window
+      is only 10 s -- so most of that is the room round trip, because a room answer is
+      posted through the server rather than broadcast. Judge this one on the gap between
+      the answers, never on how long either took.
+      The two answers also differed in kind, which is worth seeing once: one read "same
+      location" from a live fix and the other "last known, 0.2 mi" from a radio that had
+      no current fix, both in the same card.
 - [ ] **A station that joins mid roll call still gets it.** Seen 28 Sep and worth
       keeping: a room roll call posted at 3:09:08 with its window open to 3:14 was
       pushed to node 3 when it connected at 3:10:03, the operator was prompted, and the
