@@ -516,7 +516,10 @@ class ModeSwitch {
             } else {
                 onProgress({ what: "the contacts from the backup" });
                 try {
-                    const result = await NodeBackup.restore(backup, (p) => onProgress({ what: p.what, done: p.done, total: p.total }));
+                    // the way home leaves the position alone: it is not part of a
+                    // mode, and a position entered by hand during the incident must
+                    // outlast coming home
+                    const result = await NodeBackup.restore(backup, (p) => onProgress({ what: p.what, done: p.done, total: p.total }), { keepPosition: true });
                     for(const failure of result.failures){
                         failures.push(failure);
                     }

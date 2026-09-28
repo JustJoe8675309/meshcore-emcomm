@@ -404,11 +404,13 @@ OK removes them, so the node is exactly as it was before. Cancel keeps them.`)){
                 this.backupWarnings = [`Could not check what was added while in EMCOMM mode, so nothing extra will be removed: ${e?.message ?? e}`];
             }
 
-            await this.runRestore({ ...entry.backup, slot: NodeBackup.SLOT_PRE_EMCOMM }, "Putting the radio back as it was", remove);
+            // leaving a mode is the way home, so the position is left as it is:
+            // one entered by hand during the incident must outlast coming back
+            await this.runRestore({ ...entry.backup, slot: NodeBackup.SLOT_PRE_EMCOMM }, "Putting the radio back as it was", remove, true);
 
         },
 
-        async runRestore(backup, title = "Restoring the backup", remove = null) {
+        async runRestore(backup, title = "Restoring the backup", remove = null, keepPosition = false) {
 
             this.isRestoring = true;
             this.restoreTitle = title;
@@ -426,7 +428,7 @@ OK removes them, so the node is exactly as it was before. Cancel keeps them.`)){
                 const result = await NodeBackup.restore(backup, (p) => {
                     this.backupProgress = `Restoring ${p.what}`;
                     this.backupSteps = { done: p.done, total: p.total };
-                }, { remove });
+                }, { remove, keepPosition });
                 this.backupSteps = null;
 
                 this.backupMessage = `Restored ${backup.contacts.length} contacts and ${backup.channels.length} channels.`;

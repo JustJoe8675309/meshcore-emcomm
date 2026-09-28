@@ -116,7 +116,10 @@ describe("leaving EMCOMM mode", () => {
 
         expect(window.confirm.mock.calls[1][0]).toContain("Met Since");
         expect(window.confirm.mock.calls[1][0]).toContain("Incident Tac 1");
-        expect(restore.mock.calls[0][2]).toEqual({ remove: extras });
+        // keepPosition: leaving a mode is the way home, and the position is not
+        // part of a mode, so the restore must not write the backup's position over
+        // one entered by hand during the incident
+        expect(restore.mock.calls[0][2]).toEqual({ remove: extras, keepPosition: true });
         expect(wrapper.text()).toContain("Removed 1 contact(s) and 1 channel(s) added since");
     });
 
@@ -130,7 +133,7 @@ describe("leaving EMCOMM mode", () => {
         await button(wrapper, "Put the radio back as it was").trigger("click");
         await flushPromises();
 
-        expect(restore.mock.calls[0][2]).toEqual({ remove: null });
+        expect(restore.mock.calls[0][2]).toEqual({ remove: null, keepPosition: true });
         expect(ModeProfiles.current(NODE)).toBe("normal");
     });
 

@@ -420,6 +420,20 @@ size turned up, not just at a narrow window.
       power and save, then round trip through Emcomm-Training. The power must
       still be raised: the backup was taken at connect and holds the old value, so
       the mode's own settings are written again after the restore.
+- [ ] **A position entered by hand outlasts the way home.** On the radio without
+      GPS, enter a position by hand, then round trip through Emcomm-Training. It
+      must still be there: the settings page promises the position "stays as it is
+      through every switch", and it is not part of a mode, so nothing rewrites it
+      after a restore the way the mode's own settings are rewritten above.
+      This failed on the bench on 27 Sep and is fixed. The backup holds the
+      position from when it was taken -- at connect, before the incident -- and
+      coming home wrote that back, so a position entered during a drill was gone
+      afterwards with nothing said. The station that enters a position by hand is
+      the one with no GPS, so it lands on exactly the station that cannot get it
+      back by itself, and its adverts go out carrying no position at all.
+      Check the other direction too: **Load last backup** is an explicit restore
+      and still writes the recorded position, but a backup taken before any
+      position was set must never clear one set since.
 - [ ] **The way home is taken fresh every time.** Switch away from normal, come
       home, add a channel, and switch away again: the new backup must include it.
       Node 3 failed this on 23 Sep — its backup was from three days earlier, made

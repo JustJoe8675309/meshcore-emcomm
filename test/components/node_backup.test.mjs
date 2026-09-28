@@ -173,6 +173,37 @@ describe("restoring a backup", () => {
         expect(radio.writes.find((w) => w[0] === "radio")).toEqual(["radio", 910525, 62500, 7, 5]);
     });
 
+    // The position is not part of a mode, and the settings page promises "it stays
+    // as it is through every switch". The way home broke that promise: the backup
+    // holds the position from when it was taken, at connect, so coming home wrote
+    // that back over anything set since.
+    //
+    // Found on the bench. A station with no GPS had its position entered by hand at
+    // 19:02, tested against for three quarters of an hour, and after a round trip
+    // through normal mode the radio held no position at all. Nothing said so, and
+    // its adverts would have gone out without one. The station that enters a
+    // position by hand is the station with no GPS, so this lands on exactly the one
+    // that cannot recover by itself.
+    it("leaves the position alone on the way home", async () => {
+        await NodeBackup.restore(backup, () => {}, { keepPosition: true });
+        expect(radio.writes.find((w) => w[0] === "position")).toBeUndefined();
+        // and the rest of the settings still go back
+        expect(radio.writes.find((w) => w[0] === "radio")).toEqual(["radio", 910525, 62500, 7, 5]);
+    });
+
+    it("still writes the position for a restore the operator asked for", async () => {
+        await NodeBackup.restore(backup);
+        expect(radio.writes.find((w) => w[0] === "position")).toEqual(["position", 31926942, -106400044]);
+    });
+
+    // "Restoring adds them back and removes nothing", says the page. A backup taken
+    // before a position was ever set must not be the thing that clears one.
+    it("never clears a position using a backup that has none", async () => {
+        const empty = { ...backup, settings: { ...backup.settings, advLat: 0, advLon: 0 } };
+        await NodeBackup.restore(empty);
+        expect(radio.writes.find((w) => w[0] === "position")).toBeUndefined();
+    });
+
     it("removes nothing, and reports what the backup does not contain", async () => {
         // restoring must never delete: trimming is EMCOMM mode's business, and
         // keeping them apart means a restore cannot lose anything by itself

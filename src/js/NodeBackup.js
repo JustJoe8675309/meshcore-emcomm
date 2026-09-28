@@ -13,6 +13,7 @@ import Utils from "./Utils.js";
 import AdvertSchedule from "./AdvertSchedule.js";
 import PositionService from "./position/PositionService.js";
 import OperatorSettings from "./reports/OperatorSettings.js";
+import Geo from "./position/Geo.js";
 
 const FORMAT_VERSION = 1;
 
@@ -289,7 +290,7 @@ class NodeBackup {
      * agreed to remove. Nothing is removed without that list, so an ordinary
      * restore still never deletes anything.
      */
-    static async restore(backup, onProgress = () => {}, { remove = null } = {}) {
+    static async restore(backup, onProgress = () => {}, { remove = null, keepPosition = false } = {}) {
 
         const connection = GlobalState.connection;
         if(connection == null){
@@ -313,8 +314,32 @@ class NodeBackup {
         // before spending minutes on contacts
         await this.attempt(failures, "name", () => Connection.setAdvertName(settings.name));
         step("name");
-        await this.attempt(failures, "position", () => Connection.setAdvertLatLong(settings.advLat, settings.advLon));
-        step("position");
+        // The position is not part of a mode, and the settings page says so in
+        // those words: "it stays as it is through every switch". Coming home has
+        // to leave it alone, so `keepPosition` is set by the way home.
+        //
+        // The backup holds the position as it was when the backup was taken --
+        // at connect, before the incident -- so writing that back silently undid
+        // a position entered by hand during the incident. A station without GPS
+        // is the only kind that enters one by hand, which makes it exactly the
+        // station that cannot afford to lose it: its adverts go back to carrying
+        // no position and nothing says so. Found on the bench: a position set by
+        // hand at 19:02 was gone after a round trip through normal mode.
+        //
+        // An explicit restore (Load last backup, Load from file) still writes it.
+        // There the operator has asked for the recorded settings to be put back.
+        // Even then a backup with no position never clears one set since:
+        // restoring "adds them back and removes nothing", as the page promises.
+        if(keepPosition){
+            step("position left as it is");
+        } else if(!Geo.isPosition(settings.advLat / 1e6, settings.advLon / 1e6)){
+            // the radio holds these as whole micro-degrees, so they are divided
+            // before the check: 31926942 is 31.926942 and not an impossible latitude
+            step("position left as it is");
+        } else {
+            await this.attempt(failures, "position", () => Connection.setAdvertLatLong(settings.advLat, settings.advLon));
+            step("position");
+        }
         await this.attempt(failures, "transmit power", () => Connection.setTxPower(settings.txPower));
         step("transmit power");
         await this.attempt(failures, "radio settings", () => Connection.setRadioParams(
