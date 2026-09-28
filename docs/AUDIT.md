@@ -455,16 +455,30 @@ other station's configuration, which is the wrong place to look during a net.
       reports itself in the language of a near miss, and an operator reading that after
       every ask will conclude something is wrong. The wording is accurate; the question
       is whether "Once" should listen for longer than a person takes to answer.
-- [ ] **Repeats.** Every 1 minute for 2 minutes, with node 2 not answering: three
-      requests — now, and one at each minute inside the window — then "No answer
-      after 3 requests", and nothing afterwards however long you wait. The form
-      says "3 requests" before you send it, so check the count it promises is the
-      count that goes out. Repeats stop when either radio disconnects.
+- [ ] **Repeats.** Every 1 minute for 2 minutes, with nobody answering: **two**
+      requests — now and at one minute — then "No answer after 2 requests", and
+      nothing afterwards however long you wait. The form says the count before you
+      send it, so the check is that the count it promises is the count that goes out.
+      Repeats stop when either radio disconnects.
+      This item said three until 28 Sep, counting the moment the window expires as a
+      request inside it. The app sends at 0 and at 1 minute and treats 2 minutes as
+      the end, states "That is 2 requests if nobody answers, the last one about 1
+      minute from now" before sending, and then closed with "2 sent ... No answer
+      after 2 requests". Promise and behaviour agree, which is what the item is for.
+      Pick the target carefully: a companion last heard a month ago and marked No Path
+      still answered from its radio within a minute, which is fine here -- a radio
+      answering without a position does not close the request -- but it would have
+      ruined the test had it carried one.
 - [ ] **The interval list is one press**: 1, 5, 15, 30, 60. Anything else is typed
       on the row below it. Seen 28 Sep on the direct request dialog, with the typed
-      row beneath as described.
+      row beneath as described. It is a native `select` holding exactly those five,
+      not a row of chips -- so unlike the contacts filter menu it is keyboard
+      reachable and announces itself.
 - [ ] **A window shorter than the interval is refused** — every 15 minutes for 5 —
       rather than sending once and calling itself a repeat.
+      Passed 28 Sep: Request goes disabled and the line reads "Asking for less time
+      than the gap between requests would send one and stop, so give it at least 15
+      minutes" -- the reason and the minimum, not just a refusal.
 - [ ] **A channel nobody chose** is answered too — that is the point of the
       change. Ask from a channel you never set up for positions and check it is
       still put to the operator.
