@@ -476,6 +476,12 @@ other station's configuration, which is the wrong place to look during a net.
       an answer every time it happens. The prompt's own buttons are Send, Send with
       message, Decline, Not now -- scoping to that group is what makes it unambiguous,
       and is what a person cannot do by eye.
+- [ ] **A station that joins mid roll call still gets it.** Seen 28 Sep and worth
+      keeping: a room roll call posted at 3:09:08 with its window open to 3:14 was
+      pushed to node 3 when it connected at 3:10:03, the operator was prompted, and the
+      answer counted on the asking station. It pairs with the expiry half below --
+      same roll call, same room, one station inside the window and one outside -- which
+      is what isolates the rule rather than testing the room's replay in general.
 - [ ] **Roll call in a room.** Both nodes logged in to the test room. The roll call
       and the answer arrive, neither appears in the
       room's conversation on either node, and a stock app in the room would show
@@ -715,14 +721,19 @@ size turned up, not just at a narrow window.
       twice, because the read gave up on a quiet gap while the radio was still
       mid list and every later pass was refused with `ERR_CODE_BAD_STATE`.
       Passed 28 Sep on a fresh serial connect of node 1: 218 contacts and channels,
-      no amber line.
+      no amber line. Passed again the same day on node 3, which has the biggest roster
+      of the three: 289 contacts and channels, no amber line.
 - [ ] **A big read does not block the connect for ever.** It should finish within
       a minute or so; the read has a 90 second cap and ends four seconds after the
       frames stop.
       Still owed, and easy to lose: it has to be watched *while* the connect happens.
-      On 28 Sep the operator pressed Connect while nothing was sampling, so only the
-      finished result was there to see. Arm a timer on the page first, then ask for
-      the connect.
+      Missed twice on 28 Sep, both times through the instrument rather than the app.
+      First the operator pressed Connect while nothing was sampling. Second, a timer
+      was armed but built on `document.body.innerText`, which needs layout and goes
+      stale in a **background tab** -- it reported start and finish in the same second
+      for a connect that plainly took longer. Use `textContent`, which needs no layout,
+      or foreground the tab. A connect timed at 0.0 s is the instrument failing, not a
+      fast radio.
 
 ### Channels, and the way home
 
