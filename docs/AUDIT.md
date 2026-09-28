@@ -69,10 +69,21 @@ Connect each radio in its own browser tab; a radio can only be held by one page.
 - [ ] **Multi-part report to a channel.** Every part arrives on the other node, in
       order, with `[1/2]` style markers. This is the path most likely to regress,
       because the send loop is where the reliability work happened.
+      Passed 28 Sep: a 5Ws that split into five reached node 2 as `[1/5]` to `[5/5]`,
+      all present and in order.
+      **Pressing Send does not send.** A "Confirm transmission" panel opens first --
+      "To Emcomm Testing, 5 transmissions, about 27 s on the air, Cancel / Send now" --
+      and on 28 Sep that panel sat unnoticed for two minutes while the receiving node
+      was watched for parts that were never going to arrive. Check the sending node
+      shows a run in progress before concluding anything about the receiver.
 - [ ] **Multi-part report direct to a contact.** Every part reports **Delivered**, and
       they go out one at a time. The device tracks a single outstanding direct message,
       so a part sent before the previous is acknowledged is simply lost.
 - [ ] **Split points fall between fields**, not mid field, on a report that splits.
+      Passed 28 Sep where it can be: part 1 ended at "1 WHO: Team 2" and part 2 opened
+      "2 WHAT:". A single field longer than a packet necessarily carries across parts
+      3 to 5, which is not the fault this item is about -- fill several short fields
+      rather than one long one if you want to see the rule doing its work.
 - [ ] **5Ws Briefing.** Send one to the other node on Emcomm Testing with ACK REQ
       ticked. It arrives numbered 1 WHO to 5 WHY under FM and DTG, ending "ACK REQ".
       Its WHERE button fills in degrees and MGRS, marked "last known" on a radio
@@ -197,6 +208,11 @@ rather than an error.
 - [ ] **The gap between parts.** The preview says how many seconds apart the parts
       go, 6 at the bench settings (SF7, 62.5 kHz). The other node's timestamps should
       agree, and all parts should arrive.
+      28 Sep: the preview said "550 bytes, 5 packets, ~27 s on air" and "Sent as 5
+      separate messages, about 6 seconds apart", and all five arrived. The timestamp
+      half cannot be done this way -- the conversation stamps to the minute, and five
+      parts 6 s apart land inside one. Consistent with 6 s, not a measurement of it.
+      Time it on the sending node, or against a part that crosses a minute boundary.
 
 ### Contacts and channels
 
