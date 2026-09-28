@@ -198,6 +198,15 @@ rather than an error.
       the report was interrupted, how many parts went out and to where, and offer to
       send the rest. It used to show an empty form, with nothing to say the stations
       had a report with its end missing.
+      Passed 28 Sep on `xGe7JBjO`, recovery included. Left the tab 11 s into a 14 s
+      send and came back to "Report interrupted -- The Reports tab was left while 5Ws
+      Briefing was sending, so it stopped. 2 of 3 messages were sent to Emcomm Testing.
+      Message 3 did not go out", with a "Send remaining 1" button. Node 2 held parts 1
+      and 2 at 09:50 and part 3 at 09:51 after that button was pressed, so the report
+      was completed rather than merely reported as broken.
+      Finish the test by pressing it. Leaving the run half sent leaves the other
+      stations holding a report with its end missing, which is the very thing the item
+      exists to prevent.
 - [ ] **Confirm box, short window.** In a browser window a few hundred pixels tall, fill
       in a report and press Send. The confirmation opens inside the panel. No white band
       appears below the app, and the page as a whole does not scroll. It used to: the
