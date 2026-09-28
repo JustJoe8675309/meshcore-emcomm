@@ -104,6 +104,12 @@ Connect each radio in its own browser tab; a radio can only be held by one page.
 - [ ] **OPORD.** Send one with only the mission and one other paragraph filled in.
       Every blank paragraph arrives as its tag with a hyphen, such as "1A HAZARDS: -",
       in Army order.
+      Passed 28 Sep with only 2 MISSION and 5B SIGNAL filled: node 2 received NR, REF,
+      1A, 1B, 1C, 3A, 3B, 3C, 3D, 4A, 4B, 4C and 5A each as its tag and a hyphen, in
+      order, across three parts.
+      Changing the form clears the chosen channel. Send report then does nothing and
+      says "Select a channel to send on" -- correct, but it looks like a dead button
+      if the line is not read.
 
 ### Position
 
