@@ -79,6 +79,11 @@ Connect each radio in its own browser tab; a radio can only be held by one page.
 - [ ] **Multi-part report direct to a contact.** Every part reports **Delivered**, and
       they go out one at a time. The device tracks a single outstanding direct message,
       so a part sent before the previous is acknowledged is simply lost.
+      Passed 28 Sep: three parts, all three Delivered at node 1 and all three received
+      at node 2. The preview states the rule rather than leaving it implied -- "Sent as
+      3 separate messages, each one after the previous is acknowledged", against the
+      channel's "about 6 seconds apart", so the two paths can be told apart before
+      anything goes out.
 - [ ] **Split points fall between fields**, not mid field, on a report that splits.
       Passed 28 Sep where it can be: part 1 ended at "1 WHO: Team 2" and part 2 opened
       "2 WHAT:". A single field longer than a packet necessarily carries across parts
