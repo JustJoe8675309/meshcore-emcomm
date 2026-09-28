@@ -94,9 +94,17 @@ case it refuses.
 
 ### Date time groups
 
-- [ ] Exact, approximate (`ABT` prefix) and a range.
+- [ ] Exact, approximate (`ABT` prefix) and a range. All three passed 28 Sep on the
+      5Ws form: `280013L SEP`, `ABT 280013L SEP`, `302300L SEP-010100L OCT`.
+      Read the **composed preview at the foot of the form**, not the input box. The box
+      holds the raw DTG and the `ABT` is added when the line is composed, so switching
+      the mode and watching the box not change looks like a fault and is not one.
+      Nothing has to be sent: the preview updates as the fields are filled.
 - [ ] A range crossing a month renders both months, `302300L SEP-010100L OCT`, rather
-      than compacting and losing one.
+      than compacting and losing one. Passed 28 Sep, and check the contrast in the same
+      pass: a range inside one day compacts to `280100-0500L SEP`, stating the day and
+      month once. Getting both of those right is the point -- either rule applied
+      everywhere would be wrong half the time.
 
 ### Ping and discovery
 
@@ -195,10 +203,16 @@ rather than an error.
 - [ ] **Every field has a blue i**, and tapping it opens a note between the label
       and the box. Check a form with dropdowns, such as the 9-line or the flood
       report: the note names every option.
+      Passed 28 Sep: the 9-line has nine fields and nine i buttons, line 3's note
+      names URGENT, PRIORITY and ROUTINE, line 5's names LITTER and AMBULATORY.
 - [ ] **Two notes open at once.** Open line 3 and line 5 of the 9-line; both stay
-      open, because an operator is comparing them.
+      open, because an operator is comparing them. Passed 28 Sep.
 - [ ] **Nothing of it is transmitted.** Fill a form with notes open and read the
       transmission preview: the bytes are unchanged.
+      Passed 28 Sep by string comparison rather than by eye -- the preview was
+      identical with both notes open and with both closed, and no note text appeared
+      in it. Worth doing this way: the notes are long enough that reading the preview
+      twice and judging it the same proves very little.
 - [ ] **On a phone with the text turned up**, the note is readable, the i is big
       enough to hit with a glove, and the form does not scroll sideways. The i
       scales with the text on purpose — it is a touch target, unlike the battery
@@ -207,6 +221,11 @@ rather than an error.
       sideways scroll, nothing past the right edge, the crib sheet's footer pinned in
       view at all three, and the i 28, 39 and 42px square. It was 24px at the default
       font before this measurement, which is small for a gloved hand.
+      **This one cannot be driven from here.** `resize_window` reports success and
+      leaves the viewport at whatever the window already is -- checked again 28 Sep,
+      it claimed 375x812 and `innerWidth` stayed 1920. Anything measured after calling
+      it is a measurement of the desktop window. The operator resizes the window by
+      hand, or it goes on the phone.
 - [ ] **The crib sheet prints** from a computer: the form's fields and notes only,
       without the app's header, tabs or the sheet's own buttons, and a field is not
       split across two pages. Print to PDF is enough to check it. **Printed to PDF
@@ -214,12 +233,24 @@ rather than an error.
 - [ ] **The crib sheet is reachable with no radio**, from the link under the connect
       buttons, and opens as the index. The operator had to connect a node to reach
       it, which is backwards: printing a binder is a desk job the night before.
+      Passed 28 Sep in a tab that never connected: "Report crib sheet -- What goes in
+      each field of every report. Print it before you need it." sits under the two
+      connect buttons and opens straight to the index.
 - [ ] **The index finds a form in two presses.** Open it cold, press the 9-line, and
       its fields appear with nothing else. "The list" goes back without closing.
+      Passed 28 Sep: two presses from the connect page reached all nine fields with no
+      other form on screen, and "The list" returned to the index with the sheet still
+      open.
 - [ ] **Both groupings list all 26 forms**, once each: by organization and by type.
       A form missing from one of them is a form nobody can find that way.
+      Passed 28 Sep, and this one is worth doing by set rather than by counting on
+      screen: 26 in each grouping, 26 unique in each, no duplicates, and the two sets
+      differed in neither direction. Counting alone would miss a form listed twice in
+      one grouping and absent from the other.
 - [ ] **Opened from a form, it shows that form**, not the index — and "The list" is
       still there for an operator who wants a different one.
+      Passed 28 Sep from the OPORD form: it opened on OPORD, no other form was
+      listed, and "The list" was present.
 - [ ] **The booklet prints a page per form**, all 26, each starting on a fresh page.
 
 ### Position requests
