@@ -826,9 +826,13 @@ one found so far came from a dropped frame, and the link that drops them is BLE.
       met. Tap it: the dialog offers three modes, marks the one in use, and lists
       what a switch would do without writing anything.
 - [ ] **Switching to Emcomm-Live.** The bar goes red. On the radio: the name, power
-      and radio settings from the Live tab, #Emcomm in slot 0, and every other
-      channel slot empty. The other node should no longer hear it on the old
-      channels.
+      and radio settings from the Live tab, and #Emcomm in slot 0. Every other slot
+      is cleared **except** an emcomm-named channel already on the radio, which is
+      carried over and written into the Live profile's own list -- see "Emcomm
+      channels travel" below. This item used to say every other slot ends up empty,
+      which stopped being true when carrying them over was added: on 27 Sep a switch
+      from Training to Live left #Emcomm and Emcomm Testing, and that is correct.
+      The other node should no longer hear it on the old channels.
 - [ ] **Switching to Emcomm-Training.** The bar goes yellow. Send a report: every
       part arrives at the other node beginning DRILL, and every part still fits.
       Type a message: it arrives with DRILL in front.
