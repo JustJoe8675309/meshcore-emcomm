@@ -103,11 +103,29 @@ case it refuses.
 - [ ] **Discover** finds the repeaters in direct range, with both signal readings. It
       listens for 10 s at the bench settings, not the 30 s it used to, and finds the
       same repeaters it found at 30.
-- [ ] **Clicking a discovered repeater** selects it in the picker below.
+      Passed 28 Sep: one repeater in direct range, `snr_there=0.25dB snr_back=12.00dB
+      rssi=-79`, countdown starting at 10 s.
+- [ ] **Clicking a discovered repeater** selects it in the picker below, which then
+      reads "selected below" against the discovered entry. Passed 28 Sep.
+- [ ] **The picker's order is what it says it is.** The help reads "Most recently
+      heard first", and favourites are pinned above that: on 28 Sep the top two were
+      heard 6 and 14 hours ago, sitting above a block heard "now", and they were
+      exactly the two starred repeaters. Pinning favourites is reasonable; saying only
+      "most recently heard" while doing something else is what to decide about.
 - [ ] **Ping** a repeater that answers traces. Signal readings should be exact
       multiples of 0.25, which is the sign the quarter dB decoding is right.
+      Passed 28 Sep, and check the arithmetic while you are there rather than trusting
+      the line: a run of 5 with one lost read `5 sent, 20% lost` and averaged only the
+      four replies. Read the whole panel, not a filtered view of it -- the `2. timeout`
+      line and the `N sent, X% lost` line are the ones that say a reply went missing,
+      and dropping them makes a healthy run look like it is hiding loss.
 - [ ] **A repeater that answers discovery but not ping** is explained rather than
       looking broken. Not every repeater answers traces.
+      The explanation is standing text on the tab and does not wait for the case to
+      happen: "discovery proves it hears you, ping additionally needs it to answer
+      trace requests." Confirmed present 28 Sep. The pairing itself was not
+      reproducible that day -- discovery found one repeater and it answered ping --
+      so this still wants a repeater that does one and not the other.
 
 ### Failure handling
 
@@ -119,6 +137,10 @@ rather than an error.
       actually sent. It must not fill the remainder with timeouts.
 - [ ] **Cancel a run part way.** Statistics cover the replies collected, not the whole
       intended run.
+      Passed 28 Sep: cancelled a run of 9 at "Cancel (7 of 9)", and the panel kept
+      `7 of 9` with seven lines and `7 sent, 14.29% lost` -- loss over the 7 actually
+      sent, not the 9 intended, with 8 and 9 left off rather than filled in as
+      timeouts. The averages covered the six replies and came out right by hand.
 - [ ] **A finished run keeps its own total.** Run a ping, let it finish, then change
       the Requests box without starting a new run. The results header must still
       describe the run that produced them. Seen 27 Sep: a completed run of 2 read
@@ -127,9 +149,19 @@ rather than an error.
       clears the results, so the window is narrow -- but a run's own total is not the
       live setting, and an operator reading a percentage off that header is being
       told something untrue.
+      **Still reproduces on `xGe7JBjO`, 28 Sep**, and the reproduction narrows it to
+      the header alone: a finished run of 5 relabelled itself "5 of 9" while the reply
+      list still showed its five lines and the summary still read "5 sent, 20% lost".
+      So only that one header is bound to the live input, and the run's own count is
+      already right there in the line beneath it -- which is what a fix should use.
 - [ ] **A run where everything times out.** Loss reads 100% and the averages are
       hidden, because `avg snr 0dB` would read as a measurement of a dead link rather
       than the absence of one.
+      Passed 28 Sep against a repeater about 250 miles away: `2 of 2`, both timeout,
+      `2 sent, 100% lost`, and no avg/min/max lines at all. Picking any repeater
+      heard days ago rather than "now" is the easy way to get a dead link on demand,
+      and confirms the neighbouring claim that selecting a different repeater clears
+      the previous run's results.
 - [ ] **A run that partly succeeds.** The loss percentage and averages are taken over
       the real replies only.
 - [ ] **Switch tabs mid send.** Transmission stops. Nothing should keep talking to the
@@ -306,9 +338,17 @@ other station's configuration, which is the wrong place to look during a net.
       reference: each opens the map app, or asks which one, with a pin named for the
       station. On an iPhone, Apple Maps. On Windows, OpenStreetMap in a new tab.
       Emulating a phone user agent proves only which link is chosen, never that the
-      phone honours it, so this one needs the phone. It needs the laptop to release
-      that radio first as well: only one host can hold a Bluetooth link, so connect
-      the phone to the radio and read its own GPS fix from This station.
+      phone honours it, so the two phone thirds need the phone. It needs the laptop to
+      release that radio first as well: only one host can hold a Bluetooth link, so
+      connect the phone to the radio and read its own GPS fix from This station.
+      **The Windows third needs nobody** and was proven 28 Sep: both the degrees line
+      and the MGRS line are links, and clicking one opened
+      `openstreetmap.org/?mlat=...&mlon=...#map=16/...` in a new tab at the station's
+      position. Note the pin is named on the phone branches only -- `geo:` and
+      `maps.apple.com` take a label, OSM's `mlat`/`mlon` marker does not -- so "a pin
+      named for the station" is not something to go looking for on the desktop.
+      Both links carry the accessible name "Open in maps: This station", which is
+      worth knowing while the header's unnamed buttons are still open.
 - [ ] **Same location.** Two radios side by side read "Same location as this
       station", with no bearing. Further apart but under a tenth of a mile, the
       distance is in feet and metres.
