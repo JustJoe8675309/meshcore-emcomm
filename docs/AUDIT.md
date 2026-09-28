@@ -594,15 +594,24 @@ size turned up, not just at a narrow window.
       22px root font the name wants 154px; it gets 161px with the app icon hidden,
       which is why the icon is hidden below the `sm` breakpoint.
 - [ ] **The charge is readable** in its badge, and turns red at 20% or less.
+      Readable half seen 28 Sep. The red half needs a radio actually down at 20%, so
+      it waits for a flat battery rather than a bench session -- worth doing once
+      deliberately, since a colour that only appears when things are going badly is
+      exactly the kind that is never seen until it matters.
 - [ ] **Sharing is in the menu** on a phone, since its button folds away there.
       Settings keeps its own button at every width, between the advert menu and the
       close button, and Disconnect is still one press.
 - [ ] **A computer is unchanged**: app icon, four buttons, battery badge.
+      Passed 28 Sep at desktop width: Mesh-Emcomm, four header buttons, 100% badge.
 - [ ] **Every header button says what it is.** Inspect the four. The share button
       carries both `aria-label` and `title`; on 27 Sep the advert menu and the
       settings button carried neither, so a screen reader announces them as "button"
       and voice control has nothing to say. Three icon buttons side by side, one
       labelled, is also an inconsistency rather than a deliberate choice.
+      **Unchanged on `xGe7JBjO`, 28 Sep.** Of the four: two icon-only buttons carry
+      neither `aria-label` nor `title`, the share button carries both, and Disconnect
+      is named only by its visible text. Inspect the attributes rather than the
+      rendering -- all four look equally fine on screen, which is the point.
 - [ ] **Every dialog's buttons are on screen** without scrolling for them: sharing
       (Close), the first run wizard (Not now, Back, Next) and the mode switch
       (Close, Switch mode). Each is taller than a phone — sharing measured 1370px
