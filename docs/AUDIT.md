@@ -894,6 +894,8 @@ size turned up, not just at a narrow window.
       and longitude must all be filled in with the radio's current values. Empty
       fields are the fault, not the default: saving them writes the emptiness, and
       an empty Name box looks exactly like a node that has no name.
+      Passed 28 Sep on node 1: name, 910525, 62500, SF 7, CR 5, 14 dBm, 31.927,
+      -106.4001, and no warning.
 - [ ] **A failed read says so.** If the radio will not answer, the page must show the
       warning above the fields rather than a form full of blanks, within about ten
       seconds. One way to get a radio that will not answer while still connected:
@@ -936,9 +938,24 @@ size turned up, not just at a narrow window.
 - [ ] **Set a zero hop advert interval of 1 minute and watch the other node.** The
       advert should arrive about a minute later, not the moment Apply was pressed.
       Nothing on the air at apply time is the point of the check.
+      Passed 28 Sep: saved at 12:27:14, node 3 still read "13 mins ago" at 12:27:29,
+      and read "now" at 12:28:19 -- about a minute after the save, nothing at it.
 - [ ] **Clear the field and apply.** The schedule reads off, and nothing further
       arrives at the other node.
+      Passed 28 Sep: the status went from "Zero hop and Flood running" to "Flood
+      running" with the zero hop due line gone, and nothing more reached node 3.
+      **Do not read the other node's "heard" label from a background tab.** It does
+      not recompute while the tab is hidden: it sat on "now" for four minutes after
+      the last advert, which reads as adverts still arriving. Navigating away and back
+      forced a render and it said "4 mins ago" at once. Either conclusion drawn from
+      the stale label would have been wrong. The sending node's own
+      "Zero hop: last sent 12:28:15 AM" line is the better witness, and it agreed with
+      the receiver to within the airtime.
 - [ ] **A flood interval under an hour raises the caution** and still lets you set it.
+      Re-checked on `xGe7JBjO` 28 Sep, after the shared component landed: 30, 45 and
+      59 all warn, 60 is silent, and the value is still accepted either way. This is
+      the warning that was dead for days while its unit tests passed, so it is worth
+      the ten seconds every time the settings screens are touched.
 - [ ] **Disconnect, and the timers stop.** They belong to the radio that was
       connected, not to the browser tab.
 - [ ] **On a phone, set a schedule and leave the phone alone.** The settings group
