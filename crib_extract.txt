@@ -1,0 +1,20 @@
+Health & Welfare
+What goes in each field. Nothing here is transmitted.
+Pass an enquiry or reply about an individual.
+Enquiry or reply *
+INQUIRY · REPLY
+Which direction this is going. INQUIRY — someone outside is asking after a person in the affected area. REPLY — the answer coming back out.
+Person *
+The person being asked about, in full. Nicknames and initials cost hours at the delivery end.
+Address or last known location *
+Where they are expected to be: an address, a shelter, or the last place anyone knew of. It is what makes the enquiry answerable at all.
+Status
+SAFE · INJURED · EVACUATED · NOT FOUND · UNKNOWN
+What is known, not what is hoped. SAFE — seen and well. INJURED — hurt; the detail belongs with the agency, not on air. EVACUATED — left the area,
+and say where to if you know. NOT FOUND — looked for and not located. UNKNOWN — nobody has checked yet. Leave it empty rather than guess.
+Requested by / contact
+Who is asking and how they are related, so the reply reaches the right person. A name and a relationship is usually enough.
+Message
+Status only, in plain language. No medical detail, no names of other people, nothing you would not want read aloud — this traffic is not private and the
+families hear it repeated.
+A field marked * is required. Mesh-Emcomm.

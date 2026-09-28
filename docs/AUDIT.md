@@ -340,6 +340,18 @@ rather than an error.
       without the app's header, tabs or the sheet's own buttons, and a field is not
       split across two pages. Print to PDF is enough to check it. **Printed to PDF
       23 Sep** for one form; worth a glance at that PDF for the two details above.
+      **Checked properly 28 Sep** on Health & Welfare: one page, the fields and their
+      notes and nothing else. No tab names, no "The list" or "Close", no Disconnect, no
+      mode banner, no battery badge. "Mesh-Emcomm" does appear, at the very end, as
+      part of the deliberate footer "A field marked * is required. Mesh-Emcomm." --
+      that is the sheet naming itself on a binder page, not leaked chrome, and a plain
+      keyword search will flag it as a failure.
+      **The split rule was not exercised**, because that form fits on one page and
+      nothing can straddle a break. Print a long one -- the 9-line or the OPORD, whose
+      notes run to paragraphs -- if that half is what is being checked.
+      Extract the text properly rather than grepping the file: the raw PDF bytes are
+      mostly embedded font data, and a naive scan of them reports every check as
+      "absent" whether it is or not.
 - [ ] **The crib sheet is reachable with no radio**, from the link under the connect
       buttons, and opens as the index. The operator had to connect a node to reach
       it, which is backwards: printing a binder is a desk job the night before.
