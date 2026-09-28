@@ -623,6 +623,15 @@ being a variable.
       logged in, can post, and silently hears nothing. The app now sends a
       keep-alive request every two minutes, which is the only thing that resets the
       count.
+      **PASSED 28 Sep, 61 minutes.** Posted at 09:05:55, left both tabs in the
+      background, posted again at 10:07: node 2 went from four posts to five, received
+      the new one at 10:07, and still read "Logged in as admin" with nobody having
+      logged in again. Checked at the 55 minute mark too -- both panels still logged
+      in, composers not blocked.
+      Read the receiving node's conversation only after forcing a render. A background
+      tab does not refresh what it shows, so the post can be there and invisible, and
+      concluding the room had stopped pushing is exactly the wrong answer to come away
+      with from this item.
 - [ ] **A post sent while the other node was asleep still arrives.** Put node 2's tab
       in the background or disconnect it briefly, post from node 1, bring node 2
       back. The keep-alive carries the newest post it actually received, so the room
