@@ -236,6 +236,19 @@ other station's configuration, which is the wrong place to look during a net.
 - [ ] **Several stations asking.** Needs three radios. With two asking at once, the
       prompt says one more is waiting; answering brings up the second. A station asking
       again keeps its place and its entry becomes its newest request.
+      Check the queue line by its **count**, not its presence: after the second ask the
+      prompt gained "Asked 2 times." and still said "1 more station is waiting", which
+      is the whole claim. A second slot would have said 2.
+- [ ] **What the asker's own list says after asking twice.** The queue above is the
+      answering station's side. On the asking station, a second "Once" request makes a
+      **second entry**, and once the answer lands against the newer one the older is
+      left reading "No answer after 1 request. Its radio answered, but without a
+      position: it has no working GPS, or its owner does not share location."
+      Every clause of that is true -- the radio's own telemetry answered first, with no
+      live fix -- but it sits directly above the same station's freshly received
+      position, so the list tells an operator a station has no position immediately
+      under its position. Two records for two presses is defensible; the diagnosis
+      surviving on the superseded one is what to decide about. Seen 27 Sep.
 - [ ] **Roll call on a channel.** From node 1's channel menu, Request Positions (Roll
       Call), once, on Emcomm Testing. Node 2 is prompted "asks everyone". Send:
       node 1's card lists node 2 with distance and magnetic bearing, stays
@@ -261,6 +274,21 @@ other station's configuration, which is the wrong place to look during a net.
       which read the clamp on W as though it were the delay: a 7 s answer measured on
       the bench looked like a fault and was not one. Ask twice and check the two waits
       differ, rather than timing one against a floor that does not exist.
+      The roll call dialog states W for the channel in use ("up to 10 s" on Emcomm
+      Testing at SF 7), so read the figure there rather than assuming it.
+- [ ] **Roll call with two answerers.** Needs three radios, and is the test the
+      stagger exists for: one answerer can never show a collision being avoided.
+      Turn auto-answer on in the mode tab of *both* answering nodes first -- it is off
+      by default, and with it off you are timing the operator, not the stagger. Run the
+      roll call three or four times and record when each answer lands.
+      What proves it is not one gap but the **spread and the order**: on 27 Sep the
+      gaps were 8.4 s, 1.0 s and 4.5 s, every answer inside the stated 10 s, and the
+      order reversed between runs. The order reversing is the part that matters --
+      node 2 is on Bluetooth and node 3 on serial, so a fixed gap in a fixed order
+      would have been the link speeds rather than the random draw.
+      Card timestamps are minute-resolution and cannot time this; watch the Positions
+      list change instead. Exclude the "N min old" age line when you do -- it ticks
+      over by itself and reads as a fresh answer that never arrived.
 - [ ] **Send My Position** from node 1's channel menu: node 2 lists it as "Sent to
       everyone on Emcomm Testing, unasked".
 - [ ] **Only one button called Send is reachable at a time.** When the position
