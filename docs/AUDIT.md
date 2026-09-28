@@ -221,7 +221,13 @@ rather than an error.
       `button` elements. A radiogroup with `role="radio"` and `aria-checked` would say
       what the menu already looks like.
 - [ ] **The choice sticks** across leaving the tab and reloading the app.
-      The keys are `stations_list_filter` and `stations_list_order`. Leaving the tab
+      The keys are `stations_list_filter` and `stations_list_order`.
+      Leaving the tab and returning: passed 28 Sep. **The reload half is inconclusive**,
+      not passed: `repeater / a-z` was stored, survived a reload, and then read
+      `all / heard-recently` after the operator reconnected the radio. Only
+      StationsList's own watchers write those keys and nothing on the connect path
+      touches them, so it was most likely changed in the UI in passing -- but it was
+      not watched, so it is not a result. Redo it with nobody else touching the app. Leaving the tab
       and returning: passed 28 Sep. The reload half was only proven at the storage
       layer that day -- the choice survived a fresh load of the app, but in a tab that
       was not connected, which shows the connect page rather than the list, and
@@ -440,13 +446,23 @@ other station's configuration, which is the wrong place to look during a net.
       where they are and wait for the fixes to wander.
 - [ ] **Direct.** Ask directly: nothing appears in either conversation, and the answer
       reaches only node 1.
+- [ ] **"Once" closes before a person can answer.** Three direct requests on 28 Sep,
+      answered by a human at ordinary speed, and every one came back
+      "KJ5HBN-EMCOMM answered. The answer came after this app had stopped asking."
+      The prompt takes 1-7 s to appear and the operator then has to read it and press
+      Send, which is already past the window a single request listens for. Nothing is
+      lost -- the position still arrives and is listed -- but the normal, correct case
+      reports itself in the language of a near miss, and an operator reading that after
+      every ask will conclude something is wrong. The wording is accurate; the question
+      is whether "Once" should listen for longer than a person takes to answer.
 - [ ] **Repeats.** Every 1 minute for 2 minutes, with node 2 not answering: three
       requests — now, and one at each minute inside the window — then "No answer
       after 3 requests", and nothing afterwards however long you wait. The form
       says "3 requests" before you send it, so check the count it promises is the
       count that goes out. Repeats stop when either radio disconnects.
 - [ ] **The interval list is one press**: 1, 5, 15, 30, 60. Anything else is typed
-      on the row below it.
+      on the row below it. Seen 28 Sep on the direct request dialog, with the typed
+      row beneath as described.
 - [ ] **A window shorter than the interval is refused** — every 15 minutes for 5 —
       rather than sending once and calling itself a repeat.
 - [ ] **A channel nobody chose** is answered too — that is the point of the
@@ -478,6 +494,14 @@ other station's configuration, which is the wrong place to look during a net.
       Only a stock station sees it as a message, which is the whole intent. A unit test
       holds both halves ([test/components/position_text_type.test.mjs]), but neither
       has been watched on the radios since the type changed.
+      **Both halves now watched, 28 Sep, and both pass.** Node 1 asked node 2 directly
+      and each conversation was captured before and after: byte for byte identical on
+      both stations, with no request line and no `#mce1` code anywhere. Compare the
+      captured strings rather than glancing at the list -- a request landing at the top
+      of a long conversation is exactly what an eye skips.
+      Do the control in the same pass: an exchange has to have actually happened, or
+      "nothing in the conversation" is true for the boring reason. Node 1's Positions
+      list carried node 2's answer while both conversations stayed clean.
 
 ### Room servers
 
@@ -487,7 +511,11 @@ worse test than one at zero hops: put the room in direct range and routing stops
 being a variable.
 
 - [ ] **The room appears** in the contacts tab with its own icon, and opens a
-      conversation titled Room. Discovery will never find it, whatever the range:
+      conversation titled Room. Passed 28 Sep: the conversation header reads Room /
+      Test Room / Room server, and `ContactIcon.vue` carries four separate branches --
+      Chat, Repeater, Room and an unknown fallback -- so a room is not drawn as a
+      companion. That one is easier to settle in the source than on screen, since the
+      list row also holds a favourite star and a menu chevron. Discovery will never find it, whatever the range:
       the room firmware does not implement the control packet at all. It has to
       advert in earshot, or be added from a `meshcore://` link.
 - [ ] **Log in.** Watch how long it takes. A room in direct range answers in about
@@ -572,9 +600,15 @@ size turned up, not just at a narrow window.
       list says when any are missing. Node 2 at 198 contacts came up 57 short,
       twice, because the read gave up on a quiet gap while the radio was still
       mid list and every later pass was refused with `ERR_CODE_BAD_STATE`.
+      Passed 28 Sep on a fresh serial connect of node 1: 218 contacts and channels,
+      no amber line.
 - [ ] **A big read does not block the connect for ever.** It should finish within
       a minute or so; the read has a 90 second cap and ends four seconds after the
       frames stop.
+      Still owed, and easy to lose: it has to be watched *while* the connect happens.
+      On 28 Sep the operator pressed Connect while nothing was sampling, so only the
+      finished result was there to see. Arm a timer on the page first, then ask for
+      the connect.
 
 ### Channels, and the way home
 
