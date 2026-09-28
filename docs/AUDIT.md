@@ -732,15 +732,18 @@ size turned up, not just at a narrow window.
       seconds. One way to get a radio that will not answer while still connected:
       reboot node 1 from Settings, whose USB bridge keeps the port open, and open
       settings again at once.
-      Two reboots on 27 Sep failed to produce the state, and reading the code says
-      why: a mode tab renders "Reading this mode..." **instead of** the form while
-      the profile is null, so there is no arrangement of the page with empty inputs,
-      and `canSave` is `hasLoaded && !isLoading && !isSaving`, so Save is greyed
-      while a read is outstanding. The fault named here -- blank fields with a live
-      Save -- is prevented by construction rather than by a warning. Worth keeping
-      the item, because that guarantee is a `v-else-if` one refactor could remove,
-      but do not expect to catch it by racing a USB reboot: node 1 either answers
-      again before the page renders or drops the link entirely.
+      **Do not use the reboot to get there.** Two attempts on 27 Sep failed: node 1
+      over USB either answers again before the page renders, or drops the link
+      altogether. **Disconnect the radio and open Settings instead** -- that holds
+      the state indefinitely rather than for a fraction of a second, and it is the
+      same failure from the page's point of view.
+      Proven that way on 27 Sep. The warning reads "Could not read the current
+      settings from the radio, so the fields below are empty. Save is off until they
+      have loaded", Save is disabled, and the fields are not rendered at all rather
+      than sitting there blank and saveable. Two things hold it: a mode tab renders
+      "Reading this mode..." **instead of** the form while the profile is null, and
+      `canSave` is `hasLoaded && !isLoading && !isSaving`. Both are a line apiece
+      that a refactor could drop, which is why the item stays.
 - [ ] **A serial radio survives its own reboot.** Reboot node 1 from Settings and wait
       a few seconds. Settings should fill without reconnecting, the console should
       show "Serial line error, reading on" if the reboot garbled the line, and the
