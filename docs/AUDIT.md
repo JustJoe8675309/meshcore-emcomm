@@ -756,14 +756,21 @@ width, and only the real device tests the touch targets.
 - [ ] **A big read does not block the connect for ever.** It should finish within
       a minute or so; the read has a 90 second cap and ends four seconds after the
       frames stop.
-      Still owed, and easy to lose: it has to be watched *while* the connect happens.
-      Missed twice on 28 Sep, both times through the instrument rather than the app.
-      First the operator pressed Connect while nothing was sampling. Second, a timer
-      was armed but built on `document.body.innerText`, which needs layout and goes
-      stale in a **background tab** -- it reported start and finish in the same second
-      for a connect that plainly took longer. Use `textContent`, which needs no layout,
-      or foreground the tab. A connect timed at 0.0 s is the instrument failing, not a
-      fast radio.
+      **PASSED 28 Sep: 4.0 s**, on node 3's 290 contacts and channels, with no amber
+      line. The read ends four seconds after the frames stop, so almost all of that
+      4.0 s is the quiet-gap timer and the roster itself arrived nearly at once.
+      It took three attempts to measure, every failure the instrument rather than the
+      app, so the next run can skip all three:
+      1. The operator pressed Connect while nothing was sampling. Arm first, then ask.
+      2. A timer built on `document.body.innerText`, which needs layout and goes stale
+         in a **background tab**: it reported start and finish in the same second. Use
+         `textContent`, or foreground the tab.
+      3. A timer keyed on the "Connect via" page, which only appears on a cold start.
+         **After a disconnect the app shows "Not connected / Connect" instead**, so the
+         transition never fired and a stray re-render latched the clock minutes early.
+      Key the start on "Not connected" disappearing and the end on "Disconnect"
+      appearing. A connect timed at 0.0 s, or timestamped well before the button was
+      pressed, is the instrument failing rather than a fast radio.
 
 ### Channels, and the way home
 
