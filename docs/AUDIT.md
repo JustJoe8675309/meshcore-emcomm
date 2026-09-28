@@ -641,6 +641,19 @@ being a variable.
       The read-only half still wants a room that grants it.
 - [ ] **A wrong password looks exactly like silence**, by design: the room source
       says "no response. Client will timeout". The message must not blame the range.
+      Passed 28 Sep on node 3. Before the attempt: "A room does not reply to a wrong
+      password, so a failed login looks the same as one that never arrived." During:
+      "Waiting for the room ... this waits up to 45 seconds before it gives up." After:
+      "No answer after 45 seconds. A room says nothing to a wrong password, so check
+      the password first. If the password is right, reset the path from the menu above
+      and try again: a stale path to a room several hops out is a common cause."
+      **Judge this one by reading the sentence, not by searching it.** A keyword check
+      flags "hops" and calls it blaming the range, which is wrong twice over: a stale
+      path is routing rather than range, and it is offered second and explicitly gated
+      on the password being right. Leading with the password is the whole point.
+      The panel also names the firmware's published default -- "ships with hello as the
+      room password, a published default rather than a secret" -- and says an empty box
+      sends no password, which is how a room with none is joined.
 - [ ] **Post.** It should read Delivered, and it should appear in the room on
       another client. Delivered alone is not proof the room accepted it.
       Passed 28 Sep: posted from node 1 at 09:05, Delivered there, and on screen at
