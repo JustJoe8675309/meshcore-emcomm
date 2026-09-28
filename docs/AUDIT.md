@@ -489,8 +489,17 @@ other station's configuration, which is the wrong place to look during a net.
       **The prompt arrives in about a second in a room**, not the 20-35 s a channel or
       direct request takes, because the room pushes it. Do not use the channel timing
       to decide a room prompt is missing.
-      The log-out-and-back-in half needs the room password typed, so it waits for the
-      operator.
+      **There is no way to log out of a room**, so the second half cannot be done as
+      written -- checked in the source 28 Sep: `RoomLoginBar.vue` only ever logs in,
+      nothing calls a logout, and `GlobalState.roomLogins` is a plain in-memory object
+      that is never persisted. What the item is really after is the station being away
+      from the room for more than ten minutes and then back, so the room replays its
+      backlog and an old roll call must not be put to the operator again. Get there by
+      disconnecting that node's radio for the ten minutes, then reconnecting and
+      logging in, which also needs the password typed.
+      Worth deciding separately whether a room ought to offer a logout at all. A
+      reload clears the app's record while the room's own session is untouched, so an
+      operator who wants to leave a room has nothing to press.
 - [ ] **Map links.** On an Android phone, tap a position's degrees and its MGRS
       reference: each opens the map app, or asks which one, with a pin named for the
       station. On an iPhone, Apple Maps. On Windows, OpenStreetMap in a new tab.
