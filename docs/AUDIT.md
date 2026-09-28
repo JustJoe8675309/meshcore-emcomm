@@ -205,6 +205,15 @@ rather than an error.
 - [ ] **Resend one part.** After a multi part channel report, Reports shows "Last
       report sent" with a Resend button per part. Resend part 2: the other node gets
       that part again, word for word on the same channel, and no other part.
+      Passed 28 Sep, counted rather than eyeballed: node 2 went from five parts, one
+      of each, to six with `[2/5]` twice and every other part still once, and the two
+      copies of part 2 were byte identical. Counting is what makes "no other part"
+      mean anything on a screen already full of near identical lines.
+      A single resend raises no confirm panel, unlike the whole report -- reasonable,
+      since it is one message rather than 27 s of airtime, but worth knowing so its
+      absence is not read as a failed press. The panel above it also explains why the
+      button exists: "Channel messages are not acknowledged, so one can be lost
+      without this radio knowing."
 - [ ] **The gap between parts.** The preview says how many seconds apart the parts
       go, 6 at the bench settings (SF7, 62.5 kHz). The other node's timestamps should
       agree, and all parts should arrive.
