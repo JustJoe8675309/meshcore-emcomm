@@ -495,8 +495,18 @@ other station's configuration, which is the wrong place to look during a net.
       **The prompt arrives in about a second in a room**, not the 20-35 s a channel or
       direct request takes, because the room pushes it. Do not use the channel timing
       to decide a room prompt is missing.
-      **There is no way to log out of a room**, so the second half cannot be done as
-      written -- checked in the source 28 Sep: `RoomLoginBar.vue` only ever logs in,
+      **Second half PASSED 28 Sep**, with a paired control that is worth copying. One
+      roll call was posted in the room at 3:09:08 with its window open to 3:14. Node 3
+      connected at 3:10:03, inside the window: prompted, answered, and the answer
+      counted at the asking station. Node 2 had been taken off the air at 3:08:34 and
+      came back at 3:23, outside it: **no prompt at all**, watched for 135 seconds.
+      Same roll call, same room, the only difference being which side of the expiry the
+      station arrived on.
+      The control matters more than the absence. A fresh post was put in the room at
+      3:24 while node 2 was still logged out, and node 2 took it on login, going from
+      five posts to six -- so the room really did replay to it, and "no prompt" is not
+      just nothing having arrived.
+      **There is no way to log out of a room**, so it cannot be done as written -- checked in the source 28 Sep: `RoomLoginBar.vue` only ever logs in,
       nothing calls a logout, and `GlobalState.roomLogins` is a plain in-memory object
       that is never persisted. What the item is really after is the station being away
       from the room for more than ten minutes and then back, so the room replays its
