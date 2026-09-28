@@ -482,6 +482,10 @@ other station's configuration, which is the wrong place to look during a net.
 - [ ] **A channel nobody chose** is answered too — that is the point of the
       change. Ask from a channel you never set up for positions and check it is
       still put to the operator.
+      Passed 28 Sep on `#Emcomm-Training`, a mode's own channel that has never been
+      set up for anything: node 2 was prompted at 15 s, with the channel named and the
+      right warning -- "Your answer is seen by every station on the channel running
+      this app", rather than the direct request's "only the two of you".
 - [ ] **The radio's own answer.** With node 2's app closed and its location sharing on,
       node 1 gets node 2's GPS position from its radio about 30 s after asking. With
       sharing off it gets nothing, and says it could be either reason.
