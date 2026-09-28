@@ -88,9 +88,19 @@ case it refuses.
 
 - [ ] **A radio with GPS** fills the field, and the value is a plausible position to
       four decimal places.
+      Passed 28 Sep on node 2: 31.926999, -106.400119, and it had drifted from
+      31.927018, -106.400171 read earlier in the day, which is the sign of a live fix
+      rather than a stored one.
 - [ ] **A radio without GPS** offers `Check GPS`, probes again when pressed, and
       **leaves the field empty**. It must never write `0, 0`, which formats perfectly
       well and points at the Gulf of Guinea.
+      Not reproducible on the bench as it stands: node 1 has no live fix but does hold
+      a hand-entered position, so its fields are correctly filled rather than empty,
+      and the settings page offers "Set from live GPS fix" rather than "Check GPS" --
+      that wording is the report form's location button. Getting the real case means a
+      radio holding no position at all, which on this bench would mean clearing node
+      1's, and that is the position the 27 Sep defect was about. Leave it and use a
+      third radio, or check the guard in the source.
 
 ### Date time groups
 
