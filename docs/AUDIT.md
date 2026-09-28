@@ -193,10 +193,45 @@ rather than an error.
 - [ ] **One list.** The first tab lists contacts and channels together. The filter
       offers All, Companions, Rooms, Repeaters and Channels, and the count beside
       Search follows it.
+      Passed 28 Sep, and check the arithmetic rather than that the number merely
+      changes: All 206, Companions 51, Rooms 6, Repeaters 147, Channels 2, which sum
+      to exactly 206. The label follows too, not just the count -- "Search 51
+      Companions", not "51 Contacts and Channels".
 - [ ] **Both orders.** A-Z mixes the two kinds alphabetically. Heard Recently puts
       the channel messaged most recently among the contacts by advert time, and a
       channel never used at the end. Favourites stay on top either way.
+      Passed 28 Sep for everything the bench can show: A-Z put the seven favourites
+      first and alphabetical among themselves, then `#Emcomm-Training` at the head of
+      the rest because `#` sorts before letters, with `Emcomm Testing` out at 70 among
+      the repeaters. Heard Recently put `Emcomm Testing`, just messaged, at 42 among
+      contacts by advert time.
+      **The "never used" clause is not testable on this bench** and looks like a fault
+      if you assume it is: `#Emcomm-Training` sat at 117 of 206 rather than at the end,
+      because it is not unused -- it holds drill traffic from 23 Sep and was placed by
+      that, correctly, between contacts heard 3 and 4 days ago. Open the channel and
+      look before calling it misfiled. That clause wants a channel added and never
+      messaged.
+- [ ] **The filter and order options are controls, not just clickable text.** Seen
+      28 Sep: every option in that menu -- All, Companions, Rooms, Repeaters,
+      Channels, A-Z, Heard Recently -- is a plain `div` with `cursor-pointer` and no
+      `role`, no `tabindex` and no accessible name anywhere up the chain. They work
+      under a mouse and are unreachable by keyboard, and a screen reader is told
+      nothing about them. This is the same family as the two unnamed header buttons,
+      which were still unnamed on `xGe7JBjO`, and a step worse: those are at least
+      `button` elements. A radiogroup with `role="radio"` and `aria-checked` would say
+      what the menu already looks like.
 - [ ] **The choice sticks** across leaving the tab and reloading the app.
+      The keys are `stations_list_filter` and `stations_list_order`. Leaving the tab
+      and returning: passed 28 Sep. The reload half was only proven at the storage
+      layer that day -- the choice survived a fresh load of the app, but in a tab that
+      was not connected, which shows the connect page rather than the list, and
+      reloading a connected tab costs the radio link. Worth finishing during a session
+      where a reconnect is cheap.
+      Do not read `contacts_list_filter` / `contacts_list_order` while doing this. They
+      are left over from the old separate tabs, are deliberately ignored, and keep
+      stale values for ever, so they will disagree with what is on screen. That is on
+      purpose and has its own unit test: a browser from the old tabs gets the new
+      default instead of inheriting an A-Z, companions-only view.
 
 ### Report field notes and the crib sheet
 
