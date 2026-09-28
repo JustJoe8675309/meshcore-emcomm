@@ -42,6 +42,26 @@
         max-height: none;
     }
 
+    /*
+     * The rules above are the fallback, for a browser that never fired
+     * beforeprint. They hand the printer one page: #crib-sheet lives inside a
+     * `fixed inset-0 overflow-y-auto` backdrop, and position:absolute resolves
+     * against that backdrop rather than the page, so the sheet stays inside its
+     * scroll box and everything past the first page is dropped. Invisible for a
+     * single form, which always fits; it cost the booklet 23 of its 26 forms.
+     *
+     * Normally the component lifts the sheet onto the body before printing and
+     * sets this class, and then it can simply flow and paginate.
+     */
+    body.crib-printing > *:not(#crib-sheet) {
+        display: none !important;
+    }
+
+    body.crib-printing #crib-sheet {
+        position: static;
+        visibility: visible;
+    }
+
     /* the buttons are no use on paper */
     .print-hide {
         display: none !important;

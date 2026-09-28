@@ -2,7 +2,7 @@
     <div v-if="open" class="fixed inset-0 z-50 flex bg-black/40 p-3 overflow-y-auto" @click.self="close">
         <div role="dialog" aria-labelledby="crib-sheet-heading" class="m-auto w-full max-w-2xl bg-white rounded-lg shadow-lg">
 
-            <div id="crib-sheet" class="p-4 space-y-4">
+            <div id="crib-sheet" ref="sheet" class="p-4 space-y-4">
 
                 <div class="space-y-1">
                     <div id="crib-sheet-heading" class="text-lg font-semibold text-gray-900">{{ heading }}</div>
@@ -135,7 +135,21 @@ export default {
                 { id: "source", label: "By organization" },
                 { id: "kind", label: "By type" },
             ],
+            // where the sheet sits while it is lifted onto the body for printing
+            printHome: null,
         };
+    },
+    mounted() {
+        this.onBeforePrint = () => this.liftForPrint();
+        this.onAfterPrint = () => this.dropAfterPrint();
+        window.addEventListener("beforeprint", this.onBeforePrint);
+        window.addEventListener("afterprint", this.onAfterPrint);
+    },
+    beforeUnmount() {
+        window.removeEventListener("beforeprint", this.onBeforePrint);
+        window.removeEventListener("afterprint", this.onAfterPrint);
+        // never leave the sheet parked on the body
+        this.dropAfterPrint();
     },
     watch: {
         open(value) {
@@ -189,6 +203,42 @@ export default {
         show(form) {
             this.chosen = form;
             this.view = "form";
+        },
+        /**
+         * The sheet is lifted onto the body for the duration of the print and put
+         * back afterwards.
+         *
+         * CSS alone cannot get it out. It lives inside a `fixed inset-0
+         * overflow-y-auto` backdrop, with two more scrolling containers above that,
+         * and `position: absolute` resolves against the nearest *positioned*
+         * ancestor -- the backdrop -- so the sheet stayed inside its scroll box and
+         * the printer was handed one page. That is invisible for a form that fits
+         * on one page, which is every single form, and silently cost the booklet 23
+         * of its 26 forms on 28 Sep.
+         *
+         * Hooked to beforeprint rather than done inside print(), so Ctrl+P is fixed
+         * too and not only this button.
+         */
+        liftForPrint() {
+            const sheet = this.$refs.sheet;
+            if(sheet == null || this.printHome != null){
+                return;
+            }
+            // remember where it came from, precisely enough to put it back
+            this.printHome = { parent: sheet.parentNode, next: sheet.nextSibling };
+            document.body.appendChild(sheet);
+            // tells the print stylesheet the sheet is out and can simply flow,
+            // which is what lets it run to as many pages as it needs
+            document.body.classList.add("crib-printing");
+        },
+        dropAfterPrint() {
+            const sheet = this.$refs.sheet;
+            if(sheet == null || this.printHome == null){
+                return;
+            }
+            this.printHome.parent.insertBefore(sheet, this.printHome.next);
+            this.printHome = null;
+            document.body.classList.remove("crib-printing");
         },
         print() {
             window.print();
