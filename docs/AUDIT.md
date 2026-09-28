@@ -93,6 +93,14 @@ Connect each radio in its own browser tab; a radio can only be held by one page.
       ticked. It arrives numbered 1 WHO to 5 WHY under FM and DTG, ending "ACK REQ".
       Its WHERE button fills in degrees and MGRS, marked "last known" on a radio
       without a live fix.
+      Passed 28 Sep, all of it. Node 2 received `[1/2] 5WS BRIEFING / FM / DTG / 1 WHO
+      / 2 WHAT / 3 WHEN` and `[2/2] 4 WHERE: 31.9270, -106.4001 (13R CR 67642 33199)
+      last known / 5 WHY / ACK REQ`.
+      The WHERE button is labelled **Check GPS** and lives on the report form, not the
+      settings page -- worth knowing, since the no-GPS item above refers to the same
+      words for a different control. **It takes more than nine seconds to answer on a
+      radio with no live fix**: read the field too early and it is empty, which looks
+      exactly like the button doing nothing.
 - [ ] **OPORD.** Send one with only the mission and one other paragraph filled in.
       Every blank paragraph arrives as its tag with a hyphen, such as "1A HAZARDS: -",
       in Army order.
