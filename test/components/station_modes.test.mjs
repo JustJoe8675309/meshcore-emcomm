@@ -811,6 +811,31 @@ describe("the settings tabs", () => {
         expect(wrapper.text()).toContain("Frequency (kHz)");
     }
 
+    // A zero hop advert costs this station's airtime. A flood advert is rebroadcast
+    // by every repeater that hears it, so a short interval spends the whole mesh's,
+    // and the operator setting it cannot see that cost from where they are sitting.
+    //
+    // The warning for it lived in the old emcomm settings panel and was lost when
+    // that panel was dismantled into these tabs at 71f1d52. AdvertSchedule.isFloodTooFast
+    // and its unit tests survived the move, so the suite stayed green while nothing
+    // on any screen called it: a function can be tested thoroughly and still be
+    // reachable from nowhere. This test is on the screen rather than the function,
+    // which is the only kind that would have caught it.
+    it("warns when a flood advert interval is short enough to cost the whole mesh", async () => {
+        const wrapper = mount(ModeSettingsTabs);
+        await flushPromises();
+        await open(wrapper, "training");
+
+        wrapper.vm.profile.adverts.floodMinutes = 30;
+        await flushPromises();
+        expect(wrapper.text()).toContain("paid for by the whole mesh");
+
+        // and an hour or more is ordinary, so it says nothing
+        wrapper.vm.profile.adverts.floodMinutes = 60;
+        await flushPromises();
+        expect(wrapper.text()).not.toContain("paid for by the whole mesh");
+    });
+
     it("has a tab for each mode, showing the same fields for each", async () => {
         const wrapper = mount(ModeSettingsTabs);
         await flushPromises();

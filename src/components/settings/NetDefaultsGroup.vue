@@ -141,15 +141,7 @@
                         <span>Drop contacts not heard in 90 days on entering</span>
                     </label>
 
-                    <div class="text-xs text-gray-700">Repeating adverts, in minutes. 0 turns one off.</div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <label class="block text-xs text-gray-700">Zero hop
-                            <input v-model.number="draft.adverts.zeroHopMinutes" type="number" min="0" class="mt-0.5 w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
-                        </label>
-                        <label class="block text-xs text-gray-700">Flood
-                            <input v-model.number="draft.adverts.floodMinutes" type="number" min="0" class="mt-0.5 w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
-                        </label>
-                    </div>
+                    <AdvertIntervals :adverts="draft.adverts"/>
 
 
                     <div class="pt-1 text-xs font-medium text-gray-900">On entering the mode</div>
@@ -227,11 +219,13 @@ import GlobalState from "../../js/GlobalState.js";
 import ModeProfiles, { MODE_CLASSES } from "../../js/modes/ModeProfiles.js";
 import EmcommMode from "../../js/EmcommMode.js";
 import Utils from "../../js/Utils.js";
+import AdvertIntervals from "./AdvertIntervals.vue";
 
 export default {
     name: 'NetDefaultsGroup',
     components: {
         SettingsSection,
+        AdvertIntervals,
     },
     props: {
         // opened straight away where there is nothing else on the screen, as on

@@ -268,15 +268,7 @@
                         <span>Search for repeaters in direct range, and say what answered</span>
                     </label>
 
-                    <div class="pt-1 text-xs text-gray-700">Repeating adverts, in minutes. 0 turns one off.</div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <label class="block text-xs text-gray-700">Zero hop
-                            <input v-model.number="profile.adverts.zeroHopMinutes" type="number" min="0" class="mt-0.5 w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
-                        </label>
-                        <label class="block text-xs text-gray-700">Flood
-                            <input v-model.number="profile.adverts.floodMinutes" type="number" min="0" class="mt-0.5 w-full bg-gray-50 border border-gray-300 text-sm rounded p-2">
-                        </label>
-                    </div>
+                    <AdvertIntervals :adverts="profile.adverts"/>
 
                     <!-- and what they have actually done, which is the half a
                          setting cannot tell you -->
@@ -337,6 +329,7 @@ import ContactsGroup from "../settings/ContactsGroup.vue";
 import OperatorSettingsGroup from "../settings/OperatorSettingsGroup.vue";
 import RadioNowGroup from "../settings/RadioNowGroup.vue";
 import AdvertProgressGroup from "../settings/AdvertProgressGroup.vue";
+import AdvertIntervals from "../settings/AdvertIntervals.vue";
 
 export default {
     name: 'ModeSettingsTabs',
@@ -346,6 +339,7 @@ export default {
         OperatorSettingsGroup,
         RadioNowGroup,
         AdvertProgressGroup,
+        AdvertIntervals,
     },
     props: {
         /** One mode only, with no tab strip: what the first run wizard asks for. */
