@@ -679,13 +679,26 @@ Everything in the header row except the battery badge scales with the root font,
 and Android's own font-size setting is what moves it. Test with the phone's text
 size turned up, not just at a narrow window.
 
+**Chrome will not be dragged below about 500px**, so a desktop window cannot reach the
+375px these items are written around; `resize_window` claims to and does nothing. The
+28 Sep measurements below were taken at 500px with the root font set to 16, 22 and 24px
+from the console, which moves the thing that actually breaks these layouts. Treat a
+pass there as weaker than the phone and a failure as conclusive -- 375px is tighter in
+width, and only the real device tests the touch targets.
+
 - [ ] **The mode banner is not covered.** With the font enlarged, the battery and
       station name must stay inside their row. This was reported from the field:
       the battery line painted over the green bar, because the row had a fixed
       4rem height while its two lines of text grew past it.
+      Passed 28 Sep at 500px wide, root fonts 16/22/24px. Banner top 64/88/96, name
+      bottom 53/73/80, battery bottom 41/53/57 -- both stay above the banner at every
+      size, with clearance growing 11, 15, 16px. The banner itself grew 24, 33, 36px,
+      so the fixed-height row that caused the field report is genuinely gone.
 - [ ] **The station name is readable**, not "Joe-KJ5H...". On a 375px screen with a
       22px root font the name wants 154px; it gets 161px with the app icon hidden,
       which is why the icon is hidden below the `sm` breakpoint.
+      "Joe-KJ5HBN-EDC" rendered in full at 500px and 16/22/24px fonts, never truncated,
+      and no sideways scroll at any of them.
 - [ ] **The charge is readable** in its badge, and turns red at 20% or less.
       Readable half seen 28 Sep. The red half needs a radio actually down at 20%, so
       it waits for a flat battery rather than a bench session -- worth doing once
@@ -694,6 +707,9 @@ size turned up, not just at a narrow window.
 - [ ] **Sharing is in the menu** on a phone, since its button folds away there.
       Settings keeps its own button at every width, between the advert menu and the
       close button, and Disconnect is still one press.
+      Passed 28 Sep at 500px: the share button is hidden from the header and "Share a
+      station mode" is in the menu alongside the two advert entries, the second visible
+      icon still opens `#/settings`, and Disconnect is its own button.
 - [ ] **A computer is unchanged**: app icon, four buttons, battery badge.
       Passed 28 Sep at desktop width: Mesh-Emcomm, four header buttons, 100% badge.
 - [ ] **Every header button says what it is.** Inspect the four. The share button
@@ -707,7 +723,11 @@ size turned up, not just at a narrow window.
       rendering -- all four look equally fine on screen, which is the point.
 - [ ] **Every dialog's buttons are on screen** without scrolling for them: sharing
       (Close), the first run wizard (Not now, Back, Next) and the mode switch
-      (Close, Switch mode). Each is taller than a phone — sharing measured 1370px
+      (Close, Switch mode).
+      Passed 28 Sep on the deployed build in a 500x551 window, which is short enough to
+      matter: the mode switch's Cancel and Switch sat at 382-442, and sharing's Close
+      at 485-527, both inside the 551 viewport with the page not scrolling. The first
+      run wizard was not reached, since it needs the first-run state reset. Each is taller than a phone — sharing measured 1370px
       at a 22px root font, and a wizard step holds a whole settings form — so the
       button rows are pinned to the bottom of the scroll. Note that the pinning is
       a Tailwind class, which means it exists only if it was in the source when the
