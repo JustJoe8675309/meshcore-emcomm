@@ -52,6 +52,13 @@ Connect each radio in its own browser tab; a radio can only be held by one page.
       and a count too: slots read of the radio's total, with how many were found.
 - [ ] **Disconnect on the loading screen.** Ends the attempt and removes the screen. Nothing
       comes back up as the steps still under way finish.
+- [ ] **...and it does so without throwing.** Watch the console while doing it. An
+      interrupted connect threw an uncaught `InvalidStateError: The port is closed`
+      out of the unguarded `close()` in `Connection.disconnect`, because the port was
+      already closing. The screen still cleared and the state still reset, so nothing
+      looked wrong -- which is why it went unnoticed through three sessions. Seen
+      27 Sep. An operator who changes their mind mid-connect is doing the ordinary
+      thing, and it should not raise.
 - [ ] **Backup and restore.** Back up current info, Load last backup, and Leave EMCOMM mode
       each cover the Settings page with their own title and step, counting the steps of a
       restore. Each screen goes away when it finishes or fails, and the result is left to
@@ -112,6 +119,14 @@ rather than an error.
       actually sent. It must not fill the remainder with timeouts.
 - [ ] **Cancel a run part way.** Statistics cover the replies collected, not the whole
       intended run.
+- [ ] **A finished run keeps its own total.** Run a ping, let it finish, then change
+      the Requests box without starting a new run. The results header must still
+      describe the run that produced them. Seen 27 Sep: a completed run of 2 read
+      "2 of 2", and changing Requests to 5 relabelled it "2 of 5", which reads as
+      three lost replies that were never asked for. Selecting a different repeater
+      clears the results, so the window is narrow -- but a run's own total is not the
+      live setting, and an operator reading a percentage off that header is being
+      told something untrue.
 - [ ] **A run where everything times out.** Loss reads 100% and the averages are
       hidden, because `avg snr 0dB` would read as a measurement of a dead link rather
       than the absence of one.
@@ -197,6 +212,13 @@ other station's configuration, which is the wrong place to look during a net.
       is a current fix with its time. From a radio without GPS, it reads "Last known
       position, not a current fix" in amber, and a direct answer's text starts "Last
       known position of".
+- [ ] **`0, 0` is refused for the right reason.** Entering `0, 0` is correctly
+      rejected -- it is the unset position, not a place anyone is -- but the message
+      reads "Not a position: latitude -90 to 90, longitude -180 to 180", and `0, 0`
+      satisfies that range. `Geo.isPosition` rejects out-of-range and `0, 0`
+      together and `PositionEntry.vue` has one message for both. The operator most
+      likely to hit it is one who typed zeros by mistake, and they are told their
+      numbers are outside a range they are inside. Seen 27 Sep.
 - [ ] **Enter current position.** On the radio without GPS, the prompt offers it.
       Enter a position and use Save to radio and send. The radio's own position
       (This station) changes to it, and the asker sees "Entered by hand at …, not
@@ -241,6 +263,12 @@ other station's configuration, which is the wrong place to look during a net.
       differ, rather than timing one against a floor that does not exist.
 - [ ] **Send My Position** from node 1's channel menu: node 2 lists it as "Sent to
       everyone on Emcomm Testing, unasked".
+- [ ] **Only one button called Send is reachable at a time.** When the position
+      prompt opens over a conversation -- a channel or a room -- the prompt's Send and
+      the conversation's own Send are both on screen, both labelled exactly "Send".
+      On 27 Sep the wrong one was pressed on the bench, which did nothing and left
+      the prompt sitting there looking ignored. Answering a roll call during a net is
+      the moment to be sure which button sends what.
 - [ ] **Roll call in a room.** Both nodes logged in to the test room. The roll call
       and the answer arrive, neither appears in the
       room's conversation on either node, and a stock app in the room would show
@@ -332,6 +360,17 @@ being a variable.
       in the background or disconnect it briefly, post from node 1, bring node 2
       back. The keep-alive carries the newest post it actually received, so the room
       re-pushes what was missed rather than only what comes next.
+- [ ] **What the room panel claims after a reconnect.** Log in, disconnect the
+      radio, post from the other node, reconnect. The missed post arrives without
+      anyone logging in again -- proven 27 Sep -- but the panel then read
+      **"Not logged in"** and showed "Log in to this room before posting" while the
+      room was actively pushing to that station. The app cannot know the session
+      survived, so claiming otherwise would be its own lie; what is not defensible is
+      telling the operator to log in while posts arrive. It matters because the
+      instinctive remedy is the one thing that does not work: a re-login on the ACL
+      path resets no push-failure count, only a keep-alive does. Decide what the
+      panel should say when it does not know, rather than leaving it saying the one
+      thing that sends an operator down the wrong path.
 - [ ] **A post from somebody else is attributed by name**, not by four bytes of
       mojibake. Rows stored before that fix keep theirs: the bytes were destroyed
       by UTF-8 decoding before they were saved and cannot be recovered, so check a
@@ -355,6 +394,11 @@ size turned up, not just at a narrow window.
       Settings keeps its own button at every width, between the advert menu and the
       close button, and Disconnect is still one press.
 - [ ] **A computer is unchanged**: app icon, four buttons, battery badge.
+- [ ] **Every header button says what it is.** Inspect the four. The share button
+      carries both `aria-label` and `title`; on 27 Sep the advert menu and the
+      settings button carried neither, so a screen reader announces them as "button"
+      and voice control has nothing to say. Three icon buttons side by side, one
+      labelled, is also an inconsistency rather than a deliberate choice.
 - [ ] **Every dialog's buttons are on screen** without scrolling for them: sharing
       (Close), the first run wizard (Not now, Back, Next) and the mode switch
       (Close, Switch mode). Each is taller than a phone — sharing measured 1370px
