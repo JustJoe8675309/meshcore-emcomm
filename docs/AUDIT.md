@@ -395,11 +395,27 @@ other station's configuration, which is the wrong place to look during a net.
       On 27 Sep the wrong one was pressed on the bench, which did nothing and left
       the prompt sitting there looking ignored. Answering a roll call during a net is
       the moment to be sure which button sends what.
+      **Happened again on 28 Sep**, answering a roll call in a room, which is the exact
+      situation named above: two buttons reading "Send", the conversation's was pressed,
+      nothing went out and the prompt sat there. It is not a hypothetical, and it costs
+      an answer every time it happens. The prompt's own buttons are Send, Send with
+      message, Decline, Not now -- scoping to that group is what makes it unambiguous,
+      and is what a person cannot do by eye.
 - [ ] **Roll call in a room.** Both nodes logged in to the test room. The roll call
       and the answer arrive, neither appears in the
       room's conversation on either node, and a stock app in the room would show
       them as text lines. Log node 2 out for more than 10 minutes, then back in: the
       replayed roll call is not put to it again.
+      First half passed 28 Sep: node 1's card read "1 answered ... 42 ft (13 m), 115
+      degrees magnetic", and both room conversations still showed only their four
+      earlier posts. The dialog and the prompt are both room-aware -- "Each post takes
+      one of the 32 places the room keeps for members who are away", and the answering
+      operator is told "Your answer is posted in the room, so everyone in it sees it".
+      **The prompt arrives in about a second in a room**, not the 20-35 s a channel or
+      direct request takes, because the room pushes it. Do not use the channel timing
+      to decide a room prompt is missing.
+      The log-out-and-back-in half needs the room password typed, so it waits for the
+      operator.
 - [ ] **Map links.** On an Android phone, tap a position's degrees and its MGRS
       reference: each opens the map app, or asks which one, with a pin named for the
       station. On an iPhone, Apple Maps. On Windows, OpenStreetMap in a new tab.
@@ -418,6 +434,10 @@ other station's configuration, which is the wrong place to look during a net.
 - [ ] **Same location.** Two radios side by side read "Same location as this
       station", with no bearing. Further apart but under a tenth of a mile, the
       distance is in feet and metres.
+      Both halves seen 28 Sep: "Same location as this station" when the two fixes
+      matched, and "42 ft (13 m), 115 degrees magnetic" when GPS drift put them a few
+      metres apart. The second is easier to get than it sounds -- leave the radios
+      where they are and wait for the fixes to wander.
 - [ ] **Direct.** Ask directly: nothing appears in either conversation, and the answer
       reaches only node 1.
 - [ ] **Repeats.** Every 1 minute for 2 minutes, with node 2 not answering: three
@@ -477,10 +497,14 @@ being a variable.
 - [ ] **The role is read from the reply**, not guessed. A room granting admin says
       "Logged in as admin"; one granting read only says so and the composer refuses
       to post. Both were reported wrong by reading the legacy byte.
+      Admin half passed 28 Sep: both nodes read "Logged in as admin" in Test Room.
+      The read-only half still wants a room that grants it.
 - [ ] **A wrong password looks exactly like silence**, by design: the room source
       says "no response. Client will timeout". The message must not blame the range.
 - [ ] **Post.** It should read Delivered, and it should appear in the room on
       another client. Delivered alone is not proof the room accepted it.
+      Passed 28 Sep: posted from node 1 at 09:05, Delivered there, and on screen at
+      node 2 at 09:06 attributed to Joe-KJ5HBN-HTv3.
 - [ ] **Posts keep arriving an hour later.** Log both nodes in, leave them alone for
       an hour with the tabs in the background, then post from node 1. It must reach
       node 2 without anyone logging in again. This is the check that found the worst
