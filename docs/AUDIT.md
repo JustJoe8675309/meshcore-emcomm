@@ -177,8 +177,14 @@ rather than an error.
 
 ### Position requests
 
-Needs two radios, each running this app, on a channel ticked under **Position requests**
-in settings on the one being asked.
+Needs two radios, each running this app, both on the same channel.
+
+There is **no tick per channel** any more, and has not been since the list went: every
+channel and every room is answered, and the only choice a station has is whether its
+operator is asked first or it answers automatically. This section used to say to tick
+the channel under Position requests in settings, which sent an auditor hunting in
+settings for a control that does not exist -- and told them a quiet roll call was the
+other station's configuration, which is the wrong place to look during a net.
 
 - [ ] **Once, on the channel.** From node 1, ask node 2 on Emcomm Testing. Node 2 is
       prompted with Send, Send with message and Decline. **Send**: node 1's Positions
@@ -209,17 +215,34 @@ in settings on the one being asked.
       prompt says one more is waiting; answering brings up the second. A station asking
       again keeps its place and its entry becomes its newest request.
 - [ ] **Roll call on a channel.** From node 1's channel menu, Request Positions (Roll
-      Call), once, on Emcomm Testing. Node 2, with the channel ticked, is prompted
-      "asks everyone". Send: node 1's card lists node 2 with distance and magnetic
-      bearing, stays Listening, and closes 5 minutes later with its count.
-- [ ] **Roll call asked again.** Up to 2 times every 5 minutes. Node 2 answers the
-      first and stays silent on the second, which names it as heard.
+      Call), once, on Emcomm Testing. Node 2 is prompted "asks everyone". Send:
+      node 1's card lists node 2 with distance and magnetic bearing, stays
+      Listening, and closes 5 minutes later with its count. Two stations side by
+      side read "same location" instead of a distance, which is correct.
+- [ ] **Roll call asked again.** Choose "up to N times, every M minutes, for stations
+      not yet heard". It offers **3 times every 15 minutes** by default; 5 minutes is
+      the shortest allowed and anything under 15 is warned about in amber, so set 2
+      and 5 to keep the test short. Node 2 answers the first and stays silent on the
+      second, because the second carries a heard list with node 2's key prefix in it
+      and a station that finds itself there returns without answering.
+      Silence alone does not prove that: a lost datagram looks identical, and the
+      stand-down is a silent return with nothing logged or shown. Prove it with the
+      **Track** option as a control -- that asks everyone each time -- and confirm node
+      2 answers *both* of those asks. Silent under "not yet heard", answering under
+      Track, is the pair that shows the heard list did the work.
 - [ ] **Roll call answered automatically.** With node 2 answering automatically, its
-      answer comes a random 10 to 60 s after the roll call, not at once.
+      answer is held back by a random wait so that answers do not collide, and is not
+      sent the instant the roll call lands.
+      The wait is `random(0, W)`, where W is the airtime of an answer times 20, clamped
+      to between 10 s and 60 s -- so a delay anywhere from about zero up to W is
+      correct, and it differs every time. This item used to say "a random 10 to 60 s",
+      which read the clamp on W as though it were the delay: a 7 s answer measured on
+      the bench looked like a fault and was not one. Ask twice and check the two waits
+      differ, rather than timing one against a floor that does not exist.
 - [ ] **Send My Position** from node 1's channel menu: node 2 lists it as "Sent to
       everyone on Emcomm Testing, unasked".
-- [ ] **Roll call in a room.** Both nodes logged in to the test room, and the room
-      ticked on node 2. The roll call and the answer arrive, neither appears in the
+- [ ] **Roll call in a room.** Both nodes logged in to the test room. The roll call
+      and the answer arrive, neither appears in the
       room's conversation on either node, and a stock app in the room would show
       them as text lines. Log node 2 out for more than 10 minutes, then back in: the
       replayed roll call is not put to it again.
@@ -781,10 +804,10 @@ one found so far came from a dropped frame, and the link that drops them is BLE.
 - [ ] **Favourites survive the trim.** Star a companion before converting. It is
       still there afterwards, and the dialog said how many were kept.
 - [ ] **The net channel.** #Emcomm appears in the channel list after converting, and
-      it is ticked under Position requests. On the other node, convert with the same
-      channel name: the two must be able to message each other on it, which proves
-      both derived the same key. Convert a second time: it says the channel is
-      already there rather than adding it twice.
+      is answered for position requests like every other channel. On the other
+      node, convert with the same channel name: the two must be able to message
+      each other on it, which proves both derived the same key. Convert a second
+      time: it says the channel is already there rather than adding it twice.
 - [ ] **A near miss is caught.** Rename the channel to #emcomm on one node, then
       convert with #Emcomm. It must keep the one on the radio, name it in the
       result, and not add a second. Then give a channel the name #Emcomm with a
@@ -794,7 +817,7 @@ one found so far came from a dropped frame, and the link that drops them is BLE.
       flood every 60 after converting, and the other node hears one within the hour.
 - [ ] **Leaving removes what the mode added, when asked.** While converted, let a
       contact be added automatically, add a test channel in an empty slot, set a
-      repeating advert schedule and tick a channel for position requests. Leave: the
+      repeating advert schedule and set position answering to automatic. Leave: the
       second question names that contact and channel. OK: both are gone from the
       radio, the advert schedule is back to what it was, and the position settings
       are back as they were. Repeat with Cancel: they are kept, and the mode is still
