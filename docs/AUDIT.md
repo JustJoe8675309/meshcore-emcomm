@@ -732,6 +732,15 @@ size turned up, not just at a narrow window.
       seconds. One way to get a radio that will not answer while still connected:
       reboot node 1 from Settings, whose USB bridge keeps the port open, and open
       settings again at once.
+      Two reboots on 27 Sep failed to produce the state, and reading the code says
+      why: a mode tab renders "Reading this mode..." **instead of** the form while
+      the profile is null, so there is no arrangement of the page with empty inputs,
+      and `canSave` is `hasLoaded && !isLoading && !isSaving`, so Save is greyed
+      while a read is outstanding. The fault named here -- blank fields with a live
+      Save -- is prevented by construction rather than by a warning. Worth keeping
+      the item, because that guarantee is a `v-else-if` one refactor could remove,
+      but do not expect to catch it by racing a USB reboot: node 1 either answers
+      again before the page renders or drops the link entirely.
 - [ ] **A serial radio survives its own reboot.** Reboot node 1 from Settings and wait
       a few seconds. Settings should fill without reconnecting, the console should
       show "Serial line error, reading on" if the reboot garbled the line, and the
