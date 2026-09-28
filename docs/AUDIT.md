@@ -772,6 +772,17 @@ size turned up, not just at a narrow window.
 
 ### EMCOMM mode
 
+**There is no "convert to EMCOMM mode" any more.** The dialog and the Leave EMCOMM
+mode button went at `b73a1fc`, replaced by the three station modes and the banner.
+Anything below that asks you to convert, or to leave, has been re-pointed at the
+switch that does the same work -- entering Emcomm-Live or Emcomm-Training, and
+coming home to Normal. Found on 27 Sep by an auditor looking for a Convert button
+that has not existed for days.
+
+The backup plumbing did **not** go with it: the pre-EMCOMM slot is still written,
+now by the mode switch and by the "is this station in a mode?" dialog, and it is
+still the way home. Those items stand as they were.
+
 Needs a node you can afford to change, and its backup on disk before you start.
 Everything here deletes or rewrites something on the radio, so the order matters:
 the way home is proven first, and only then is anything removed.
@@ -783,36 +794,33 @@ one found so far came from a dropped frame, and the link that drops them is BLE.
       no warnings. Then **Save to file** and open the file: it should carry the
       channel secrets, distinct per channel and not zeroed. A backup that quietly
       holds the fallback channel list looks fine until it is restored.
-- [ ] **Restore without converting.** Nothing should change, nothing should be
-      removed, and the settings should match afterwards. This is the way home, so
-      it is proven before anything needs it.
-- [ ] **Read the plan before agreeing to it.** The dialog states what will go, by
-      kind, and how many are kept only because their age could not be read. On the
-      bench that last number was 19 of 191, about 10%, which is worth noticing: if
-      it reads zero on a node with a large list, suspect the check rather than the
-      clocks.
-- [ ] **Convert.** Watch that the radio row says *No change* when the node is
-      already on the right settings. Nothing should be written that would not
-      change anything.
-- [ ] **A node without GPS refuses the position** and says why. It must never
-      write 0, 0, which formats perfectly well and points at the Gulf of Guinea.
-- [ ] **Check the radio afterwards, not the screen.** Name, contact counts by
-      type, clock drift, automatic contacts (now **on** after a convert), transmit
-      power at the maximum, and location sharing **On, anyone** in the EMCOMM group.
-      The app reporting success is not the same as the device agreeing.
-- [ ] **Leaving puts sharing back.** After Leave EMCOMM mode, location sharing and
-      automatic contacts read as they did before converting.
+- [ ] **Restore without switching mode.** Load the backup on a node that has not
+      left Normal. Nothing should change, nothing should be removed, and the
+      settings should match afterwards. This is the way home, so it is proven
+      before anything needs it.
+- [ ] **A node without GPS refuses the position** on entering a mode, and says why.
+      The switch must report it as a result rather than an error -- on 27 Sep it read
+      "the position from the GPS was not set: no live GPS fix, so the position was
+      left alone" -- and must never write 0, 0, which formats perfectly well and
+      points at the Gulf of Guinea.
+- [ ] **Check the radio afterwards, not the screen.** After switching into an
+      emcomm mode, read back from the device: name, contact counts by type, clock
+      drift, automatic contacts, transmit power, and location sharing. The app
+      reporting success is not the same as the device agreeing.
+- [ ] **Coming home puts sharing back.** After switching back to Normal, location
+      sharing and automatic contacts read as they did before the station left.
 - [ ] **Restore from the pre-EMCOMM slot.** Contact counts by type back to what
       they were, name back, no setting different, nothing missing from the backup.
-      The mode badge should go back to saying the node is not in EMCOMM mode.
+      The banner should go back to Normal mode. The slot is still written on the way
+      out, so this is still the way home even though converting is gone.
 - [ ] **The other node sees the name come back.** The restore sends one zero hop
       advert when it changes the name, and says so. The other node should list this
       one by its restored name within seconds, not by its EMCOMM name.
-- [ ] **The two slots stay apart.** Backing up while converted must not overwrite
-      the pre-EMCOMM one. If it does, the way home is gone at the moment it is
-      least recoverable.
-- [ ] **The way home stays reachable.** Back up while converted, so the newest backup
-      is the converted state, then press **Leave EMCOMM mode**. It must offer the
+- [ ] **The two slots stay apart.** Backing up while in an emcomm mode must not
+      overwrite the pre-EMCOMM one. If it does, the way home is gone at the moment
+      it is least recoverable.
+- [ ] **The way home stays reachable.** Back up while in an emcomm mode, so the
+      newest backup is that state, then switch back to Normal. It must use the
       pre-EMCOMM backup, not the newest, and restore the node to it.
 - [ ] **The mode banner.** Green and "Normal mode" on a radio this app has just
       met. Tap it: the dialog offers three modes, marks the one in use, and lists
@@ -855,33 +863,41 @@ one found so far came from a dropped frame, and the link that drops them is BLE.
 - [ ] **The tabs match.** Each of the three tabs in Settings shows the same fields.
       Editing a mode that is not in use changes nothing on the radio until it is
       entered.
-- [ ] **The radio's emcomm settings.** After converting, the radio reads back with
-      extra acknowledgements on, the position in adverts on, and location sharing
-      on. The other node should see this station's position in its advert without
-      asking for it.
-- [ ] **Favourites survive the trim.** Star a companion before converting. It is
-      still there afterwards, and the dialog said how many were kept.
-- [ ] **The net channel.** #Emcomm appears in the channel list after converting, and
-      is answered for position requests like every other channel. On the other
-      node, convert with the same channel name: the two must be able to message
-      each other on it, which proves both derived the same key. Convert a second
-      time: it says the channel is already there rather than adding it twice.
+- [ ] **The radio's emcomm settings.** After entering an emcomm mode, the radio
+      reads back with extra acknowledgements on, the position in adverts on, and
+      location sharing on. The other node should see this station's position in its
+      advert without asking for it.
+- [ ] **Favourites survive the trim.** Star a companion before entering an emcomm
+      mode. It is still there afterwards, and the switch said how many were kept.
+      On 27 Sep a switch into Emcomm-Training dropped 39 contacts and reported it.
+      Watch the number kept only because their age could not be read: on the bench
+      that was once 19 of 191, about 10%, and if it reads zero on a node with a large
+      list, suspect the check rather than the clocks.
+- [ ] **The net channel.** #Emcomm appears in the channel list after switching to
+      Emcomm-Live, and is answered for position requests like every other channel.
+      Put the same channel name in the other node's Live tab: the two must be able
+      to message each other on it, which proves both derived the same key from the
+      name. Switch in a second time: it must not add the channel twice.
 - [ ] **A near miss is caught.** Rename the channel to #emcomm on one node, then
-      convert with #Emcomm. It must keep the one on the radio, name it in the
-      result, and not add a second. Then give a channel the name #Emcomm with a
-      random key and convert: it must say the key was not worked out from the name
-      and leave it alone.
-- [ ] **Repeating adverts start.** The settings group shows zero hop every 30 min and
-      flood every 60 after converting, and the other node hears one within the hour.
-- [ ] **Leaving removes what the mode added, when asked.** While converted, let a
-      contact be added automatically, add a test channel in an empty slot, set a
-      repeating advert schedule and set position answering to automatic. Leave: the
-      second question names that contact and channel. OK: both are gone from the
-      radio, the advert schedule is back to what it was, and the position settings
-      are back as they were. Repeat with Cancel: they are kept, and the mode is still
-      left.
-- [ ] **Converting twice keeps the way home.** Convert again while converted. The
-      Leave button still restores the backup from before the first convert.
+      switch into a mode whose list holds #Emcomm. It must keep the one on the
+      radio, name it in the result, and not add a second: the match ignores case.
+      Then give a channel the name #Emcomm with a random key and switch: it must
+      say the key was not worked out from the name and leave it alone.
+- [ ] **Repeating adverts start.** After entering an emcomm mode the advert schedule
+      from that mode is running -- the shipped Live default is zero hop every 30 min
+      and flood every 60 -- and the other node hears one within the hour. Check the
+      schedule against the mode's own tab rather than assuming the default: these are
+      per mode and editable.
+- [ ] **Coming home removes what the mode added, when asked.** While in an emcomm
+      mode, let a contact be added automatically, add a test channel in an empty
+      slot, set a repeating advert schedule and set position answering to automatic.
+      Switch back to Normal: the second question names that contact and channel. OK:
+      both are gone from the radio, the advert schedule is back to what it was, and
+      the position settings are back as they were. Repeat with Cancel: they are kept,
+      and the station still comes home.
+- [ ] **A second switch keeps the way home.** Go from Emcomm-Training straight to
+      Emcomm-Live without passing through Normal. Coming home must still restore the
+      backup taken before the station first left Normal, not one taken in between.
 
 Expect a conversion to take a couple of minutes over Bluetooth. Removals run at
 roughly a third the speed of writes, so the trim is the slow half.
