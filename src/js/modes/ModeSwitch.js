@@ -80,6 +80,23 @@ class ModeSwitch {
             changes.push(`Transmit power becomes ${profile.radio.txPower} dBm, from ${current?.txPower ?? "unknown"}.`);
         }
 
+        // Announced here because this is where applySettings() writes it, and only
+        // when it changes, the same as the settings above.
+        //
+        // It was missing entirely until 27 Sep, while every other thing a switch
+        // does was announced. It is not a small omission: turning it on makes the
+        // station give its position to anyone who asks, with nobody at the radio,
+        // and the operator who chose "ask me first" in one mode was never told a
+        // switch had undone that. The off direction is said too, because a station
+        // that quietly stops answering during a net looks broken to everyone asking.
+        const autoAnswerNow = PositionService.settings(nodeKeyHex).autoAnswer === true;
+        const autoAnswerNext = profile.autoAnswerPositions === true;
+        if(autoAnswerNext !== autoAnswerNow){
+            changes.push(autoAnswerNext
+                ? "Position requests are answered automatically, without asking you first."
+                : "Position requests ask you first, instead of being answered automatically.");
+        }
+
         // "Any other channel is cleared from the radio" was true of the slots and
         // wrong about the consequence, which is what an operator reads it for.
         // A channel whose name says emcomm is carried into the mode being

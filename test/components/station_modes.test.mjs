@@ -426,6 +426,39 @@ describe("switching a station's mode", () => {
         expect(text).toContain("Repeaters in direct range are searched for.");
     });
 
+    // The comment above says the next setting added to a profile has to be
+    // announced or fail here, and one still slipped through: autoAnswerPositions
+    // was written on every switch, by applySettings, with nothing said about it.
+    // Turning it on makes the station answer anyone who asks with nobody at the
+    // radio, which is the most consequential thing a switch does silently.
+    it("announces that a mode will answer position requests by itself", async () => {
+        PositionService.saveSettings({ autoAnswer: false }, NODE);
+
+        const text = (await ModeSwitch.describe("live")).changes.join(" ");
+
+        expect(text).toContain("Position requests are answered automatically, without asking you first.");
+    });
+
+    it("announces when a mode hands the choice back to the operator", async () => {
+        // the off direction matters too: a station that quietly stops answering
+        // during a net looks broken to every station still asking it
+        PositionService.saveSettings({ autoAnswer: true }, NODE);
+        const profile = ModeProfiles.profileOrDefault("live", NODE);
+        ModeProfiles.saveProfile("live", { ...profile, autoAnswerPositions: false }, NODE);
+
+        const text = (await ModeSwitch.describe("live")).changes.join(" ");
+
+        expect(text).toContain("Position requests ask you first, instead of being answered automatically.");
+    });
+
+    it("says nothing about position requests when the mode leaves them alone", async () => {
+        PositionService.saveSettings({ autoAnswer: true }, NODE);
+
+        const text = (await ModeSwitch.describe("live")).changes.join(" ");
+
+        expect(text).not.toContain("Position requests");
+    });
+
     it("says nothing about the clock when the mode leaves it alone", async () => {
         const profile = ModeProfiles.profileOrDefault("live", NODE);
         ModeProfiles.saveProfile("live", { ...profile, syncClock: false }, NODE);

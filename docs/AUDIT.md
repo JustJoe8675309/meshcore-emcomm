@@ -469,6 +469,46 @@ size turned up, not just at a narrow window.
 - [ ] **Manual or auto survives a round trip.** Set Auto reply in Normal, switch to
       Emcomm-Training and back: still Auto. It is part of the mode, so setting it
       in one mode does not change another.
+      This is the whole of "who answers position requests" now. It used to be a list
+      of ticked channels, and that list was the source of three faults in one evening,
+      all of them about dragging ticks from slot to slot -- a tick left on the channel
+      that used to be in that slot, a tick lost when a channel came home to a different
+      one, and the backup's own copy overwriting the right answer with an old one. The
+      setting is `{ autoAnswer }` per node, nothing else; `PositionService.settings()`
+      is the check if this item ever looks wrong again.
+      If the setting does go missing, instrument it rather than guessing: patch
+      `Storage.prototype.setItem` in the page to log writes to `position_settings` with
+      a stack, then do a round trip. That is how the backup was caught overwriting it
+      thirteen seconds after the switch.
+      Proven on the bench 27 Sep: set Auto in Normal while the station sat in
+      Emcomm-Training, and the live setting did not move and nothing was written --
+      a mode that is not in use saves to the app only. Round tripped through Normal
+      and back: Normal kept Auto, Training and Live were untouched.
+- [ ] **The switch dialog says the mode will answer position requests by itself.**
+      Every other thing a switch does was announced and this one was not, until
+      27 Sep. It is the most consequential silent change there is: turning it on
+      makes the station give its position to anyone who asks with nobody at the
+      radio, and an operator who chose "ask me first" was never told a switch had
+      undone that. Both directions are said, because a station that quietly stops
+      answering during a net looks broken to everyone still asking it, and only
+      when it actually changes, like the transmit power line above.
+      The unit test for this used to enumerate strings, which is how the setting
+      slipped past a test whose own comment promised the next one would fail here.
+- [ ] **"1 contact(s)".** Six warning strings hedge the plural with `(s)` --
+      `ModeSwitch.js` twice, `SettingsPage.vue` three times, plus `repeater(s)` --
+      while the same files pluralise properly elsewhere (`message is`/`messages are`).
+      It never misleads, so it is cosmetic, but this app's wording is load-bearing
+      everywhere else and a switch dialog is where an operator is reading hardest.
+- [ ] **Coming home, the mode's settings are written after the backup, not before.**
+      Instrumenting `position_settings` through a switch into Normal shows three
+      writes: `apply()` sets the mode's value, `NodeBackup.restore()` overwrites it
+      with whatever the backup held about nine seconds later, and `apply()` puts it
+      back about five seconds after that. The end state is right and the re-apply is
+      deliberate -- it is the same mechanism that makes "a live change still outlasts
+      the way home" work. What to be aware of is the few seconds in between, when the
+      station is running the backup's answer rather than the mode's: harmless in the
+      direction seen on the bench, less so if the backup held Auto and the mode being
+      entered wants manual.
 - [ ] **Connecting records normal mode.** With the station in normal mode, add a
       channel with the stock app, then connect here: the Normal tab must show it,
       and so must the way home backup. It used to be recorded on the first connect
@@ -512,13 +552,6 @@ size turned up, not just at a narrow window.
       by a build that stopped at 16 slots, and the round trip cleared
       `#emcomm-testing` out of slot 16 with nothing to put back. A backup kept for
       ever drifts away from the radio it describes.
-- [ ] **Who answers position requests survives the way home.** Tick a channel,
-      round trip, and check the ticks still match the slots the channels came home
-      to — on node 3 the switch wrote slots 7 and 16 and the backup's own settings
-      overwrote it with 7 thirteen seconds later, then captured that into the next
-      backup, so the mistake carried itself forward. If a mark goes missing,
-      instrument it rather than guessing: patch `Storage.prototype.setItem` in the
-      page to log writes to `position_settings` with a stack, then do a round trip.
 - [ ] **A channel the backup never saw still comes home.** With a backup that is
       missing one of normal mode's channels, coming home must write it into a free
       slot and say so in the warnings, rather than leaving the slot empty. Matched
