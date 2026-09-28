@@ -707,6 +707,11 @@ size turned up, not just at a narrow window.
 - [ ] **A normal channel called Emcomm something is not asked about.** The bench
       channel Emcomm Testing must not trigger it — the test is the channel's key,
       not its name.
+      Verified in the source 28 Sep, which is worth doing before spending a private
+      window on it: `ModeProfiles.modeLeftOn` derives the key for each mode's default
+      hashtag channel and compares it against each slot's `secret`, so a channel whose
+      name merely contains "emcomm" cannot match. The live run is still owed, because
+      what is verified here is the comparison, not that the dialog appears at all.
 - [ ] **Connecting is not made slow by it.** Time a connect before and after: the
       profile and the backup share one read of the slots, so it should cost one
       pass over the channels, not three.
