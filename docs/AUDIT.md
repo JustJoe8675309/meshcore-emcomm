@@ -1317,7 +1317,18 @@ all offline.
       files in it. The fault was a new worker taking over with an empty cache and
       deleting the complete one, after which the offline load failed outright.
 - [ ] Take the tab offline and reload. The app still starts, routes, and talks to the
-      radio. The app is deployed to Cloudflare rather than run locally, so there is no
+      radio.
+      **Passed again 28 Sep**, with the wifi genuinely switched off rather than
+      throttled: the operator reloaded a freshly loaded tab with no network and the app
+      came up. Note that the `transferSize`/`workerStart` evidence below exists because
+      *DevTools* throttling can silently restore the network -- with the wifi actually
+      off there is no such ambiguity, and the session driving the browser drops too,
+      which is its own corroboration.
+      If the hard evidence is wanted, do the reload in a tab the automation can reach.
+      On 28 Sep the operator opened a new tab for it, which sat outside the extension's
+      tab group and so could not be read at all afterwards. A spare tab that is already
+      in the group -- a disconnected node's, for instance -- costs nothing and keeps the
+      timings reachable. The app is deployed to Cloudflare rather than run locally, so there is no
       server to stop; see below for how to cut the network and how to prove it was cut.
       **Proven 23 Sep** on build `9a9476d`: the operator took their own device offline,
       the app opened, and it worked once a node was connected. Note that this cannot be
