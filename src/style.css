@@ -101,9 +101,11 @@
  *
  *  - **Colour that carries meaning is left alone.** The mode banner is a saturated
  *    block with black text -- green for normal, red for a live incident, yellow for a
- *    drill -- and an operator reads it to know what their station is doing. So
- *    `text-black` and the banner's backgrounds are never touched here. Neither is
- *    DRILL marking or anything else that says what kind of traffic this is.
+ *    drill -- and an operator reads it to know what their station is doing, so those
+ *    backgrounds keep their own black text. Everything else that asked for black is
+ *    lifted, because the surface under it is no longer white: the first attempt at
+ *    this left `text-black` alone entirely and painted the two Connect buttons black
+ *    on near-black, which is the first thing an operator has to press.
  *  - **Mid-tone warnings are lifted, not inverted.** amber-700 and red-600 are chosen
  *    to be legible on white; on a dark surface they go muddy and stop reading as a
  *    warning at all. They are moved up the scale rather than reversed.
@@ -125,6 +127,14 @@
 /* the page itself, so overscroll and short pages do not flash white */
 .dark body { background-color: #0f1216; }
 .dark .bg-gray-900 { background-color: #05070a; }
+
+/* Black text was chosen against a white surface. The surface is dark now, so it is
+   lifted -- except on the mode banner's signal blocks, which keep their own
+   background and so keep their own black. */
+.dark .text-black { color: #e8eaed; }
+.dark .bg-green-500.text-black,
+.dark .bg-red-500.text-black,
+.dark .bg-yellow-400.text-black { color: #000000; }
 
 /* ink, descending as it does in the light theme */
 .dark .text-gray-900 { color: #e8eaed; }
