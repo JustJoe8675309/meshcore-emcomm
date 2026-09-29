@@ -62,6 +62,26 @@ done at all.
       repeater discovery push (`0x8E`) is one the library does not handle at all, so
       the relevant frames may need handling directly.
 
+- [ ] **Sweep the whole repo for anything else personal.** Deferred 29 Sep. The
+      callsign and the position are done and the built bundle is clean, but that was
+      two targeted passes rather than a survey.
+      **The one that needs deciding first: git history.** Scrubbing the working tree
+      does not remove anything from past commits. The old callsign, the home
+      coordinates and the MGRS are all still recoverable with `git log -p`, and some
+      commit messages quote them too. If the repo is public that history is public.
+      Rewriting it means a force push and breaks every existing clone, so it is a
+      decision rather than a chore -- and worth making before the repo gets more
+      attention rather than after.
+      Places a survey should cover beyond the source:
+      - `package.json` author and repository fields, and the licence
+      - `manifest.json` and the service worker: app name, description, any author field
+      - anything under a public path that is not code -- icons, screenshots, sample files
+      - commit messages and branch names, not just file contents
+      - the audit and mode docs, which quote real bench sessions
+      - `.claude/` settings and any launch config, which can carry local paths
+      Check `dist/` as well as `src/` every time: comments are stripped by the build, so
+      the source and the shipped app answer this question differently.
+
 ## Known wrong, left deliberately
 
 These came out of the 27-29 Sep audit and are judgement calls about what the app
