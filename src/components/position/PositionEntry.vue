@@ -16,10 +16,10 @@
         <template v-if="mode === 'degrees'">
             <div class="flex space-x-2">
                 <label class="w-full text-xs text-gray-700">Latitude
-                    <input :value="latitude" @input="$emit('latitude', $event.target.value)" type="number" step="any" inputmode="decimal" placeholder="31.9270" class="mt-0.5 w-full bg-white border border-gray-300 text-sm rounded p-1.5">
+                    <input :value="latitude" @input="$emit('latitude', $event.target.value)" type="number" step="any" inputmode="decimal" placeholder="31.7619" class="mt-0.5 w-full bg-white border border-gray-300 text-sm rounded p-1.5">
                 </label>
                 <label class="w-full text-xs text-gray-700">Longitude
-                    <input :value="longitude" @input="$emit('longitude', $event.target.value)" type="number" step="any" inputmode="decimal" placeholder="-106.4001" class="mt-0.5 w-full bg-white border border-gray-300 text-sm rounded p-1.5">
+                    <input :value="longitude" @input="$emit('longitude', $event.target.value)" type="number" step="any" inputmode="decimal" placeholder="-106.4850" class="mt-0.5 w-full bg-white border border-gray-300 text-sm rounded p-1.5">
                 </label>
             </div>
             <div v-if="position" class="text-xs text-gray-600"><MapLink :latitude="position.latitude" :longitude="position.longitude" :text="positionMgrs" label="Position entered"/></div>
@@ -30,13 +30,13 @@
 
         <template v-else>
             <label class="block text-xs text-gray-700">MGRS reference
-                <input :value="mgrsText" @input="$emit('mgrsText', $event.target.value)" type="text" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="13R CR 67640 33201" class="mt-0.5 w-full bg-white border border-gray-300 text-sm rounded p-1.5 uppercase">
+                <input :value="mgrsText" @input="$emit('mgrsText', $event.target.value)" type="text" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="13R CR 59365 15004" class="mt-0.5 w-full bg-white border border-gray-300 text-sm rounded p-1.5 uppercase">
             </label>
             <div v-if="position" class="text-xs text-gray-600">
                 <MapLink :latitude="position.latitude" :longitude="position.longitude" :text="positionDegrees" label="Position entered"/><span v-if="precision > 1">, to within {{ precision }} m</span>
             </div>
             <div v-if="invalid" class="text-xs text-red-600">
-                Not an MGRS reference. For example 13R CR 67640 33201: zone and band, the two
+                Not an MGRS reference. For example 13R CR 59365 15004: zone and band, the two
                 square letters, then an even number of digits.
             </div>
         </template>

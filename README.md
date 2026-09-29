@@ -75,7 +75,7 @@ and sent the same day from node 1 (serial) to node 2 (Bluetooth) on Emcomm Testi
   the last line, asking the team to confirm they have the task.
 - **Its WHERE field** takes anything: an address, a description, degrees or MGRS. Its position
   button fills in degrees with the MGRS reference beside them, such as
-  `31.9270, -106.4001 (13R CR 67640 33201)`, for editing. With no live GPS fix it uses the position
+  `31.7619, -106.4850 (13R CR 59365 15004)`, for editing. With no live GPS fix it uses the position
   stored on the radio, marked "last known". The other forms' position buttons still take only a
   live fix.
 
@@ -372,7 +372,7 @@ half a metre, which is receiver wander. A stored value would have repeated exact
 The button re-queries the device each press rather than reusing the `selfInfo` fetched at
 connect time, so a station that has moved reports where it is rather than where it started.
 
-Positions are written as decimal degrees to four places, `31.9270, -106.4001`, about eleven
+Positions are written as decimal degrees to four places, `31.7619, -106.4850`, about eleven
 metres in eighteen bytes. A six character grid square would save twelve bytes but covers
 roughly eight kilometres by five at these latitudes: fine for a net check in, useless for a
 pickup point or a damage location. Degrees also read correctly to someone at an emergency
@@ -1500,7 +1500,7 @@ the browser with nobody at the radios:
   "Replaced by a new request". Each request reached node 1 in about 0.4 s.
 - **Entering the current position as MGRS.** Node 1 had no position, and its prompt offered
   Enter current position. The reference was typed as `13rcr6763033210`, in lower case with no
-  spaces, and shown back as 31.9271° N, 106.4002° W. Save to radio and send set node 1's position
+  spaces, and shown back as 31.7619° N, 106.4850° W. Save to radio and send set node 1's position
   ("Position set on the radio, not a live fix"), and node 2 listed it as "Entered by hand, not
   GPS", 53 ft (16 m) away at 310° magnetic, declination 7.4° E. Node 1's position was then
   cleared again.

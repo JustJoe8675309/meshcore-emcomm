@@ -334,7 +334,7 @@ class NodeBackup {
             step("position left as it is");
         } else if(!Geo.isPosition(settings.advLat / 1e6, settings.advLon / 1e6)){
             // the radio holds these as whole micro-degrees, so they are divided
-            // before the check: 31926942 is 31.926942 and not an impossible latitude
+            // before the check: 31761900 is 31.761900 and not an impossible latitude
             step("position left as it is");
         } else {
             await this.attempt(failures, "position", () => Connection.setAdvertLatLong(settings.advLat, settings.advLon));

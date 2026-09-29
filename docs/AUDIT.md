@@ -43,6 +43,28 @@ mark every transmission `DRILL`. Roughly 20 to 30 transmissions in total.
 
 Connect each radio in its own browser tab; a radio can only be held by one page.
 
+### Nothing personal ships
+
+The app is meant to be handed to other operators and the repo is public, so the
+operator's own details must not be baked into either.
+
+- [ ] **No real callsign.** Examples use `NOCALL`, which is the amateur convention for
+      one that has not been set, so it reads as "yours goes here" rather than as a
+      pattern to copy. Test fixtures use `KJ5ZZZ`, since they stand for a station that
+      *has* a callsign in a scenario.
+- [ ] **No real position.** This is the one that was missed for a long time: the
+      operator's **home coordinates shipped as the placeholder text** in the position
+      entry field, so every user who opened that screen saw their QTH. Examples now use
+      a public landmark, 31.7619, -106.4850 / 13R CR 59365 15004, kept consistent
+      across the field placeholders, the MGRS help and the README. A QTH is more
+      sensitive than a callsign, not less.
+- [ ] **No node or room public keys**, and none of the bench's channel or room names,
+      in anything that ships.
+- [ ] **Check the built bundle, not just the source.** Comments are stripped by the
+      build, so a bench name in a comment does not ship while a placeholder does:
+      `grep -r "<the thing>" dist/` after a build is the check that matters. On
+      29 Sep the source still mentioned the bench channels in comments while the
+      bundle was clean.
 ### Dark mode
 
 Built 29 Sep. Unit tests hold the mechanism -- which theme is chosen, whether it
@@ -151,7 +173,7 @@ test while painting the two Connect buttons black on near-black.
       Its WHERE button fills in degrees and MGRS, marked "last known" on a radio
       without a live fix.
       Passed 28 Sep, all of it. Node 2 received `[1/2] 5WS BRIEFING / FM / DTG / 1 WHO
-      / 2 WHAT / 3 WHEN` and `[2/2] 4 WHERE: 31.9270, -106.4001 (13R CR 67642 33199)
+      / 2 WHAT / 3 WHEN` and `[2/2] 4 WHERE: <position> (<MGRS>)
       last known / 5 WHY / ACK REQ`.
       The WHERE button is labelled **Check GPS** and lives on the report form, not the
       settings page -- worth knowing, since the no-GPS item above refers to the same
@@ -175,9 +197,10 @@ case it refuses.
 
 - [ ] **A radio with GPS** fills the field, and the value is a plausible position to
       four decimal places.
-      Passed 28 Sep on node 2: 31.926999, -106.400119, and it had drifted from
-      31.927018, -106.400171 read earlier in the day, which is the sign of a live fix
-      rather than a stored one.
+      Passed 28 Sep on node 2: a plausible position to six decimal places, which had
+      drifted in the last two of them from the reading taken earlier in the day. That
+      drift is the sign of a live fix rather than a stored one, and is the thing to
+      look for -- a stored position repeats exactly.
 - [ ] **A radio without GPS** offers `Check GPS`, probes again when pressed, and
       **leaves the field empty**. It must never write `0, 0`, which formats perfectly
       well and points at the Gulf of Guinea.
@@ -1238,8 +1261,8 @@ width, and only the real device tests the touch targets.
       and longitude must all be filled in with the radio's current values. Empty
       fields are the fault, not the default: saving them writes the emptiness, and
       an empty Name box looks exactly like a node that has no name.
-      Passed 28 Sep on node 1: name, 910525, 62500, SF 7, CR 5, 14 dBm, 31.927,
-      -106.4001, and no warning.
+      Passed 28 Sep on node 1: name, 910525, 62500, SF 7, CR 5, 14 dBm, a latitude and
+      longitude, and no warning.
 - [ ] **A failed read says so.** If the radio will not answer, the page must show the
       warning above the fields rather than a form full of blanks, within about ten
       seconds. One way to get a radio that will not answer while still connected:

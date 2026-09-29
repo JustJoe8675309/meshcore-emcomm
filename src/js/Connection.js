@@ -1483,8 +1483,8 @@ class Connection {
      *
      * This does return a live fix, which was worth confirming rather than assuming,
      * since the same field holds a manually set position on a node without GPS.
-     * Polling a stationary Heltec V4 gave 31.926964, 31.926963, 31.926962, 31.926960,
-     * 31.926959 over 24 seconds: half a metre of receiver wander. A stored constant
+     * Polling a stationary Heltec V4 gave five readings drifting in the sixth decimal
+     * place over 24 seconds: about half a metre of receiver wander. A stored constant
      * would have repeated exactly. At the four decimal places a report carries, all
      * five round to the same value, so the jitter costs nothing.
      *

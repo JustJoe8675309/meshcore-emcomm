@@ -350,7 +350,7 @@ export default {
         },
 
 
-        // "31.92702, -106.40012 (13R CR 67640 33201)", with "last known" when it is
+        // "31.76190, -106.48500 (13R CR 59365 15004)", with "last known" when it is
         // a stored position rather than a live fix. The operator can edit it or
         // add a description after it
         positionText(position, lastKnown) {
