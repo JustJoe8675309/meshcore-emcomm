@@ -109,8 +109,8 @@ describe("the contacts and channels list", () => {
     });
 
     it("lists users", () => {
-        const wrapper = mountList([aContact({ advName: "KJ5HBN" })]);
-        expect(wrapper.vm.rows.map((r) => r.name)).toEqual(["KJ5HBN"]);
+        const wrapper = mountList([aContact({ advName: "KJ5ZZZ" })]);
+        expect(wrapper.vm.rows.map((r) => r.name)).toEqual(["KJ5ZZZ"]);
     });
 
     it("lists every kind the radio knows", () => {

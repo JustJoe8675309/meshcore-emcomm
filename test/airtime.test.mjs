@@ -12,7 +12,7 @@ function check(name, condition, detail = "") {
     else { failures++; console.log(`  FAIL  ${name} ${detail}`); }
 }
 
-const node = "Joe-KJ5HBN-HTv3";           // 15 chars, so a 17 byte prefix
+const node = "Joe-KJ5ZZZ-HTv3";           // 15 chars, so a 17 byte prefix
 const radio = { sf: 7, bandwidthHz: 62500, codingRate: 5 };
 const selfInfo = { radioSf: 7, radioBw: 62500, radioCr: 5 };
 

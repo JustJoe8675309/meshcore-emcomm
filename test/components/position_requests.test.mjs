@@ -26,11 +26,11 @@ const THEM = new Uint8Array(32).fill(0x39);
 const NODE = Array.from(ME).map((b) => b.toString(16).padStart(2, "0")).join("");
 const THEM_HEX = Array.from(THEM).map((b) => b.toString(16).padStart(2, "0")).join("");
 
-const THEM_CONTACT = { publicKey: THEM, advName: "KJ5HBN-EMCOMM", type: Constants.AdvType.Chat, flags: 0 };
+const THEM_CONTACT = { publicKey: THEM, advName: "KJ5ZZZ-EMCOMM", type: Constants.AdvType.Chat, flags: 0 };
 
 function connect({ lat = 31.7587, lon = -106.4869 } = {}) {
     GlobalState.connection = { on() {}, off() {} };
-    GlobalState.selfInfo = { name: "Joe-KJ5HBN-HTv3", publicKey: ME, advLat: Math.round(lat * 1e6), advLon: Math.round(lon * 1e6) };
+    GlobalState.selfInfo = { name: "Joe-KJ5ZZZ-HTv3", publicKey: ME, advLat: Math.round(lat * 1e6), advLon: Math.round(lon * 1e6) };
     GlobalState.contacts = [THEM_CONTACT];
     GlobalState.channels = [{ idx: 7, name: "Emcomm Testing" }, { idx: 0, name: "Public" }];
     GlobalState.gpsStatus = "unconfirmed";
@@ -48,18 +48,18 @@ function reset() {
 
 // a request as it arrives on a channel from the other station
 function incomingRequest(tag = 1234, to = ME) {
-    return Protocol.encode({ kind: Protocol.KIND.REQUEST, tag, to, from: THEM, name: "KJ5HBN-EMCOMM" });
+    return Protocol.encode({ kind: Protocol.KIND.REQUEST, tag, to, from: THEM, name: "KJ5ZZZ-EMCOMM" });
 }
 
 describe("the bytes", () => {
 
     it("carry a request and read back the same", () => {
-        const decoded = Protocol.decode(Protocol.encode({ kind: Protocol.KIND.REQUEST, tag: 0xdeadbeef, to: THEM, from: ME, name: "KJ5HBN" }));
+        const decoded = Protocol.decode(Protocol.encode({ kind: Protocol.KIND.REQUEST, tag: 0xdeadbeef, to: THEM, from: ME, name: "KJ5ZZZ" }));
         expect(decoded.kind).toBe(Protocol.KIND.REQUEST);
         expect(decoded.tag).toBe(0xdeadbeef);
         expect(Protocol.prefixHex(decoded.to)).toBe(THEM_HEX.slice(0, 12));
         expect(Protocol.prefixHex(decoded.from)).toBe(NODE.slice(0, 12));
-        expect(decoded.name).toBe("KJ5HBN");
+        expect(decoded.name).toBe("KJ5ZZZ");
     });
 
     it("carry a position to a millionth of a degree, with its flags", () => {
@@ -107,9 +107,9 @@ describe("the bytes", () => {
     it("send direct as a readable line with the payload after it, well inside a message", () => {
         const text = Protocol.toDirectText(
             { kind: Protocol.KIND.POSITION, tag: 9, to: THEM, from: ME, name: "", latitude: 31.7619, longitude: -106.485, fixTime: 0, flags: 0 },
-            "Position of KJ5HBN-EMCOMM: 31.7619° N, 106.4850° W",
+            "Position of KJ5ZZZ-EMCOMM: 31.7619° N, 106.4850° W",
         );
-        expect(text.startsWith("Position of KJ5HBN-EMCOMM")).toBe(true);
+        expect(text.startsWith("Position of KJ5ZZZ-EMCOMM")).toBe(true);
         expect(new TextEncoder().encode(text).length).toBeLessThanOrEqual(160);
         expect(Protocol.fromDirectText(text).latitude).toBe(31.7619);
     });
@@ -125,7 +125,7 @@ describe("being asked", () => {
         window.localStorage.clear();
         reset();
         connect();
-        OperatorSettings.setCallsign("KJ5HBN");
+        OperatorSettings.setCallsign("KJ5ZZZ");
         datagrams = [];
         directs = [];
         vi.spyOn(Connection, "sendChannelDatagram").mockImplementation(async (idx, type, payload) => { datagrams.push({ idx, type, message: Protocol.decode(payload) }); });
@@ -146,7 +146,7 @@ describe("being asked", () => {
     // never "which channels" but "am I asked first".
     it("asks the operator about a request on any channel it holds", () => {
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: incomingRequest() });
-        expect(PositionService.state.prompt.name).toBe("KJ5HBN-EMCOMM");
+        expect(PositionService.state.prompt.name).toBe("KJ5ZZZ-EMCOMM");
         expect(PositionService.state.prompt.via).toEqual({ kind: "channel", idx: 7, name: "Emcomm Testing" });
     });
 
@@ -174,7 +174,7 @@ describe("being asked", () => {
         const text = Protocol.toDirectText({ kind: Protocol.KIND.REQUEST, tag: 3, to: ME, from: THEM, name: "" }, "Position request");
         expect(PositionService.onDirectText(THEM_CONTACT, text)).toBe(true);
         expect(PositionService.state.prompt.via.kind).toBe("direct");
-        expect(PositionService.state.prompt.name).toBe("KJ5HBN-EMCOMM");
+        expect(PositionService.state.prompt.name).toBe("KJ5ZZZ-EMCOMM");
     });
 
     it("sends the position on the same channel, answering the tag", async () => {
@@ -202,7 +202,7 @@ describe("being asked", () => {
         expect(datagrams).toHaveLength(0);
         expect(directs).toHaveLength(1);
         // no confirmed GPS on this radio, so it goes as a last known position, and says so
-        expect(directs[0].text).toMatch(/^Last known position of KJ5HBN \(not a current fix\): 31\.7587° N, 106\.4869° W #mce1:/);
+        expect(directs[0].text).toMatch(/^Last known position of KJ5ZZZ \(not a current fix\): 31\.7587° N, 106\.4869° W #mce1:/);
         expect(directs[0].message.lastKnown).toBe(true);
         expect(directs[0].message.messageToFollow).toBe(true);
     });
@@ -218,7 +218,7 @@ describe("being asked", () => {
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: incomingRequest(5) });
         await PositionService.decline(PositionService.state.prompt);
         expect(datagrams[0].message.kind).toBe(Protocol.KIND.DECLINED);
-        expect(datagrams[0].message.name).toBe("KJ5HBN");
+        expect(datagrams[0].message.name).toBe("KJ5ZZZ");
         expect(datagrams[0].message.tag).toBe(5);
     });
 
@@ -226,7 +226,7 @@ describe("being asked", () => {
         OperatorSettings.setCallsign("");
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: incomingRequest(5) });
         await PositionService.decline(PositionService.state.prompt);
-        expect(datagrams[0].message.name).toBe("Joe-KJ5HBN-HTv3");
+        expect(datagrams[0].message.name).toBe("Joe-KJ5ZZZ-HTv3");
     });
 
     it("answers straight away when set to answer automatically", async () => {
@@ -322,7 +322,7 @@ describe("current fix or last known position", () => {
 
     it("says so, in amber, where the answer is shown", async () => {
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: Protocol.encode({
-            kind: Protocol.KIND.POSITION, tag: 1, to: ME, from: THEM, name: "KJ5HBN",
+            kind: Protocol.KIND.POSITION, tag: 1, to: ME, from: THEM, name: "KJ5ZZZ",
             latitude: 31.788, longitude: -106.497, fixTime: 0, flags: Protocol.FLAG.LAST_KNOWN,
         }) });
         const wrapper = mount(PositionsPanel);
@@ -474,12 +474,12 @@ describe("entering the current position when only a last known one is held", () 
         const directs = [];
         vi.spyOn(Connection, "sendCommandData").mockImplementation(async (key, text) => { directs.push(text); });
         await PositionService.answer(PositionService.state.prompt, { manualPosition: { latitude: 31.927, longitude: -106.4001 } });
-        expect(directs[0]).toMatch(/^Position of Joe-KJ5HBN-HTv3 \(entered by hand\): 31\.9270° N, 106\.4001° W #mce1:/);
+        expect(directs[0]).toMatch(/^Position of Joe-KJ5ZZZ-HTv3 \(entered by hand\): 31\.9270° N, 106\.4001° W #mce1:/);
     });
 
     it("is shown as entered by hand where it is received, not as last known", async () => {
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: Protocol.encode({
-            kind: Protocol.KIND.POSITION, tag: 1, to: ME, from: THEM, name: "KJ5HBN",
+            kind: Protocol.KIND.POSITION, tag: 1, to: ME, from: THEM, name: "KJ5ZZZ",
             latitude: 31.788, longitude: -106.497, fixTime: Math.floor(Date.now() / 1000), flags: Protocol.FLAG.MANUAL,
         }) });
         const wrapper = mount(PositionsPanel);
@@ -490,7 +490,7 @@ describe("entering the current position when only a last known one is held", () 
 
     it("shows two stations a few metres apart as the same location, with no bearing", async () => {
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: Protocol.encode({
-            kind: Protocol.KIND.POSITION, tag: 1, to: ME, from: THEM, name: "KJ5HBN",
+            kind: Protocol.KIND.POSITION, tag: 1, to: ME, from: THEM, name: "KJ5ZZZ",
             latitude: 31.75871, longitude: -106.48691, fixTime: 0, flags: 0,
         }) });
         const wrapper = mount(PositionsPanel);
@@ -525,20 +525,20 @@ describe("the queue of requests", () => {
     });
 
     it("keeps every station that asks, and shows them one at a time, first come first", () => {
-        requestFrom(THEM, "KJ5HBN", 1);
+        requestFrom(THEM, "KJ5ZZZ", 1);
         requestFrom(OTHER, "W5ABC", 2);
         requestFrom(THIRD, "KF5XYZ", 3);
-        expect(PositionService.state.prompts.map((p) => p.name)).toEqual(["KJ5HBN", "W5ABC", "KF5XYZ"]);
-        expect(PositionService.state.prompt.name).toBe("KJ5HBN");
+        expect(PositionService.state.prompts.map((p) => p.name)).toEqual(["KJ5ZZZ", "W5ABC", "KF5XYZ"]);
+        expect(PositionService.state.prompt.name).toBe("KJ5ZZZ");
     });
 
     it("keeps only the newest request from a station that asks again, in its place", () => {
-        requestFrom(THEM, "KJ5HBN", 1);
+        requestFrom(THEM, "KJ5ZZZ", 1);
         requestFrom(OTHER, "W5ABC", 2);
-        requestFrom(THEM, "KJ5HBN", 9, 3);
+        requestFrom(THEM, "KJ5ZZZ", 9, 3);
         const queue = PositionService.state.prompts;
         expect(queue).toHaveLength(2);
-        expect(queue[0].name).toBe("KJ5HBN");
+        expect(queue[0].name).toBe("KJ5ZZZ");
         // the newest: its tag and the channel it came on this time
         expect(queue[0].tag).toBe(9);
         expect(queue[0].via.name).toBe("Net");
@@ -546,7 +546,7 @@ describe("the queue of requests", () => {
     });
 
     it("brings up the next once one is answered, declined or put off", async () => {
-        requestFrom(THEM, "KJ5HBN", 1);
+        requestFrom(THEM, "KJ5ZZZ", 1);
         requestFrom(OTHER, "W5ABC", 2);
         requestFrom(THIRD, "KF5XYZ", 3);
         await PositionService.answer(PositionService.state.prompt);
@@ -559,17 +559,17 @@ describe("the queue of requests", () => {
 
     it("says on the prompt who else is waiting", async () => {
         const wrapper = mount(PositionPrompt, { global: { mocks: { $router: { push() {} } } } });
-        requestFrom(THEM, "KJ5HBN", 1);
+        requestFrom(THEM, "KJ5ZZZ", 1);
         requestFrom(OTHER, "W5ABC", 2);
         requestFrom(THIRD, "KF5XYZ", 3);
         await flushPromises();
-        expect(wrapper.text()).toContain("KJ5HBN asks for your position");
+        expect(wrapper.text()).toContain("KJ5ZZZ asks for your position");
         expect(wrapper.text()).toContain("2 more stations are waiting");
         expect(wrapper.text()).toContain("W5ABC, KF5XYZ");
     });
 
     it("empties when the radio disconnects", () => {
-        requestFrom(THEM, "KJ5HBN", 1);
+        requestFrom(THEM, "KJ5ZZZ", 1);
         requestFrom(OTHER, "W5ABC", 2);
         PositionService.onDisconnected();
         expect(PositionService.state.prompts).toEqual([]);
@@ -694,7 +694,7 @@ describe("the prompt", () => {
         const wrapper = mountPrompt();
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: incomingRequest() });
         await flushPromises();
-        expect(wrapper.text()).toContain("KJ5HBN-EMCOMM asks for your position");
+        expect(wrapper.text()).toContain("KJ5ZZZ-EMCOMM asks for your position");
         expect(wrapper.text()).toContain("On Emcomm Testing");
         expect(wrapper.text()).toContain("31.7587° N, 106.4869° W");
         expect(wrapper.text()).toContain("13R");
@@ -768,7 +768,7 @@ describe("asking", () => {
     // an answer from the other station, as their app would send it
     function answer(tag, kind = Protocol.KIND.POSITION, extra = {}) {
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: Protocol.encode({
-            kind, tag, to: ME, from: THEM, name: "KJ5HBN-EMCOMM", latitude: 31.788, longitude: -106.497, fixTime: 0, flags: 0, ...extra,
+            kind, tag, to: ME, from: THEM, name: "KJ5ZZZ-EMCOMM", latitude: 31.788, longitude: -106.497, fixTime: 0, flags: 0, ...extra,
         }) });
     }
 
@@ -799,7 +799,7 @@ describe("asking", () => {
         await vi.advanceTimersByTimeAsync(30000);
         answer(request.tag, Protocol.KIND.POSITION, { flags: Protocol.FLAG.MANUAL });
         expect(request.status).toBe("answered");
-        expect(request.outcome).toBe("KJ5HBN-EMCOMM answered. The answer came after this app had stopped asking.");
+        expect(request.outcome).toBe("KJ5ZZZ-EMCOMM answered. The answer came after this app had stopped asking.");
         expect(request.radioNote).toBe(null);
     });
 
@@ -833,7 +833,7 @@ describe("asking", () => {
         expect(sent).toHaveLength(3);
 
         const report = PositionService.latestByStation()[0];
-        expect(report.name).toBe("KJ5HBN-EMCOMM");
+        expect(report.name).toBe("KJ5ZZZ-EMCOMM");
         expect(report.requestedByUs).toBe(true);
     });
 
@@ -920,7 +920,7 @@ describe("asking", () => {
         await vi.advanceTimersByTimeAsync(5 * 60000);
         expect(sent).toHaveLength(1);
         expect(request.status).toBe("declined");
-        expect(request.outcome).toBe("Declined by KJ5HBN-EMCOMM.");
+        expect(request.outcome).toBe("Declined by KJ5ZZZ-EMCOMM.");
         expect(PositionService.latestByStation()[0].source).toBe("declined");
     });
 
@@ -937,7 +937,7 @@ describe("asking", () => {
         PositionService.start(THEM_CONTACT, { kind: "direct" }, { type: "once" });
         await vi.advanceTimersByTimeAsync(0);
         expect(Connection.sendCommandData).toHaveBeenCalledTimes(1);
-        expect(sent[0].text).toMatch(/^Position request from Joe-KJ5HBN-HTv3 \(answering needs Mesh-Emcomm\) #mce1:/);
+        expect(sent[0].text).toMatch(/^Position request from Joe-KJ5ZZZ-HTv3 \(answering needs Mesh-Emcomm\) #mce1:/);
     });
 
     it("takes a position from the station's radio when its app does not answer", async () => {
@@ -981,7 +981,7 @@ describe("asking", () => {
 
     it("shows positions others send on a channel, not only answers to its own", () => {
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: Protocol.encode({
-            kind: Protocol.KIND.POSITION, tag: 1, to: new Uint8Array(32).fill(0x11), from: THEM, name: "KJ5HBN-EMCOMM",
+            kind: Protocol.KIND.POSITION, tag: 1, to: new Uint8Array(32).fill(0x11), from: THEM, name: "KJ5ZZZ-EMCOMM",
             latitude: 31.788, longitude: -106.497, fixTime: 0, flags: 0,
         }) });
         const report = PositionService.latestByStation()[0];
@@ -1005,7 +1005,7 @@ describe("the positions list", () => {
 
     it("gives degrees, MGRS, miles and kilometres, and a magnetic bearing stated as such", async () => {
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: Protocol.encode({
-            kind: Protocol.KIND.POSITION, tag: 1, to: ME, from: THEM, name: "KJ5HBN-EMCOMM",
+            kind: Protocol.KIND.POSITION, tag: 1, to: ME, from: THEM, name: "KJ5ZZZ-EMCOMM",
             latitude: 31.788, longitude: -106.497, fixTime: 0, flags: Protocol.FLAG.MESSAGE_TO_FOLLOW,
         }) });
         const wrapper = mount(PositionsPanel);
@@ -1021,11 +1021,11 @@ describe("the positions list", () => {
 
     it("makes both the degrees and the MGRS reference open the map app on the station", async () => {
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: Protocol.encode({
-            kind: Protocol.KIND.POSITION, tag: 1, to: ME, from: THEM, name: "KJ5HBN", latitude: 31.788, longitude: -106.497, fixTime: 0, flags: 0,
+            kind: Protocol.KIND.POSITION, tag: 1, to: ME, from: THEM, name: "KJ5ZZZ", latitude: 31.788, longitude: -106.497, fixTime: 0, flags: 0,
         }) });
         const wrapper = mount(PositionsPanel);
         await flushPromises();
-        const expected = Geo.mapLink(31.788, -106.497, "KJ5HBN");
+        const expected = Geo.mapLink(31.788, -106.497, "KJ5ZZZ");
         const links = wrapper.findAll("a").filter((a) => a.attributes("href") === expected);
         expect(links.map((a) => a.text())).toEqual(["31.7880° N, 106.4970° W", expect.stringMatching(/^13R CR /)]);
         // this station's own position links too
@@ -1047,24 +1047,24 @@ describe("the positions list", () => {
 
     it("names the radio beside the operator's callsign when they differ", async () => {
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: Protocol.encode({
-            kind: Protocol.KIND.POSITION, tag: 1, to: ME, from: THEM, name: "KJ5HBN", latitude: 31.788, longitude: -106.497, fixTime: 0, flags: 0,
+            kind: Protocol.KIND.POSITION, tag: 1, to: ME, from: THEM, name: "KJ5ZZZ", latitude: 31.788, longitude: -106.497, fixTime: 0, flags: 0,
         }) });
         const wrapper = mount(PositionsPanel);
         await flushPromises();
-        expect(wrapper.text()).toContain("KJ5HBN · KJ5HBN-EMCOMM");
+        expect(wrapper.text()).toContain("KJ5ZZZ · KJ5ZZZ-EMCOMM");
     });
 
     it("keeps the last known position under a later decline", async () => {
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: Protocol.encode({
-            kind: Protocol.KIND.POSITION, tag: 1, to: ME, from: THEM, name: "KJ5HBN", latitude: 31.788, longitude: -106.497, fixTime: 0, flags: 0,
+            kind: Protocol.KIND.POSITION, tag: 1, to: ME, from: THEM, name: "KJ5ZZZ", latitude: 31.788, longitude: -106.497, fixTime: 0, flags: 0,
         }) });
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: Protocol.encode({
-            kind: Protocol.KIND.DECLINED, tag: 2, to: ME, from: THEM, name: "KJ5HBN",
+            kind: Protocol.KIND.DECLINED, tag: 2, to: ME, from: THEM, name: "KJ5ZZZ",
         }) });
         const wrapper = mount(PositionsPanel);
         await flushPromises();
         const text = wrapper.text();
-        expect(text).toContain("Declined by KJ5HBN");
+        expect(text).toContain("Declined by KJ5ZZZ");
         expect(text).toContain("Last position received");
         expect(text).toContain("31.7880° N, 106.4970° W");
         expect(text).toMatch(/\d{3}° magnetic/);
@@ -1072,7 +1072,7 @@ describe("the positions list", () => {
 
     it("shows no last known position when there never was one", async () => {
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: Protocol.encode({
-            kind: Protocol.KIND.DECLINED, tag: 2, to: ME, from: THEM, name: "KJ5HBN",
+            kind: Protocol.KIND.DECLINED, tag: 2, to: ME, from: THEM, name: "KJ5ZZZ",
         }) });
         const wrapper = mount(PositionsPanel);
         await flushPromises();
@@ -1248,7 +1248,7 @@ describe("a direct request in the message stream", () => {
     it("is kept out of the conversation, with no notification", async () => {
         const insert = vi.spyOn(Database.Message, "insert").mockResolvedValue({});
         const notify = vi.spyOn(NotificationUtils, "showNewMessageNotification").mockResolvedValue(undefined);
-        const text = Protocol.toDirectText({ kind: Protocol.KIND.REQUEST, tag: 3, to: ME, from: THEM, name: "" }, "Position request from KJ5HBN-EMCOMM");
+        const text = Protocol.toDirectText({ kind: Protocol.KIND.REQUEST, tag: 3, to: ME, from: THEM, name: "" }, "Position request from KJ5ZZZ-EMCOMM");
 
         await Connection.onContactMessageReceived({ pubKeyPrefix: THEM.slice(0, 6), txtType: Constants.TxtTypes.CliData, text, senderTimestamp: 1, pathLen: 0 });
 
@@ -1269,7 +1269,7 @@ describe("a direct request in the message stream", () => {
         const queue = [{ channelData: { channelIdx: 7, dataType: Protocol.DATA_TYPE, data: incomingRequest() } }, null];
         GlobalState.connection = { on() {}, off() {}, syncNextMessage: async () => queue.shift() };
         await Connection.syncMessages();
-        expect(PositionService.state.prompt.name).toBe("KJ5HBN-EMCOMM");
+        expect(PositionService.state.prompt.name).toBe("KJ5ZZZ-EMCOMM");
     });
 
 });

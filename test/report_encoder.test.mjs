@@ -106,7 +106,7 @@ const sampleValues = {
         line8: "1 CIVILIAN", line9: "Open field, power lines N side",
     },
     ics213reply: {
-        to: "J. Smith, Ops Chief", from: "KJ5HBN", ref: "Shelter status, 221830L",
+        to: "J. Smith, Ops Chief", from: "KJ5ZZZ", ref: "Shelter status, 221830L",
         datetime: "221845L SEP", reply: "Ridge St shelter is open, 40 of 120, needs 20 cots",
         by: "R. Jones, Shelter Manager",
     },
@@ -140,7 +140,7 @@ const sampleValues = {
         closed: "NO", comments: "No barricades up, two cars turned around",
     },
     fivews: {
-        from: "KJ5HBN Net Control", datetime: "221830L SEP", who: "Team 2 (KJ5ABC, KF5XYZ)",
+        from: "KJ5ZZZ Net Control", datetime: "221830L SEP", who: "Team 2 (KJ5ABC, KF5XYZ)",
         what: "Check the shelter at Ridge Street school, report capacity and needs",
         when: "221900L-222100L SEP", where: "31.92702, -106.40012 (13R CR 67640 33201)",
         why: "EOC needs shelter status before the 2200 briefing", ack: "yes",
@@ -238,11 +238,11 @@ check("unsendably small budget returns null rather than hanging", ReportEncoder.
 console.log("\n=== 4. destination budgets ===");
 {
     // channel messages carry a "<sender name>: " prefix inside the 160 byte limit
-    const channelBudget = ReportEncoder.getTextBudget("channel", "Joe-KJ5HBN-HTv3");
+    const channelBudget = ReportEncoder.getTextBudget("channel", "Joe-KJ5ZZZ-HTv3");
     check("channel budget is 143 for a 15 char node name", channelBudget === 143, `got ${channelBudget}`);
 
     // direct messages carry no prefix, so the whole limit is available
-    const contactBudget = ReportEncoder.getTextBudget("contact", "Joe-KJ5HBN-HTv3");
+    const contactBudget = ReportEncoder.getTextBudget("contact", "Joe-KJ5ZZZ-HTv3");
     check("contact budget is the full 160, independent of node name", contactBudget === 160, `got ${contactBudget}`);
     check("contact budget ignores a very long node name",
         ReportEncoder.getTextBudget("contact", "A".repeat(60)) === 160);
@@ -250,7 +250,7 @@ console.log("\n=== 4. destination budgets ===");
 
 console.log("\n=== 5. a large body splits into as many parts as needed ===");
 {
-    const node = "Joe-KJ5HBN-HTv3";
+    const node = "Joe-KJ5ZZZ-HTv3";
 
     for (const destination of ["channel", "contact"]) {
 
@@ -314,11 +314,11 @@ console.log("\n=== 7. parts break between fields, not mid field ===");
 {
     // a receiving operator copying part 2 onto a paper form should see whole fields,
     // so a part may only start mid line when a single field is too long to fit alone
-    const budget = ReportEncoder.getTextBudget("channel", "Joe-KJ5HBN-HTv3");
+    const budget = ReportEncoder.getTextBudget("channel", "Joe-KJ5ZZZ-HTv3");
 
     for (const id of ["radiogram", "medevac", "netopen", "welfare", "salute", "skywarn"]) {
         const form = ReportForms.find((f) => f.id === id);
-        const result = ReportEncoder.prepare(form, sampleValues[id], "Joe-KJ5HBN-HTv3");
+        const result = ReportEncoder.prepare(form, sampleValues[id], "Joe-KJ5ZZZ-HTv3");
         const parts = result.parts.map((part) => part.replace(/^\[\d+\/\d+\] /, ""));
         if (parts.length === 1) continue;
 
@@ -338,7 +338,7 @@ console.log("\n=== 7. parts break between fields, not mid field ===");
     const long = ReportEncoder.prepare(ics213, {
         ...sampleValues.ics213,
         message: "All stations be advised the primary route via Canyon Road is now impassable due to debris flow at mile marker 14. Use the northern bypass through Ridge Street. Estimated additional transit time is 25 minutes.",
-    }, "Joe-KJ5HBN-HTv3");
+    }, "Joe-KJ5ZZZ-HTv3");
     const longParts = long.parts.map((part) => part.replace(/^\[\d+\/\d+\] /, ""));
     check("a field too long for one part still breaks mid line", longParts.length >= 3);
     check("the preamble fields are not broken up", longParts[0].split("\n").length === 5,
@@ -356,7 +356,7 @@ console.log("\n=== 8. a single field too large for one message still splits ==="
 {
     // packing whole lines is only the preference. a field bigger than a part has to
     // break mid line however long it is, and must still reach the air complete
-    const node = "Joe-KJ5HBN-HTv3";
+    const node = "Joe-KJ5ZZZ-HTv3";
     const budget = ReportEncoder.getTextBudget("channel", node);
     const ics213 = ReportForms.find((f) => f.id === "ics213");
 
@@ -376,7 +376,7 @@ console.log("\n=== 8. a single field too large for one message still splits ==="
 
     for (const [name, message] of cases) {
         const result = ReportEncoder.prepare(ics213, {
-            to: "Ops", from: "KJ5HBN", subject: "Test", datetime: "191930L SEP", message,
+            to: "Ops", from: "KJ5ZZZ", subject: "Test", datetime: "191930L SEP", message,
         }, node, "channel");
         const parts = result.parts;
 
@@ -397,7 +397,7 @@ console.log("\n=== 8. a single field too large for one message still splits ==="
 
     // and it refuses rather than silently dropping content once 99 parts is not enough
     const enormous = ReportEncoder.prepare(ics213, {
-        to: "Ops", from: "KJ5HBN", subject: "Test", datetime: "191930L SEP",
+        to: "Ops", from: "KJ5ZZZ", subject: "Test", datetime: "191930L SEP",
         message: "detail ".repeat(3000),
     }, node, "channel");
     check("a field too large even for 99 parts is refused, not truncated", enormous.parts === null,

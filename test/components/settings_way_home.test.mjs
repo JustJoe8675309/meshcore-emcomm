@@ -17,7 +17,7 @@ const KEY = new Uint8Array(32).fill(0x39);
 const NODE = Array.from(KEY).map((b) => b.toString(16).padStart(2, "0")).join("");
 
 const SELF_INFO = {
-    name: "KJ5HBN-EMCOMM", publicKey: KEY, radioFreq: 910525, radioBw: 62.5, radioSf: 7, radioCr: 5,
+    name: "KJ5ZZZ-EMCOMM", publicKey: KEY, radioFreq: 910525, radioBw: 62.5, radioSf: 7, radioCr: 5,
     txPower: 22, maxTxPower: 22, advLat: 0, advLon: 0, manualAddContacts: 1,
 };
 
@@ -191,16 +191,16 @@ describe("telling the stations in range after a restore", () => {
     });
 
     it("adverts once when the restore changes the name", async () => {
-        // on the bench node 2 listed node 1 as KJ5HBN-AUDIT until an advert went out by hand
+        // on the bench node 2 listed node 1 as KJ5ZZZ-AUDIT until an advert went out by hand
         const wrapper = mountPage();
         await flushPromises();
 
-        await wrapper.vm.runRestore(backup(Date.UTC(2026, 8, 21, 0, 18), 3, "Joe-KJ5HBN-HTv3"));
+        await wrapper.vm.runRestore(backup(Date.UTC(2026, 8, 21, 0, 18), 3, "Joe-KJ5ZZZ-HTv3"));
         await flushPromises();
 
         expect(advert).toHaveBeenCalledTimes(1);
         expect(wrapper.text()).toContain("A zero hop advert went out");
-        expect(wrapper.text()).toContain("Joe-KJ5HBN-HTv3");
+        expect(wrapper.text()).toContain("Joe-KJ5ZZZ-HTv3");
     });
 
     it("stays quiet when the name is unchanged, since there is nothing to tell anyone", async () => {
@@ -218,7 +218,7 @@ describe("telling the stations in range after a restore", () => {
         const wrapper = mountPage();
         await flushPromises();
 
-        await wrapper.vm.runRestore(backup(Date.UTC(2026, 8, 21, 0, 18), 3, "Joe-KJ5HBN-HTv3"));
+        await wrapper.vm.runRestore(backup(Date.UTC(2026, 8, 21, 0, 18), 3, "Joe-KJ5ZZZ-HTv3"));
         await flushPromises();
 
         expect(wrapper.text()).toContain("did not go out");

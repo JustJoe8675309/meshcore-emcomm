@@ -4,9 +4,9 @@
 // header read "Mes... Emc... Ba..." — neither the station name nor the charge.
 // Measured in the live app at 375x812 with a 22px root font:
 //
-//   the line wanted   "Battery 100% - Joe-KJ5HBN-HTv3"   285px
-//                     "100% - Joe-KJ5HBN-HTv3"           220px
-//                     "Joe-KJ5HBN-HTv3"                  154px
+//   the line wanted   "Battery 100% - Joe-KJ5ZZZ-HTv3"   285px
+//                     "100% - Joe-KJ5ZZZ-HTv3"           220px
+//                     "Joe-KJ5ZZZ-HTv3"                  154px
 //
 //   the line got      as shipped                          38px
 //                     with the images 20% smaller         79px
@@ -51,7 +51,7 @@ describe("the battery badge", () => {
 
     beforeEach(() => {
         GlobalState.connection = { on() {}, off() {} };
-        GlobalState.selfInfo = { name: "Joe-KJ5HBN-HTv3", publicKey: new Uint8Array(32) };
+        GlobalState.selfInfo = { name: "Joe-KJ5ZZZ-HTv3", publicKey: new Uint8Array(32) };
         GlobalState.batteryPercentage = 100;
     });
 
@@ -65,7 +65,7 @@ describe("the battery badge", () => {
         const wrapper = mountHeader();
         const nameLine = wrapper.find(".text-sm.truncate").text();
 
-        expect(nameLine).toContain("Joe-KJ5HBN-HTv3");
+        expect(nameLine).toContain("Joe-KJ5ZZZ-HTv3");
         expect(nameLine).not.toContain("100%");
         expect(nameLine).not.toContain("Battery");
     });
@@ -108,7 +108,7 @@ describe("what folds away on a narrow screen", () => {
 
     beforeEach(() => {
         GlobalState.connection = { on() {}, off() {} };
-        GlobalState.selfInfo = { name: "Joe-KJ5HBN-HTv3", publicKey: new Uint8Array(32) };
+        GlobalState.selfInfo = { name: "Joe-KJ5ZZZ-HTv3", publicKey: new Uint8Array(32) };
         GlobalState.batteryPercentage = 80;
     });
 

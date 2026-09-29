@@ -21,7 +21,7 @@ const KEY = new Uint8Array(32).fill(0x39);
 const NODE = Array.from(KEY).map((b) => b.toString(16).padStart(2, "0")).join("");
 
 const SELF_INFO = {
-    name: "Joe-KJ5HBN-HTv3", publicKey: KEY, radioFreq: 910525, radioBw: 62.5, radioSf: 7, radioCr: 5,
+    name: "Joe-KJ5ZZZ-HTv3", publicKey: KEY, radioFreq: 910525, radioBw: 62.5, radioSf: 7, radioCr: 5,
     txPower: 22, maxTxPower: 22, advLat: 0, advLon: 0, manualAddContacts: 1,
 };
 

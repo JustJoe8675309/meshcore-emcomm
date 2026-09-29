@@ -25,7 +25,7 @@ function aContact(n, overrides = {}) {
 
 function selfInfo(overrides = {}) {
     return {
-        name: "Joe-KJ5HBN-HTv3", publicKey: NODE_KEY,
+        name: "Joe-KJ5ZZZ-HTv3", publicKey: NODE_KEY,
         advLat: 31926942, advLon: -106400044,
         txPower: 22, maxTxPower: 22,
         radioFreq: 910525, radioBw: 62500, radioSf: 7, radioCr: 5,
@@ -70,7 +70,7 @@ describe("capturing a backup", () => {
     it("records the settings needed to put the node back", async () => {
         const backup = await NodeBackup.capture();
         expect(backup.settings).toMatchObject({
-            name: "Joe-KJ5HBN-HTv3",
+            name: "Joe-KJ5ZZZ-HTv3",
             txPower: 22,
             radioFreq: 910525, radioBw: 62500, radioSf: 7, radioCr: 5,
             advLat: 31926942, advLon: -106400044,
@@ -275,10 +275,10 @@ describe("putting the node back exactly, when leaving EMCOMM mode", () => {
     it("puts the report time zone back, and leaves the callsign alone", async () => {
         const { default: OperatorSettings } = await import("../../src/js/reports/OperatorSettings.js");
         OperatorSettings.setDtgZone("zulu");
-        OperatorSettings.setCallsign("KJ5HBN");
+        OperatorSettings.setCallsign("KJ5ZZZ");
         await NodeBackup.restore(backup);
         expect(OperatorSettings.state.dtgZone).toBe("local");
-        expect(OperatorSettings.callsign).toBe("KJ5HBN");
+        expect(OperatorSettings.callsign).toBe("KJ5ZZZ");
         OperatorSettings.setCallsign("");
     });
 
@@ -390,7 +390,7 @@ describe("backup files", () => {
 
     it("names the file after the node and the moment", () => {
         const file = NodeBackup.toFile(backup);
-        expect(file.filename).toMatch(/^meshcore-backup-Joe-KJ5HBN-HTv3-\d{4}-\d{2}-\d{2}/);
+        expect(file.filename).toMatch(/^meshcore-backup-Joe-KJ5ZZZ-HTv3-\d{4}-\d{2}-\d{2}/);
         expect(file.filename.endsWith(".json")).toBe(true);
     });
 

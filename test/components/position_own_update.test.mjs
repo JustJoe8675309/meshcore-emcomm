@@ -16,7 +16,7 @@ const KEY = new Uint8Array(32).fill(0xa7);
 
 function connect({ lat = 31.7587, lon = -106.4869 } = {}) {
     GlobalState.connection = { on() {}, off() {} };
-    GlobalState.selfInfo = { name: "Joe-KJ5HBN-HTv3", publicKey: KEY, advLat: Math.round(lat * 1e6), advLon: Math.round(lon * 1e6) };
+    GlobalState.selfInfo = { name: "Joe-KJ5ZZZ-HTv3", publicKey: KEY, advLat: Math.round(lat * 1e6), advLon: Math.round(lon * 1e6) };
     GlobalState.contacts = [];
     GlobalState.channels = [];
     GlobalState.gpsStatus = "unconfirmed";

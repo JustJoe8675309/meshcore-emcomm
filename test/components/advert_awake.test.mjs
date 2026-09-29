@@ -270,7 +270,7 @@ describe("the settings group reports it", () => {
         resetState();
         takeWakeLock();
         GlobalState.connection = null;
-        GlobalState.selfInfo = { name: "KJ5HBN-EMCOMM", publicKey: PUBLIC_KEY, txPower: 20, maxTxPower: 22, advLat: 0, advLon: 0, manualAddContacts: 0 };
+        GlobalState.selfInfo = { name: "KJ5ZZZ-EMCOMM", publicKey: PUBLIC_KEY, txPower: 20, maxTxPower: 22, advLat: 0, advLon: 0, manualAddContacts: 0 };
     });
 
     afterEach(() => {

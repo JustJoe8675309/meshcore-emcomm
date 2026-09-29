@@ -24,9 +24,9 @@ function contact(publicKey, advName, type) {
 
 function connect() {
     GlobalState.connection = { on() {}, off() {} };
-    GlobalState.selfInfo = { name: "Joe-KJ5HBN-HTv3", publicKey: KEY };
+    GlobalState.selfInfo = { name: "Joe-KJ5ZZZ-HTv3", publicKey: KEY };
     GlobalState.contacts = [
-        contact(PERSON, "Joe-KJ5HBN-EDC", Constants.AdvType.Chat),
+        contact(PERSON, "Joe-KJ5ZZZ-EDC", Constants.AdvType.Chat),
         contact(RELAY, "Franklin Mtn", Constants.AdvType.Repeater),
         contact(ROOM, "N.E. ELP EMCOMM OBSVR", Constants.AdvType.Room),
     ];
@@ -55,12 +55,12 @@ describe("managing contacts from settings", () => {
         const rooms = mount(ContactsGroup, { props: { kind: "room" } });
         await open(rooms);
         expect(rooms.text()).toContain("N.E. ELP EMCOMM OBSVR");
-        expect(rooms.text()).not.toContain("Joe-KJ5HBN-EDC");
+        expect(rooms.text()).not.toContain("Joe-KJ5ZZZ-EDC");
         expect(rooms.text()).not.toContain("Franklin Mtn");
 
         const companions = mount(ContactsGroup, { props: { kind: "companion" } });
         await open(companions);
-        expect(companions.text()).toContain("Joe-KJ5HBN-EDC");
+        expect(companions.text()).toContain("Joe-KJ5ZZZ-EDC");
         expect(companions.text()).not.toContain("N.E. ELP EMCOMM OBSVR");
     });
 

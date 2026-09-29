@@ -141,8 +141,8 @@ describe("the operator group", () => {
         const wrapper = mount(OperatorSettingsGroup);
         await wrapper.find("button[aria-expanded]").trigger("click");
 
-        await wrapper.find("input[placeholder='e.g: KJ5###']").setValue("KJ5HBN");
-        expect(OperatorSettings.state.callsign).toBe("KJ5HBN");
+        await wrapper.find("input[placeholder='e.g: KJ5###']").setValue("KJ5ZZZ");
+        expect(OperatorSettings.state.callsign).toBe("KJ5ZZZ");
 
         await wrapper.find("select").setValue("zulu");
         expect(OperatorSettings.state.dtgZone).toBe("zulu");
@@ -197,8 +197,8 @@ describe("a live change and the mode in use", () => {
 
     beforeEach(() => {
         window.localStorage.clear();
-        GlobalState.selfInfo = { name: "Joe-KJ5HBN-HTv3", publicKey: NODE_KEY };
-        ModeProfiles.saveProfile("normal", { ...ModeProfiles.blank(), radio: { ...ModeProfiles.blank().radio, txPower: 14, name: "Joe-KJ5HBN-HTv3" } }, NODE);
+        GlobalState.selfInfo = { name: "Joe-KJ5ZZZ-HTv3", publicKey: NODE_KEY };
+        ModeProfiles.saveProfile("normal", { ...ModeProfiles.blank(), radio: { ...ModeProfiles.blank().radio, txPower: 14, name: "Joe-KJ5ZZZ-HTv3" } }, NODE);
         ModeProfiles.setCurrent("normal", NODE);
     });
 
@@ -223,14 +223,14 @@ describe("a live change and the mode in use", () => {
 
     it("takes the name and the radio, and ignores anything else offered", () => {
         ModeProfiles.noteRadioSettings({
-            name: "KJ5HBN-EMCOMM", radioFreq: 906875, radioBw: 250000, radioSf: 10, radioCr: 5,
+            name: "KJ5ZZZ-EMCOMM", radioFreq: 906875, radioBw: 250000, radioSf: 10, radioCr: 5,
             shareLocation: true, autoAddContacts: true,
             markDrill: true, channels: [], nonsense: 1,
         }, NODE);
 
         const profile = ModeProfiles.profile("normal", NODE);
         expect(profile.radio).toMatchObject({
-            name: "KJ5HBN-EMCOMM", radioFreq: 906875, radioBw: 250000, radioSf: 10, radioCr: 5,
+            name: "KJ5ZZZ-EMCOMM", radioFreq: 906875, radioBw: 250000, radioSf: 10, radioCr: 5,
             shareLocation: true, autoAddContacts: true,
         });
         expect(profile.radio.nonsense).toBeUndefined();
@@ -329,7 +329,7 @@ describe("a station that may have been left in a mode", () => {
 
     beforeEach(() => {
         window.localStorage.clear();
-        GlobalState.selfInfo = { name: "Joe-KJ5HBN-HTv3", publicKey: NODE_KEY };
+        GlobalState.selfInfo = { name: "Joe-KJ5ZZZ-HTv3", publicKey: NODE_KEY };
         GlobalState.leftInMode = null;
     });
 

@@ -34,7 +34,7 @@ const ROOM_HEX = Utils.bytesToHex(ROOM);
 
 function selfInfo(overrides = {}) {
     return {
-        name: "Joe-KJ5HBN-HTv3", publicKey: KEY,
+        name: "Joe-KJ5ZZZ-HTv3", publicKey: KEY,
         radioFreq: 906875, radioBw: 250000, radioSf: 10, radioCr: 5,
         txPower: 14, maxTxPower: 22, advLat: 31758700, advLon: -106486900,
         manualAddContacts: 1, reserved: new Uint8Array([0, 0, 0]),
@@ -121,7 +121,7 @@ describe("what a mode is", () => {
         expect(ModeProfiles.current(NODE)).toBe("normal");
         const normal = await ModeProfiles.captureNormal(NODE);
         expect(normal.radio).toMatchObject({
-            name: "Joe-KJ5HBN-HTv3", radioFreq: 906875, radioBw: 250000, radioSf: 10, radioCr: 5, txPower: 14,
+            name: "Joe-KJ5ZZZ-HTv3", radioFreq: 906875, radioBw: 250000, radioSf: 10, radioCr: 5, txPower: 14,
             shareLocation: false, advertPosition: false, multiAcks: false, autoAddContacts: false,
         });
         expect(normal.channels.map((c) => c.name)).toEqual(["Public", "Emcomm Testing"]);
@@ -345,7 +345,7 @@ describe("switching a station's mode", () => {
 
     it("writes the radio settings, and the app's own settings for the node", async () => {
         await ModeSwitch.apply("live");
-        expect(Connection.setAdvertName).toHaveBeenCalledWith("Joe-KJ5HBN-HTv3");
+        expect(Connection.setAdvertName).toHaveBeenCalledWith("Joe-KJ5ZZZ-HTv3");
         expect(Connection.setTxPower).toHaveBeenCalledWith(22);
         expect(EmcommMode.applyRadioPolicies).toHaveBeenCalledWith({ shareLocation: true, advertPosition: true, multiAcks: true });
         expect(EmcommMode.setManualAddContacts).toHaveBeenCalledWith(false);
@@ -1348,7 +1348,7 @@ describe("saving the mode in use", () => {
         await ModeProfiles.captureNormal(NODE);
         ModeProfiles.saveProfile("normal", {
             ...await ModeProfiles.profileOrDefault("normal", NODE),
-            radio: { name: "Joe-KJ5HBN-HTv3", radioFreq: 906875, radioBw: 250000, radioSf: 10, radioCr: 5,
+            radio: { name: "Joe-KJ5ZZZ-HTv3", radioFreq: 906875, radioBw: 250000, radioSf: 10, radioCr: 5,
                      txPower: 22, shareLocation: true, advertPosition: true, multiAcks: false, autoAddContacts: false },
         }, NODE);
     });
@@ -1366,7 +1366,7 @@ describe("saving the mode in use", () => {
         expect(result.failures).toEqual([]);
         expect(Connection.setTxPower).toHaveBeenCalledWith(22);
         expect(Connection.setRadioParams).toHaveBeenCalledWith(906875, 250000, 10, 5);
-        expect(Connection.setAdvertName).toHaveBeenCalledWith("Joe-KJ5HBN-HTv3");
+        expect(Connection.setAdvertName).toHaveBeenCalledWith("Joe-KJ5ZZZ-HTv3");
         expect(EmcommMode.applyRadioPolicies).toHaveBeenCalledWith({ shareLocation: true, advertPosition: true, multiAcks: false });
         expect(EmcommMode.setManualAddContacts).toHaveBeenCalledWith(true);
         // the radio owns what it holds, so the page is shown what it says
@@ -1421,8 +1421,8 @@ describe("training marks what it sends", () => {
     const form = ReportForms.find((f) => f.id === "ics213");
 
     it("puts DRILL on every part, not just the first", () => {
-        const values = { to: "Ops", from: "KJ5HBN", subject: "Exercise", datetime: "221830L SEP", message: "x".repeat(300) };
-        const marked = ReportEncoder.prepare(form, values, "Joe-KJ5HBN-HTv3", "channel", { markDrill: true });
+        const values = { to: "Ops", from: "KJ5ZZZ", subject: "Exercise", datetime: "221830L SEP", message: "x".repeat(300) };
+        const marked = ReportEncoder.prepare(form, values, "Joe-KJ5ZZZ-HTv3", "channel", { markDrill: true });
         expect(marked.parts.length).toBeGreaterThan(1);
         expect(marked.parts.every((p) => p.startsWith("DRILL ["))).toBe(true);
         // and every part still fits: the marking is budgeted for, not added after
@@ -1432,15 +1432,15 @@ describe("training marks what it sends", () => {
     });
 
     it("marks a report that fits in one packet too", () => {
-        const values = { to: "Ops", from: "KJ5HBN", subject: "Exercise", datetime: "221830L SEP", message: "short" };
-        const marked = ReportEncoder.prepare(form, values, "Joe-KJ5HBN-HTv3", "channel", { markDrill: true });
+        const values = { to: "Ops", from: "KJ5ZZZ", subject: "Exercise", datetime: "221830L SEP", message: "short" };
+        const marked = ReportEncoder.prepare(form, values, "Joe-KJ5ZZZ-HTv3", "channel", { markDrill: true });
         expect(marked.parts).toHaveLength(1);
         expect(marked.parts[0].startsWith("DRILL ICS-213")).toBe(true);
     });
 
     it("leaves the other modes' traffic exactly as it was", () => {
-        const values = { to: "Ops", from: "KJ5HBN", subject: "Real", datetime: "221830L SEP", message: "x".repeat(300) };
-        const plain = ReportEncoder.prepare(form, values, "Joe-KJ5HBN-HTv3", "channel");
+        const values = { to: "Ops", from: "KJ5ZZZ", subject: "Real", datetime: "221830L SEP", message: "x".repeat(300) };
+        const plain = ReportEncoder.prepare(form, values, "Joe-KJ5ZZZ-HTv3", "channel");
         expect(plain.parts.every((p) => p.startsWith("["))).toBe(true);
     });
 
@@ -1524,7 +1524,7 @@ describe("the channels on the way home", () => {
 
         // the way home, with the slots the channels came from
         NodeBackup.save({
-            formatVersion: 1, nodePublicKey: NODE_HEX, nodeName: "KJ5HBN-EMCOMM", capturedAt: 1,
+            formatVersion: 1, nodePublicKey: NODE_HEX, nodeName: "KJ5ZZZ-EMCOMM", capturedAt: 1,
             settings: {}, contacts: [], warnings: [],
             channels: [
                 { idx: 0, name: "Public", secret: "8b3387e9c5cdea6ac9e5edbaa115cd72" },
@@ -1535,7 +1535,7 @@ describe("the channels on the way home", () => {
 
         ModeProfiles.saveProfile("normal", {
             ...ModeProfiles.blank(),
-            radio: { name: "KJ5HBN-EMCOMM" },
+            radio: { name: "KJ5ZZZ-EMCOMM" },
             channels: [
                 { name: "Public", secret: "8b3387e9c5cdea6ac9e5edbaa115cd72", answerPositions: false },
                 { name: "#elp-mesh", secret: "cc".repeat(16), answerPositions: false },
@@ -1601,7 +1601,7 @@ describe("remembering whether to answer automatically", () => {
 
     beforeEach(() => {
         window.localStorage.clear();
-        GlobalState.selfInfo = { name: "KJ5HBN-EMCOMM", publicKey: NODE_KEY };
+        GlobalState.selfInfo = { name: "KJ5ZZZ-EMCOMM", publicKey: NODE_KEY };
         GlobalState.channels = [
             { idx: 0, name: "Public", secret: new Uint8Array(16) },
             { idx: 13, name: "Emcomm Testing", secret: new Uint8Array(16).fill(1) },
@@ -1670,7 +1670,7 @@ describe("when the way home cannot write", () => {
         quietRadio();
 
         NodeBackup.save({
-            formatVersion: 1, nodePublicKey: NODE_HEX, nodeName: "KJ5HBN-EMCOMM", capturedAt: 1,
+            formatVersion: 1, nodePublicKey: NODE_HEX, nodeName: "KJ5ZZZ-EMCOMM", capturedAt: 1,
             settings: {}, contacts: [], warnings: [],
             channels: [
                 { idx: 0, name: "Public", secret: "8b3387e9c5cdea6ac9e5edbaa115cd72" },
@@ -1680,7 +1680,7 @@ describe("when the way home cannot write", () => {
 
         ModeProfiles.saveProfile("normal", {
             ...ModeProfiles.blank(),
-            radio: { name: "KJ5HBN-EMCOMM" },
+            radio: { name: "KJ5ZZZ-EMCOMM" },
             channels: [
                 { name: "Public", secret: "8b3387e9c5cdea6ac9e5edbaa115cd72", answerPositions: false },
                 { name: "#elp-mesh", secret: "cc".repeat(16), answerPositions: false },

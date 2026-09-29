@@ -167,13 +167,13 @@ describe("links to the device's map app", () => {
     });
 
     it("hands Android a geo: link, which any map app can take, offline ones included", () => {
-        expect(Geo.mapLink(31.9270, -106.4001, "KJ5HBN-EMCOMM", "android"))
-            .toBe("geo:31.927000,-106.400100?q=31.927000,-106.400100(KJ5HBN-EMCOMM)");
+        expect(Geo.mapLink(31.9270, -106.4001, "KJ5ZZZ-EMCOMM", "android"))
+            .toBe("geo:31.927000,-106.400100?q=31.927000,-106.400100(KJ5ZZZ-EMCOMM)");
     });
 
     it("opens Apple Maps on an iPhone, iPad or Mac", () => {
-        expect(Geo.mapLink(31.9270, -106.4001, "KJ5HBN-EMCOMM", "apple"))
-            .toBe("https://maps.apple.com/?ll=31.927000,-106.400100&q=KJ5HBN-EMCOMM");
+        expect(Geo.mapLink(31.9270, -106.4001, "KJ5ZZZ-EMCOMM", "apple"))
+            .toBe("https://maps.apple.com/?ll=31.927000,-106.400100&q=KJ5ZZZ-EMCOMM");
     });
 
     it("falls back to OpenStreetMap in the browser anywhere else", () => {
@@ -182,7 +182,7 @@ describe("links to the device's map app", () => {
     });
 
     it("keeps a label with odd characters from breaking the link", () => {
-        expect(Geo.mapLink(31.927, -106.4001, "Joe (KJ5HBN) & co", "apple")).toContain("q=Joe%20(KJ5HBN)%20%26%20co");
+        expect(Geo.mapLink(31.927, -106.4001, "Joe (KJ5ZZZ) & co", "apple")).toContain("q=Joe%20(KJ5ZZZ)%20%26%20co");
     });
 
     it("gives no link where there is no position", () => {

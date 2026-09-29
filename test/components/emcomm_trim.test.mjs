@@ -307,7 +307,7 @@ describe("applying the settings", () => {
 
     it("applies what it was asked for and nothing else", async () => {
         const result = await EmcommMode.applySettings({
-            name: "KJ5HBN-EMCOMM", txPower: 22, radio: EmcommMode.US_PRESET,
+            name: "KJ5ZZZ-EMCOMM", txPower: 22, radio: EmcommMode.US_PRESET,
         });
 
         expect(radio.calls.map((c) => c[0])).toEqual(["name", "radio", "txPower"]);
@@ -325,7 +325,7 @@ describe("applying the settings", () => {
         radio.setTxPower = async () => { throw new Error("refused"); };
 
         const result = await EmcommMode.applySettings({
-            name: "KJ5HBN-EMCOMM", txPower: 22, radio: EmcommMode.US_PRESET,
+            name: "KJ5ZZZ-EMCOMM", txPower: 22, radio: EmcommMode.US_PRESET,
         });
 
         expect(result.failures).toEqual([{ what: "transmit power", reason: "refused" }]);

@@ -15,6 +15,35 @@ done at all.
       meaning by colour, so they need checking against a dark background rather than
       inverting with everything else.
 
+- [ ] **A version number, visible at the top.** Asked for 29 Sep: major and minor,
+      with the date it was deployed, such as `V1.1 (29 Sept 2026)`.
+      The build already carries a content hash (`index-g9T4k04X.js`) and the service
+      worker cache is stamped with it, but neither is a thing an operator can read out
+      on the air. The point of this one is the question "what version are you on?"
+      being answerable across a net, and answerable by someone reading a phone screen
+      rather than a developer console.
+      Take both the number and the date **from the build** rather than typing them in,
+      or they will drift the first time somebody forgets: a hand-edited version that
+      says 1.1 while the station runs 1.0 is worse than none. The audit script already
+      compares the live bundle against the local one and is the natural place to check
+      the two agree.
+
+- [ ] **Show whether a sent message was heard**, the way the factory MeshCore app
+      shows repeats. Asked for 29 Sep.
+      This matters most for **channel traffic, which gets no feedback at all today**.
+      Channel datagrams are unacknowledged -- one of four Send My Position broadcasts
+      arrived at zero range on the bench -- so an operator sending to a channel has no
+      way to tell a delivered message from one that went nowhere. A direct message at
+      least reports Delivered. Hearing a repeater rebroadcast your own message is
+      proof it left your immediate area, which is the one signal available on a path
+      that cannot acknowledge.
+      Note this is *not* the same as delivery: heard means a repeater picked it up and
+      passed it on, not that anybody received it. The wording should not let those be
+      confused, since "heard" reading as "delivered" would be worse than showing
+      nothing. Worth checking what `meshcore.js` surfaces before designing it -- the
+      repeater discovery push (`0x8E`) is one the library does not handle at all, so
+      the relevant frames may need handling directly.
+
 ## Known wrong, left deliberately
 
 These came out of the 27-29 Sep audit and are judgement calls about what the app

@@ -81,7 +81,7 @@ for (const form of ReportForms) {
     try {
         // empty, which is the state a form is in the moment it is selected. A form
         // that keeps blank fields shows every one of them as a hyphen
-        const empty = ReportEncoder.prepare(form, {}, "Joe-KJ5HBN-HTv3", "channel");
+        const empty = ReportEncoder.prepare(form, {}, "Joe-KJ5ZZZ-HTv3", "channel");
         const expectedEmpty = form.keepBlankFields
             ? [form.header, ...form.fields.filter((f) => f.type !== "check").map((f) => `${f.tag}: -`)].join("\n")
             : form.header;
@@ -93,7 +93,7 @@ for (const form of ReportForms) {
         for (const field of form.fields) {
             full[field.id] = field.type === "select" ? field.options[0] : `x`;
         }
-        const filled = ReportEncoder.prepare(form, full, "Joe-KJ5HBN-HTv3", "channel");
+        const filled = ReportEncoder.prepare(form, full, "Joe-KJ5ZZZ-HTv3", "channel");
         if (filled.missingRequiredFields.length !== 0) { ok = false; detail += " filled form still reports missing fields"; }
         if (filled.parts === null) { ok = false; detail += " filled form could not be split"; }
         for (const field of form.fields) {

@@ -111,7 +111,7 @@ console.log("\n=== 5. a real report round trips over serial framing ===");
 {
     const c = new FakeSerialConnection();
     const ev = collect(c);
-    const report = "KJ5HBN: CHECK-IN\nCALL: KJ5HBN\nLOC: TEST\nSTA: PORTABLE\nPWR: BATTERY\nTFC: NO";
+    const report = "KJ5ZZZ: CHECK-IN\nCALL: KJ5ZZZ\nLOC: TEST\nSTA: PORTABLE\nPWR: BATTERY\nTFC: NO";
     await c.onDataReceived(frame(channelMsgPayload(5, report)));
     await flush();
     check("channel message decoded", ev.channelMsg.length === 1);

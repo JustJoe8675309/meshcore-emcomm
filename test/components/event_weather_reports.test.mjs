@@ -123,7 +123,7 @@ describe("answering an ICS-213", () => {
 
     it("quotes what it is answering, so a reply is not read on its own", () => {
         const text = render("ics213reply", {
-            to: "J. Smith, Ops Chief", from: "KJ5HBN", ref: "Shelter status, 221830L",
+            to: "J. Smith, Ops Chief", from: "KJ5ZZZ", ref: "Shelter status, 221830L",
             datetime: "221845L SEP", reply: "Ridge St shelter is open, 40 of 120", by: "R. Jones",
         });
         expect(text.split("\n")[0]).toBe("ICS-213 REPLY");

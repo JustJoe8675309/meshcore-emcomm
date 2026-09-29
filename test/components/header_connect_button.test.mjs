@@ -47,7 +47,7 @@ describe("Header connect button", () => {
     });
 
     it("is shown when cached contacts hide the connect buttons", () => {
-        GlobalState.contacts = [{ publicKey: new Uint8Array(32), advName: "KJ5HBN" }];
+        GlobalState.contacts = [{ publicKey: new Uint8Array(32), advName: "KJ5ZZZ" }];
         expect(hasConnectButton(mountHeader())).toBe(true);
     });
 
@@ -59,7 +59,7 @@ describe("Header connect button", () => {
 
     it("is hidden while connected, where Disconnect belongs instead", () => {
         GlobalState.connection = {};
-        GlobalState.contacts = [{ publicKey: new Uint8Array(32), advName: "KJ5HBN" }];
+        GlobalState.contacts = [{ publicKey: new Uint8Array(32), advName: "KJ5ZZZ" }];
         const wrapper = mountHeader();
         expect(hasConnectButton(wrapper)).toBe(false);
         expect(hasDisconnectButton(wrapper)).toBe(true);
@@ -88,7 +88,7 @@ describe("Header disconnect button", () => {
     });
 
     it("is not offered when disconnected with contacts cached", () => {
-        GlobalState.contacts = [{ publicKey: new Uint8Array(32), advName: "KJ5HBN" }];
+        GlobalState.contacts = [{ publicKey: new Uint8Array(32), advName: "KJ5ZZZ" }];
         const wrapper = mountHeader();
         expect(hasConnectButton(wrapper)).toBe(true);
         expect(hasDisconnectButton(wrapper)).toBe(false);

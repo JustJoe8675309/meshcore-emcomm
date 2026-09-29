@@ -24,7 +24,7 @@ function lastEmitted(wrapper, fieldId) {
 describe("the 5Ws Briefing", () => {
 
     const filled = {
-        from: "KJ5HBN Net Control", datetime: "221830L SEP", who: "Team 2",
+        from: "KJ5ZZZ Net Control", datetime: "221830L SEP", who: "Team 2",
         what: "Check the shelter", when: "221900L SEP", where: "North gate, Ridge Street school", why: "EOC needs status",
     };
 
@@ -32,7 +32,7 @@ describe("the 5Ws Briefing", () => {
         const text = ReportEncoder.renderReport(fiveWs, filled);
         expect(text.split("\n")).toEqual([
             "5WS BRIEFING",
-            "FM: KJ5HBN Net Control",
+            "FM: KJ5ZZZ Net Control",
             "DTG: 221830L SEP",
             "1 WHO: Team 2",
             "2 WHAT: Check the shelter",

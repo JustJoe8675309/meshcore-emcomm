@@ -23,7 +23,7 @@ const RESERVED = new Uint8Array([1, 1, 0b01_00_00]);
 
 function selfInfo(overrides = {}) {
     return {
-        name: "Joe-KJ5HBN-HTv3", publicKey: KEY, radioFreq: 910525, radioBw: 62.5, radioSf: 7, radioCr: 5,
+        name: "Joe-KJ5ZZZ-HTv3", publicKey: KEY, radioFreq: 910525, radioBw: 62.5, radioSf: 7, radioCr: 5,
         txPower: 20, maxTxPower: 22, advLat: 0, advLon: 0, manualAddContacts: 1,
         reserved: RESERVED, ...overrides,
     };

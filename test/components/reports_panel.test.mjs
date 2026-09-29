@@ -36,9 +36,9 @@ function mountPanel() {
 // enough of a device for the panel to consider itself usable
 function connect() {
     GlobalState.connection = { on() {}, off() {} };
-    GlobalState.selfInfo = { name: "Joe-KJ5HBN-HTv3", radioFreq: 910525, radioBw: 62500, radioSf: 7, radioCr: 5 };
+    GlobalState.selfInfo = { name: "Joe-KJ5ZZZ-HTv3", radioFreq: 910525, radioBw: 62500, radioSf: 7, radioCr: 5 };
     GlobalState.channels = [{ idx: 7, name: "Emcomm Testing" }];
-    GlobalState.contacts = [{ type: 1, advName: "KJ5HBN-EMCOMM", publicKey: CONTACT_KEY, lastAdvert: 1000 }];
+    GlobalState.contacts = [{ type: 1, advName: "KJ5ZZZ-EMCOMM", publicKey: CONTACT_KEY, lastAdvert: 1000 }];
 }
 
 // a long free text value, so the report is forced to split

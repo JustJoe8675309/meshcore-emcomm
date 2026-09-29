@@ -16,7 +16,7 @@ import EmcommMode from "../../src/js/EmcommMode.js";
 import GlobalState from "../../src/js/GlobalState.js";
 
 const SELF_INFO = {
-    name: "KJ5HBN-EMCOMM",
+    name: "KJ5ZZZ-EMCOMM",
     publicKey: new Uint8Array(32).fill(0x39),
     radioFreq: 910525, radioBw: 62500, radioSf: 7, radioCr: 5,
     txPower: 20, maxTxPower: 22,

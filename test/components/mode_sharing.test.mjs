@@ -25,7 +25,7 @@ const OTHER = Utils.bytesToHex(new Uint8Array(32).fill(0x52));
 function connect() {
     GlobalState.connection = { on() {}, off() {} };
     GlobalState.selfInfo = {
-        name: "Joe-KJ5HBN-HTv3", publicKey: KEY,
+        name: "Joe-KJ5ZZZ-HTv3", publicKey: KEY,
         radioFreq: 910525, radioBw: 62500, radioSf: 7, radioCr: 5,
         txPower: 22, maxTxPower: 22, advLat: 0, advLon: 0,
         manualAddContacts: 1, reserved: new Uint8Array([0, 0, 0]),
@@ -38,7 +38,7 @@ function connect() {
 async function aProfile({ privateChannel = true } = {}) {
     const profile = ModeProfiles.blank();
     profile.radio = {
-        name: "KJ5HBN-EMCOMM", radioFreq: 910525, radioBw: 62500, radioSf: 7, radioCr: 5,
+        name: "KJ5ZZZ-EMCOMM", radioFreq: 910525, radioBw: 62500, radioSf: 7, radioCr: 5,
         txPower: 22, shareLocation: true, advertPosition: true, multiAcks: true, autoAddContacts: true,
     };
     profile.channels = [
@@ -126,8 +126,8 @@ describe("the code", () => {
     });
 
     it("says who shared it, and when", async () => {
-        const shared = await ModeShare.read(ModeShare.link(await aProfile(), "training", { from: "KJ5HBN", origin: "x/" }));
-        expect(shared.from).toBe("KJ5HBN");
+        const shared = await ModeShare.read(ModeShare.link(await aProfile(), "training", { from: "KJ5ZZZ", origin: "x/" }));
+        expect(shared.from).toBe("KJ5ZZZ");
         expect(shared.at).toBeGreaterThan(Date.now() - 5000);
         expect(shared.stale).toBe(false);
     });
@@ -284,7 +284,7 @@ describe("the sharing screen", () => {
     });
 
     it("shows what a scanned code would change, and saves it without touching the radio", async () => {
-        const link = ModeShare.link(await aProfile(), "live", { from: "KJ5HBN", origin: "x/" });
+        const link = ModeShare.link(await aProfile(), "live", { from: "KJ5ZZZ", origin: "x/" });
         const wrapper = await open({ incomingLink: link });
         await flushPromises();
 
@@ -294,7 +294,7 @@ describe("the sharing screen", () => {
         // half-finished one. Under the whole suite this raced and read the share
         // view's text while vm.view already said take
         const shown = await waitForText(wrapper, "keeps its own name");
-        expect(shown).toContain("Emcomm-Live from KJ5HBN");
+        expect(shown).toContain("Emcomm-Live from KJ5ZZZ");
         expect(shown).toContain("Channels: #Emcomm, County Tac");
         expect(shown).toContain("keeps its own name");
 

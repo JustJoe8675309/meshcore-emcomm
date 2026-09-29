@@ -4,7 +4,7 @@
 // It used to go as CliData. The stock MeshCore app treats that as data and shows
 // nothing, so a station running it was asked for its position and never knew —
 // while the text carried a sentence written for exactly that person, "Position
-// request from KJ5HBN (answering needs Mesh-Emcomm)", which nobody could read.
+// request from KJ5ZZZ (answering needs Mesh-Emcomm)", which nobody could read.
 //
 // Plain text now, so they can read it and answer in words. Channels and rooms are
 // deliberately unchanged: those go to everyone, and machine noise in every stock
@@ -21,7 +21,7 @@ import Database from "../../src/js/Database.js";
 const THEM = new Uint8Array(32).fill(0x4c);
 
 function aContact(publicKey = THEM) {
-    return { publicKey, advName: "Joe-KJ5HBN-EDC", type: Constants.AdvType.Chat, flags: 0 };
+    return { publicKey, advName: "Joe-KJ5ZZZ-EDC", type: Constants.AdvType.Chat, flags: 0 };
 }
 
 describe("a direct position message on the air", () => {
@@ -50,13 +50,13 @@ describe("a direct position message on the air", () => {
     });
 
     it("goes as plain text, so a stock app shows it", async () => {
-        await Connection.sendCommandData(THEM, "Position request from KJ5HBN #mce1:abc");
+        await Connection.sendCommandData(THEM, "Position request from KJ5ZZZ #mce1:abc");
 
         expect(sent).toHaveLength(1);
         expect(sent[0].txtType).toBe(Constants.TxtTypes.Plain);
         expect(sent[0].txtType).toBe(0);
         // and the sentence a stock operator reads is still in front of the payload
-        expect(sent[0].text.startsWith("Position request from KJ5HBN")).toBe(true);
+        expect(sent[0].text.startsWith("Position request from KJ5ZZZ")).toBe(true);
     });
 
     it("is no longer sent as data, which showed nothing at all", async () => {
@@ -73,7 +73,7 @@ describe("a direct position message on the air", () => {
     it("is not written into the sending station's own conversation", async () => {
         const saved = vi.spyOn(Database.Message, "insert").mockResolvedValue({});
 
-        await Connection.sendCommandData(THEM, "Position request from KJ5HBN #mce1:abc");
+        await Connection.sendCommandData(THEM, "Position request from KJ5ZZZ #mce1:abc");
 
         expect(sent).toHaveLength(1);
         expect(saved).not.toHaveBeenCalled();
@@ -95,7 +95,7 @@ describe("a direct position message coming back", () => {
     // notification, which is what happened on the bench once.
     const arrives = async (txtType) => {
         GlobalState.contacts = [aContact()];
-        GlobalState.selfInfo = { name: "KJ5HBN-EMCOMM", publicKey: new Uint8Array(32).fill(0x39) };
+        GlobalState.selfInfo = { name: "KJ5ZZZ-EMCOMM", publicKey: new Uint8Array(32).fill(0x39) };
         const handled = vi.spyOn(PositionService, "onDirectText").mockReturnValue(true);
         const saved = vi.spyOn(Database.Message, "insert").mockResolvedValue({});
         // happy-dom has no Notification, and a message that reaches the
@@ -105,7 +105,7 @@ describe("a direct position message coming back", () => {
         await Connection.onContactMessageReceived({
             pubKeyPrefix: THEM.slice(0, 6),
             txtType: txtType,
-            text: "Position request from KJ5HBN #mce1:abc",
+            text: "Position request from KJ5ZZZ #mce1:abc",
             senderTimestamp: Math.floor(Date.now() / 1000),
         });
 

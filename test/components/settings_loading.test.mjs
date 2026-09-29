@@ -16,7 +16,7 @@ import GlobalState from "../../src/js/GlobalState.js";
 import ModeSettingsTabs from "../../src/components/modes/ModeSettingsTabs.vue";
 
 const SELF_INFO = {
-    name: "KJ5HBN-EMCOMM",
+    name: "KJ5ZZZ-EMCOMM",
     publicKey: new Uint8Array(32).fill(0x39),
     radioFreq: 910525,
     radioBw: 62.5,

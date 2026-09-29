@@ -86,9 +86,9 @@ describe("a net default", () => {
     it("fills out into a station, keeping that station's name and ceiling", async () => {
         NetDefaults.save("live", aNetProfile({ radio: { ...aNetProfile().radio, txPower: null } }));
 
-        const filled = await NetDefaults.forStation("live", { name: "KJ5HBN-EMCOMM", maxTxPower: 17 });
+        const filled = await NetDefaults.forStation("live", { name: "KJ5ZZZ-EMCOMM", maxTxPower: 17 });
 
-        expect(filled.radio.name).toBe("KJ5HBN-EMCOMM");
+        expect(filled.radio.name).toBe("KJ5ZZZ-EMCOMM");
         // the net named no number, so this radio's own ceiling
         expect(filled.radio.txPower).toBe(17);
         expect(filled.radio.radioFreq).toBe(906875);

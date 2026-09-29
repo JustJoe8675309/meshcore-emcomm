@@ -27,7 +27,7 @@ function mountPanel() {
 
 function connect(key = NODE_KEY) {
     GlobalState.connection = { on() {}, off() {} };
-    GlobalState.selfInfo = { name: "Joe-KJ5HBN-HTv3", publicKey: key, radioFreq: 910525, radioBw: 62500, radioSf: 7, radioCr: 5 };
+    GlobalState.selfInfo = { name: "Joe-KJ5ZZZ-HTv3", publicKey: key, radioFreq: 910525, radioBw: 62500, radioSf: 7, radioCr: 5 };
     GlobalState.channels = [{ idx: 7, name: "Emcomm Testing" }];
     GlobalState.contacts = [];
 }
@@ -43,7 +43,7 @@ async function startAndLeave() {
     wrapper.vm.selectedChannelIdx = 7;
     wrapper.vm.selectedFormId = "ics213";
     await wrapper.vm.$nextTick();
-    wrapper.vm.values = { to: "Net Control", from: "KJ5HBN", subject: "DRILL route", datetime: "191830L SEP", message: LONG };
+    wrapper.vm.values = { to: "Net Control", from: "KJ5ZZZ", subject: "DRILL route", datetime: "191830L SEP", message: LONG };
     await wrapper.vm.$nextTick();
     const parts = wrapper.vm.prepared.parts;
 
@@ -151,7 +151,7 @@ describe("a report interrupted by leaving the tab", () => {
         wrapper.vm.selectedChannelIdx = 7;
         wrapper.vm.selectedFormId = "ics213";
         await wrapper.vm.$nextTick();
-        wrapper.vm.values = { to: "Net Control", from: "KJ5HBN", subject: "DRILL route", datetime: "191830L SEP", message: LONG };
+        wrapper.vm.values = { to: "Net Control", from: "KJ5ZZZ", subject: "DRILL route", datetime: "191830L SEP", message: LONG };
         await wrapper.vm.$nextTick();
         await wrapper.vm.confirmSend();
         await wrapper.vm.$nextTick();

@@ -26,7 +26,7 @@ position answering, advert intervals, the DRILL mark, and the entering choices
 Three things are deliberately left out:
 
 - **The node name.** Every station is its own station; copying the name would put
-  two KJ5HBN-EMCOMMs on the net. The receiver keeps its own.
+  two KJ5###-EMCOMMs on the net. The receiver keeps its own.
 - **Contacts.** They are not settings, they are who the radio has heard, and they
   come back from each station's own backup.
 - **Normal mode.** Normal is the radio as its owner had it, so it is never

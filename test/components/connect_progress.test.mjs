@@ -14,7 +14,7 @@ import Database from "../../src/js/Database.js";
 import Airtime from "../../src/js/reports/Airtime.js";
 
 const KEY = new Uint8Array(32).fill(0x39);
-const SELF_INFO = { name: "KJ5HBN-EMCOMM", publicKey: KEY, radioSf: 7, radioBw: 62500, radioCr: 5 };
+const SELF_INFO = { name: "KJ5ZZZ-EMCOMM", publicKey: KEY, radioSf: 7, radioBw: 62500, radioCr: 5 };
 
 // a radio with forty channel slots, thirteen of them configured
 function radioWithChannels({ slots = 40, configured = 13, reportsSlots = true } = {}) {

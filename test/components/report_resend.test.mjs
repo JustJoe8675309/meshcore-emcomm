@@ -17,7 +17,7 @@ import ReportEncoder from "../../src/js/reports/ReportEncoder.js";
 
 const NODE_KEY = new Uint8Array(32).fill(0xa7);
 const OTHER_KEY = new Uint8Array(32).fill(0x39);
-const NAME = "Joe-KJ5HBN-HTv3";
+const NAME = "Joe-KJ5ZZZ-HTv3";
 
 function mountPanel() {
     return mount(ReportsPanel, {
@@ -46,7 +46,7 @@ async function sendReport() {
     wrapper.vm.selectedChannelIdx = 7;
     wrapper.vm.selectedFormId = "ics213";
     await wrapper.vm.$nextTick();
-    wrapper.vm.values = { to: "Net Control", from: "KJ5HBN", subject: "DRILL route", datetime: "191830L SEP", message: LONG };
+    wrapper.vm.values = { to: "Net Control", from: "KJ5ZZZ", subject: "DRILL route", datetime: "191830L SEP", message: LONG };
     await wrapper.vm.$nextTick();
     const parts = wrapper.vm.prepared.parts;
     await wrapper.vm.confirmSend();
@@ -181,7 +181,7 @@ describe("resending one part of the last report", () => {
         wrapper.vm.selectedContactPublicKey = wrapper.vm.chatContacts[0].publicKeyHex;
         wrapper.vm.selectedFormId = "ics213";
         await wrapper.vm.$nextTick();
-        wrapper.vm.values = { to: "Net Control", from: "KJ5HBN", subject: "DRILL route", datetime: "191830L SEP", message: LONG };
+        wrapper.vm.values = { to: "Net Control", from: "KJ5ZZZ", subject: "DRILL route", datetime: "191830L SEP", message: LONG };
         await wrapper.vm.$nextTick();
         await wrapper.vm.confirmSend();
 

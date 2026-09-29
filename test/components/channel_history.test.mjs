@@ -264,7 +264,7 @@ describe("what the switch dialog says about saved messages", () => {
         window.localStorage.clear();
         GlobalState.connection = { on() {}, off() {} };
         GlobalState.selfInfo = {
-            name: "Joe-KJ5HBN-HTv3", publicKey: new Uint8Array(32).fill(0x39),
+            name: "Joe-KJ5ZZZ-HTv3", publicKey: new Uint8Array(32).fill(0x39),
             radioFreq: 906875, radioBw: 250000, radioSf: 10, radioCr: 5,
             txPower: 14, maxTxPower: 22, advLat: 0, advLon: 0,
             manualAddContacts: 1, reserved: new Uint8Array([0, 40, 0]),

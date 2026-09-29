@@ -25,7 +25,7 @@ const BRAVO = new Uint8Array(32).fill(0x52);
 const ROOM = new Uint8Array(32).fill(0x87);
 const ROOM_HEX = Array.from(ROOM).map((b) => b.toString(16).padStart(2, "0")).join("");
 
-const ALPHA_CONTACT = { publicKey: ALPHA, advName: "KJ5HBN-EMCOMM", type: Constants.AdvType.Chat, flags: 0 };
+const ALPHA_CONTACT = { publicKey: ALPHA, advName: "KJ5ZZZ-EMCOMM", type: Constants.AdvType.Chat, flags: 0 };
 const ROOM_CONTACT = { publicKey: ROOM, advName: "N.E. ELP EMCOMM OBSVR", type: Constants.AdvType.Room, flags: 0 };
 
 const CHANNEL = { kind: "channel", idx: 7, name: "Emcomm Testing" };
@@ -33,7 +33,7 @@ const ROOM_VIA = { kind: "room", contactKeyHex: ROOM_HEX, name: "N.E. ELP EMCOMM
 
 function connect({ lat = 31.7587, lon = -106.4869 } = {}) {
     GlobalState.connection = { on() {}, off() {} };
-    GlobalState.selfInfo = { name: "Joe-KJ5HBN-HTv3", publicKey: ME, advLat: Math.round(lat * 1e6), advLon: Math.round(lon * 1e6), radioFreq: 910525, radioBw: 62500, radioSf: 7, radioCr: 5 };
+    GlobalState.selfInfo = { name: "Joe-KJ5ZZZ-HTv3", publicKey: ME, advLat: Math.round(lat * 1e6), advLon: Math.round(lon * 1e6), radioFreq: 910525, radioBw: 62500, radioSf: 7, radioCr: 5 };
     GlobalState.contacts = [ALPHA_CONTACT, ROOM_CONTACT];
     GlobalState.channels = [{ idx: 7, name: "Emcomm Testing" }, { idx: 0, name: "Public" }];
     GlobalState.gpsStatus = "unconfirmed";
@@ -54,7 +54,7 @@ function reset() {
 // what a station sends back to a roll call on the channel
 function answerOnChannel(from, tag, extra = {}) {
     PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: Protocol.encode({
-        kind: Protocol.KIND.POSITION, tag, to: ME, from, name: from === ALPHA ? "KJ5HBN" : "KF5XYZ",
+        kind: Protocol.KIND.POSITION, tag, to: ME, from, name: from === ALPHA ? "KJ5ZZZ" : "KF5XYZ",
         latitude: 31.788, longitude: -106.497, fixTime: 0, flags: 0, ...extra,
     }) });
 }
@@ -67,12 +67,12 @@ describe("the roll call bytes", () => {
 
     it("carry the stations already heard, three bytes of each key", () => {
         const decoded = Protocol.decode(Protocol.encode({
-            kind: Protocol.KIND.ROLL_CALL, tag: 5, to: Protocol.EVERYONE, from: ME, name: "KJ5HBN", heard: ["393939", "525252"],
+            kind: Protocol.KIND.ROLL_CALL, tag: 5, to: Protocol.EVERYONE, from: ME, name: "KJ5ZZZ", heard: ["393939", "525252"],
         }));
         expect(decoded.kind).toBe(Protocol.KIND.ROLL_CALL);
         expect(Protocol.isEveryone(decoded.to)).toBe(true);
         expect(decoded.heard).toEqual(["393939", "525252"]);
-        expect(decoded.name).toBe("KJ5HBN");
+        expect(decoded.name).toBe("KJ5ZZZ");
         expect(Protocol.isHeard(decoded.heard, ALPHA)).toBe(true);
         expect(Protocol.isHeard(decoded.heard, ME)).toBe(false);
     });
@@ -85,7 +85,7 @@ describe("the roll call bytes", () => {
 
     it("drop the earliest heard stations to fit a datagram", () => {
         const heard = Array.from({ length: 60 }, (_, i) => i.toString(16).padStart(6, "0"));
-        const fitted = Protocol.fitRollCall({ kind: Protocol.KIND.ROLL_CALL, tag: 1, to: Protocol.EVERYONE, from: ME, name: "KJ5HBN", heard }, Protocol.MAX_DATAGRAM_BYTES);
+        const fitted = Protocol.fitRollCall({ kind: Protocol.KIND.ROLL_CALL, tag: 1, to: Protocol.EVERYONE, from: ME, name: "KJ5ZZZ", heard }, Protocol.MAX_DATAGRAM_BYTES);
         expect(Protocol.encode(fitted).length).toBeLessThanOrEqual(Protocol.MAX_DATAGRAM_BYTES);
         expect(fitted.heard[fitted.heard.length - 1]).toBe(heard[59]);
     });
@@ -94,7 +94,7 @@ describe("the roll call bytes", () => {
         const heard = Array.from({ length: 40 }, (_, i) => i.toString(16).padStart(6, "0"));
         const text = Protocol.toDirectText(
             { kind: Protocol.KIND.ROLL_CALL, tag: 9, to: Protocol.EVERYONE, from: ME, name: "Ω".repeat(20), heard },
-            "Position roll call from KJ5HBN (answering needs Mesh-Emcomm)",
+            "Position roll call from KJ5ZZZ (answering needs Mesh-Emcomm)",
             Protocol.MAX_ROOM_BYTES,
         );
         expect(new TextEncoder().encode(text).length).toBeLessThanOrEqual(151);
@@ -218,7 +218,7 @@ describe("being asked with everyone else", () => {
         window.localStorage.clear();
         reset();
         connect();
-        OperatorSettings.setCallsign("KJ5HBN");
+        OperatorSettings.setCallsign("KJ5ZZZ");
         sent = [];
         vi.spyOn(Connection, "sendChannelDatagram").mockImplementation(async (idx, type, payload) => { sent.push({ idx, message: Protocol.decode(payload) }); });
         vi.spyOn(Connection, "sendRoomPost").mockImplementation(async (key, text) => { sent.push({ key, text, message: Protocol.fromDirectText(text) }); });
@@ -256,7 +256,7 @@ describe("being asked with everyone else", () => {
         expect(sent[0].message.kind).toBe(Protocol.KIND.POSITION);
         expect(sent[0].message.tag).toBe(77);
         expect(Protocol.prefixHex(sent[0].message.to)).toBe("393939393939");
-        expect(sent[0].message.name).toBe("KJ5HBN");
+        expect(sent[0].message.name).toBe("KJ5ZZZ");
     });
 
     it("answering automatically, waits a random moment first, so answers do not collide", async () => {
@@ -341,8 +341,8 @@ describe("in a room", () => {
         expect(PositionService.onRoomText(ROOM_CONTACT, ALPHA.slice(0, 4), rollCall(), old)).toBe(true);
         expect(PositionService.state.prompt).toBe(null);
         PositionService.onRoomText(ROOM_CONTACT, ALPHA.slice(0, 4), post({
-            kind: Protocol.KIND.POSITION, tag: 0, to: Protocol.EVERYONE, from: ALPHA, name: "KJ5HBN", latitude: 31.788, longitude: -106.497, fixTime: 0, flags: 0,
-        }, "Position of KJ5HBN"), old);
+            kind: Protocol.KIND.POSITION, tag: 0, to: Protocol.EVERYONE, from: ALPHA, name: "KJ5ZZZ", latitude: 31.788, longitude: -106.497, fixTime: 0, flags: 0,
+        }, "Position of KJ5ZZZ"), old);
         expect(PositionService.state.reports[0].via.kind).toBe("room");
         expect(PositionService.state.reports[0].shared).toBe(true);
     });
@@ -455,15 +455,15 @@ describe("what a review of the first build found", () => {
         answerOnChannel(ALPHA, 0);
         const hourAgo = Math.floor(Date.now() / 1000) - 3600;
         PositionService.onRoomText(ROOM_CONTACT, ALPHA.slice(0, 4), Protocol.toDirectText({
-            kind: Protocol.KIND.POSITION, tag: 0, to: Protocol.EVERYONE, from: ALPHA, name: "KJ5HBN", latitude: 31.5, longitude: -106.2, fixTime: 0, flags: 0,
-        }, "Position of KJ5HBN", Protocol.MAX_ROOM_BYTES), hourAgo);
+            kind: Protocol.KIND.POSITION, tag: 0, to: Protocol.EVERYONE, from: ALPHA, name: "KJ5ZZZ", latitude: 31.5, longitude: -106.2, fixTime: 0, flags: 0,
+        }, "Position of KJ5ZZZ", Protocol.MAX_ROOM_BYTES), hourAgo);
         const latest = PositionService.latestByStation().find((r) => r.fromPrefixHex === "393939393939");
         expect(latest.latitude).toBe(31.788);
         expect(PositionService.state.reports[1].receivedAt).toBeLessThan(Date.now() - 3500 * 1000);
     });
 
     it("a room post carrying another station's code is left in the chat as text", () => {
-        const text = Protocol.toDirectText({ kind: Protocol.KIND.POSITION, tag: 0, to: Protocol.EVERYONE, from: ALPHA, name: "KJ5HBN", latitude: 31.5, longitude: -106.2, fixTime: 0, flags: 0 }, "Position of KJ5HBN", Protocol.MAX_ROOM_BYTES);
+        const text = Protocol.toDirectText({ kind: Protocol.KIND.POSITION, tag: 0, to: Protocol.EVERYONE, from: ALPHA, name: "KJ5ZZZ", latitude: 31.5, longitude: -106.2, fixTime: 0, flags: 0 }, "Position of KJ5ZZZ", Protocol.MAX_ROOM_BYTES);
         expect(PositionService.onRoomText(ROOM_CONTACT, BRAVO.slice(0, 4), text, Math.floor(Date.now() / 1000))).toBe(false);
         expect(PositionService.state.reports).toHaveLength(0);
     });
@@ -583,13 +583,13 @@ describe("the positions list, for a roll call", () => {
         expect(text).toContain("Everyone on Emcomm Testing");
         expect(text).toContain("Listening");
         expect(text).toContain("2 answered");
-        expect(text).toMatch(/KJ5HBN\s*· KJ5HBN-EMCOMM\s*31\.7880° N, 106\.4970° W, 2\.1 mi \(3\.4 km\), \d{3}° magnetic/);
+        expect(text).toMatch(/KJ5ZZZ\s*· KJ5ZZZ-EMCOMM\s*31\.7880° N, 106\.4970° W, 2\.1 mi \(3\.4 km\), \d{3}° magnetic/);
         expect(text).toMatch(/KF5XYZ\s*declined/);
     });
 
     it("labels a position sent to everyone unasked", async () => {
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: Protocol.encode({
-            kind: Protocol.KIND.POSITION, tag: 0, to: Protocol.EVERYONE, from: ALPHA, name: "KJ5HBN", latitude: 31.788, longitude: -106.497, fixTime: 0, flags: 0,
+            kind: Protocol.KIND.POSITION, tag: 0, to: Protocol.EVERYONE, from: ALPHA, name: "KJ5ZZZ", latitude: 31.788, longitude: -106.497, fixTime: 0, flags: 0,
         }) });
         const wrapper = mount(PositionsPanel);
         await flushPromises();

@@ -107,7 +107,7 @@ describe("settings page reads, queued", () => {
         };
 
         GlobalState.connection = {
-            getSelfInfo: track({ name: "KJ5HBN" }),
+            getSelfInfo: track({ name: "KJ5ZZZ" }),
             getDeviceTime: track({ epochSecs: 1 }),
         };
 
@@ -119,7 +119,7 @@ describe("settings page reads, queued", () => {
 
         expect(maxInFlight).toBe(1);
         expect(time).toEqual({ epochSecs: 1 });
-        expect(selfInfo).toEqual({ name: "KJ5HBN" });
+        expect(selfInfo).toEqual({ name: "KJ5ZZZ" });
 
         GlobalState.connection = null;
 

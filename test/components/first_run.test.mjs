@@ -23,7 +23,7 @@ import Utils from "../../src/js/Utils.js";
 const KEY = new Uint8Array(32).fill(0x39);
 const NODE = Utils.bytesToHex(KEY);
 const SELF_INFO = {
-    name: "Joe-KJ5HBN-HTv3", publicKey: KEY, radioFreq: 910525, radioBw: 62.5, radioSf: 7,
+    name: "Joe-KJ5ZZZ-HTv3", publicKey: KEY, radioFreq: 910525, radioBw: 62.5, radioSf: 7,
     radioCr: 5, txPower: 14, maxTxPower: 22, advLat: 0, advLon: 0, manualAddContacts: 1,
     reserved: [0, 40, 0],
 };
@@ -126,7 +126,7 @@ describe("the first run walkthrough", () => {
         for(const label of ["Start", "Next", "Next", "Next"]){
             await buttonSaying(wrapper, label).trigger("click");
         }
-        expect(wrapper.text()).toContain("Joe-KJ5HBN-HTv3");
+        expect(wrapper.text()).toContain("Joe-KJ5ZZZ-HTv3");
         expect(wrapper.text()).toContain("Entering a mode writes that mode's name");
     });
 

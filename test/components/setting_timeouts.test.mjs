@@ -40,7 +40,7 @@ describe("a setting the radio never acknowledges", () => {
     };
 
     it("gives up rather than waiting for ever", async () => {
-        const result = await expectTimesOut(Connection.setAdvertName("KJ5HBN-EMCOMM"));
+        const result = await expectTimesOut(Connection.setAdvertName("KJ5ZZZ-EMCOMM"));
         expect(result).toBeInstanceOf(Error);
     });
 
