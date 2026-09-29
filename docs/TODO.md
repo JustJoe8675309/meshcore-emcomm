@@ -33,18 +33,17 @@ done at all.
       and 16/15 for red, and the notes need updating with it -- otherwise the next run
       chases a boundary that no longer exists.
 
-- [ ] **A version number, visible at the top.** Asked for 29 Sep: major and minor,
-      with the date it was deployed, such as `V1.1 (29 Sept 2026)`.
-      The build already carries a content hash (`index-g9T4k04X.js`) and the service
-      worker cache is stamped with it, but neither is a thing an operator can read out
-      on the air. The point of this one is the question "what version are you on?"
-      being answerable across a net, and answerable by someone reading a phone screen
-      rather than a developer console.
-      Take both the number and the date **from the build** rather than typing them in,
-      or they will drift the first time somebody forgets: a hand-edited version that
-      says 1.1 while the station runs 1.0 is worse than none. The audit script already
-      compares the live bundle against the local one and is the natural place to check
-      the two agree.
+- [x] **A version number, visible at the top.** Asked for 29 Sep, built the same day.
+      Shows `v1.1 · 29 Sep 2026` in small grey on the app-name line -- not the
+      station-name line, which is the width-critical one on a phone.
+      Both halves are injected from the build (`__BUILD__` in vite.config.js, read by
+      `src/js/Version.js`), never typed in, so they cannot drift. `npm run audit` reads
+      the same stamp back out of the bundle and compares it with package.json.
+      Patch versions are not shown: they are what changes when a typo is fixed, and the
+      extra characters crowd the station name.
+      **Bump `version` in package.json** to make the number move -- minor for a new
+      feature, major for a change that breaks a station's stored settings.
+      Untested on a real screen; see the header section of AUDIT.md for what to look at.
 
 - [ ] **Show whether a sent message was heard**, the way the factory MeshCore app
       shows repeats. Asked for 29 Sep.

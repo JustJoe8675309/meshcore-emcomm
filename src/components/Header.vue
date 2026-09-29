@@ -10,7 +10,11 @@
             <img src="/icon.png" class="size-12 rounded"/>
         </div>
         <div class="my-auto mr-auto overflow-hidden">
-            <div class="font-bold">Mesh-Emcomm</div>
+            <!-- the version sits on the app name's line, which has room, rather than
+                 near the station name below it: that line is the width-critical one on
+                 a phone. `truncate` so a long label clips instead of wrapping and
+                 pushing the station name down -->
+            <div class="font-bold truncate">Mesh-Emcomm<span v-if="versionLabel" class="ml-1.5 font-normal text-xs text-gray-500">{{ versionLabel }}</span></div>
             <div class="text-sm truncate">
 
                 <!-- connected or configured. The battery lives in its own badge to
@@ -139,6 +143,7 @@
 
 <script>
 import GlobalState from "../js/GlobalState.js";
+import Version from "../js/Version.js";
 import Connection from "../js/Connection.js";
 import IconButton from "./IconButton.vue";
 import DropDownMenu from "./DropDownMenu.vue";
@@ -230,6 +235,11 @@ export default {
             // a sliver rather than nothing at all, so the icon still reads as a
             // battery when it is nearly flat
             return Math.max(1, (percent / 100) * 14).toFixed(2);
+        },
+
+        /** "v1.1 · 29 Sep 2026", or nothing at all if the build did not say. */
+        versionLabel() {
+            return Version.label();
         },
 
         /** A fifth left, which is when an operator should be looking for a cable. */

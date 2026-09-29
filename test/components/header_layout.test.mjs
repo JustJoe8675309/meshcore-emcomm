@@ -60,6 +60,20 @@ describe("the header and app bar rows", () => {
         expect(banner).toBeGreaterThan(rowEnd);
     });
 
+    it("puts the version on the app name line, not the station name line", () => {
+        // the station name line is the width-critical one on a 375px phone: it is
+        // already `truncate` because a long name plus the battery badge fills it.
+        // The app name line has room. A version moved down a line would push the
+        // name out, which is the thing an operator needs to be able to read
+        const header = source("Header.vue");
+        const nameLine = header.match(/<div class="font-bold[^"]*">[\s\S]*?<\/div>/);
+        expect(nameLine).not.toBe(null);
+        expect(nameLine[0]).toMatch(/versionLabel/);
+        // and it clips rather than wrapping, since wrapping is what pushes the
+        // line below it down
+        expect(nameLine[0]).toContain("truncate");
+    });
+
     it("leaves no fixed height on a row that holds wrapping text", () => {
         // the two above are the only rows of this shape; a new one should either
         // grow or be named here with a reason

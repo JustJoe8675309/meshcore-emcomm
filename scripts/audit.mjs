@@ -377,6 +377,45 @@ section("Deployment");
             remote === local ? remote : `live ${remote}, local ${local}; push or rebuild`);
     }
 
+    // The header shows a version an operator can read out on the air, so the failure
+    // worth catching is the app being unable to say what it is, or saying it wrongly:
+    // it is the answer the net would act on.
+    //
+    // Two things this does NOT check, both learned by trying to break it:
+    //  * **Not staleness.** This script runs `npm run build` itself, so dist and
+    //    package.json are always freshly in step here. A bumped version with an old
+    //    dist is caught by "live build matches local" instead, against the deployed
+    //    site, which is where it would actually bite.
+    //  * It looks for the labelled pair vite injects, not a bare "1.1.0". The first
+    //    version of this check searched for the bare number and passed against a
+    //    version the build could not have contained, because dependency chunks are
+    //    full of quoted version strings.
+    if(existsSync("dist/assets")){
+        const pkgVersion = JSON.parse(readFileSync("package.json", "utf8")).version;
+        let stamped = null;
+        let builtAt = null;
+        let placeholder = false;
+        for(const name of readdirSync("dist/assets").filter((n) => n.endsWith(".js"))){
+            const text = readFileSync(`dist/assets/${name}`, "utf8");
+            if(text.includes("__BUILD__")){
+                placeholder = true;
+            }
+            const found = text.match(/version:"([^"]*)",builtAt:"([^"]*)"/);
+            if(found){
+                stamped = found[1];
+                builtAt = found[2];
+            }
+        }
+        const dateReads = builtAt != null && !Number.isNaN(Date.parse(builtAt));
+        const why = placeholder ? "an injected token survived the build, the header would show nothing"
+            : stamped == null ? `no build stamp in the bundle; package.json says ${pkgVersion}`
+            : stamped !== pkgVersion ? `bundle says ${stamped}, package.json says ${pkgVersion}`
+            : !dateReads ? `v${stamped}, but the build date "${builtAt}" is not a date the app can read, so it would show the version alone`
+            : `v${stamped} built ${builtAt.slice(0, 10)}`;
+        record("deploy", "the built app reports its real version",
+            placeholder ? FAIL : (stamped === pkgVersion && dateReads ? PASS : WARN), why);
+    }
+
     // a fixed cache name is how the cache grew without bound before, and it fails
     // silently, so check the stamp actually landed
     if(existsSync("dist/service-worker.js")){

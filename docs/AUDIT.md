@@ -885,6 +885,26 @@ width, and only the real device tests the touch targets.
       a Tailwind class, which means it exists only if it was in the source when the
       build ran: check it on a real build, not a dev server.
 
+- [ ] **The version reads correctly, and does not squeeze the station name.** Added
+      29 Sep, untested on any real screen. It sits on the app-name line as
+      `v1.1 · 29 Sep 2026` in small grey, deliberately not on the station-name line,
+      which is the width-critical one -- a `header_layout` test holds it there.
+      Three things to look at, in this order:
+      1. **Does the station name still render in full?** That is the thing this could
+         break, and the name matters more than the version does. Same conditions as
+         the item above: 375px with the root font up at 22 and 24px.
+      2. **Is the grey legible in both themes?** It is `text-gray-500`, which is the
+         one colour chosen to be quiet rather than readable. In dark mode it has to
+         stay quiet without disappearing.
+      3. **Does it say what the build actually is?** Compare it against
+         `npm run audit`, which reads the stamp out of the bundle. They are taken from
+         the same injected value, so a disagreement means the phone is running a
+         cached older build -- which is itself worth knowing, and is the reason an
+         operator would be reading this number out in the first place.
+      Note the label is absent, not blank, when the build did not inject a stamp, so
+      "I see no version" and "I see the wrong version" are different findings: the
+      first is a build problem, the second a cache problem.
+
 ### Contacts, on a big roster
 
 - [ ] **The whole roster arrives.** Connect the node with the most contacts and
