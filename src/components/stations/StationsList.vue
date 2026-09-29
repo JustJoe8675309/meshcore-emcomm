@@ -160,6 +160,34 @@ import DropDownMenuItem from "../DropDownMenuItem.vue";
 import ContactListItem from "../contacts/ContactListItem.vue";
 import ChannelListItem from "../channels/ChannelListItem.vue";
 
+/**
+ * The remembered sort order and filter, read and written through a guard.
+ *
+ * A browser can refuse storage outright: Brave's Shields set to block all cookies
+ * makes `localStorage` throw rather than return null, and these two reads sat in
+ * `data()`, so the throw came out of `data()` and the component never mounted. The
+ * contacts and channels tab is the main screen, so the app looked broken. Reported
+ * 29 Sep as "had to turn the Shields off to make it work".
+ *
+ * Remembering a sort order is a convenience. Losing the list is not a trade worth
+ * making for it, so a refusal falls back to the default and the app carries on.
+ */
+function readSetting(key, fallback) {
+    try {
+        return window.localStorage.getItem(key) ?? fallback;
+    } catch(e) {
+        return fallback;
+    }
+}
+
+function writeSetting(key, value) {
+    try {
+        window.localStorage.setItem(key, value);
+    } catch(e) {
+        // nothing to do: the choice holds for this session and is not worth an error
+    }
+}
+
 export default {
     name: 'StationsList',
     components: {
@@ -185,8 +213,15 @@ export default {
             // Read from the old keys and a browser that used the separate tabs
             // brings an A-Z or a companions-only choice across and the default
             // never applies, which is how the bench node came up sorted A-Z.
-            order: window.localStorage.getItem("stations_list_order") ?? "heard-recently",
-            filter: window.localStorage.getItem("stations_list_filter") ?? "all",
+            // read through a guard, because a browser can refuse storage outright.
+            // Brave's Shields set to block all cookies makes getItem throw, and an
+            // unguarded read here threw out of data(), so this component never
+            // mounted and the contacts and channels tab -- the main screen -- simply
+            // was not there. Reported 29 Sep as "had to turn the Shields off".
+            // A remembered sort order is a convenience; losing it is not a reason to
+            // lose the list.
+            order: readSetting("stations_list_order", "heard-recently"),
+            filter: readSetting("stations_list_filter", "all"),
             searchTerm: "",
             showImport: false,
             importText: "",
@@ -202,10 +237,10 @@ export default {
     },
     watch: {
         filter() {
-            window.localStorage.setItem("stations_list_filter", this.filter);
+            writeSetting("stations_list_filter", this.filter);
         },
         order() {
-            window.localStorage.setItem("stations_list_order", this.order);
+            writeSetting("stations_list_order", this.order);
         },
         channels: {
             handler() {

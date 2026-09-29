@@ -2281,7 +2281,7 @@ class Connection {
      * on the other end sees anything at all. It used to go as CliData, which the
      * stock MeshCore app treats as data and does not show: a station running that
      * app was asked for its position and never knew. The text carries a sentence
-     * before the payload for exactly this reason — "Position request from KJ5HBN
+     * before the payload for exactly this reason — "Position request from KJ5###
      * (answering needs Mesh-Emcomm)" — and as CliData nobody could read it.
      *
      * The operator can then answer in words, which is worth more than silence

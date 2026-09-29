@@ -8,7 +8,7 @@
 // channel that has never carried one has no time at all, which is not the same as
 // being old, so it sorts to the end of that order rather than to the top.
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
 import { Constants } from "@liamcottle/meshcore.js";
 import StationsList from "../../src/components/stations/StationsList.vue";
@@ -195,4 +195,68 @@ describe("the one tab", () => {
         expect(wrapper.vm.order).toBe("heard-recently");
         expect(wrapper.vm.filter).toBe("all");
     });
+});
+
+// A browser can refuse storage outright rather than return null. Brave's Shields set
+// to block all cookies makes localStorage throw, and these two reads sat in data(),
+// so the throw came out of data() and this component never mounted -- taking the
+// contacts and channels tab, which is the main screen, with it. Reported 29 Sep as
+// "had to turn the Shields off to make it work".
+//
+// Remembering a sort order is a convenience; losing the list is not a trade worth
+// making for it.
+describe("a browser that refuses storage still gets its list", () => {
+
+    beforeEach(() => {
+        window.localStorage.clear();
+        GlobalState.contactsMissing = 0;
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    // spy on the object the code actually calls. Patching Storage.prototype does
+    // nothing here -- happy-dom's localStorage does not go through it -- and a test
+    // written that way passes whether the guard exists or not, which is how this one
+    // was caught being worthless.
+    const refuseStorage = () => {
+        const boom = () => { throw new DOMException("The operation is insecure.", "SecurityError"); };
+        vi.spyOn(window.localStorage, "getItem").mockImplementation(boom);
+        vi.spyOn(window.localStorage, "setItem").mockImplementation(boom);
+    };
+
+    it("mounts, and shows the stations, when reading the saved choice throws", async () => {
+        channelActivity({});
+        refuseStorage();
+
+        const wrapper = mount(StationsList, {
+            props: { contacts: [aContact("Alice"), aContact("Bob")], channels: [] },
+            global: { stubs: { ContactListItem: true, ChannelListItem: true, DropDownMenu: true, IconButton: true } },
+        });
+        await flushPromises();
+
+        expect(wrapper.vm.rows.map((r) => r.name)).toContain("Alice");
+        // and falls back to the defaults rather than to nothing
+        expect(wrapper.vm.order).toBe("heard-recently");
+        expect(wrapper.vm.filter).toBe("all");
+    });
+
+    it("keeps working when writing the choice throws", async () => {
+        channelActivity({});
+        refuseStorage();
+
+        const wrapper = mount(StationsList, {
+            props: { contacts: [aContact("Alice")], channels: [] },
+            global: { stubs: { ContactListItem: true, ChannelListItem: true, DropDownMenu: true, IconButton: true } },
+        });
+        await flushPromises();
+
+        wrapper.vm.filter = "repeater";
+        await flushPromises();
+
+        // the choice holds for this session even though it could not be saved
+        expect(wrapper.vm.filter).toBe("repeater");
+    });
+
 });

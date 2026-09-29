@@ -452,7 +452,7 @@ OK removes them, so the node is exactly as it was before. Cancel keeps them.`)){
 
                 // A restore writes the name back but announces nothing, so every station
                 // that heard the EMCOMM name went on showing it: on the bench node 2
-                // listed node 1 as KJ5HBN-AUDIT until an advert went out by hand. One
+                // listed node 1 as KJ5###-AUDIT until an advert went out by hand. One
                 // zero hop advert, only when the name changed, tells the stations in
                 // direct range. Stations further out learn it at the next flood advert.
                 const nameAfter = backup.settings?.name ?? null;

@@ -413,7 +413,7 @@ export default {
 
                 // prefill identity fields from the operator settings, never from the
                 // device advert name. that names the radio, not the operator, and putting
-                // something like "Joe-KJ5HBN-HTv3" in a formal CALL field is wrong. left
+                // something like "Joe-KJ5###-HTv3" in a formal CALL field is wrong. left
                 // blank when nothing is set, since blank is better than wrong.
                 const prefill = this.prefillValueFor(field);
                 if(prefill !== null){
