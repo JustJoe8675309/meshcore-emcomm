@@ -1499,7 +1499,7 @@ the browser with nobody at the radios:
   Testing, and node 1 showed one prompt, "Asked 2 times"; node 2 marked its first request
   "Replaced by a new request". Each request reached node 1 in about 0.4 s.
 - **Entering the current position as MGRS.** Node 1 had no position, and its prompt offered
-  Enter current position. The reference was typed as `13rcr6763033210`, in lower case with no
+  Enter current position. The reference was typed as `13rcr5936515004`, in lower case with no
   spaces, and shown back as 31.7619° N, 106.4850° W. Save to radio and send set node 1's position
   ("Position set on the radio, not a live fix"), and node 2 listed it as "Entered by hand, not
   GPS", 53 ft (16 m) away at 310° magnetic, declination 7.4° E. Node 1's position was then
