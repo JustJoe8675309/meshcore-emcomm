@@ -642,7 +642,7 @@ other station's configuration, which is the wrong place to look during a net.
       reaches only node 1.
 - [ ] **"Once" closes before a person can answer.** Three direct requests on 28 Sep,
       answered by a human at ordinary speed, and every one came back
-      "KJ5###-EMCOMM answered. The answer came after this app had stopped asking."
+      "NOCALL-EMCOMM answered. The answer came after this app had stopped asking."
       The prompt takes 1-7 s to appear and the operator then has to read it and press
       Send, which is already past the window a single request listens for. Nothing is
       lost -- the position still arrives and is listed -- but the normal, correct case
@@ -689,7 +689,7 @@ other station's configuration, which is the wrong place to look during a net.
 - [ ] **A stock client DOES show a direct request**, which is the point of sending it
       as plain text. On node 3 running the factory app, a direct position request from
       node 1 shows as an ordinary message: the readable line first — "Position request
-      from KJ5### (answering needs Mesh-Emcomm)" — then the code. The operator can
+      from NOCALL (answering needs Mesh-Emcomm)" — then the code. The operator can
       answer in words and node 1 gets the answer as a message. **Proven 27 Sep** on
       build `d2602d7`: node 3 displayed the line and was answered from.
       It went as text type 1 until then, and showed nothing at all: the sentence had
@@ -757,7 +757,7 @@ being a variable.
 - [ ] **Post.** It should read Delivered, and it should appear in the room on
       another client. Delivered alone is not proof the room accepted it.
       Passed 28 Sep: posted from node 1 at 09:05, Delivered there, and on screen at
-      node 2 at 09:06 attributed to Joe-KJ5###-HTv3.
+      node 2 at 09:06 attributed to Joe-NOCALL-HTv3.
 - [ ] **Posts keep arriving an hour later.** Log both nodes in, leave them alone for
       an hour with the tabs in the background, then post from node 1. It must reach
       node 2 without anyone logging in again. This is the check that found the worst
@@ -820,7 +820,7 @@ width, and only the real device tests the touch targets.
 - [ ] **The station name is readable**, not "Joe-KJ5H...". On a 375px screen with a
       22px root font the name wants 154px; it gets 161px with the app icon hidden,
       which is why the icon is hidden below the `sm` breakpoint.
-      "Joe-KJ5###-EDC" rendered in full at 500px and 16/22/24px fonts, never truncated,
+      "Joe-NOCALL-EDC" rendered in full at 500px and 16/22/24px fonts, never truncated,
       and no sideways scroll at any of them.
 - [ ] **The charge is readable** in its badge, and turns red at 20% or less.
       **PASSED 29 Sep on a genuinely flat radio**, which is the only way this one can

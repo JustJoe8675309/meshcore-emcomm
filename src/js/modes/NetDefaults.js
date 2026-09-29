@@ -11,7 +11,7 @@
 // them out:
 //
 //   The node name. Every station is its own station, and copying a name would put
-//   two KJ5###-EMCOMMs on the net.
+//   two NOCALL-EMCOMMs on the net.
 //
 //   A transmit power number. Radios differ in what they can manage, so this holds
 //   null for "as high as this radio goes" and the number is worked out when it is

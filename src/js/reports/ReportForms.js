@@ -341,7 +341,7 @@ const ReportForms = [
         header: "ICS-213 REPLY",
         fields: [
             { id: "to", tag: "TO", label: "To (who sent the message)", type: "text", placeholder: "e.g: J. Smith, Ops Chief", required: true },
-            { id: "from", tag: "FM", label: "From", type: "text", placeholder: "e.g: KJ5###", required: true, prefillFromCallsign: true },
+            { id: "from", tag: "FM", label: "From", type: "text", placeholder: "e.g: NOCALL", required: true, prefillFromCallsign: true },
             { id: "ref", tag: "REF", label: "Their message (subject or time)", type: "text", placeholder: "e.g: Shelter status, 221830L", required: true },
             { id: "datetime", tag: "DTG", label: "Date / time", type: "dtg", required: true },
             { id: "reply", tag: "REPLY", label: "Reply", type: "textarea", placeholder: "Plain language.", required: true },
@@ -699,7 +699,7 @@ const ReportForms = [
         keepBlankFields: true,
         // the five W's are numbered, so a reply can say "ref your 3" and be understood
         fields: [
-            { id: "from", tag: "FM", label: "From (who is tasking)", type: "text", placeholder: "e.g: KJ5### Net Control", required: true, prefillFromCallsign: true },
+            { id: "from", tag: "FM", label: "From (who is tasking)", type: "text", placeholder: "e.g: NOCALL Net Control", required: true, prefillFromCallsign: true },
             { id: "datetime", tag: "DTG", label: "Date / time issued", type: "dtg", required: true },
             { id: "who", tag: "1 WHO", label: "1. Who (person or team assigned)", type: "text", placeholder: "e.g: Team 2 (KJ5ABC, KF5XYZ)", required: true },
             { id: "what", tag: "2 WHAT", label: "2. What (the task or mission)", type: "textarea", placeholder: "e.g: Check the shelter at Ridge Street school, report capacity and needs", required: true },

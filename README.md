@@ -104,7 +104,7 @@ realistic content for that report, so they show what a form of that shape actual
 than a best or worst case.
 
 The figures therefore depend on the sending node's name, which is the single biggest influence on
-them. They were measured from a node called `Joe-KJ5###-HTv3`, a 15 character name that spends 17
+them. They were measured from a node called `Joe-NOCALL-HTv3`, a 15 character name that spends 17
 bytes before a word of the report is written. Several of the forms that split here would fit in one
 packet from a node with a short name; the radiogram and the 9-line carry enough content that they
 will usually split whatever the node is called. Direct messages carry no prefix at all and always
@@ -533,9 +533,9 @@ the line needed against what it had, at a 22px root font:
 
 | | wants | gets |
 | --- | --- | --- |
-| "Battery 100% - Joe-KJ5###-HTv3" | 285px | 38px |
-| "100% - Joe-KJ5###-HTv3" | 220px | 38px |
-| "Joe-KJ5###-HTv3" | 154px | 161px, as it now stands |
+| "Battery 100% - Joe-NOCALL-HTv3" | 285px | 38px |
+| "100% - Joe-NOCALL-HTv3" | 220px | 38px |
+| "Joe-NOCALL-HTv3" | 154px | 161px, as it now stands |
 
 So the charge moved out of the line into its own badge beside the buttons, where a long station
 name cannot squeeze it out, sized in pixels rather than rem so it holds still while the text
@@ -1249,7 +1249,7 @@ menu beside it in Contacts. Everything that comes back is on the **Positions** t
 - **Direct,** there is no datagram, so it goes as a direct message of **text type 0, plain text**.
   Only the two stations see it. This app reads the code and keeps the message out of the
   conversation; a station on the stock app sees the readable line in front of it — "Position
-  request from KJ5### (answering needs Mesh-Emcomm)" — followed by the code, and can answer in
+  request from NOCALL (answering needs Mesh-Emcomm)" — followed by the code, and can answer in
   words.
 
   It went as **type 1, command data** until 27 Sep, and that showed nothing at all. Tested against
@@ -1478,7 +1478,7 @@ Bluetooth, on Emcomm Testing:
   "Asked 2 times" rather than adding one. Nothing reached either conversation. Send with message
   opened node 2's conversation with node 1, and node 1 showed "message to follow" and stopped.
 - **Up to 3 times every minute, unanswered.** Three requests, then "No answer after 3 requests".
-- **Decline** stopped the repeats after one request and showed "Declined by KJ5###".
+- **Decline** stopped the repeats after one request and showed "Declined by NOCALL".
 - **The radio's own answer.** With node 2's location sharing turned on from the EMCOMM group and
   its app told "Not now", node 1 had node 2's GPS position from its radio 30 s after asking.
   Sharing was then turned off from the same button, and the radio read back exactly as before.
@@ -1586,7 +1586,7 @@ Converting node 1 and leaving EMCOMM mode again were recorded the same way.
 
   It stood aside for the 2 seconds the convert dialog was waiting on an answer.
 - **Leave EMCOMM mode, 12.6 s.** Every restore step was counted, out of 231, followed by reading
-  the node back and announcing the name. Node 1 came back as Joe-KJ5###-HTv3, with all 213
+  the node back and announcing the name. Node 1 came back as Joe-NOCALL-HTv3, with all 213
   contacts and 13 channels.
 
 Over Bluetooth, node 2's next connection read all 183 contacts in one pass, in 12.5 s, so the

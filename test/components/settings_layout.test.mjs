@@ -141,7 +141,7 @@ describe("the operator group", () => {
         const wrapper = mount(OperatorSettingsGroup);
         await wrapper.find("button[aria-expanded]").trigger("click");
 
-        await wrapper.find("input[placeholder='e.g: KJ5###']").setValue("KJ5ZZZ");
+        await wrapper.find("input[placeholder='e.g: NOCALL']").setValue("KJ5ZZZ");
         expect(OperatorSettings.state.callsign).toBe("KJ5ZZZ");
 
         await wrapper.find("select").setValue("zulu");
