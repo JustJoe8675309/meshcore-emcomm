@@ -6,7 +6,10 @@ done at all.
 
 ## Wanted
 
-- [ ] **Dark mode.** Asked for 29 Sep. Worth treating as an emcomm feature rather
+- [x] **Dark mode.** Asked for 29 Sep, built the same day. Follows the device by
+      default with an explicit override, applied before mount so there is no white
+      flash. See the Dark mode section of AUDIT.md for what to check on a real screen.
+      Originally written as: Worth treating as an emcomm feature rather
       than a preference: this app gets used at night, at a muster point, on a phone
       held at arm's length, and a white screen at 3am ruins night vision and shows up
       across a field. Consider following the system setting by default with an explicit

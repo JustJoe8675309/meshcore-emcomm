@@ -43,6 +43,39 @@ mark every transmission `DRILL`. Roughly 20 to 30 transmissions in total.
 
 Connect each radio in its own browser tab; a radio can only be held by one page.
 
+### Dark mode
+
+Built 29 Sep. Unit tests hold the mechanism -- which theme is chosen, whether it
+follows the device, whether it survives a browser that refuses storage -- but they
+cannot tell you a screen is unreadable. **Look at it.** The first build passed every
+test while painting the two Connect buttons black on near-black.
+
+- [ ] **Follows the device, and an explicit choice overrides it.** Set the phone or OS
+      to dark with Appearance on "Follow the device", and the app follows, including
+      when the device switches at sunset. Choose Light and it stays light whatever the
+      device does.
+- [ ] **No white flash at night.** The theme is applied before the app mounts and the
+      class sits on `<html>`, so neither the first paint nor an overscroll shows white.
+      Worth checking on a cold load, not a reload.
+- [ ] **The mode banner still signals.** Green normal, red live, yellow training, all
+      with black text on the saturated block. These carry meaning and must **not** be
+      dimmed or inverted: an operator reads the banner to know whether their station is
+      in a real incident. Same for the mode tabs in settings.
+- [ ] **Warnings still read as warnings.** The flood advert caution, the amber "last
+      known position" notes and the red connection errors must all stand out, not go
+      muddy. They are lifted up the colour scale in dark rather than inverted.
+- [ ] **Every button is legible**, especially `bg-white text-black` ones. The two
+      Connect buttons are the ones that caught this: black text was deliberately left
+      alone to protect the banner, which made the first thing an operator presses
+      invisible. Check contrast on a real screen at low brightness, which is the
+      condition this is for.
+- [ ] **Form fields and the browser's own furniture.** Inputs, selects and textareas
+      are painted by the forms plugin and need their own dark treatment; `color-scheme`
+      is set so scrollbars and native controls follow.
+- [ ] **The printed crib sheet is unaffected.** Print from dark mode: paper is always
+      white, so the sheet must come out light. The print rules run in their own media
+      block and should not inherit the dark layer.
+
 ### Connecting, on a browser that will not
 
 - [ ] **A browser without the transport says so.** Reported 29 Sep from a phone: in
