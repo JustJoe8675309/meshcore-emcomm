@@ -142,7 +142,7 @@ const sampleValues = {
     fivews: {
         from: "KJ5ZZZ Net Control", datetime: "221830L SEP", who: "Team 2 (KJ5ABC, KF5XYZ)",
         what: "Check the shelter at Ridge Street school, report capacity and needs",
-        when: "221900L-222100L SEP", where: "31.92702, -106.40012 (13R CR 67640 33201)",
+        when: "221900L-222100L SEP", where: "31.72702, -106.48012 (13R CR 59775 11131)",
         why: "EOC needs shelter status before the 2200 briefing", ack: "yes",
     },
     opord: {

@@ -52,17 +52,17 @@ describe("updating this station's position", () => {
 
     it("takes the position from the GPS when there is a fix, and says so", async () => {
         vi.spyOn(Connection, "probeForLiveGps").mockImplementation(async () => { GlobalState.gpsStatus = "live"; });
-        vi.spyOn(Connection, "getPosition").mockResolvedValue({ latitude: 31.92702, longitude: -106.40012 });
+        vi.spyOn(Connection, "getPosition").mockResolvedValue({ latitude: 31.72702, longitude: -106.48012 });
 
         const wrapper = mount(PositionsPanel);
         await button(wrapper, "Update position").trigger("click");
         await flushPromises();
 
-        expect(written).toEqual([[31927020, -106400120]]);
+        expect(written).toEqual([[31727020, -106480120]]);
         expect(wrapper.text()).toMatch(/Updated from the GPS at/);
         // no entry fields: nothing to ask
         expect(button(wrapper, "Save to radio")).toBeFalsy();
-        expect(wrapper.text()).toContain("31.9270° N, 106.4001° W");
+        expect(wrapper.text()).toContain("31.7270° N, 106.4801° W");
     });
 
     it("asks the operator when there is no fix, saying why, prefilled with what the radio holds", async () => {
@@ -84,15 +84,15 @@ describe("updating this station's position", () => {
         const wrapper = mount(PositionsPanel);
         await button(wrapper, "Update position").trigger("click");
         await flushPromises();
-        wrapper.vm.entryLatitude = "31.9270";
-        wrapper.vm.entryLongitude = "-106.4001";
+        wrapper.vm.entryLatitude = "31.7270";
+        wrapper.vm.entryLongitude = "-106.4801";
         await flushPromises();
         await button(wrapper, "Save to radio").trigger("click");
         await flushPromises();
 
-        expect(written).toEqual([[31927000, -106400100]]);
+        expect(written).toEqual([[31727000, -106480100]]);
         expect(wrapper.text()).toMatch(/Saved to the radio at .*entered by hand/);
-        expect(wrapper.text()).toContain("31.9270° N, 106.4001° W");
+        expect(wrapper.text()).toContain("31.7270° N, 106.4801° W");
     });
 
     it("takes an MGRS reference too", async () => {
@@ -102,14 +102,14 @@ describe("updating this station's position", () => {
         await button(wrapper, "Update position").trigger("click");
         await flushPromises();
         await button(wrapper, "MGRS").trigger("click");
-        wrapper.vm.entryMgrsText = "13R CR 67640 33201";
+        wrapper.vm.entryMgrsText = "13R CR 59776 11128";
         await flushPromises();
         await button(wrapper, "Save to radio").trigger("click");
         await flushPromises();
 
         expect(written).toHaveLength(1);
-        expect(written[0][0] / 1e6).toBeCloseTo(31.927, 3);
-        expect(written[0][1] / 1e6).toBeCloseTo(-106.4001, 3);
+        expect(written[0][0] / 1e6).toBeCloseTo(31.727, 3);
+        expect(written[0][1] / 1e6).toBeCloseTo(-106.4801, 3);
     });
 
     it("refuses a position the radio cannot hold, rather than writing it", async () => {
@@ -166,8 +166,8 @@ describe("updating this station's position", () => {
         const wrapper = mount(PositionsPanel);
         await button(wrapper, "Update position").trigger("click");
         await flushPromises();
-        wrapper.vm.entryLatitude = "31.9270";
-        wrapper.vm.entryLongitude = "-106.4001";
+        wrapper.vm.entryLatitude = "31.7270";
+        wrapper.vm.entryLongitude = "-106.4801";
         await flushPromises();
         await button(wrapper, "Save to radio").trigger("click");
         await flushPromises();

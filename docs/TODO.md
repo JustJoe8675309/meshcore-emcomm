@@ -62,6 +62,40 @@ done at all.
       repeater discovery push (`0x8E`) is one the library does not handle at all, so
       the relevant frames may need handling directly.
 
+- [ ] **Battery indicator: how often it updates, and whether it is charging.**
+      Asked for 29 Sep, alongside the three-stage gauge above.
+      There is evidence for both halves from the 28-29 Sep drain. The watcher logged
+      **100% at 16:27 on the 28th, then 16% at 13:54 the next day, then 33% two minutes
+      after that.** Two things fall out of it:
+      - **It can sit stale for hours.** A gauge an operator is meant to act on should
+        not be able to show a figure from yesterday. Find out whether the radio pushes
+        the reading or it is only fetched at connect and on certain commands, and give
+        it a known cadence.
+      - **16% to 33% in two minutes is charging, and nothing said so.** A station on a
+        charger and a station about to die look identical, which is the distinction
+        that actually matters during a net.
+      Check what `meshcore.js` exposes first: the battery may arrive with other
+      telemetry rather than on its own, and the radio may report voltage rather than a
+      percentage, in which case charging has to be inferred from the trend and should
+      only be shown when it is confident. Pairs with the three-stage gauge -- a falling
+      25% and a rising 25% deserve different treatment.
+
+- [ ] **Disconnect should offer to bring the station home first.** Asked for 29 Sep:
+      pressing Disconnect asks whether to put the node back to normal mode or to
+      disconnect as it stands.
+      This is a real trap rather than a convenience. **The way home lives on the
+      computer that holds the backup**, so a node disconnected while still in an emcomm
+      mode is left on drill channels and drill settings, and the operator who picks it
+      up on another machine gets the "Is this station in a mode?" question and no way
+      to put it back. The radio does not know it is in a mode; only this browser does.
+      Both answers have to stay easy: disconnecting as-is is correct when the operator
+      is handing the radio on mid-incident or swapping to another device, so this must
+      be a question and never an automatic switch. Worth saying in the dialog which
+      mode it is in and what coming home would change, the way the switch dialog
+      already does.
+      Note a mode switch takes 40-90 s, so the dialog has to hold the disconnect until
+      it finishes rather than racing it.
+
 - [ ] **Sweep the whole repo for anything else personal.** Deferred 29 Sep. The
       callsign and the position are done and the built bundle is clean, but that was
       two targeted passes rather than a survey.

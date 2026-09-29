@@ -119,14 +119,14 @@ describe("setting a favourite on the radio", () => {
     it("keeps a path and position that the contact already had", async () => {
         const outPath = new Uint8Array(64);
         outPath.set([1, 2, 3], 0);
-        GlobalState.contacts = [aContact({ outPathLen: 3, outPath, advLat: 31926942, advLon: -106400044 })];
+        GlobalState.contacts = [aContact({ outPathLen: 3, outPath, advLat: 31726942, advLon: -106480044 })];
 
         await Connection.setContactFavourite(KEY_A, true);
 
         const [, , , sentPathLen, sentPath, , , lat, lon] = sent[0];
         expect(sentPathLen).toBe(3);
         expect(Array.from(sentPath.slice(0, 3))).toEqual([1, 2, 3]);
-        expect([lat, lon]).toEqual([31926942, -106400044]);
+        expect([lat, lon]).toEqual([31726942, -106480044]);
     });
 
     it("reads the contacts back rather than assuming the write took", async () => {

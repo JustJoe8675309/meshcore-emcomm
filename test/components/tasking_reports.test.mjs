@@ -129,21 +129,21 @@ describe("the WHERE button", () => {
 
     it("fills in degrees with the MGRS reference from a live fix, for editing", async () => {
         GlobalState.gpsStatus = "live";
-        vi.spyOn(Connection, "getPosition").mockResolvedValue({ latitude: 31.92702, longitude: -106.40012 });
+        vi.spyOn(Connection, "getPosition").mockResolvedValue({ latitude: 31.72702, longitude: -106.48012 });
         const wrapper = mount(ReportFormFields, { props: { fields: [where], values: {} } });
         await positionButton(wrapper).trigger("click");
         await flushPromises();
-        expect(lastEmitted(wrapper, "where")).toBe("31.9270, -106.4001 (13R CR 67640 33201)");
+        expect(lastEmitted(wrapper, "where")).toBe("31.7270, -106.4801 (13R CR 59775 11131)");
     });
 
     it("uses a stored position when there is no live fix, and says it is last known", async () => {
         GlobalState.gpsStatus = "unconfirmed";
         vi.spyOn(Connection, "probeForLiveGps").mockImplementation(async () => { GlobalState.gpsStatus = "unconfirmed"; });
-        vi.spyOn(Connection, "getPosition").mockResolvedValue({ latitude: 31.92702, longitude: -106.40012 });
+        vi.spyOn(Connection, "getPosition").mockResolvedValue({ latitude: 31.72702, longitude: -106.48012 });
         const wrapper = mount(ReportFormFields, { props: { fields: [where], values: {} } });
         await positionButton(wrapper).trigger("click");
         await flushPromises();
-        expect(lastEmitted(wrapper, "where")).toBe("31.9270, -106.4001 (13R CR 67640 33201) last known");
+        expect(lastEmitted(wrapper, "where")).toBe("31.7270, -106.4801 (13R CR 59775 11131) last known");
     });
 
     it("says so when the radio has no position at all, leaving the field for a description", async () => {
@@ -163,7 +163,7 @@ describe("the WHERE button", () => {
         const location = { id: "location", tag: "LOC", label: "Location", type: "text", required: true, offersPosition: true };
         GlobalState.gpsStatus = "unconfirmed";
         vi.spyOn(Connection, "probeForLiveGps").mockImplementation(async () => { GlobalState.gpsStatus = "unconfirmed"; });
-        const get = vi.spyOn(Connection, "getPosition").mockResolvedValue({ latitude: 31.92702, longitude: -106.40012 });
+        const get = vi.spyOn(Connection, "getPosition").mockResolvedValue({ latitude: 31.72702, longitude: -106.48012 });
         const wrapper = mount(ReportFormFields, { props: { fields: [location], values: {} } });
         await positionButton(wrapper).trigger("click");
         await flushPromises();

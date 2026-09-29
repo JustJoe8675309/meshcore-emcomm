@@ -153,11 +153,11 @@ describe("ReportFormFields", () => {
         });
 
         it("writes the position into the field", async () => {
-            vi.spyOn(Connection, "getPosition").mockResolvedValue({ latitude: 31.926942, longitude: -106.400044 });
+            vi.spyOn(Connection, "getPosition").mockResolvedValue({ latitude: 31.726942, longitude: -106.480044 });
             const wrapper = mountFields([TEXT]);
             await positionButton(wrapper).trigger("click");
             await wrapper.vm.$nextTick();
-            expect(lastEmitted(wrapper, "location")).toBe("31.9269, -106.4000");
+            expect(lastEmitted(wrapper, "location")).toBe("31.7269, -106.4800");
         });
 
         it("asks the radio again rather than reusing what it said on connect", async () => {
@@ -193,14 +193,14 @@ describe("ReportFormFields", () => {
             const probe = vi.spyOn(Connection, "probeForLiveGps").mockImplementation(async () => {
                 GlobalState.gpsStatus = "live";
             });
-            vi.spyOn(Connection, "getPosition").mockResolvedValue({ latitude: 31.9, longitude: -106.4 });
+            vi.spyOn(Connection, "getPosition").mockResolvedValue({ latitude: 31.7, longitude: -106.48 });
 
             const wrapper = mountFields([TEXT]);
             await positionButton(wrapper).trigger("click");
             await wrapper.vm.$nextTick();
 
             expect(probe).toHaveBeenCalled();
-            expect(lastEmitted(wrapper, "location")).toBe("31.9000, -106.4000");
+            expect(lastEmitted(wrapper, "location")).toBe("31.7000, -106.4800");
         });
 
         it("fills nothing if the second probe still cannot confirm a fix", async () => {

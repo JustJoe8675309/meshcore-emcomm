@@ -26,7 +26,7 @@ function aContact(n, overrides = {}) {
 function selfInfo(overrides = {}) {
     return {
         name: "Joe-KJ5ZZZ-HTv3", publicKey: NODE_KEY,
-        advLat: 31926942, advLon: -106400044,
+        advLat: 31726942, advLon: -106480044,
         txPower: 22, maxTxPower: 22,
         radioFreq: 910525, radioBw: 62500, radioSf: 7, radioCr: 5,
         manualAddContacts: 0,
@@ -73,7 +73,7 @@ describe("capturing a backup", () => {
             name: "Joe-KJ5ZZZ-HTv3",
             txPower: 22,
             radioFreq: 910525, radioBw: 62500, radioSf: 7, radioCr: 5,
-            advLat: 31926942, advLon: -106400044,
+            advLat: 31726942, advLon: -106480044,
         });
     });
 
@@ -193,7 +193,7 @@ describe("restoring a backup", () => {
 
     it("still writes the position for a restore the operator asked for", async () => {
         await NodeBackup.restore(backup);
-        expect(radio.writes.find((w) => w[0] === "position")).toEqual(["position", 31926942, -106400044]);
+        expect(radio.writes.find((w) => w[0] === "position")).toEqual(["position", 31726942, -106480044]);
     });
 
     // "Restoring adds them back and removes nothing", says the page. A backup taken

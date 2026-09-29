@@ -24,8 +24,8 @@ const SELF_INFO = {
     radioCr: 5,
     txPower: 20,
     maxTxPower: 22,
-    advLat: 31926949,
-    advLon: -106400091,
+    advLat: 31726949,
+    advLon: -106480091,
     manualAddContacts: 0,
 };
 

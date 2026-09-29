@@ -90,7 +90,7 @@ describe("MGRS", () => {
     });
 
     it("reads a reference back to within a metre, anywhere MGRS reaches", () => {
-        const points = [[0, 0], [48.8582, 2.2945], [31.92702, -106.40012], [-33.8568, 151.2153], [60, 5],
+        const points = [[0, 0], [48.8582, 2.2945], [31.72702, -106.48012], [-33.8568, 151.2153], [60, 5],
             [78, 15], [-45.1, -70.3], [38.8895, -77.0353], [0.0001, -0.0001], [-0.5, 33], [71.9, 25.5], [55.99, 10]];
         for(const [lat, lon] of points){
             const back = Mgrs.toLatLon(Mgrs.fromLatLon(lat, lon).text);
@@ -101,10 +101,10 @@ describe("MGRS", () => {
     });
 
     it("reads a reference typed any way, at any even number of digits", () => {
-        const spaced = Mgrs.toLatLon("13R CR 67640 33201");
-        const compact = Mgrs.toLatLon("13rcr6764033201");
+        const spaced = Mgrs.toLatLon("13R CR 59776 11128");
+        const compact = Mgrs.toLatLon("13rcr5977611128");
         expect(compact.latitude).toBeCloseTo(spaced.latitude, 9);
-        const hundred = Mgrs.toLatLon("13R CR 676 332");
+        const hundred = Mgrs.toLatLon("13R CR 597 111");
         expect(hundred.precisionMetres).toBe(100);
         // a coarser reference names a bigger square, and its centre is given
         expect(Geo.distanceMetres(spaced.latitude, spaced.longitude, hundred.latitude, hundred.longitude)).toBeLessThan(100);
@@ -112,10 +112,10 @@ describe("MGRS", () => {
 
     it("refuses a reference it cannot read", () => {
         expect(Mgrs.toLatLon("")).toBe(null);
-        expect(Mgrs.toLatLon("13R CR 67640 3320")).toBe(null);
+        expect(Mgrs.toLatLon("13R CR 59776 1112")).toBe(null);
         expect(Mgrs.toLatLon("13I CR 1 1")).toBe(null);
         expect(Mgrs.toLatLon("99R CR 11")).toBe(null);
-        expect(Mgrs.toLatLon("31.9270, -106.4001")).toBe(null);
+        expect(Mgrs.toLatLon("31.7270, -106.4801")).toBe(null);
     });
 
     it("has nothing to say beyond 84 north or 80 south, where MGRS stops", () => {
@@ -167,13 +167,13 @@ describe("links to the device's map app", () => {
     });
 
     it("hands Android a geo: link, which any map app can take, offline ones included", () => {
-        expect(Geo.mapLink(31.9270, -106.4001, "KJ5ZZZ-EMCOMM", "android"))
-            .toBe("geo:31.927000,-106.400100?q=31.927000,-106.400100(KJ5ZZZ-EMCOMM)");
+        expect(Geo.mapLink(31.7270, -106.4801, "KJ5ZZZ-EMCOMM", "android"))
+            .toBe("geo:31.727000,-106.480100?q=31.727000,-106.480100(KJ5ZZZ-EMCOMM)");
     });
 
     it("opens Apple Maps on an iPhone, iPad or Mac", () => {
-        expect(Geo.mapLink(31.9270, -106.4001, "KJ5ZZZ-EMCOMM", "apple"))
-            .toBe("https://maps.apple.com/?ll=31.927000,-106.400100&q=KJ5ZZZ-EMCOMM");
+        expect(Geo.mapLink(31.7270, -106.4801, "KJ5ZZZ-EMCOMM", "apple"))
+            .toBe("https://maps.apple.com/?ll=31.727000,-106.480100&q=KJ5ZZZ-EMCOMM");
     });
 
     it("falls back to OpenStreetMap in the browser anywhere else", () => {
@@ -182,7 +182,7 @@ describe("links to the device's map app", () => {
     });
 
     it("keeps a label with odd characters from breaking the link", () => {
-        expect(Geo.mapLink(31.927, -106.4001, "Joe (KJ5ZZZ) & co", "apple")).toContain("q=Joe%20(KJ5ZZZ)%20%26%20co");
+        expect(Geo.mapLink(31.727, -106.4801, "Joe (KJ5ZZZ) & co", "apple")).toContain("q=Joe%20(KJ5ZZZ)%20%26%20co");
     });
 
     it("gives no link where there is no position", () => {
@@ -209,9 +209,9 @@ describe("how positions are written", () => {
     });
 
     it("marks two points a few metres apart as the same location, where a bearing means nothing", () => {
-        const a = { latitude: 31.9270, longitude: -106.4001 };
-        expect(Geo.relation(a, { latitude: 31.92702, longitude: -106.40011 }).sameLocation).toBe(true);
-        expect(Geo.relation(a, { latitude: 31.9280, longitude: -106.4001 }).sameLocation).toBe(false);
+        const a = { latitude: 31.7270, longitude: -106.4801 };
+        expect(Geo.relation(a, { latitude: 31.72702, longitude: -106.48011 }).sameLocation).toBe(true);
+        expect(Geo.relation(a, { latitude: 31.7280, longitude: -106.4801 }).sameLocation).toBe(false);
     });
 
     it("gives distance in miles and kilometres together", () => {

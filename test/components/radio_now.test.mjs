@@ -20,7 +20,7 @@ const SELF_INFO = {
     publicKey: new Uint8Array(32).fill(0x39),
     radioFreq: 910525, radioBw: 62500, radioSf: 7, radioCr: 5,
     txPower: 20, maxTxPower: 22,
-    advLat: 31926949, advLon: -106400091,
+    advLat: 31726949, advLon: -106480091,
     manualAddContacts: 0,
 };
 
@@ -62,13 +62,13 @@ describe("the position and clock group", () => {
         await flushPromises();
         await open(wrapper);
 
-        expect(field(wrapper, "e.g: -38.664646").element.value).toBe("31.926949");
-        expect(field(wrapper, "e.g: 178.023507").element.value).toBe("-106.400091");
+        expect(field(wrapper, "e.g: -38.664646").element.value).toBe("31.726949");
+        expect(field(wrapper, "e.g: 178.023507").element.value).toBe("-106.480091");
 
         await wrapper.findAll("button").find((b) => b.text() === "Write to the radio").trigger("click");
         await flushPromises();
 
-        expect(latLong).toHaveBeenCalledWith(31926949, -106400091);
+        expect(latLong).toHaveBeenCalledWith(31726949, -106480091);
         expect(wrapper.text()).toContain("Position written to the radio");
     });
 

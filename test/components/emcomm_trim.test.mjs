@@ -333,11 +333,11 @@ describe("applying the settings", () => {
     });
 
     it("writes a live GPS fix as the advert position", async () => {
-        vi.spyOn(Connection, "getPosition").mockResolvedValue({ latitude: 31.926986, longitude: -106.400129 });
+        vi.spyOn(Connection, "getPosition").mockResolvedValue({ latitude: 31.726986, longitude: -106.480129 });
 
         await EmcommMode.applySettings({ setPositionFromGps: true });
 
-        expect(radio.calls).toEqual([["position", 31926986, -106400129]]);
+        expect(radio.calls).toEqual([["position", 31726986, -106480129]]);
     });
 
     it("leaves the position alone when there is no live fix", async () => {

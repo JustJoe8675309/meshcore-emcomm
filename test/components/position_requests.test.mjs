@@ -407,22 +407,22 @@ describe("entering the current position when only a last known one is held", () 
         await button(wrapper, "Enter current position").trigger("click");
         // it starts from what the radio holds
         expect(wrapper.vm.entryLatitude).toBe("31.7587");
-        wrapper.vm.entryLatitude = "31.9270";
-        wrapper.vm.entryLongitude = "-106.4001";
+        wrapper.vm.entryLatitude = "31.7270";
+        wrapper.vm.entryLongitude = "-106.4801";
         await flushPromises();
         expect(wrapper.text()).toContain("13R CR");
         await button(wrapper, "Save to radio and send").trigger("click");
         await flushPromises();
 
-        expect(written).toEqual([[31927000, -106400100]]);
+        expect(written).toEqual([[31727000, -106480100]]);
         const sent = datagrams[0];
         expect(sent.manual).toBe(true);
         expect(sent.lastKnown).toBe(false);
         expect(sent.liveFix).toBe(false);
         expect(sent.fixTime).toBeGreaterThan(0);
-        expect(sent.latitude).toBeCloseTo(31.927, 6);
+        expect(sent.latitude).toBeCloseTo(31.727, 6);
         // and the radio now holds it, as its position for any later answer
-        expect(GlobalState.selfInfo.advLat).toBe(31927000);
+        expect(GlobalState.selfInfo.advLat).toBe(31727000);
     });
 
     it("will not send an entry that is not a position", async () => {
@@ -473,8 +473,8 @@ describe("entering the current position when only a last known one is held", () 
         PositionService.onDirectText(THEM_CONTACT, Protocol.toDirectText({ kind: Protocol.KIND.REQUEST, tag: 3, to: ME, from: THEM, name: "" }, "x"));
         const directs = [];
         vi.spyOn(Connection, "sendCommandData").mockImplementation(async (key, text) => { directs.push(text); });
-        await PositionService.answer(PositionService.state.prompt, { manualPosition: { latitude: 31.927, longitude: -106.4001 } });
-        expect(directs[0]).toMatch(/^Position of Joe-KJ5ZZZ-HTv3 \(entered by hand\): 31\.9270° N, 106\.4001° W #mce1:/);
+        await PositionService.answer(PositionService.state.prompt, { manualPosition: { latitude: 31.727, longitude: -106.4801 } });
+        expect(directs[0]).toMatch(/^Position of Joe-KJ5ZZZ-HTv3 \(entered by hand\): 31\.7270° N, 106\.4801° W #mce1:/);
     });
 
     it("is shown as entered by hand where it is received, not as last known", async () => {
@@ -618,33 +618,33 @@ describe("entering the current position as MGRS", () => {
     it("starts from the radio's position as a reference, and shows it back in degrees", async () => {
         const wrapper = await openEntry();
         expect(wrapper.vm.entryMgrsText).toBe("13R CR 59180 14651");
-        wrapper.vm.entryMgrsText = "13R CR 67640 33201";
+        wrapper.vm.entryMgrsText = "13R CR 59776 11128";
         await flushPromises();
-        expect(wrapper.text()).toContain("31.9270° N, 106.4001° W");
+        expect(wrapper.text()).toContain("31.7270° N, 106.4801° W");
     });
 
     it("saves and sends the position the reference names", async () => {
         const wrapper = await openEntry();
-        wrapper.vm.entryMgrsText = "13R CR 67640 33201";
+        wrapper.vm.entryMgrsText = "13R CR 59775 11131";
         await flushPromises();
         await button(wrapper, "Save to radio and send").trigger("click");
         await flushPromises();
         expect(written).toHaveLength(1);
         const [lat, lon] = written[0];
-        expect(Geo.distanceMetres(lat / 1e6, lon / 1e6, 31.92702, -106.40012)).toBeLessThan(1);
+        expect(Geo.distanceMetres(lat / 1e6, lon / 1e6, 31.72702, -106.48012)).toBeLessThan(1);
         expect(datagrams[0].manual).toBe(true);
     });
 
     it("says how big the square is for a shorter reference", async () => {
         const wrapper = await openEntry();
-        wrapper.vm.entryMgrsText = "13R CR 676 332";
+        wrapper.vm.entryMgrsText = "13R CR 597 111";
         await flushPromises();
         expect(wrapper.text()).toContain("to within 100 m");
     });
 
     it("will not send a reference it cannot read", async () => {
         const wrapper = await openEntry();
-        wrapper.vm.entryMgrsText = "13R CR 6764 332";
+        wrapper.vm.entryMgrsText = "13R CR 5977 111";
         await flushPromises();
         expect(wrapper.text()).toContain("Not an MGRS reference");
         expect(button(wrapper, "Save to radio and send").attributes("disabled")).toBeDefined();
@@ -656,11 +656,11 @@ describe("entering the current position as MGRS", () => {
 
     it("carries a position across when switching between degrees and MGRS", async () => {
         const wrapper = await openEntry();
-        wrapper.vm.entryMgrsText = "13R CR 67640 33201";
+        wrapper.vm.entryMgrsText = "13R CR 59776 11128";
         await flushPromises();
         await button(wrapper, "Degrees").trigger("click");
-        expect(Number(wrapper.vm.entryLatitude)).toBeCloseTo(31.92702, 4);
-        expect(Number(wrapper.vm.entryLongitude)).toBeCloseTo(-106.40012, 4);
+        expect(Number(wrapper.vm.entryLatitude)).toBeCloseTo(31.72702, 4);
+        expect(Number(wrapper.vm.entryLongitude)).toBeCloseTo(-106.48012, 4);
     });
 
 });
@@ -942,8 +942,8 @@ describe("asking", () => {
 
     it("takes a position from the station's radio when its app does not answer", async () => {
         // node 2's real answer on the bench, with sharing on: battery 4.27 V, GPS
-        // 31.9269 N 106.4000 W at 1220.5 m, chip at 60 C, then padding
-        const lpp = [1, 116, 1, 171, 1, 136, 4, 223, 37, 239, 195, 192, 1, 220, 194, 1, 103, 2, 88, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        // 31.7269 N 106.4800 W at 1220.5 m, chip at 60 C, then padding
+        const lpp = [1, 116, 1, 171, 1, 136, 4, 215, 85, 239, 192, 160, 1, 220, 194, 1, 103, 2, 88, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         expect(lpp[5]).toBe(CayenneLpp.LPP_GPS);
         Connection.requestTelemetry.mockResolvedValue({ pubKeyPrefix: THEM.slice(0, 6), lppSensorData: new Uint8Array(lpp) });
         const request = PositionService.start(THEM_CONTACT, channel, { type: "once" });
@@ -951,8 +951,8 @@ describe("asking", () => {
         expect(request.status).toBe("answered");
         const report = PositionService.latestByStation()[0];
         expect(report.source).toBe("radio");
-        expect(report.latitude).toBeCloseTo(31.9269, 4);
-        expect(report.longitude).toBeCloseTo(-106.4000, 4);
+        expect(report.latitude).toBeCloseTo(31.7269, 4);
+        expect(report.longitude).toBeCloseTo(-106.4800, 4);
     });
 
     it("says silence may mean either, since a radio that does not share says nothing", async () => {
