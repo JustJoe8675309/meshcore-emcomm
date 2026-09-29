@@ -25,7 +25,56 @@ class Connection {
     // enable to log raw tx/rx bytes to console
     static log = false;
 
+    /**
+     * Why a connect attempt failed, said on the connect screen rather than in an
+     * alert. `GlobalState.connectionError` is already rendered above the buttons;
+     * these two paths were the only ones that never set it.
+     */
+    static failedToConnect(message) {
+        GlobalState.connectionError = message;
+        return false;
+    }
+
+    /**
+     * Whether this browser will do Web Bluetooth at all, and what to tell the
+     * operator if not.
+     *
+     * `NotFoundError` means two different things and the old code treated them as
+     * one: the operator closed the chooser, which deserves silence, and the browser
+     * will not open a chooser at all, which does not. **Brave disables Web Bluetooth
+     * by default** behind `brave://flags/#brave-web-bluetooth-api`, and there
+     * `navigator.bluetooth` still exists while `requestDevice` rejects with
+     * NotFoundError -- so pressing Connect did nothing whatsoever, with nothing said.
+     * Reported from a phone on 29 Sep: "you click and nothing happens".
+     *
+     * Firefox and Safari have no Web Bluetooth at all, and iOS has none in any
+     * browser, so this is not one odd build: it is most of the phones an operator
+     * might pick up.
+     */
+    static async bluetoothUnavailable() {
+        if(typeof navigator === "undefined" || navigator.bluetooth == null){
+            return "This browser cannot use Bluetooth. Chrome, Edge or Brave on Android or a computer can; Firefox and Safari cannot, and no browser can on iOS. A USB cable and Connect via Serial works anywhere.";
+        }
+        // present but switched off, which is Brave's default
+        try {
+            if(navigator.bluetooth.getAvailability != null && !await navigator.bluetooth.getAvailability()){
+                return "Bluetooth is turned off for this browser, or there is no Bluetooth adapter. In Brave it is off by default: open brave://flags/#brave-web-bluetooth-api, set it to Enabled and relaunch. Otherwise check the machine's own Bluetooth is on.";
+            }
+        } catch(e) {
+            // a browser that refuses the question is not a reason to block the attempt
+        }
+        return null;
+    }
+
     static async connectViaBluetooth() {
+
+        GlobalState.connectionError = null;
+
+        const unavailable = await this.bluetoothUnavailable();
+        if(unavailable != null){
+            return this.failedToConnect(unavailable);
+        }
+
         try {
             await this.connect(await WebBleConnection.open(), "bluetooth");
             return true;
@@ -33,20 +82,26 @@ class Connection {
 
             console.log(e);
 
-            // ignore device not selected error
+            // the operator closed the chooser without picking, which is not a fault.
+            // Only silent because the check above has already ruled out the browser
+            // never having opened one.
             if(e.name === "NotFoundError"){
                 return false;
             }
 
-            // show error message
-            alert("failed to connect to ble device!");
-
-            return false;
+            return this.failedToConnect(`Could not connect over Bluetooth: ${e.message ?? e.name ?? e}`);
 
         }
     }
 
     static async connectViaSerial() {
+
+        GlobalState.connectionError = null;
+
+        if(typeof navigator === "undefined" || navigator.serial == null){
+            return this.failedToConnect("This browser cannot use a USB serial cable. Chrome, Edge or Brave on a computer can; Firefox and Safari cannot, and no browser can on iOS or Android without an adapter. Connect via Bluetooth instead.");
+        }
+
         try {
             await this.connect(await WebSerialConnection.open(), "serial");
             return true;
@@ -54,15 +109,12 @@ class Connection {
 
             console.log(e);
 
-            // ignore device not selected error
+            // the operator closed the port chooser without picking
             if(e.name === "NotFoundError"){
                 return false;
             }
 
-            // show error message
-            alert("failed to connect to serial device!");
-
-            return false;
+            return this.failedToConnect(`Could not connect over the cable: ${e.message ?? e.name ?? e}`);
 
         }
     }

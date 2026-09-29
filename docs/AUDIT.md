@@ -43,6 +43,25 @@ mark every transmission `DRILL`. Roughly 20 to 30 transmissions in total.
 
 Connect each radio in its own browser tab; a radio can only be held by one page.
 
+### Connecting, on a browser that will not
+
+- [ ] **A browser without the transport says so.** Reported 29 Sep from a phone: in
+      Brave, pressing Connect via Bluetooth did nothing at all and the app said
+      nothing. Brave disables Web Bluetooth by default behind
+      `brave://flags/#brave-web-bluetooth-api`, and there `navigator.bluetooth` still
+      exists while `requestDevice` rejects with **NotFoundError** -- which is also what
+      a cancelled chooser throws, and the catch swallowed it deliberately. So the two
+      meanings were one, and the operator got silence.
+      Fixed: the browser is asked whether it can do the transport *before* the attempt,
+      so NotFoundError afterwards can honestly be read as "they closed the chooser".
+      The message names the flag, and both paths now use the `connectionError` line
+      already rendered above the buttons rather than an `alert()`.
+      Check on Brave with the flag off (silence is the failure), Brave with it on, and
+      a browser with no Web Bluetooth at all such as Firefox. Closing the chooser
+      without picking must still say nothing. This is not an exotic case: Firefox and
+      Safari have no Web Bluetooth, and **iOS has none in any browser**, so it is most
+      of the phones somebody might pick up.
+
 ### Loading screen
 
 - [ ] **Connecting.** A loading screen covers the app from the moment the link opens. It
