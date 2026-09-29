@@ -61,6 +61,11 @@ Connect each radio in its own browser tab; a radio can only be held by one page.
       without picking must still say nothing. This is not an exotic case: Firefox and
       Safari have no Web Bluetooth, and **iOS has none in any browser**, so it is most
       of the phones somebody might pick up.
+      **Brave with the flag ON: confirmed working 29 Sep** -- the chooser came up on the
+      operator's phone. The flag-OFF message is still only held by unit tests, because
+      confirming it means turning Web Bluetooth back off on a phone that is now in use.
+      Worth catching on any browser that lacks the API outright, where no flag has to be
+      disturbed.
 
 ### Loading screen
 
