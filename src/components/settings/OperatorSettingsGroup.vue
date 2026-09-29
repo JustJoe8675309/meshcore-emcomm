@@ -44,6 +44,23 @@
                 </div>
             </div>
 
+            <div class="w-full p-2">
+                <div class="block mb-2 text-sm font-medium text-gray-900">Appearance</div>
+                <select
+                    :value="theme"
+                    @change="onThemeChange"
+                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                    <option value="system">Follow the device</option>
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                </select>
+                <div class="mt-1 text-xs text-gray-500">
+                    Dark is worth having at night: a white screen costs you your night vision and
+                    is visible a long way off. Following the device is usually right, since a phone
+                    already switches for the evening.
+                </div>
+            </div>
+
             <div class="w-full p-2 text-xs text-gray-500">
                 Saved as they are typed, so there is nothing here to Save. The operator is the
                 person, not the station: switching modes does not change who is at the radio.
@@ -69,6 +86,7 @@
  */
 import SettingsSection from "./SettingsSection.vue";
 import OperatorSettings from "../../js/reports/OperatorSettings.js";
+import Theme from "../../js/Theme.js";
 
 export default {
     name: 'OperatorSettingsGroup',
@@ -81,6 +99,9 @@ export default {
         },
         onSkywarnNumberInput(event) {
             OperatorSettings.setSkywarnNumber(event.target.value);
+        },
+        onThemeChange(event) {
+            Theme.set(event.target.value);
         },
         onDtgZoneChange(event) {
             OperatorSettings.setDtgZone(event.target.value);
@@ -95,6 +116,9 @@ export default {
         },
         dtgZone() {
             return OperatorSettings.state.dtgZone;
+        },
+        theme() {
+            return Theme.state.choice;
         },
     },
 };

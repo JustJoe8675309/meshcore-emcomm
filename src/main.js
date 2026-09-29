@@ -5,6 +5,7 @@ import "./style.css";
 
 import App from './components/App.vue';
 import GlobalState from "./js/GlobalState.js";
+import Theme from "./js/Theme.js";
 import Connection from "./js/Connection.js";
 
 // helper function that force redirects to the main page if there is no database connection
@@ -100,6 +101,11 @@ window.Connection = Connection;
 // access GlobalState from window
 // this allows inspecting app state, and demoing the ui without a device attached
 window.GlobalState = GlobalState;
+
+
+// before the app mounts, so the first paint is already the right colour rather
+// than a white flash at night
+Theme.start();
 
 createApp(App)
     .use(router)

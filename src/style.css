@@ -84,3 +84,90 @@
     }
 
 }
+
+/*
+ * Dark mode.
+ *
+ * Asked for on 29 Sep, and treated as an emcomm feature rather than a preference:
+ * this gets read at night at a muster point, and a white screen both ruins the
+ * operator's night vision and is visible across a field.
+ *
+ * Done as one layer keyed on the palette actually in use, rather than by adding a
+ * `dark:` variant to each of roughly 970 colour classes across 42 components. That
+ * would be a diff nobody could review, and every missed spot is a white patch at
+ * night. Here the mapping lives in one place and can be read end to end.
+ *
+ * Two rules held throughout:
+ *
+ *  - **Colour that carries meaning is left alone.** The mode banner is a saturated
+ *    block with black text -- green for normal, red for a live incident, yellow for a
+ *    drill -- and an operator reads it to know what their station is doing. So
+ *    `text-black` and the banner's backgrounds are never touched here. Neither is
+ *    DRILL marking or anything else that says what kind of traffic this is.
+ *  - **Mid-tone warnings are lifted, not inverted.** amber-700 and red-600 are chosen
+ *    to be legible on white; on a dark surface they go muddy and stop reading as a
+ *    warning at all. They are moved up the scale rather than reversed.
+ *
+ * The background is a dark slate rather than pure black: black with light text makes
+ * text halo at night, and there is no contrast left to show a raised surface with.
+ */
+.dark {
+    color-scheme: dark;
+}
+
+/* surfaces, lightest-on-top like the light theme's white-on-gray */
+.dark .bg-white { background-color: #1b1f24; }
+.dark .bg-gray-50 { background-color: #15181c; }
+.dark .bg-gray-100 { background-color: #22272e; }
+.dark .bg-gray-200 { background-color: #2b313a; }
+.dark .bg-gray-300 { background-color: #39414c; }
+
+/* the page itself, so overscroll and short pages do not flash white */
+.dark body { background-color: #0f1216; }
+.dark .bg-gray-900 { background-color: #05070a; }
+
+/* ink, descending as it does in the light theme */
+.dark .text-gray-900 { color: #e8eaed; }
+.dark .text-gray-800 { color: #dcdfe4; }
+.dark .text-gray-700 { color: #c8ccd3; }
+.dark .text-gray-600 { color: #aeb4bd; }
+.dark .text-gray-500 { color: #949ba6; }
+.dark .text-gray-400 { color: #7c828c; }
+
+/* lines */
+.dark .border-gray-300 { border-color: #39414c; }
+.dark .border-gray-200 { border-color: #2b313a; }
+.dark .border-t, .dark .border-b, .dark .border-x, .dark .divide-y > * + * { border-color: #2b313a; }
+
+/* warnings and errors: lifted up the scale so they still read as warnings */
+.dark .text-red-600 { color: #f87171; }
+.dark .text-red-500 { color: #fca5a5; }
+.dark .text-red-700 { color: #f87171; }
+.dark .text-red-900 { color: #fecaca; }
+.dark .text-amber-900 { color: #fde68a; }
+.dark .text-amber-800 { color: #fcd34d; }
+.dark .text-amber-700 { color: #fbbf24; }
+.dark .text-amber-500 { color: #fbbf24; }
+.dark .bg-amber-50 { background-color: #2a2213; }
+.dark .border-amber-300 { border-color: #6b5426; }
+.dark .text-green-700 { color: #4ade80; }
+
+/* links and primary actions. The blues stay blue: they are already legible on a dark
+   surface, and a button that moves colour between themes stops being recognisable */
+.dark .text-blue-700 { color: #7dabf8; }
+.dark .text-blue-600 { color: #7dabf8; }
+.dark .text-blue-900 { color: #aecbfa; }
+.dark .bg-blue-50 { background-color: #14243d; }
+.dark .border-blue-200 { border-color: #2b4a7a; }
+
+/* form controls, which the forms plugin paints white */
+.dark input, .dark select, .dark textarea {
+    background-color: #15181c;
+    border-color: #39414c;
+    color: #e8eaed;
+}
+.dark input::placeholder, .dark textarea::placeholder { color: #767d88; }
+
+/* the dialog backdrop is already black at 40%; deepen it so a light dialog edge does
+   not glow through at night */
+.dark .bg-black\/40 { background-color: rgb(0 0 0 / 0.65); }
