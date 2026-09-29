@@ -823,10 +823,16 @@ width, and only the real device tests the touch targets.
       "Joe-KJ5###-EDC" rendered in full at 500px and 16/22/24px fonts, never truncated,
       and no sideways scroll at any of them.
 - [ ] **The charge is readable** in its badge, and turns red at 20% or less.
-      Readable half seen 28 Sep. The red half needs a radio actually down at 20%, so
-      it waits for a flat battery rather than a bench session -- worth doing once
-      deliberately, since a colour that only appears when things are going badly is
-      exactly the kind that is never seen until it matters.
+      **PASSED 29 Sep on a genuinely flat radio**, which is the only way this one can
+      be done. The badge read **16% in `rgb(220, 38, 38)`** and, once charging,
+      **33% in `rgb(55, 65, 81)`** -- exactly `text-red-600` and `text-gray-700` from
+      `Header.vue`, either side of the `<= 20` threshold.
+      The exact 21/20 boundary was not sampled: the watcher only records on change and
+      the tab was backgrounded, where Chrome throttles timers to about once a minute,
+      so it jumped 100 to 16. The claim the item makes -- readable, and red at 20 or
+      less -- is demonstrated either side regardless.
+      Note the thresholds are due to change: a three-stage gauge, yellow at 25% and red
+      at 15%, is on the to-do list. When it lands this item becomes 26/25 and 16/15.
 - [ ] **Sharing is in the menu** on a phone, since its button folds away there.
       Settings keeps its own button at every width, between the advert menu and the
       close button, and Disconnect is still one press.

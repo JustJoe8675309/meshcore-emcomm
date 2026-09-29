@@ -9,14 +9,29 @@ done at all.
 - [x] **Dark mode.** Asked for 29 Sep, built the same day. Follows the device by
       default with an explicit override, applied before mount so there is no white
       flash. See the Dark mode section of AUDIT.md for what to check on a real screen.
-      Originally written as: Worth treating as an emcomm feature rather
-      than a preference: this app gets used at night, at a muster point, on a phone
-      held at arm's length, and a white screen at 3am ruins night vision and shows up
-      across a field. Consider following the system setting by default with an explicit
-      override, since an operator on a bright morning wants the opposite of one at
-      night. The mode banner, the DRILL marking and the amber warnings all carry
-      meaning by colour, so they need checking against a dark background rather than
-      inverting with everything else.
+
+- [ ] **A three-stage battery gauge: yellow at 25%, red at 15%.** Asked for 29 Sep.
+      Today it is two-stage and the threshold is a single `<= 20`, in
+      `Header.vue:237`, painting `text-red-600` against `text-gray-700`.
+      The point of the middle stage is that red should mean *act now*, and a gauge that
+      only ever goes red gives no warning while there is still time to do something
+      about it. Yellow at 25% is "put the spare on charge"; red at 15% is "you are
+      about to lose this station".
+      **Three things to get right:**
+      1. The thresholds are `<= 25` and `<= 15`, so the order matters -- test 15 as red
+         rather than yellow, and 25 as yellow rather than grey.
+      2. Yellow on white is the classic unreadable combination. `text-yellow-400` is
+         fine on the mode banner because it is a *background* there with black on it;
+         as text it needs to be darker, around `amber-600`, and then lifted in dark
+         mode like the other warnings.
+      3. Colour must not be the only signal, since this is exactly the readout an
+         operator glances at in bad light. Consider the number itself doing some of the
+         work, or an icon change.
+      **This supersedes an in-flight test.** A radio is being drained to check the
+      current red-at-20% boundary, and AUDIT.md and the memory both record the check as
+      "21% grey against 20% red". When this lands, that item becomes 26/25 for yellow
+      and 16/15 for red, and the notes need updating with it -- otherwise the next run
+      chases a boundary that no longer exists.
 
 - [ ] **A version number, visible at the top.** Asked for 29 Sep: major and minor,
       with the date it was deployed, such as `V1.1 (29 Sept 2026)`.
