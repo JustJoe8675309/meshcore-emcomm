@@ -23,7 +23,13 @@
                 </label>
             </div>
             <div v-if="position" class="text-xs text-gray-600"><MapLink :latitude="position.latitude" :longitude="position.longitude" :text="positionMgrs" label="Position entered"/></div>
-            <div v-if="invalid" class="text-xs text-red-600">
+            <!-- 0, 0 is refused for a good reason and used to be told a bad one: the
+                 message cited a range it is comfortably inside -->
+            <div v-if="invalid && atNullIsland" class="text-xs text-red-600">
+                0, 0 is how a radio says it has no fix, so it cannot be used as a position.
+                If you really are in the Gulf of Guinea, nudge one field by 0.0001.
+            </div>
+            <div v-else-if="invalid" class="text-xs text-red-600">
                 Not a position: latitude -90 to 90, longitude -180 to 180, south and west negative.
             </div>
         </template>
@@ -72,6 +78,20 @@ export default {
         },
         precision() {
             return this.position?.precision ?? 1;
+        },
+
+        /**
+         * Both fields entered and both zero. `Geo.isPosition` refuses this because it
+         * is what a radio reports when it has no fix, and treating it as a place would
+         * put a station in the Gulf of Guinea. That is right; the wording was not.
+         */
+        atNullIsland() {
+            const lat = Number(this.latitude);
+            const lon = Number(this.longitude);
+            return this.latitude !== "" && this.longitude !== ""
+                && this.latitude != null && this.longitude != null
+                && Number.isFinite(lat) && Number.isFinite(lon)
+                && lat === 0 && lon === 0;
         },
     },
 }
