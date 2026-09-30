@@ -520,7 +520,11 @@ class Connection {
                     // way home from an emcomm mode. Taking the backup here also
                     // means a switch later does not have to stop and read the whole
                     // radio first, which is not what an incident wants.
-                    const backup = await NodeBackup.capture();
+                    // the contacts were read a few lines above, merged over as many
+                    // passes as the link allowed; reading them again here doubled the
+                    // most expensive part of a Bluetooth connect and, on node 2, came
+                    // back with fewer than the pass that preceded it
+                    const backup = await NodeBackup.capture({ reread: false });
 
                     // A radio holding an emcomm mode's own channel was probably
                     // left in that mode, on another computer, where the record of
@@ -974,10 +978,27 @@ class Connection {
                 // one of the frames the Bluetooth queue drops.
                 ask = !result.refused;
 
-                // out of time. A connect cannot sit here for ever, and the list
-                // says what is missing
-                if(Date.now() > budget){
-                    console.log(`contacts: giving up after ${Math.round((Date.now() - startedAt) / 1000)}s`);
+                // Out of time -- unless the last pass was still gaining.
+                //
+                // A connect cannot sit here for ever, and the list says what is
+                // missing. But a flat budget cuts off a read mid-convergence, which is
+                // exactly what it did on node 2: pass 1 reached 120 of 260, pass 2
+                // reached 194, and the clock stopped it at 127 s with the passes still
+                // climbing. Stopping a read that is working is how a way home ends up
+                // missing 46 contacts.
+                //
+                // So the budget ends a read that has stalled, and a read still bringing
+                // contacts in is allowed to carry on to a hard ceiling. The ceiling is
+                // what keeps this bounded: a link slow enough to still be gaining at
+                // four minutes is one the operator needs to be told about rather than
+                // waited on.
+                const gained = byPublicKey.size - before;
+                const worthGoingOn = gained >= Math.max(3, Math.round((announced ?? 0) / 100));
+                const outOfTime = Date.now() > budget && !worthGoingOn;
+                const outOfCeiling = Date.now() > startedAt + this.CONTACT_LOAD_CEILING_MILLIS;
+                if(outOfTime || outOfCeiling){
+                    console.log(`contacts: giving up after ${Math.round((Date.now() - startedAt) / 1000)}s`
+                        + `${outOfCeiling ? " at the ceiling" : ""}, last pass gained ${gained}`);
                     break;
                 }
 
@@ -1611,6 +1632,15 @@ class Connection {
     static MAX_CONTACT_LOAD_PASSES = 8;
 
     static CONTACT_LOAD_BUDGET_MILLIS = 120000;
+
+    /**
+     * The longest a contact read may run when it is still gaining contacts.
+     *
+     * The budget above ends a read that has stalled. This ends one that has not, and
+     * exists so that "still gaining" cannot mean "for ever" on a link that dribbles a
+     * handful of contacts a minute.
+     */
+    static CONTACT_LOAD_CEILING_MILLIS = 240000;
 
     static async getPosition(timeoutMillis = 5000) {
 

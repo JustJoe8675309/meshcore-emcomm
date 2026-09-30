@@ -138,24 +138,30 @@ done at all.
       every existing clone, so it is a decision rather than a chore. Worth doing before
       the repo gets more attention rather than after.
 
-- [ ] **The connect-time capture re-reads every channel slot, and on Bluetooth it is
-      the longest step of the whole connect.** Found 29 Sep, the moment the connect
-      screen made the steps visible: node 2 spent roughly **three minutes** on
-      "Remembering this radio's own settings" -- longer than reading 260 contacts --
-      while everything above it sat green.
-      The connect has *just* read the channels, one slot at a time, into
-      `GlobalState.channels`. Then `NodeBackup.capture()` reads all 40 slots again, and
-      `captureNormal` can read them a second time on top of that when the first pass is
-      short: three attempts of four seconds for every slot the radio will not answer,
-      bounded at 45 s a pass. On serial none of this shows. On Bluetooth it dominates.
-      `captureNormal` already accepts channels from a caller that has done a verified
-      read -- `Connection.js` passes it `backup.channels` for exactly this reason -- so
-      the fix is the same trick one level up: let the capture take the read the connect
-      already did, rather than asking the radio for all of it again.
-      **Do not simply cache it.** The reason the capture reads for itself is that a
-      short read must not be mistaken for an empty slot, which is how node 3 lost a
-      channel. Whatever is reused has to carry the same "this was a complete read"
-      guarantee, which is what `readChannelsWithFailures` exists to give.
+- [ ] **The connect-time capture re-reads every channel slot.** What is left of a
+      bigger finding, most of which is now fixed.
+      **The original entry blamed the channel read for the slow "Remembering this
+      radio's own settings" step. That was wrong.** Measuring it on 29 Sep showed the
+      capture was also calling `Connection.loadContacts()` a second time, so a Bluetooth
+      connect read all 260 contacts twice -- up to two minutes each. Worse, on node 2
+      the connect had merged its way to 194 of 260 and the capture's second read reached
+      only 160 and replaced the better list with it. That half is fixed: the connect now
+      passes `{ reread: false }` and the capture uses the list already in hand.
+      What remains is the channel half, which is real but smaller: 40 slot reads, each a
+      round trip, with three attempts of four seconds for every slot that will not
+      answer.
+      **The design, ready to build.** `Connection.loadChannels()` already reads every
+      slot, normalises `idx`, and records what it could not read in
+      `GlobalState.channelsMissing` and `channelSlots` -- which is the same guarantee
+      `captureChannels` makes for itself. So the capture can take that read the way it
+      now takes the contacts: an option on `capture()`, with the missing count carried
+      into `missing.channelSlotsUnreadable` so `captureIsDegraded` still works.
+      **The care it needs**, and the reason it was not done in the same sitting as the
+      contact fix: this is the way home. `captureChannels` reads for itself so a short
+      read cannot be mistaken for an empty slot -- that is how node 3 lost a channel --
+      and a channel's key cannot be heard again. Whatever is reused has to carry that
+      guarantee intact, and the reuse has to be proven on a Bluetooth link before it is
+      trusted, not just in tests.
 
 ## Known wrong, left deliberately
 

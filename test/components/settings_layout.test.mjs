@@ -289,7 +289,10 @@ describe("what connecting decides", () => {
         // check guarding them could be tested -- inline in the connect path it was
         // dead code that every test passed without. The rule is unchanged and is
         // followed here rather than dropped: one capture, handed on whole.
-        expect(connect).toContain("const backup = await NodeBackup.capture();");
+        // One read, handed on -- the rule this test is about, now stated in the call.
+        // The capture used to read every contact again here, so a Bluetooth connect
+        // read 260 twice and the second pass came back with fewer than the first.
+        expect(connect).toContain("NodeBackup.capture({ reread: false })");
         expect(connect).toContain("ModeProfiles.recordNormal(backup)");
 
         const profiles = readFileSync(resolve("src/js/modes/ModeProfiles.js"), "utf8");

@@ -49,7 +49,12 @@ class NodeBackup {
      * they were the real channels would produce a backup that restores garbage
      * over working channels.
      */
-    static async capture() {
+    /**
+     * @param {object} [options]
+     * @param {boolean} [options.reread] Read the contacts again first. A caller that
+     *   has only just read them should pass false and save the radio the work.
+     */
+    static async capture({ reread = true } = {}) {
 
         const connection = GlobalState.connection;
         if(connection == null){
@@ -61,9 +66,24 @@ class NodeBackup {
         // fresh, not the copy cached at connect time
         const selfInfo = await Connection.exclusive(() => connection.getSelfInfo());
 
-        // re-read and merge until complete: over Bluetooth a single read has
-        // come back up to 9% short, and this is the one place that must not be
-        await Connection.loadContacts();
+        // Re-read and merge until complete: over Bluetooth a single read comes back
+        // short, and this is the one place that must not be.
+        //
+        // **Unless the caller has just done exactly that.** The connect reads the whole
+        // list and merges passes until it is complete or out of time, and then this ran
+        // the same expensive read again -- 260 contacts twice on every connect. On node
+        // 2 the connect merged its way to 194 of 260 in 127 s, and this second read
+        // reached only 160 and replaced the better list with it. The read that exists
+        // because it must not be short produced a shorter list than the one it
+        // overwrote, and left the app showing the worse of the two.
+        //
+        // Skipping it is not a shortcut: `contactsMissing` says whether the list in
+        // hand is complete, and it is recorded below either way, so a short list is
+        // still marked short. What is lost is only a second chance at the same link,
+        // which the evidence says is as likely to make things worse as better.
+        if(reread){
+            await Connection.loadContacts();
+        }
         const contacts = GlobalState.contacts;
 
         if(GlobalState.contactsMissing > 0){

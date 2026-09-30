@@ -301,3 +301,69 @@ describe("contacts the read is known to have missed", () => {
     });
 
 });
+
+// A short contact read must not replace a record that is not short.
+//
+// The shrinkage guard deliberately does not fire on this -- contacts a read is known
+// to have missed are not contacts the radio lost, or a roster that reads short every
+// time would raise the alarm every time. That is right for the alarm, and it leaves
+// this hole: the short capture simply overwrites, quietly.
+//
+// Node 2 over Bluetooth reads about 200 of 260, and its way home was saved missing 46.
+// Coming home writes the backup's contacts back, so the ones never read are the ones
+// the operator does not get back.
+describe("a short read against a complete record", () => {
+
+    const short = (n) => ({ contacts: n, channelSlots: [], channelSlotsUnreadable: 0 });
+    const clean = { contacts: 0, channelSlots: [], channelSlotsUnreadable: 0 };
+
+    beforeEach(() => {
+        vi.spyOn(NodeBackup, "save").mockReturnValue(true);
+        vi.spyOn(ModeProfiles, "captureNormal").mockResolvedValue({});
+        GlobalState.backupShrank = null;
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        GlobalState.backupShrank = null;
+    });
+
+    it("keeps the complete one and writes nothing", async () => {
+        vi.spyOn(NodeBackup, "load").mockReturnValue(backup(260, 8, clean));
+
+        const outcome = await ModeProfiles.recordNormal(backup(214, 8, short(46)), "aa".repeat(32));
+
+        expect(outcome).toBe("kept");
+        expect(NodeBackup.save).not.toHaveBeenCalled();
+        expect(ModeProfiles.captureNormal).not.toHaveBeenCalled();
+        // and it is not an alarm: nothing has gone wrong with the radio
+        expect(GlobalState.backupShrank).toBe(null);
+    });
+
+    // a record missing some contacts beats no record at all, and it says what it is
+    it("keeps a short first capture, since restoring only ever adds", async () => {
+        vi.spyOn(NodeBackup, "load").mockReturnValue(null);
+
+        const outcome = await ModeProfiles.recordNormal(backup(214, 8, short(46)), "aa".repeat(32));
+
+        expect(outcome).toBe("saved");
+        expect(NodeBackup.save).toHaveBeenCalledOnce();
+    });
+
+    it("refreshes when the stored record was short too", async () => {
+        vi.spyOn(NodeBackup, "load").mockReturnValue(backup(180, 8, short(80)));
+
+        const outcome = await ModeProfiles.recordNormal(backup(214, 8, short(46)), "aa".repeat(32));
+
+        expect(outcome).toBe("saved");
+    });
+
+    it("still writes a complete read over a complete record", async () => {
+        vi.spyOn(NodeBackup, "load").mockReturnValue(backup(260, 8, clean));
+
+        const outcome = await ModeProfiles.recordNormal(backup(262, 8, clean), "aa".repeat(32));
+
+        expect(outcome).toBe("saved");
+    });
+
+});

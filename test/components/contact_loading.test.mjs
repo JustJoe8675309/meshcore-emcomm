@@ -9,7 +9,7 @@
 // It is a query to the attached device, not a transmission, so it costs no
 // airtime and nothing on the mesh hears it.
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import Connection from "../../src/js/Connection.js";
 import GlobalState from "../../src/js/GlobalState.js";
 
@@ -440,6 +440,110 @@ describe("a link that drops a different few every pass", () => {
 
         expect(radio.passes).toBeGreaterThan(1);
         expect(GlobalState.contacts).toHaveLength(40);
+    });
+
+});
+
+// The clock must not stop a read that is working.
+//
+// Node 2 over Bluetooth, 29 Sep: pass 1 reached 120 of 260, pass 2 reached 194, and
+// the flat 120 s budget stopped it at 127 s with the passes still climbing. The way
+// home was then saved missing 46 contacts. A budget should end a read that has
+// stalled, not one that is still bringing people in.
+describe("how long a read is allowed", () => {
+
+    // a radio that takes real time per pass, so the budget can be reached
+    function slowRadio(total, drops, millisPerPass) {
+        const all = Array.from({ length: total }, (_, i) => contact(i));
+        let pass = 0;
+        const listeners = {};
+        const emit = (code, value) => (listeners[code] ?? []).slice().forEach((cb) => cb(value));
+        return {
+            passes: 0,
+            on(event, cb) { (listeners[event] ??= []).push(cb); },
+            off(event, cb) { listeners[event] = (listeners[event] ?? []).filter((f) => f !== cb); },
+            async sendCommandGetContacts() {
+                const thisPass = pass++;
+                this.passes = pass;
+                vi.setSystemTime(new Date(Date.now() + millisPerPass));
+                emit(2, { count: total });
+                const withheld = new Set(drops[thisPass] ?? drops[drops.length - 1] ?? []);
+                all.filter((_, i) => !withheld.has(i)).forEach((c) => emit(3, c));
+                emit(4, {});
+            },
+        };
+    }
+
+    // withhold a shrinking set, so every pass genuinely gains
+    const gaining = (total, perPass) => Array.from({ length: 12 }, (_, p) => {
+        const keep = Math.max(0, total - (p + 1) * perPass);
+        return Array.from({ length: keep }, (_, i) => total - 1 - i);
+    });
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+        GlobalState.contacts = [];
+        GlobalState.contactsAnnounced = null;
+        GlobalState.contactsMissing = 0;
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+        GlobalState.connection = null;
+    });
+
+    it("carries on past the budget while the passes are still gaining", async () => {
+        // 50 s a pass: the budget is behind us from pass 3 onward
+        const radio = slowRadio(100, gaining(100, 20), 50000);
+        GlobalState.connection = radio;
+
+        await Connection.loadContacts();
+
+        // a flat budget would have stopped at three passes and left contacts behind
+        expect(radio.passes).toBeGreaterThan(3);
+        expect(GlobalState.contacts).toHaveLength(100);
+        expect(GlobalState.contactsMissing).toBe(0);
+    });
+
+    it("still stops at the budget once a read has stalled", async () => {
+        // the same two withheld every pass: nothing to gain by going on
+        const radio = slowRadio(100, [[1, 2]], 50000);
+        GlobalState.connection = radio;
+
+        await Connection.loadContacts();
+
+        expect(radio.passes).toBeLessThanOrEqual(3);
+        expect(GlobalState.contactsMissing).toBe(2);
+    });
+
+    // "gaining" has to mean gaining enough to be worth the wait. A link handing over
+    // one contact a pass is not converging, it is trickling, and holding the connect
+    // open to the ceiling for it costs the operator minutes to gain a handful
+    it("treats a trickle as stalled, not as progress", async () => {
+        const radio = slowRadio(100, gaining(100, 1), 50000);
+        GlobalState.connection = radio;
+        const startedAt = Date.now();
+
+        await Connection.loadContacts();
+
+        expect(Date.now() - startedAt).toBeLessThan(Connection.CONTACT_LOAD_CEILING_MILLIS);
+        expect(radio.passes).toBeLessThanOrEqual(3);
+    });
+
+    // "still gaining" must not mean "for ever" on a link dribbling a few a minute
+    it("stops at the ceiling however well it is going", async () => {
+        const radio = slowRadio(400, gaining(400, 4), 60000);
+        GlobalState.connection = radio;
+        const startedAt = Date.now();
+
+        await Connection.loadContacts();
+
+        // elapsed, not the epoch: one pass may overshoot the ceiling, not many
+        const elapsed = Date.now() - startedAt;
+        expect(elapsed).toBeLessThanOrEqual(Connection.CONTACT_LOAD_CEILING_MILLIS + 60000);
+        expect(GlobalState.contacts.length).toBeLessThan(400);
+        // and it says it fell short rather than settling quietly
+        expect(GlobalState.contactsMissing).toBeGreaterThan(0);
     });
 
 });

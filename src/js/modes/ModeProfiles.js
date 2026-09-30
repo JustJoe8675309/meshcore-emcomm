@@ -303,6 +303,28 @@ class ModeProfiles {
         }
 
         const stored = NodeBackup.load(nodeKeyHex, NodeBackup.SLOT_PRE_EMCOMM);
+
+        // A short contact read must not replace a record that is not short.
+        //
+        // The shrinkage guard deliberately does not fire on this: contacts the read is
+        // known to have missed are not contacts the radio lost, or a roster that reads
+        // short every time would raise the alarm every time. That is right for the
+        // alarm and leaves this hole -- the short capture simply overwrites, quietly.
+        //
+        // It is not hypothetical. Over Bluetooth node 2 reads about 200 of 260, and its
+        // way home was saved missing 46. Coming home from a mode writes the backup's
+        // contacts back, so the ones it never read are the ones the operator does not
+        // get back.
+        //
+        // A first capture is kept even when short, because a record missing some
+        // contacts is worth more than no record at all -- restoring only ever adds --
+        // and it carries `missing.contacts` so it says what it is.
+        const freshShort = (backup?.missing?.contacts ?? 0) > 0;
+        const storedShort = (stored?.missing?.contacts ?? 0) > 0;
+        if(freshShort && stored != null && !storedShort){
+            return "kept";
+        }
+
         const shrinkage = NodeBackup.shrinkage(stored, backup);
         if(shrinkage != null){
             GlobalState.backupShrank = { shrinkage, backup, nodeKeyHex };

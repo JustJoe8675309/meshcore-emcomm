@@ -89,6 +89,37 @@ describe("capturing a backup", () => {
         expect(NodeBackup.captureIsDegraded(backup)).toBe(false);
     });
 
+    // The connect reads every contact, merging passes until the list is complete or
+    // the link runs out of time. This then read all of them again: 260 twice on every
+    // Bluetooth connect. On node 2 the connect merged its way to 194 of 260 in 127 s
+    // and the second read reached 160, replacing the better list with the worse one.
+    it("can take the contacts the caller has just read, rather than reading again", async () => {
+        const again = vi.spyOn(Connection, "loadContacts");
+
+        await NodeBackup.capture({ reread: false });
+
+        expect(again).not.toHaveBeenCalled();
+    });
+
+    it("still reads them itself when nobody has", async () => {
+        const again = vi.spyOn(Connection, "loadContacts").mockResolvedValue(undefined);
+
+        await NodeBackup.capture();
+
+        expect(again).toHaveBeenCalledOnce();
+    });
+
+    // skipping the read is not skipping the check: a short list is still marked short
+    it("records the shortfall either way", async () => {
+        GlobalState.contactsAnnounced = 260;
+        GlobalState.contactsMissing = 46;
+
+        const backup = await NodeBackup.capture({ reread: false });
+
+        expect(backup.missing.contacts).toBe(46);
+        expect(backup.missing.contactsAnnounced).toBe(260);
+    });
+
     it("records the settings needed to put the node back", async () => {
         const backup = await NodeBackup.capture();
         expect(backup.settings).toMatchObject({
