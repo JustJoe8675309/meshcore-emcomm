@@ -230,11 +230,17 @@ done at all.
       until tightened -- `byKeyCalls > 0` where the exact count was the point -- and one
       redundant "newest" mark was removed rather than tested, because belt-and-braces
       code hides single mutations.
-      **Unproven on a radio.** The bench tabs are still on v1.9. What to look for on the
-      first reconnect of node 2 or 3: the log line `contacts: N of M, k changed, 1 delta
-      pass` in place of `... after n passes`, and a Contacts bar that starts near full.
-      A second connect should be seconds. If it ever reads *worse* than v1.9, that is a
-      finding, not noise.
+      **PROVEN on node 2, 30 Sep, three connects in a row over Bluetooth:**
+      1. First v1.10 connect, nothing stored: full read, 253 of 260 in 7 passes, saved.
+      2. Second: the delta fell through (count changed overnight) to a full read that
+         stalled at 259 -- and **the repair by key fetched the missing two by name**:
+         `repaired 2 by key, 0 no longer on the radio`, then `260 of 260 after 5 passes`.
+         The first complete read that radio has ever produced.
+      3. Third, store complete: `contacts: 260 of 260, 2 changed, 1 delta pass` --
+         the Contacts row went from empty to Complete in **one second**, against 87 s
+         the connect before and 127-208 s over the two days prior.
+      Both new paths -- the delta and the repair -- ran on real hardware, on the radio
+      that lost 42 contacts two nights earlier, and neither made anything worse.
 
 ## Known wrong, left deliberately
 

@@ -255,6 +255,11 @@ the firmware is fixed, because deltas are cheaper than full reads on any link.
   including the ones the queue dropped, so it can sit above anything that arrived --
   and a mark taken from it would skip exactly the contact that was lost. The mark is
   the newest of what actually arrived, which cannot skip anything.
+  **Proven on node 2, 30 Sep.** Three connects: a first full read that saved 253 of
+  260; a second where the delta fell through and the repair fetched the last two by
+  name to reach 260 of 260, the first complete read that radio ever produced; and a
+  third, with the store complete, that read `260 of 260, 2 changed, 1 delta pass` in
+  one second. The two days before, the same radio took 127-208 s to reach 167-228.
 - **The firmware issue**: not filed yet. The operator's priority is our app working
   reliably; the report can follow once the rewrite is proven on the bench.
 - **Node 2**: no investigation of what the reflash cleared. It reads 252 of 260 now, the
