@@ -9,6 +9,13 @@ done at all.
 - [x] **Dark mode.** Asked for 29 Sep, built the same day. Follows the device by
       default with an explicit override, applied before mount so there is no white
       flash. See the Dark mode section of AUDIT.md for what to check on a real screen.
+      **A one-press toggle followed the same night**, in the header beside the other
+      buttons -- night mode is something reached for when the light changes, not
+      something worth walking into a settings page for. It flips what is *on screen*
+      rather than the stored choice, so from "follow the device" at night it goes to
+      light rather than setting a "dark" that changes nothing. Below the `sm` breakpoint
+      it folds into the menu, the same bargain the sharing button struck: four icon
+      buttons wanted 237px of a 375px row and the station name is what loses.
 
 - [x] **A three-stage battery gauge: yellow at 25%, red at 15%.** Asked for 29 Sep,
       built the same day. Grey above a quarter, `text-amber-700` at 25% or less,
@@ -141,15 +148,9 @@ should *say*, not defects. See AUDIT.md for the evidence behind each.
       bench, once to the operator and once to Claude. The prompt's own group is
       Send / Send with message / Decline / Not now, so scoping to that group is what
       would disambiguate.
-- [ ] **"Once" closes before a person can answer.** Three direct requests answered at
-      ordinary human speed all returned "the answer came after this app had stopped
-      asking". Nothing is lost and the wording is true, but the normal case reports
-      itself as a near miss.
 - [ ] **The room panel says "Not logged in"** after a radio reconnect while the room is
       actively pushing posts, and the instinctive remedy is the one thing that does not
       help.
-- [ ] **There is no way to leave a room.** `RoomLoginBar.vue` only logs in, and the
-      login is in-memory only, so an operator who wants out has nothing to press.
 - [x] **A connect can overwrite the way home with a worse copy.** Found 29 Sep on
       node 1, fixed the same night. The refresh is kept -- it is how a channel added
       with another app becomes part of the way home, and node 3 lost a channel to a

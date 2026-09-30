@@ -774,7 +774,7 @@ describe("asking", () => {
 
     const channel = { kind: "channel", idx: 7, name: "Emcomm Testing" };
 
-    it("once: one request, then the station's radio after 30 s, then gives up", async () => {
+    it("once: one request, then the station's radio after 30 s, then listens before giving up", async () => {
         const request = PositionService.start(THEM_CONTACT, channel, { type: "once" });
         await vi.advanceTimersByTimeAsync(0);
         expect(sent).toHaveLength(1);
@@ -783,20 +783,44 @@ describe("asking", () => {
 
         await vi.advanceTimersByTimeAsync(30000);
         expect(Connection.requestTelemetry).toHaveBeenCalledTimes(1);
+
+        // it used to say "gave up" here, which is the moment a person answering the
+        // prompt is still reading it: three bench answers at ordinary speed all landed
+        // just after this point and were reported as near misses
+        expect(request.status).toBe("running");
+
+        await vi.advanceTimersByTimeAsync(2 * 60000);
         expect(request.status).toBe("gave up");
         expect(request.outcome).toBe("No answer after 1 request.");
         expect(sent).toHaveLength(1);
     });
 
-    it("a request that gave up is still closed by a late answer to it, saying it came late", async () => {
-        // on the bench a person answered a single request a minute after it was sent
+    // the bench case, and the reason for the window: a person answered a single request
+    // a minute after it was sent. That is the normal case and should read like one
+    it("takes an answer a minute later as an ordinary answer, not a near miss", async () => {
         const request = PositionService.start(THEM_CONTACT, channel, { type: "once" });
         await vi.advanceTimersByTimeAsync(0);
         await vi.advanceTimersByTimeAsync(30000);
-        expect(request.status).toBe("gave up");
+        await vi.advanceTimersByTimeAsync(30000);
+
+        answer(request.tag, Protocol.KIND.POSITION, { flags: Protocol.FLAG.MANUAL });
+
+        expect(request.status).toBe("answered");
+        expect(request.outcome).toBe("KJ5ZZZ-EMCOMM answered.");
+        expect(request.outcome).not.toContain("stopped asking");
+        expect(request.radioNote).toBe(null);
+    });
+
+    it("a request that has given up is still closed by a genuinely late answer, and says so", async () => {
+        const request = PositionService.start(THEM_CONTACT, channel, { type: "once" });
+        await vi.advanceTimersByTimeAsync(0);
+        await vi.advanceTimersByTimeAsync(30000);
         expect(request.radioNote).toMatch(/did not answer either/);
 
-        await vi.advanceTimersByTimeAsync(30000);
+        // past the listening window this time
+        await vi.advanceTimersByTimeAsync(2 * 60000);
+        expect(request.status).toBe("gave up");
+
         answer(request.tag, Protocol.KIND.POSITION, { flags: Protocol.FLAG.MANUAL });
         expect(request.status).toBe("answered");
         expect(request.outcome).toBe("KJ5ZZZ-EMCOMM answered. The answer came after this app had stopped asking.");
@@ -807,6 +831,9 @@ describe("asking", () => {
         const request = PositionService.start(THEM_CONTACT, channel, { type: "once" });
         await vi.advanceTimersByTimeAsync(0);
         await vi.advanceTimersByTimeAsync(30000);
+        await vi.advanceTimersByTimeAsync(2 * 60000);
+        expect(request.status).toBe("gave up");
+
         answer((request.tag + 1) >>> 0);
         expect(request.status).toBe("gave up");
     });

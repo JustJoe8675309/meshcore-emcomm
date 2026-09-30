@@ -67,6 +67,20 @@
             a limited backlog, so a long absence can leave a gap rather than an error.
         </div>
 
+        <!-- There was no way out at all: the bar only ever logged in, and the login is
+             held in memory, so an operator who wanted out had nothing to press. -->
+        <div v-if="loggedIn" class="space-y-1">
+            <button @click="logOut" type="button"
+                    class="w-full bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 text-sm font-medium rounded-lg px-3 py-2">
+                Log out of this room
+            </button>
+            <div class="text-xs text-gray-500">
+                This forgets the login on this device and stops the keep-alive. The room server
+                keeps its own session until it times out or the radio goes away, so a post or two
+                may still arrive. Log in again to carry on.
+            </div>
+        </div>
+
     </div>
 </template>
 
@@ -129,6 +143,30 @@ export default {
         }
     },
     methods: {
+
+        /**
+         * Forget the login here.
+         *
+         * Nothing is sent: a room has no log-out command, and the session it holds is
+         * keyed to this radio rather than to this app. So this is honest about being
+         * local -- it clears what this device remembers and stops the keep-alive, which
+         * is what an operator handing the radio on, or moving to another room, actually
+         * wants. The room stops pushing on its own once the keep-alive is gone.
+         */
+        logOut() {
+            const key = this.contactKey;
+            if(key != null){
+                delete GlobalState.roomLogins[key];
+            }
+            RoomKeepAlive.stop(this.contact.publicKey);
+            this.loggedIn = false;
+            this.isAdmin = false;
+            this.canPost = false;
+            this.password = "";
+            this.errorMessage = null;
+            this.$emit("logged-out");
+        },
+
         async logIn() {
 
             // pressing again while one is in flight starts a second login and
@@ -222,6 +260,7 @@ export default {
     },
     emits: [
         "logged-in",
+        "logged-out",
     ],
 }
 </script>

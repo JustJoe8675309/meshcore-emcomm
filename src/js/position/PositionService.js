@@ -82,6 +82,22 @@ export const MAX_FOR_MINUTES = 24 * 60;
 // how long to wait for a station's app before asking its radio instead
 const APP_ANSWER_WAIT_MILLIS = 30 * 1000;
 
+/**
+ * How long a single request keeps listening after the radio fallback comes back with
+ * nothing, before it says no answer came.
+ *
+ * It used to say so immediately, and on the bench **three requests answered at ordinary
+ * human speed all landed after it** -- each one reported as "the answer came after this
+ * app had stopped asking", which made the normal case read as a near miss. The prompt
+ * takes 20 to 35 seconds to answer when somebody is looking at the screen, and the
+ * fallback has already spent 30 of that before this begins.
+ *
+ * Two minutes covers a person who was not looking when it arrived. A roll call keeps
+ * listening for five, but a roll call is not somebody waiting on one station: this is,
+ * and an operator needs to be told before long that nothing is coming.
+ */
+const DIRECT_LISTEN_MILLIS = 2 * 60 * 1000;
+
 // how many decoded positions and declines to keep
 const MAX_REPORTS = 100;
 
@@ -809,7 +825,15 @@ class PositionService {
             request.routeNote = request.via.kind === "channel"
                 ? `A station only hears a channel it holds. Check that they are on ${request.via.name}.`
                 : null;
-            this.finish(request, "gave up", `No answer after ${request.sent} ${request.sent === 1 ? "request" : "requests"}.`);
+            // Listen a while before saying nothing came. A person answering the prompt
+            // at ordinary speed lands in here, and used to land just outside it.
+            request.listenUntil = Date.now() + DIRECT_LISTEN_MILLIS;
+            timers.set(request.tag, setTimeout(() => {
+                timers.delete(request.tag);
+                if(this.isLive(request)){
+                    this.finish(request, "gave up", `No answer after ${request.sent} ${request.sent === 1 ? "request" : "requests"}.`);
+                }
+            }, DIRECT_LISTEN_MILLIS));
         }
 
     }

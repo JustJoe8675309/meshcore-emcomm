@@ -91,6 +91,21 @@ class Theme {
         return resolved;
     }
 
+    /**
+     * Flip what is on screen, and remember it.
+     *
+     * Always the opposite of what the operator can actually see, which is why it reads
+     * `resolve()` rather than `choice()`: from "system" at night, the honest flip is to
+     * light, not to a "dark" that changes nothing. Toggling therefore always leaves an
+     * explicit choice -- "follow the device" stays available in settings, where there is
+     * room to say what it means.
+     */
+    static toggle() {
+        const next = this.resolve() === "dark" ? "light" : "dark";
+        this.set(next);
+        return next;
+    }
+
     static set(choice) {
         if(!CHOICES.includes(choice)){
             return false;

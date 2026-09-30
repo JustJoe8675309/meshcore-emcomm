@@ -89,6 +89,8 @@
                              lives here instead. Four icon buttons wanted 237px of a
                              375px row once the text scaled up -->
                         <DropDownMenuItem class="sm:hidden" @click="sharingOpen = true">Share a station mode</DropDownMenuItem>
+                        <!-- the toggle's own button folds away below sm, same as sharing -->
+                        <DropDownMenuItem class="sm:hidden" @click="toggleTheme">{{ themeLabel }}</DropDownMenuItem>
                     </template>
                 </DropDownMenu>
                 <button @click="sharingOpen = true" type="button" aria-label="Share a station mode"
@@ -97,6 +99,21 @@
                     <!-- a QR code, which is what this does -->
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
                         <path fill-rule="evenodd" d="M3 4.5A1.5 1.5 0 0 1 4.5 3h4A1.5 1.5 0 0 1 10 4.5v4A1.5 1.5 0 0 1 8.5 10h-4A1.5 1.5 0 0 1 3 8.5v-4Zm2 .5v3h3V5H5Zm-2 10.5A1.5 1.5 0 0 1 4.5 14h4a1.5 1.5 0 0 1 1.5 1.5v4A1.5 1.5 0 0 1 8.5 21h-4A1.5 1.5 0 0 1 3 19.5v-4Zm2 .5v3h3v-3H5ZM14 4.5A1.5 1.5 0 0 1 15.5 3h4A1.5 1.5 0 0 1 21 4.5v4A1.5 1.5 0 0 1 19.5 10h-4A1.5 1.5 0 0 1 14 8.5v-4Zm2 .5v3h3V5h-3Zm-2 9.25a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1-.75-.75v-1.5Zm5 0a.75.75 0 0 1 .75-.75h.5a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-.75.75h-.5a.75.75 0 0 1-.75-.75v-1.5ZM14 19.75a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 .75.75v.5a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1-.75-.75v-.5Zm5 0a.75.75 0 0 1 .75-.75h.5a.75.75 0 0 1 .75.75v.5a.75.75 0 0 1-.75.75h-.5a.75.75 0 0 1-.75-.75v-.5Z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+                <!-- Day and night, one press. Hidden below the sm breakpoint and
+                     offered in the menu there instead, which is the same bargain the
+                     sharing button struck: four icon buttons wanted 237px of a 375px
+                     row, and the station name is what loses. -->
+                <button @click="toggleTheme" type="button" :aria-label="themeLabel" :title="themeLabel"
+                        class="hidden sm:block my-auto bg-gray-500 text-white px-2 py-1 p-1 rounded shadow hover:bg-gray-400">
+                    <svg v-if="isDark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6" aria-hidden="true">
+                        <!-- a sun: pressing this goes back to day -->
+                        <path d="M12 2.25a.75.75 0 0 1 .75.75v2.25a.75.75 0 0 1-1.5 0V3a.75.75 0 0 1 .75-.75ZM7.5 12a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM18.894 6.166a.75.75 0 0 0-1.06-1.06l-1.591 1.59a.75.75 0 1 0 1.06 1.061l1.591-1.59ZM21.75 12a.75.75 0 0 1-.75.75h-2.25a.75.75 0 0 1 0-1.5H21a.75.75 0 0 1 .75.75ZM17.834 18.894a.75.75 0 0 0 1.06-1.06l-1.59-1.591a.75.75 0 1 0-1.061 1.06l1.59 1.591ZM12 18a.75.75 0 0 1 .75.75V21a.75.75 0 0 1-1.5 0v-2.25A.75.75 0 0 1 12 18ZM7.758 17.303a.75.75 0 0 0-1.061-1.06l-1.591 1.59a.75.75 0 0 0 1.06 1.061l1.592-1.59ZM6 12a.75.75 0 0 1-.75.75H3a.75.75 0 0 1 0-1.5h2.25A.75.75 0 0 1 6 12ZM6.697 7.757a.75.75 0 0 0 1.06-1.06l-1.59-1.591a.75.75 0 0 0-1.061 1.06l1.591 1.591Z" />
+                    </svg>
+                    <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6" aria-hidden="true">
+                        <!-- a moon: pressing this goes to night -->
+                        <path fill-rule="evenodd" d="M9.528 1.718a.75.75 0 0 1 .162.819A8.97 8.97 0 0 0 9 6a9 9 0 0 0 9 9 8.97 8.97 0 0 0 3.463-.69.75.75 0 0 1 .981.98 10.503 10.503 0 0 1-9.694 6.46c-5.799 0-10.5-4.701-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 0 1 .818.162Z" clip-rule="evenodd" />
                     </svg>
                 </button>
                 <!-- settings keeps its own button at every width, between the
@@ -161,6 +178,7 @@
 <script>
 import GlobalState from "../js/GlobalState.js";
 import Version from "../js/Version.js";
+import Theme from "../js/Theme.js";
 import Connection from "../js/Connection.js";
 import IconButton from "./IconButton.vue";
 import DropDownMenu from "./DropDownMenu.vue";
@@ -248,6 +266,10 @@ export default {
          * answer teaches an operator to dismiss the dialog unread, which is the habit
          * that would make this one useless on the day it matters.
          */
+        toggleTheme() {
+            Theme.toggle();
+        },
+
         async disconnect() {
             if(ModeProfiles.current() === "normal"){
                 await Connection.disconnect();
@@ -267,6 +289,16 @@ export default {
             // a sliver rather than nothing at all, so the icon still reads as a
             // battery when it is nearly flat
             return Math.max(1, (percent / 100) * 14).toFixed(2);
+        },
+
+        /** Dark on screen now, whether by choice or by the device's. */
+        isDark() {
+            return Theme.state.resolved === "dark";
+        },
+
+        /** Says what pressing it does, not what is on screen: it is a button. */
+        themeLabel() {
+            return this.isDark ? "Day mode" : "Night mode";
         },
 
         /** "v1.1 · 29 Sep 2026", or nothing at all if the build did not say. */
