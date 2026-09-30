@@ -67,6 +67,28 @@ describe("capturing a backup", () => {
         vi.spyOn(Connection, "loadContacts").mockResolvedValue(undefined);
     });
 
+    // Node 2 over Bluetooth on 29 Sep: a slow link answered no slot at all, and the
+    // backup honestly held no channels. The count alone cannot tell that from a radio
+    // that really has none, because a total failure leaves no later slot to prove the
+    // failures were holes -- so the capture has to say so itself, or a caller deciding
+    // whether to overwrite the way home is deciding blind.
+    it("says so when it could not read the channels at all", async () => {
+        GlobalState.connection = fakeRadio({ channels: {} });
+
+        const backup = await NodeBackup.capture();
+
+        expect(backup.channels).toHaveLength(0);
+        expect(backup.missing.channelSlotsUnreadable).toBeGreaterThan(0);
+        // the gap list is empty, which is the trap: nothing answered after the failures
+        expect(backup.missing.channelSlots).toEqual([]);
+        expect(NodeBackup.captureIsDegraded(backup)).toBe(true);
+    });
+
+    it("does not call a good read degraded", async () => {
+        const backup = await NodeBackup.capture();
+        expect(NodeBackup.captureIsDegraded(backup)).toBe(false);
+    });
+
     it("records the settings needed to put the node back", async () => {
         const backup = await NodeBackup.capture();
         expect(backup.settings).toMatchObject({

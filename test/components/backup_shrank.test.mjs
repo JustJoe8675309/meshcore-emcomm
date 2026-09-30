@@ -18,7 +18,8 @@ import GlobalState from "../../src/js/GlobalState.js";
 import ModeProfiles from "../../src/js/modes/ModeProfiles.js";
 import BackupShrankDialog from "../../src/components/modes/BackupShrankDialog.vue";
 
-const backup = (contacts, channels) => ({
+const backup = (contacts, channels, missing = { contacts: 0, channelSlots: [], channelSlotsUnreadable: 0 }) => ({
+    missing,
     contacts: Array.from({ length: contacts }, (_, i) => ({ publicKey: `${i}`.padStart(64, "0") })),
     channels: Array.from({ length: channels }, (_, i) => ({ idx: i, name: `c${i}`, secret: "00" })),
     capturedAt: 1790737170962,
@@ -186,6 +187,117 @@ describe("recording normal mode at connect", () => {
 
         expect(outcome).toBe("saved");
         expect(NodeBackup.save).toHaveBeenCalledOnce();
+    });
+
+});
+
+// A capture that could not read the radio is not evidence about the radio.
+//
+// Found on node 2 over Bluetooth on 29 Sep, live: a slow link returned no channels at
+// all and the guard announced "8 channels are missing -- 8 recorded, 0 on the radio",
+// in the wording reserved for something that cannot be recovered. Nothing had happened
+// to the radio. The alarm that matters most is the one that must not cry wolf.
+//
+// The capture already recorded what it failed to read; shrinkage() simply ignored it.
+describe("a capture that did not read properly", () => {
+
+    const degradedChannels = { contacts: 0, channelSlots: [], channelSlotsUnreadable: 8 };
+    const holeInTheMiddle = { contacts: 0, channelSlots: [3], channelSlotsUnreadable: 1 };
+    const clean = { contacts: 0, channelSlots: [], channelSlotsUnreadable: 0 };
+
+    it("is recognised when no slot answered at all", () => {
+        expect(NodeBackup.captureIsDegraded(backup(200, 0, degradedChannels))).toBe(true);
+    });
+
+    // a total failure leaves channelSlots empty: there is no later slot to prove the
+    // failures were holes, which is exactly why the count alone cannot tell
+    it("is recognised when the count alone could not tell", () => {
+        const b = backup(200, 0, degradedChannels);
+        expect(b.missing.channelSlots).toEqual([]);
+        expect(NodeBackup.captureIsDegraded(b)).toBe(true);
+    });
+
+    it("is recognised when a slot in the middle would not read", () => {
+        expect(NodeBackup.captureIsDegraded(backup(200, 7, holeInTheMiddle))).toBe(true);
+    });
+
+    // backups saved before this field existed carry channelSlots and nothing else, so
+    // the gap list is the only thing that can speak for them
+    it("is recognised in a backup saved before the count was recorded", () => {
+        const old = backup(200, 7, { contacts: 0, channelSlots: [3] });
+        expect(old.missing.channelSlotsUnreadable).toBe(undefined);
+        expect(NodeBackup.captureIsDegraded(old)).toBe(true);
+    });
+
+    it("is not claimed of a clean capture, or an old one with no record of it", () => {
+        expect(NodeBackup.captureIsDegraded(backup(200, 8, clean))).toBe(false);
+        expect(NodeBackup.captureIsDegraded({ contacts: [], channels: [] })).toBe(false);
+    });
+
+    describe("what recordNormal does with it", () => {
+
+        beforeEach(() => {
+            vi.spyOn(NodeBackup, "save").mockReturnValue(true);
+            vi.spyOn(ModeProfiles, "captureNormal").mockResolvedValue({});
+            GlobalState.backupShrank = null;
+        });
+
+        afterEach(() => {
+            vi.restoreAllMocks();
+            GlobalState.backupShrank = null;
+        });
+
+        // node 2's exact case: a good stored record, a fresh capture that read nothing
+        it("neither writes it nor raises the alarm", async () => {
+            vi.spyOn(NodeBackup, "load").mockReturnValue(backup(225, 8, clean));
+
+            const outcome = await ModeProfiles.recordNormal(backup(192, 0, degradedChannels), "aa".repeat(32));
+
+            expect(outcome).toBe("skipped");
+            expect(NodeBackup.save).not.toHaveBeenCalled();
+            expect(ModeProfiles.captureNormal).not.toHaveBeenCalled();
+            expect(GlobalState.backupShrank).toBe(null);
+        });
+
+        // better no record than a confident wrong one, which is what captureNormal
+        // has always done with a short read
+        it("skips even when there is no stored record to protect", async () => {
+            vi.spyOn(NodeBackup, "load").mockReturnValue(null);
+
+            const outcome = await ModeProfiles.recordNormal(backup(192, 0, degradedChannels), "aa".repeat(32));
+
+            expect(outcome).toBe("skipped");
+            expect(NodeBackup.save).not.toHaveBeenCalled();
+        });
+
+        it("still writes a clean capture", async () => {
+            vi.spyOn(NodeBackup, "load").mockReturnValue(backup(225, 8, clean));
+
+            const outcome = await ModeProfiles.recordNormal(backup(230, 8, clean), "aa".repeat(32));
+
+            expect(outcome).toBe("saved");
+            expect(NodeBackup.save).toHaveBeenCalledOnce();
+        });
+
+    });
+
+});
+
+describe("contacts the read is known to have missed", () => {
+
+    const short = (n) => ({ contacts: n, channelSlots: [], channelSlotsUnreadable: 0 });
+    const clean = { contacts: 0, channelSlots: [], channelSlotsUnreadable: 0 };
+
+    // node 2's stored backup records 33 of 258 unread. A roster that reads short every
+    // time would otherwise raise this alarm every time
+    it("are not counted as contacts the radio lost", () => {
+        expect(NodeBackup.shrinkage(backup(225, 8, clean), backup(192, 8, short(33)))).toBe(null);
+    });
+
+    it("still notices a loss beyond what the read missed", () => {
+        const found = NodeBackup.shrinkage(backup(225, 8, clean), backup(150, 8, short(33)));
+        expect(found).not.toBe(null);
+        expect(found.contactsLost).toBe(42);
     });
 
 });

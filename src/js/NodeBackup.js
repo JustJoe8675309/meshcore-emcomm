@@ -82,6 +82,9 @@ class NodeBackup {
                 contacts: GlobalState.contactsMissing ?? 0,
                 contactsAnnounced: GlobalState.contactsAnnounced ?? null,
                 channelSlots: read.missingSlots,
+                // slots that errored; with no channels read at all this is the only
+                // sign that the radio was not simply empty
+                channelSlotsUnreadable: read.unreadable ?? 0,
             },
             nodeName: selfInfo.name,
             nodePublicKey: Utils.bytesToHex(selfInfo.publicKey),
@@ -243,7 +246,12 @@ class NodeBackup {
             warnings.push(`Channel slot${gaps.length === 1 ? "" : "s"} ${gaps.join(", ")} would not read, `
                 + `so ${gaps.length === 1 ? "a channel" : "channels"} may be missing from this backup.`);
         }
-        return { channels: channels, missingSlots: gaps };
+        // Reported structurally as well as in the prose above. A radio that answered
+        // no slot at all leaves `gaps` empty -- there is no slot after the failures to
+        // prove they were holes -- so a total failure and a radio with no channels are
+        // indistinguishable by count. A caller deciding whether to overwrite the way
+        // home has to be able to tell them apart, and warnings are not for reading.
+        return { channels: channels, missingSlots: gaps, unreadable: unreadable };
 
     }
 
@@ -427,6 +435,35 @@ class NodeBackup {
     }
 
     /**
+     * True when this capture did not manage to read the radio properly.
+     *
+     * Only the channels are judged here. A channel's key cannot be heard again, so a
+     * capture that could not read them is not a picture of the radio and must never
+     * replace one that is -- `captureNormal` already refuses outright on a short read
+     * for exactly this reason, and the backup had no equivalent.
+     *
+     * Found on node 2 over Bluetooth on 29 Sep: a slow link returned no channels at
+     * all, and the guard announced "8 channels are missing -- 8 recorded, 0 on the
+     * radio" with the wording reserved for something unrecoverable. It was a failed
+     * read. The alarm that matters most is the one that must not cry wolf.
+     */
+    static captureIsDegraded(backup) {
+        const missing = backup?.missing;
+        if(missing == null){
+            return false;
+        }
+        // A hole: a slot that would not read with a slot after it that did.
+        if((missing.channelSlots?.length ?? 0) > 0){
+            return true;
+        }
+        // Nothing answered at all. The count on its own is not enough and the first
+        // version of this used it: a radio with fewer slots than the app asks for
+        // errors on the ones past its end, so `unreadable` is above zero on a
+        // perfectly good read. Only a failure with nothing read is a failed read.
+        return (backup.channels?.length ?? 0) === 0 && (missing.channelSlotsUnreadable ?? 0) > 0;
+    }
+
+    /**
      * What a fresh capture would cost the stored one, if anything.
      *
      * The way home is refreshed on every normal-mode connect, deliberately: it is how
@@ -459,7 +496,11 @@ class NodeBackup {
         const storedChannels = stored.channels?.length ?? 0;
         const freshChannels = fresh.channels?.length ?? 0;
 
-        const contactsLost = storedContacts - freshContacts;
+        // Contacts the fresh read is known to have missed are not contacts the radio
+        // lost. Node 2's own stored backup records 33 of 258 unread, so a roster that
+        // reads short every time would otherwise raise this alarm every time.
+        const freshUnread = fresh.missing?.contacts ?? 0;
+        const contactsLost = storedContacts - (freshContacts + freshUnread);
         const channelsLost = storedChannels - freshChannels;
 
         const contactsMatter = contactsLost > 10 || (contactsLost > 0 && contactsLost >= storedContacts / 5);

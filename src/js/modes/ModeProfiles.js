@@ -288,6 +288,20 @@ class ModeProfiles {
      */
     static async recordNormal(backup, nodeKeyHex = this.nodeKeyHex()) {
         const NodeBackup = (await import("../NodeBackup.js")).default;
+
+        // A capture that could not read the radio's channels is not a picture of the
+        // radio. It neither replaces the way home nor raises the alarm about it: the
+        // stored record stands and the next connect takes a fresh one, which is what
+        // captureNormal has always done with a short read.
+        //
+        // Both halves matter. Writing it would put an empty channel list over a good
+        // record; asking about it announced "8 channels are missing" on node 2 over
+        // Bluetooth, in the wording reserved for something that cannot be recovered,
+        // when nothing had happened to the radio at all.
+        if(NodeBackup.captureIsDegraded(backup)){
+            return "skipped";
+        }
+
         const stored = NodeBackup.load(nodeKeyHex, NodeBackup.SLOT_PRE_EMCOMM);
         const shrinkage = NodeBackup.shrinkage(stored, backup);
         if(shrinkage != null){
