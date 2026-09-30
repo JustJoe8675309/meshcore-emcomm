@@ -86,7 +86,7 @@
                         No repeaters known yet.
                     </div>
                     <div v-else class="text-xs text-gray-500">
-                        Most recently heard first. A repeater listed as flood routed or several hops away is
+                        Favourites first, then most recently heard. A repeater listed as flood routed or several hops away is
                         known to the mesh but may not be reachable directly, and will simply time out. Some
                         repeaters answer discovery but not ping, so one found above can still time out here:
                         discovery proves it hears you, ping additionally needs it to answer trace requests.
@@ -243,7 +243,9 @@ export default {
     computed: {
 
         /**
-         * The repeaters worth offering, most recently heard first.
+         * The repeaters worth offering, most recently heard first -- though the picker
+         * itself then lifts favourites above that, which is why the note under it says
+         * "favourites first, then most recently heard" rather than what this sorts by.
          *
          * Repeaters only. The link to a repeater is the one worth testing, because it
          * is the infrastructure everything else leans on, and unlike a companion it is

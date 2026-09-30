@@ -158,8 +158,6 @@ should *say*, not defects. See AUDIT.md for the evidence behind each.
       rather than overwriting, and keeping the older record wrote nothing. AUDIT.md has
       the staging, which is the fiddly part.
 
-- [ ] **The repeater picker says "most recently heard first"** and pins favourites
-      above that.
 
 ## Worth knowing before writing a test like these
 

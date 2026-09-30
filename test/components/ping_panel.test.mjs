@@ -6,6 +6,8 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { mount } from "@vue/test-utils";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import PingPanel from "../../src/components/ping/PingPanel.vue";
 import GlobalState from "../../src/js/GlobalState.js";
 import Connection from "../../src/js/Connection.js";
@@ -323,6 +325,26 @@ describe("what a finished run says it was", () => {
         await wrapper.vm.$nextTick();
 
         expect(wrapper.text()).toContain("1 of 7");
+    });
+
+});
+
+// The picker's note has to describe the order the operator actually sees.
+//
+// From the 28 Sep audit: it said "Most recently heard first" while SearchableSelect
+// lifts favourites above everything. Both facts are asserted here, because the note is
+// only right while the pinning is there -- if the pinning goes, this should fail rather
+// than leave the wording quietly wrong again.
+describe("the order the repeater picker offers", () => {
+
+    it("pins favourites above the last-heard order", () => {
+        const source = readFileSync(resolve("src/components/reports/SearchableSelect.vue"), "utf8");
+        expect(source).toContain("(b.favorite ? 1 : 0) - (a.favorite ? 1 : 0)");
+    });
+
+    it("says so, rather than claiming last-heard alone", () => {
+        const source = readFileSync(resolve("src/components/ping/PingPanel.vue"), "utf8");
+        expect(source).toContain("Favourites first, then most recently heard.");
     });
 
 });
