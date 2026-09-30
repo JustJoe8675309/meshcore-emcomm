@@ -102,6 +102,34 @@ describe("the connect steps", () => {
         return done;
     }
 
+    // Fastest first, slowest last, at the operator's request -- and the screen shows
+    // the steps in the order they run, so the two are checked against each other.
+    //
+    // The order is not free. The database must be open before anything is stored;
+    // waiting messages are attributed by looking the sender up in the contact list,
+    // so they follow contacts; and the capture in "Remembering" needs channels and
+    // contacts both. Within that: the one-frame steps straight after the radio
+    // answers, channels before contacts because a channel read is bounded by the
+    // slot count and a full contact read is not, and the capture last.
+    it("runs the steps fastest first, slowest last, and shows them in that order", async () => {
+        const ran = [];
+        const running = () => GlobalState.connecting?.steps.find((x) => x.status === "running")?.key ?? null;
+        let shown = null;
+        vi.spyOn(Connection, "syncDeviceTime").mockImplementation(async () => { ran.push(running()); });
+        vi.spyOn(Connection, "updateBatteryPercentage").mockImplementation(async () => { ran.push(running()); });
+        vi.spyOn(Connection, "loadChannels").mockImplementation(async () => {
+            ran.push(running());
+            shown = GlobalState.connecting.steps.map((x) => x.key);
+        });
+        vi.spyOn(Connection, "loadContacts").mockImplementation(async () => { ran.push(running()); });
+        vi.spyOn(Connection, "syncMessages").mockImplementation(async () => { ran.push(running()); });
+
+        await runConnect(async () => {});
+
+        expect(ran).toEqual(["clock", "battery", "channels", "contacts", "waiting"]);
+        expect(shown).toEqual(["answer", "clock", "battery", "messages", "channels", "contacts", "waiting", "normal"]);
+    });
+
     it("says it is checking for dropped contacts on a second pass, not reading them again", async () => {
         const seen = [];
         vi.spyOn(Connection, "loadContacts").mockImplementation(async (onProgress) => {

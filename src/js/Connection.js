@@ -402,20 +402,31 @@ class Connection {
         //
         // "Remembering this radio's own settings" only runs for a station in normal
         // mode, so it is marked skipped rather than done when the connect passes it.
+        //
+        // Fastest first, slowest last -- the operator's request, after watching a
+        // Bluetooth connect with the long step in the middle and short ones queued
+        // behind it. Three dependencies set the limits on that: the database has to
+        // be open before anything is stored in it; waiting messages are attributed
+        // by looking the sender up in the contact list, so contacts come first; and
+        // the capture in "Remembering" needs both channels and contacts. Within those,
+        // the one-frame steps (clock, battery) go straight after the radio answers,
+        // channels go before contacts because a channel read is bounded by the slot
+        // count while a full contact read is not, and the capture is last because it
+        // is the slowest thing on the list.
         const order = [
             { key: "answer", label: "Waiting for the radio to answer" },
             { key: "clock", label: "Setting the radio's clock" },
+            { key: "battery", label: "Reading the battery" },
             { key: "messages", label: "Opening this node's messages" },
+            { key: "channels", label: "Reading channels" },
             // One row, not two. The read makes a second pass to catch contacts the
             // radio dropped mid-list, and that pass restarts the count -- so the bar
             // goes back to the left part way through. The word in the middle changes
             // from Reading to Checking as it does, which is what makes the reset read
             // as a new pass rather than as lost ground.
             { key: "contacts", label: "Contacts" },
-            { key: "channels", label: "Reading channels" },
-            { key: "normal", label: "Remembering this radio's own settings" },
             { key: "waiting", label: "Reading waiting messages" },
-            { key: "battery", label: "Reading the battery" },
+            { key: "normal", label: "Remembering this radio's own settings" },
         ];
         const steps = order.map((s) => ({ ...s, status: "pending", done: null, total: null, detail: null, word: null }));
         if(isCurrent() && GlobalState.connecting != null){
@@ -480,6 +491,11 @@ class Connection {
             await this.loadSelfInfo();
             step("clock");
             await this.syncDeviceTime();
+            // one frame, and nothing depends on it, so it goes here rather than being
+            // the last thing an operator waits for. It never throws: a radio that will
+            // not answer leaves the badge unset, as before
+            step("battery");
+            await this.updateBatteryPercentage();
 
             // started once self info is in, because the schedule is stored per node and
             // until now we did not know which node this is
@@ -492,17 +508,19 @@ class Connection {
                 return;
             }
 
-            // fetch data after database is ready. the contact list is most of the
-            // wait, a couple of hundred frames on a well used node, so it is counted
-            // a pass after the first is making sure none were dropped, and the count
-            // sits at the total while it does, so it says so rather than look stuck
-            step("contacts");
-            await this.loadContacts((received, announced, pass) => {
-                step("contacts", received, announced, null, pass > 1 ? "Checking" : "Reading");
-            });
+            // fetch data after database is ready. Channels first: a channel read is
+            // bounded by the slot count, a full contact read is not, and the screen
+            // runs fastest to slowest. The contact list is most of the wait, a couple
+            // of hundred frames on a well used node, so it is counted; a pass after
+            // the first is making sure none were dropped, and the count sits at the
+            // total while it does, so it says so rather than look stuck
             step("channels");
             await this.loadChannels((slot, slots, found) => {
                 step("channels", slot, slots, `Reading channels, ${found} found`);
+            });
+            step("contacts");
+            await this.loadContacts((received, announced, pass) => {
+                step("contacts", received, announced, null, pass > 1 ? "Checking" : "Reading");
             });
             // Connecting to a station that is in normal mode is what decides what
             // normal mode is: its settings and channels as they stand, the station
@@ -515,6 +533,11 @@ class Connection {
             // In an emcomm mode it is left alone: the radio is holding that mode's
             // settings, and writing them down as "normal" would make coming home
             // mean nothing.
+            // Waiting messages are attributed by looking the sender up in the contact
+            // list, which is why they wait for it; a few frames, before the slow step
+            step("waiting");
+            await this.syncMessages();
+
             if(ModeProfiles.current() === "normal"){
                 step("normal");
                 try {
@@ -560,10 +583,6 @@ class Connection {
                 }
             }
 
-            step("waiting");
-            await this.syncMessages();
-            step("battery");
-            await this.updateBatteryPercentage();
             finishSteps();
 
         } finally {
