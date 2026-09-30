@@ -9,8 +9,8 @@ import { describe, it, expect } from "vitest";
 import { mount } from "@vue/test-utils";
 import ConnectSteps from "../../src/components/ConnectSteps.vue";
 
-const step = (key, label, status, done = null, total = null, detail = null) =>
-    ({ key, label, status, done, total, detail });
+const step = (key, label, status, done = null, total = null, detail = null, word = null) =>
+    ({ key, label, status, done, total, detail, word });
 
 const mountWith = (steps) => mount(ConnectSteps, { props: { steps } });
 
@@ -75,6 +75,29 @@ describe("the connect screen", () => {
         expect(wrapper.text()).toContain("Not needed");
         expect(wrapper.text()).not.toContain("Complete");
         expect(wrapper.find("li div.absolute").classes()).not.toContain("bg-green-600");
+    });
+
+    // one row for both contact passes: the second restarts the count, so the bar goes
+    // back to the left, and the word is what makes that a new pass rather than lost
+    // ground. Two rows were tried first and merged at the operator's request
+    it("says which pass a step is on, beside its percentage", () => {
+        const reading = mountWith([step("contacts", "Contacts", "running", 90, 180, null, "Reading")]);
+        expect(reading.text()).toContain("Reading 50%");
+
+        const checking = mountWith([step("contacts", "Contacts", "running", 45, 180, null, "Checking")]);
+        expect(checking.text()).toContain("Checking 25%");
+    });
+
+    it("uses the word alone when the step has no count to give", () => {
+        const wrapper = mountWith([step("contacts", "Contacts", "running", null, null, null, "Checking")]);
+        expect(wrapper.text()).toContain("Checking");
+        expect(wrapper.text()).not.toMatch(/\d+%/);
+    });
+
+    it("still says Complete when it is done, whatever word it was using", () => {
+        const wrapper = mountWith([step("contacts", "Contacts", "done", 180, 180, null, "Checking")]);
+        expect(wrapper.text()).toContain("Complete");
+        expect(wrapper.text()).not.toContain("Checking");
     });
 
     it("prefers the step's own running detail to its name", () => {

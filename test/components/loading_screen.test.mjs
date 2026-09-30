@@ -118,8 +118,10 @@ describe("connecting to a radio", () => {
         steps.selfInfo.resolve();
         radio.emit(Constants.ResponseCodes.SelfInfo, SELF_INFO);
         await flushPromises();
-        expect(wrapper.text()).toContain("Reading contacts");
+        // one row for both contact passes, with the word saying which one it is on
+        expect(wrapper.text()).toContain("Contacts");
         expect(wrapper.text()).toContain("120 of 213");
+        expect(wrapper.text()).toContain("Reading 56%");
 
         steps.contacts.resolve();
         await finished;

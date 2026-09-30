@@ -403,19 +403,23 @@ class Connection {
             { key: "answer", label: "Waiting for the radio to answer" },
             { key: "clock", label: "Setting the radio's clock" },
             { key: "messages", label: "Opening this node's messages" },
-            { key: "contacts", label: "Reading contacts" },
-            { key: "recheck", label: "Checking for dropped contacts" },
+            // One row, not two. The read makes a second pass to catch contacts the
+            // radio dropped mid-list, and that pass restarts the count -- so the bar
+            // goes back to the left part way through. The word in the middle changes
+            // from Reading to Checking as it does, which is what makes the reset read
+            // as a new pass rather than as lost ground.
+            { key: "contacts", label: "Contacts" },
             { key: "channels", label: "Reading channels" },
             { key: "normal", label: "Remembering this radio's own settings" },
             { key: "waiting", label: "Reading waiting messages" },
             { key: "battery", label: "Reading the battery" },
         ];
-        const steps = order.map((s) => ({ ...s, status: "pending", done: null, total: null, detail: null }));
+        const steps = order.map((s) => ({ ...s, status: "pending", done: null, total: null, detail: null, word: null }));
         if(isCurrent() && GlobalState.connecting != null){
             GlobalState.connecting = { steps: steps, step: null, done: null, total: null };
         }
 
-        const step = (key, done = null, total = null, detail = null) => {
+        const step = (key, done = null, total = null, detail = null, word = null) => {
             if(!isCurrent() || GlobalState.connecting == null){
                 return;
             }
@@ -435,6 +439,7 @@ class Connection {
             steps[at].done = done;
             steps[at].total = total;
             steps[at].detail = detail;
+            steps[at].word = word;
             // the older single-line shape, still read by anything that wants just the
             // current step
             GlobalState.connecting = {
@@ -490,7 +495,7 @@ class Connection {
             // sits at the total while it does, so it says so rather than look stuck
             step("contacts");
             await this.loadContacts((received, announced, pass) => {
-                step(pass > 1 ? "recheck" : "contacts", received, announced);
+                step("contacts", received, announced, null, pass > 1 ? "Checking" : "Reading");
             });
             step("channels");
             await this.loadChannels((slot, slots, found) => {

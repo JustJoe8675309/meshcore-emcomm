@@ -129,8 +129,16 @@ export default {
             if(item.status !== "running"){
                 return "";
             }
+            // A step can say which part of itself it is on. Reading contacts makes two
+            // passes and the second restarts the count, so the bar goes back to the
+            // left: the word changing from Reading to Checking is what makes that read
+            // as a new pass rather than as lost ground.
             const percent = this.percent(item);
-            return percent == null ? "Working" : `${percent}%`;
+            const word = item.word ?? null;
+            if(percent == null){
+                return word ?? "Working";
+            }
+            return word == null ? `${percent}%` : `${word} ${percent}%`;
         },
 
         labelClass(item) {

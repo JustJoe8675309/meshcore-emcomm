@@ -114,15 +114,17 @@ describe("the connect steps", () => {
 
         await runConnect(async () => {});
 
-        // the two passes are their own steps now, each with its own bar: the second
-        // restarts the count, so one bar for both would appear to go backwards
+        // One row for both passes, with the word saying which one it is on. The second
+        // pass restarts the count, so the bar goes back to the left: Reading becoming
+        // Checking is what makes that a new pass rather than lost ground.
         const first = seen[0].steps.find((x) => x.key === "contacts");
-        expect(first).toMatchObject({ status: "running", done: 90, total: 183, label: "Reading contacts" });
+        expect(first).toMatchObject({ status: "running", done: 90, total: 183, word: "Reading", label: "Contacts" });
 
-        const second = seen[1].steps.find((x) => x.key === "recheck");
-        expect(second).toMatchObject({ status: "running", done: 183, total: 183, label: "Checking for dropped contacts" });
-        // and the pass before it is finished, not left hanging
-        expect(seen[1].steps.find((x) => x.key === "contacts").status).toBe("done");
+        const second = seen[1].steps.find((x) => x.key === "contacts");
+        expect(second).toMatchObject({ status: "running", done: 183, total: 183, word: "Checking" });
+
+        // and there is no second row for it
+        expect(seen[1].steps.filter((x) => /contact/i.test(x.label))).toHaveLength(1);
     });
 
     it("gives the channels a count and a bar like the contacts", async () => {
