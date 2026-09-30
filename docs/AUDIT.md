@@ -964,21 +964,23 @@ width, and only the real device tests the touch targets.
       contacts unheard for 90 days, so a second round trip drops **0** and restores 0.
       Without deleting a contact by hand there is no signal, and the test passes while
       proving nothing.
-- [ ] **The way home is not overwritten by a bad round trip.** Built 29 Sep, untested
-      on a radio. A normal-mode connect still refreshes the record -- that is how a
-      channel added with another app becomes part of the way home -- but a capture that
-      would shrink it now asks instead, and writes nothing until answered.
-      To stage it: note the contact count, forget a dozen contacts, then reconnect. The
-      question should name what is missing and both numbers. **Keep the older record**
-      writes nothing and asks again on the next connect; **the radio is right** writes
-      both the profile and the backup.
-      One lost channel is enough to ask on its own -- a channel's key cannot be heard
-      again, while a station re-adverts -- so the quicker version is to clear one
-      channel slot and reconnect.
-      A handful of forgotten contacts must **not** ask: a question with no weight
-      teaches the operator to dismiss it unread, which is the habit that would make this
-      useless on the day it matters. The thresholds are more than ten, or more than a
-      fifth of them.
+- [x] **The way home is not overwritten by a bad round trip.** **PASSED 29 Sep on
+      node 1.** Fifteen contacts forgotten by hand, then reconnect. The connect stopped
+      and asked -- *"15 contacts missing, 211 recorded, 196 on the radio"* -- and the
+      stored backup was still 211 contacts at its original timestamp while the question
+      was open. "Keep the older record" closed it and wrote nothing: same 211, same
+      timestamp, radio still connected. Loading that backup put all fifteen back.
+      Last night the same moment silently wrote the diminished radio over the record.
+      **Staging it is the fiddly part**, and worth reading before repeating:
+      - A mode round trip will **not** do it. Contacts are only dropped when unheard
+        for 90 days, so a second trip drops 0. Both modes use the same rule.
+      - The channel rule is cheaper to trigger in theory -- one lost channel asks -- but
+        the app has no way to clear a radio channel slot. The Channels list in Settings
+        edits what the *mode writes*, not the radio, and is the wrong lever.
+      - So contacts have to be forgotten by hand, more than ten of them, each behind a
+        native confirm. Delete a couple more than the threshold: a station that adverts
+        mid-test comes back and takes the count with it.
+      - Pick stale third-party stations, never the operator's own nodes.
 
 ### Contacts, on a big roster
 

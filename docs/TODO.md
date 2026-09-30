@@ -163,7 +163,9 @@ should *say*, not defects. See AUDIT.md for the evidence behind each.
       and every test passed with it removed -- the comparison and the dialog were both
       covered, and nothing noticed that nothing called them. It is
       `ModeProfiles.recordNormal` now, so the call itself is asserted.
-      Untested on a radio; AUDIT.md says how to stage it.
+      **Proven on node 1, 29 Sep**: 15 contacts forgotten by hand, the connect asked
+      rather than overwriting, and keeping the older record wrote nothing. AUDIT.md has
+      the staging, which is the fiddly part.
 
 - [ ] **"the channels was not set"** in `ModeSwitchDialog.vue`. A mode switch
       reports its failures as `${what} was not set`, and `what` is sometimes plural.
