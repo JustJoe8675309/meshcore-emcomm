@@ -136,6 +136,10 @@
     </div>
 
     <ModeSwitchDialog :open="modeDialogOpen" @close="modeDialogOpen = false"/>
+
+    <!-- asked on the way out, when the station is in a mode this computer would
+         otherwise be the only record of -->
+    <DisconnectDialog :open="disconnectAsking" @close="disconnectAsking = false"/>
     <FirstRunSetup :open="firstRunOpen" @close="firstRunOpen = false"/>
 
     <!-- asked before anything about normal mode is written down -->
@@ -154,6 +158,8 @@ import DropDownMenu from "./DropDownMenu.vue";
 import DropDownMenuItem from "./DropDownMenuItem.vue";
 import ModeBanner from "./modes/ModeBanner.vue";
 import ModeSwitchDialog from "./modes/ModeSwitchDialog.vue";
+import DisconnectDialog from "./modes/DisconnectDialog.vue";
+import ModeProfiles from "../js/modes/ModeProfiles.js";
 import ModeSharing from "./modes/ModeSharing.vue";
 import FirstRunSetup, { FirstRunSetup as FirstRun } from "./modes/FirstRunSetup.vue";
 import LeftInModeDialog from "./modes/LeftInModeDialog.vue";
@@ -161,10 +167,11 @@ import { SHARE_PATH } from "../js/modes/ModeShare.js";
 
 export default {
     name: 'Header',
-    components: {DropDownMenuItem, DropDownMenu, IconButton, ModeBanner, ModeSwitchDialog, ModeSharing, FirstRunSetup, LeftInModeDialog},
+    components: {DropDownMenuItem, DropDownMenu, IconButton, ModeBanner, ModeSwitchDialog, DisconnectDialog, ModeSharing, FirstRunSetup, LeftInModeDialog},
     data() {
         return {
             modeDialogOpen: false,
+            disconnectAsking: false,
             firstRunOpen: false,
             sharingOpen: false,
             // a code scanned with the phone's own camera opens the app at the
@@ -224,8 +231,19 @@ export default {
             await Connection.sendFloodAdvert();
             alert("A flood routed advert has been sent.");
         },
+        /**
+         * A station in a mode is asked whether to come home first, because the way
+         * home is recorded here and nowhere else. A station already in normal mode is
+         * not asked: there is nothing to come home from, and a question with one real
+         * answer teaches an operator to dismiss the dialog unread, which is the habit
+         * that would make this one useless on the day it matters.
+         */
         async disconnect() {
-            await Connection.disconnect();
+            if(ModeProfiles.current() === "normal"){
+                await Connection.disconnect();
+                return;
+            }
+            this.disconnectAsking = true;
         },
     },
     computed: {

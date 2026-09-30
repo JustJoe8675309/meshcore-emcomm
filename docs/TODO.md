@@ -78,21 +78,23 @@ done at all.
       only be shown when it is confident. Pairs with the three-stage gauge -- a falling
       25% and a rising 25% deserve different treatment.
 
-- [ ] **Disconnect should offer to bring the station home first.** Asked for 29 Sep:
-      pressing Disconnect asks whether to put the node back to normal mode or to
-      disconnect as it stands.
-      This is a real trap rather than a convenience. **The way home lives on the
-      computer that holds the backup**, so a node disconnected while still in an emcomm
-      mode is left on drill channels and drill settings, and the operator who picks it
-      up on another machine gets the "Is this station in a mode?" question and no way
-      to put it back. The radio does not know it is in a mode; only this browser does.
-      Both answers have to stay easy: disconnecting as-is is correct when the operator
-      is handing the radio on mid-incident or swapping to another device, so this must
-      be a question and never an automatic switch. Worth saying in the dialog which
-      mode it is in and what coming home would change, the way the switch dialog
-      already does.
-      Note a mode switch takes 40-90 s, so the dialog has to hold the disconnect until
-      it finishes rather than racing it.
+- [x] **Disconnect should offer to bring the station home first.** Asked for 29 Sep,
+      built the same day. `DisconnectDialog.vue`: put it back to normal mode and then
+      disconnect, disconnect and leave it in the mode, or stay connected.
+      A station already in normal mode is not asked. There is nothing to come home
+      from, and a question with one real answer teaches an operator to dismiss the
+      dialog unread -- which is the habit that would make this one useless on the day
+      it matters.
+      **The disconnect waits for the switch**, it does not race it: dropping the link
+      part way through writing channels is worse than either answer offered. And a
+      switch that fails does not disconnect -- being told "it did not come home" while
+      the radio is still on the air is recoverable; being told it after the link is
+      gone is not. Seven mutations, all caught, including both of those.
+      Checked on screen at 375px in both themes, against the built CSS, in all three
+      states. That is what found "the channels was not set" -- `what` is sometimes
+      plural, so the verb cannot agree with it, and the phrasing now fronts the
+      failure instead. **ModeSwitchDialog still has the original wording.**
+      Untested on a radio: the 40-90 s switch, and whether the progress line moves.
 
 - [ ] **Sweep the whole repo for anything else personal.** Deferred 29 Sep. The
       callsign and the position are done and the built bundle is clean, but that was
@@ -142,6 +144,12 @@ should *say*, not defects. See AUDIT.md for the evidence behind each.
       help.
 - [ ] **There is no way to leave a room.** `RoomLoginBar.vue` only logs in, and the
       login is in-memory only, so an operator who wants out has nothing to press.
+- [ ] **"the channels was not set"** in `ModeSwitchDialog.vue`. A mode switch
+      reports its failures as `${what} was not set`, and `what` is sometimes plural.
+      The disconnect dialog fronts the failure instead -- "Could not set the
+      channels: ..." -- which reads correctly either way; the switch dialog was left
+      alone because its wording is asserted in tests that are about the switch, not
+      about grammar. Same family as the `(s)` hedging below.
 - [ ] **"1 contact(s)"** -- six warning strings hedge the plural with `(s)` while the
       same files pluralise properly elsewhere.
 - [ ] **The repeater picker says "most recently heard first"** and pins favourites

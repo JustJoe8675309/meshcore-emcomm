@@ -923,6 +923,29 @@ width, and only the real device tests the touch targets.
       "I see no version" and "I see the wrong version" are different findings: the
       first is a build problem, the second a cache problem.
 
+- [ ] **Disconnect asks whether to take the station home.** Added 29 Sep, untested on a
+      radio. Put it in Emcomm-Live or Emcomm-Training and press Disconnect.
+      1. **It asks, and nothing disconnects yet.** The dialog names the mode and lists
+         what coming home would change, the same description the switch dialog shows.
+      2. **"Disconnect, leave it in Emcomm-Live"** disconnects and the radio stays on
+         the drill channels. Reconnect and confirm the banner still says the mode.
+      3. **"Put it back to normal mode, then disconnect"** does both, in that order.
+         This is the one that needs a radio: the switch takes 40-90 s, and the point is
+         that the link is held until it finishes rather than dropped part way through
+         writing channels. Watch the progress line move -- if it sits still the
+         `onProgress` shape has drifted, which is how it rendered `[object Object]` the
+         first time.
+      4. **A station already in normal mode is not asked** -- it disconnects straight
+         away. That is deliberate: a question with one real answer teaches an operator
+         to dismiss the dialog unread.
+      5. **A failed trip home does not disconnect.** Hard to stage on purpose; turning
+         the radio off mid-switch is the closest. It should say it is still connected
+         and offer to try again. Anything that disconnects here is a defect: the whole
+         item exists because a stranded radio cannot be recovered from another machine.
+      The three states were checked on screen at 375px in both themes against the built
+      CSS, so layout and legibility are not what this item is for -- timing and the
+      radio's own behaviour are.
+
 ### Contacts, on a big roster
 
 - [ ] **The whole roster arrives.** Connect the node with the most contacts and
