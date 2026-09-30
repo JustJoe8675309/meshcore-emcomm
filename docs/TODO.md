@@ -132,9 +132,6 @@ should *say*, not defects. See AUDIT.md for the evidence behind each.
       bench, once to the operator and once to Claude. The prompt's own group is
       Send / Send with message / Decline / Not now, so scoping to that group is what
       would disambiguate.
-- [ ] **A finished ping run relabels itself** when the Requests box changes: a
-      completed run of 5 reads "5 of 9". Only that header is bound to the live input;
-      the run's own count is already in the line beneath it.
 - [ ] **"Once" closes before a person can answer.** Three direct requests answered at
       ordinary human speed all returned "the answer came after this app had stopped
       asking". Nothing is lost and the wording is true, but the normal case reports

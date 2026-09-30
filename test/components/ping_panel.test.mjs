@@ -4,7 +4,7 @@
 // guard that is never consulted, a loop that keeps running after its panel is gone,
 // or an error being recorded as a measurement. All three of those were real.
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { mount } from "@vue/test-utils";
 import PingPanel from "../../src/components/ping/PingPanel.vue";
 import GlobalState from "../../src/js/GlobalState.js";
@@ -258,6 +258,71 @@ describe("PingPanel", () => {
         const wrapper = mountPanel();
         await wrapper.vm.discover();
         expect(wrapper.vm.discoverError).toMatch(/firmware/i);
+    });
+
+});
+
+// A finished run must keep its own numbers.
+//
+// From the 28 Sep audit: the "Replies N of M" header read the live Requests input, so
+// a completed run of 5 relabelled itself "5 of 9" the moment the box was changed for
+// the next one. The run's own count is already in the summary line beneath it, so the
+// two then disagreed and the header was the wrong one.
+describe("what a finished run says it was", () => {
+
+    beforeEach(() => {
+        GlobalState.connection = { on() {}, off() {}, async sendToRadioFrame() {} };
+        GlobalState.contacts = [aRepeater()];
+    });
+
+    afterEach(() => {
+        GlobalState.connection = null;
+        GlobalState.contacts = [];
+    });
+
+    it("keeps the count the run was asked for when the box changes after it", async () => {
+        const wrapper = mountPanel();
+        wrapper.vm.runCount = 5;
+        wrapper.vm.results = [{ seq: 1, success: true, snrThere: 1, snrBack: 1, timeMillis: 100 }];
+        await wrapper.vm.$nextTick();
+
+        expect(wrapper.text()).toContain("1 of 5");
+
+        // the operator sets up the next run
+        wrapper.vm.requestCount = 9;
+        await wrapper.vm.$nextTick();
+
+        expect(wrapper.text()).toContain("1 of 5");
+        expect(wrapper.text()).not.toContain("1 of 9");
+    });
+
+    // the header is only honest if a real run records what it was asked for; setting
+    // runCount by hand in a test proves the binding, not the capture
+    it("records the count when a run actually starts", async () => {
+        vi.spyOn(Connection, "pingContact").mockImplementation(async () => {
+            return { snrThere: 1, snrBack: 1, timeMillis: 100 };
+        });
+        const wrapper = mountPanel();
+        wrapper.vm.selectedContactKey = wrapper.vm.pingableContacts[0].publicKeyHex;
+        wrapper.vm.requestCount = 3;
+        wrapper.vm.delayMillis = 0;
+        await wrapper.vm.$nextTick();
+
+        await wrapper.vm.start();
+
+        expect(wrapper.vm.runCount).toBe(3);
+        expect(wrapper.text()).toContain("of 3");
+    });
+
+    // before any run there is nothing to remember, and the input is the honest answer
+    it("falls back to the input when no run has happened", async () => {
+        const wrapper = mountPanel();
+        wrapper.vm.runCount = null;
+        wrapper.vm.requestCount = 7;
+        wrapper.vm.results = [{ seq: 1, success: true, snrThere: 1, snrBack: 1, timeMillis: 100 }];
+        await wrapper.vm.$nextTick();
+
+        expect(wrapper.text()).toContain("1 of 7");
     });
 
 });

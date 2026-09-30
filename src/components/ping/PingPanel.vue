@@ -126,7 +126,7 @@
 
                 <div class="flex items-center justify-between">
                     <div class="text-sm font-medium text-gray-900">Replies</div>
-                    <div class="text-xs text-gray-500">{{ results.length }} of {{ requestCount }}</div>
+                    <div class="text-xs text-gray-500">{{ results.length }} of {{ runCount ?? requestCount }}</div>
                 </div>
 
                 <div ref="log" class="space-y-1 max-h-64 overflow-y-auto">
@@ -182,7 +182,7 @@
                     v-else
                     @click="cancel"
                     type="button"
-                    class="w-full text-white bg-red-700 hover:bg-red-800 font-medium rounded-lg text-sm px-5 py-2.5">Cancel ({{ results.length }} of {{ requestCount }})</button>
+                    class="w-full text-white bg-red-700 hover:bg-red-800 font-medium rounded-lg text-sm px-5 py-2.5">Cancel ({{ results.length }} of {{ runCount ?? requestCount }})</button>
 
                 <button
                     v-if="stats"
@@ -226,6 +226,11 @@ export default {
             copyMessageTimeout: null,
             addMessage: null,
             requestCount: 5,
+            // what the run in the results below was asked for. The header used to read
+            // the live input, so a finished run of 5 relabelled itself "5 of 9" the
+            // moment the box was changed for the next one -- the run's own count is
+            // already in the summary line beneath it, and the two then disagreed
+            runCount: null,
             delayMillis: 1000,
             results: [],
             stats: null,
@@ -377,6 +382,7 @@ export default {
 
             const token = Date.now();
             this.runToken = token;
+            this.runCount = this.requestCount;
 
             for(let i = 0; i < this.requestCount; i++){
 
