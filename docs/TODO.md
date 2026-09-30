@@ -163,28 +163,53 @@ done at all.
       guarantee intact, and the reuse has to be proven on a Bluetooth link before it is
       trusted, not just in tests.
 
-- [ ] **Contact drops over Bluetooth are not random, and the roster cap may be the
-      answer after all.** Measured on node 2, 30 Sep, after the duplicate read was
-      removed: **eight passes reached 191 of 260 (73%)**, and the pass cap stopped it,
-      not the clock.
-      That number is the finding. The read merges by public key and every pass drops a
-      different few, so with independent losses eight passes converge -- the comment in
-      `loadContacts` records exactly that, "complete after two or three" on a node with
-      265. Reaching 73% after eight says **the same contacts are missed every time**.
-      **The hypothesis worth testing: the loss is positional.** If the radio reliably
-      delivers roughly the first 190 and loses the tail, no number of passes will ever
-      fetch the rest, and the operator's original suggestion -- hold fewer contacts on
-      the radio than the link can deliver -- becomes the correct fix rather than a
-      workaround. It was argued against on the grounds that the loss looked
-      proportional. Eight passes at 73% is evidence against that.
-      **How to tell.** Read the list twice and compare the sets, not the counts. Random
-      drops give two different subsets with high overlap and different members missing;
-      a positional or deterministic limit gives the same subset twice. If it is the same
-      subset, find where it stops: that number is the radio's real capacity over this
-      link, and the cap goes just under it.
-      Related: the pass cap is now the binding limit, so `MAX_CONTACT_LOAD_PASSES`
-      deserves a look at the same time -- but raising it is pointless if the drops are
-      deterministic, which is why the set comparison comes first.
+- [ ] **A failed single-contact read starts a whole-list re-read, and they pile up.**
+      Found 30 Sep on node 3, and it affects every node.
+      The connect's own contact read was still running when two more full reads began:
+
+          one contact read failed (a different contact came back), reading them all
+          contacts: a full read started while 1 other was running
+          contacts: a full read started while 2 other was running
+          contacts: giving up after 201s, last pass gained 0
+          contacts: 311 of 313 after 3 passes
+
+      Three full reads at once. `loadContacts` already warns about this -- its comment
+      says two "take turns pass by pass and double the wait" -- and nothing stops it.
+      Node 3 converged in three passes and still took **201 seconds**, because the
+      passes were sharing the link with two other reads.
+      The trigger is a single-contact read getting somebody else's answer back, which
+      falls back to re-reading the entire list. That fallback is reasonable on its own
+      and unreasonable while a full read is already in flight: it should join the one
+      running rather than start another. `contactLoadsRunning` is already counted, so
+      the information is there -- what is missing is a single in-flight read that
+      callers await instead of a fresh one each.
+      This is likely inflating the contact numbers measured on every node, so it is
+      worth fixing **before** drawing any more conclusions from read timings.
+
+- [ ] **Node 2 reads short over Bluetooth and the other radios do not.** Measured
+      30 Sep. This is a radio to look at, not a transport to work around.
+
+          node 1  serial     215 roster   215  (100%)
+          node 2  bluetooth  260 roster   191 (73%) then 228 (88%), 8 and 6 passes
+          node 3  bluetooth  313 roster   311 (99.4%), 3 passes
+
+      **Node 3 has a bigger roster over the same transport and converged in three
+      passes**, which is what `loadContacts` documents as normal. So it is neither
+      Bluetooth nor roster size. Two reads of node 2 also delivered *different*
+      subsets -- 10 contacts appeared only in the first, 47 only in the second, union
+      238 of 260 -- so the loss is random rather than a fixed truncation, which rules
+      out the roster cap that was considered.
+      What is left: node 2's firmware build, its BLE stack, its antenna or RF
+      environment, or the hardware. A reflash is a reasonable next step **but not until
+      its identity is backed up** -- `meshcore-node-backups/` currently holds one
+      export from 19 Sep with no node name, no public key and no private key field, so
+      node 2's identity is protected nowhere. See [[node-identity-backup]].
+      **Correction worth keeping:** this was written up first as "Bluetooth loses
+      contacts under burst", in commit messages and here, on the evidence of one radio.
+      One control on node 3 overturned it. The fixes that came out of it stand on their
+      own -- not reading contacts twice, not letting a short read overwrite a fuller
+      record, ending a stalled read rather than a working one -- because none of them
+      depended on the cause.
 
 ## Known wrong, left deliberately
 
