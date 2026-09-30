@@ -144,6 +144,9 @@
 
     <!-- asked before anything about normal mode is written down -->
     <LeftInModeDialog/>
+
+    <!-- asked at connect, when this radio holds less than the way home records -->
+    <BackupShrankDialog/>
     <ModeSharing :open="sharingOpen" :incoming-link="incomingLink" @close="closeSharing"/>
 
     </div>
@@ -160,6 +163,7 @@ import ModeBanner from "./modes/ModeBanner.vue";
 import ModeSwitchDialog from "./modes/ModeSwitchDialog.vue";
 import DisconnectDialog from "./modes/DisconnectDialog.vue";
 import ModeProfiles from "../js/modes/ModeProfiles.js";
+import BackupShrankDialog from "./modes/BackupShrankDialog.vue";
 import ModeSharing from "./modes/ModeSharing.vue";
 import FirstRunSetup, { FirstRunSetup as FirstRun } from "./modes/FirstRunSetup.vue";
 import LeftInModeDialog from "./modes/LeftInModeDialog.vue";
@@ -167,7 +171,7 @@ import { SHARE_PATH } from "../js/modes/ModeShare.js";
 
 export default {
     name: 'Header',
-    components: {DropDownMenuItem, DropDownMenu, IconButton, ModeBanner, ModeSwitchDialog, DisconnectDialog, ModeSharing, FirstRunSetup, LeftInModeDialog},
+    components: {DropDownMenuItem, DropDownMenu, IconButton, ModeBanner, ModeSwitchDialog, DisconnectDialog, ModeSharing, FirstRunSetup, LeftInModeDialog, BackupShrankDialog},
     data() {
         return {
             modeDialogOpen: false,

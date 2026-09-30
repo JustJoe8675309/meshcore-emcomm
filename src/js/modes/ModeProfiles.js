@@ -276,6 +276,29 @@ class ModeProfiles {
      * station as its owner had it before any of this. Taken once, when the app
      * first sees a node, and again only when the operator asks.
      */
+    /**
+     * Record this radio as its normal setup -- unless doing so would shrink the way
+     * home, in which case it asks instead and writes nothing.
+     *
+     * Taken out of the connect path so it can be tested. The check lived inline there
+     * and every test of it passed with the check removed: the comparison and the
+     * dialog were both covered, and neither noticed that nothing called them.
+     *
+     * Returns "saved" or "asked".
+     */
+    static async recordNormal(backup, nodeKeyHex = this.nodeKeyHex()) {
+        const NodeBackup = (await import("../NodeBackup.js")).default;
+        const stored = NodeBackup.load(nodeKeyHex, NodeBackup.SLOT_PRE_EMCOMM);
+        const shrinkage = NodeBackup.shrinkage(stored, backup);
+        if(shrinkage != null){
+            GlobalState.backupShrank = { shrinkage, backup, nodeKeyHex };
+            return "asked";
+        }
+        await this.captureNormal(nodeKeyHex, { channels: backup.channels });
+        NodeBackup.save(backup, NodeBackup.SLOT_PRE_EMCOMM);
+        return "saved";
+    }
+
     static async captureNormal(nodeKeyHex = this.nodeKeyHex(), { channels: given = null } = {}) {
 
         const selfInfo = GlobalState.selfInfo;

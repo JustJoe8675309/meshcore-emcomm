@@ -281,6 +281,7 @@ class Connection {
         GlobalState.roomLogins = {};
         // and a question about a radio that has gone is no longer a question
         GlobalState.leftInMode = null;
+        GlobalState.backupShrank = null;
         // and so do the keep-alives that hold them open
         RoomKeepAlive.stopAll();
         // the slot count was this radio's, not the next one's
@@ -463,8 +464,13 @@ class Connection {
                             backup: backup,
                         };
                     } else {
-                        await ModeProfiles.captureNormal(undefined, { channels: backup.channels });
-                        NodeBackup.save(backup, NodeBackup.SLOT_PRE_EMCOMM);
+                        // A radio holding less than the way home already records is
+                        // asked about rather than written down. The refresh above is
+                        // what keeps the record honest, but it used to overwrite
+                        // without looking: after a round trip that lost contacts, the
+                        // next connect wrote the diminished radio over the good record
+                        // and the evidence went with it.
+                        await ModeProfiles.recordNormal(backup);
                     }
                 } catch(e) {
                     console.log("could not record the radio's normal mode", e);

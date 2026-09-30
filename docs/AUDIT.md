@@ -964,14 +964,21 @@ width, and only the real device tests the touch targets.
       contacts unheard for 90 days, so a second round trip drops **0** and restores 0.
       Without deleting a contact by hand there is no signal, and the test passes while
       proving nothing.
-- [ ] **The way home is not overwritten by a bad round trip.** `Connection.js` takes a
-      fresh `pre-emcomm` backup on every normal-mode connect -- deliberately, so a
-      channel added elsewhere becomes part of the way home. It has no guard. On 29 Sep
-      a reconnect wrote 211 contacts over the 253 that were the way home, and a later
-      one wrote 210 over that, so the record of what was lost was lost too.
-      Check that a connect which would shrink the stored backup says so rather than
-      doing it quietly. Nothing implements this yet -- it is the open half of the
-      finding above.
+- [ ] **The way home is not overwritten by a bad round trip.** Built 29 Sep, untested
+      on a radio. A normal-mode connect still refreshes the record -- that is how a
+      channel added with another app becomes part of the way home -- but a capture that
+      would shrink it now asks instead, and writes nothing until answered.
+      To stage it: note the contact count, forget a dozen contacts, then reconnect. The
+      question should name what is missing and both numbers. **Keep the older record**
+      writes nothing and asks again on the next connect; **the radio is right** writes
+      both the profile and the backup.
+      One lost channel is enough to ask on its own -- a channel's key cannot be heard
+      again, while a station re-adverts -- so the quicker version is to clear one
+      channel slot and reconnect.
+      A handful of forgotten contacts must **not** ask: a question with no weight
+      teaches the operator to dismiss it unread, which is the habit that would make this
+      useless on the day it matters. The thresholds are more than ten, or more than a
+      fifth of them.
 
 ### Contacts, on a big roster
 

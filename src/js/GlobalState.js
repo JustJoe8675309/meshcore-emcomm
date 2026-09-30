@@ -35,6 +35,8 @@ const globalState = reactive({
     // nodeKeyHex, backup }. Nothing about normal mode is recorded until the
     // operator says which it is.
     leftInMode: null,
+    // set when a connect would shrink the way home; holds the capture until answered
+    backupShrank: null,
     // which kinds of repeating advert have a timer armed, so the ui can say so.
     // kept here because it has to be reactive: read straight off the schedule it
     // is plain module state, and a computed with no reactive dependency caches

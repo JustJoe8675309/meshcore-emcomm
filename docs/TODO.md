@@ -150,19 +150,20 @@ should *say*, not defects. See AUDIT.md for the evidence behind each.
       help.
 - [ ] **There is no way to leave a room.** `RoomLoginBar.vue` only logs in, and the
       login is in-memory only, so an operator who wants out has nothing to press.
-- [ ] **A connect can overwrite the way home with a worse copy.** Found 29 Sep on
-      node 1, and it is the open half of the contact-loss finding.
-      `Connection.js:443` takes a fresh `pre-emcomm` backup on every normal-mode
-      connect. That is deliberate and worth keeping -- it is how a channel added with
-      another app becomes part of the way home, and node 3 lost a channel to a record
-      three days old. But it has no guard, so a connect that follows a bad round trip
-      writes the diminished radio over the good record: 253 contacts became 211, then
-      210, and the evidence of the loss went with it.
-      A fix has to keep the refresh and stop the silent shrink. Something like: if the
-      new capture holds materially fewer contacts or channels than the stored one, keep
-      both and ask, the way the "Is this station in a mode?" question already does
-      rather than guessing. Do not simply stop refreshing -- that is the bug it was
-      changed to fix.
+- [x] **A connect can overwrite the way home with a worse copy.** Found 29 Sep on
+      node 1, fixed the same night. The refresh is kept -- it is how a channel added
+      with another app becomes part of the way home, and node 3 lost a channel to a
+      record three days old -- but a capture that would shrink the record now asks
+      first and writes nothing until answered.
+      `NodeBackup.shrinkage` judges the two kinds differently: any lost channel asks,
+      because a channel's key cannot be heard again, while contacts have to drop by
+      more than ten or more than a fifth, because a contact forgotten on purpose is
+      ordinary and a station re-adverts by itself.
+      **The check nearly shipped as dead code.** It lived inline in the connect path
+      and every test passed with it removed -- the comparison and the dialog were both
+      covered, and nothing noticed that nothing called them. It is
+      `ModeProfiles.recordNormal` now, so the call itself is asserted.
+      Untested on a radio; AUDIT.md says how to stage it.
 
 - [ ] **"the channels was not set"** in `ModeSwitchDialog.vue`. A mode switch
       reports its failures as `${what} was not set`, and `what` is sometimes plural.

@@ -426,6 +426,58 @@ class NodeBackup {
         return `${STORAGE_PREFIX}:${nodePublicKeyHex}:${slot}`;
     }
 
+    /**
+     * What a fresh capture would cost the stored one, if anything.
+     *
+     * The way home is refreshed on every normal-mode connect, deliberately: it is how
+     * a channel added with another app becomes part of it, and node 3 lost a channel
+     * to a record three days old. But the refresh had no guard, so a connect that
+     * followed a bad round trip wrote the diminished radio straight over the good
+     * record. On 29 Sep that turned 253 contacts into 211, then 210, and the evidence
+     * of the loss went with it.
+     *
+     * Returns null when the fresh capture costs nothing worth asking about, or
+     * `{ contactsLost, channelsLost }` when it does.
+     *
+     * The two are judged differently on purpose:
+     *
+     *  * **Any channel lost asks.** Channels are few, each one is deliberate, and they
+     *    carry secrets that cannot be recovered by waiting. Losing one is never
+     *    housekeeping.
+     *  * **Contacts have to drop materially.** They come and go on their own -- a
+     *    contact forgotten on purpose is ordinary, and a station re-adverts and comes
+     *    back by itself. Asking about one or two would train the operator to dismiss
+     *    this unread, which is the habit that would make it useless when it matters.
+     *    More than ten, or more than a fifth of them, is not housekeeping.
+     */
+    static shrinkage(stored, fresh) {
+        if(stored == null || fresh == null){
+            return null;
+        }
+        const storedContacts = stored.contacts?.length ?? 0;
+        const freshContacts = fresh.contacts?.length ?? 0;
+        const storedChannels = stored.channels?.length ?? 0;
+        const freshChannels = fresh.channels?.length ?? 0;
+
+        const contactsLost = storedContacts - freshContacts;
+        const channelsLost = storedChannels - freshChannels;
+
+        const contactsMatter = contactsLost > 10 || (contactsLost > 0 && contactsLost >= storedContacts / 5);
+        const channelsMatter = channelsLost > 0;
+        if(!contactsMatter && !channelsMatter){
+            return null;
+        }
+        return {
+            contactsLost: Math.max(0, contactsLost),
+            channelsLost: Math.max(0, channelsLost),
+            storedContacts,
+            freshContacts,
+            storedChannels,
+            freshChannels,
+            capturedAt: stored.capturedAt ?? null,
+        };
+    }
+
     static save(backup, slot) {
         try {
             window.localStorage.setItem(this.storageKey(backup.nodePublicKey, slot), JSON.stringify(backup));

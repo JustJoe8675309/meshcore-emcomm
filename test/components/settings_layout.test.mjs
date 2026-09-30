@@ -282,11 +282,22 @@ describe("what connecting decides", () => {
     });
 
     it("takes the way home at the same time, from the same read of the radio", () => {
-        // one verified read, used for the profile that says what normal mode
-        // writes and for the backup that is the way home
+        // One verified read, used for the profile that says what normal mode writes
+        // and for the backup that is the way home.
+        //
+        // The two writes moved into ModeProfiles.recordNormal on 29 Sep, so that the
+        // check guarding them could be tested -- inline in the connect path it was
+        // dead code that every test passed without. The rule is unchanged and is
+        // followed here rather than dropped: one capture, handed on whole.
         expect(connect).toContain("const backup = await NodeBackup.capture();");
-        expect(connect).toMatch(/captureNormal\(undefined, \{ channels: backup\.channels \}\)/);
-        expect(connect).toContain("NodeBackup.SLOT_PRE_EMCOMM");
+        expect(connect).toContain("ModeProfiles.recordNormal(backup)");
+
+        const profiles = readFileSync(resolve("src/js/modes/ModeProfiles.js"), "utf8");
+        const from = profiles.indexOf("static async recordNormal(");
+        const record = profiles.slice(from, profiles.indexOf("static async captureNormal(", from));
+        expect(from).toBeGreaterThan(-1);
+        expect(record).toContain("captureNormal(nodeKeyHex, { channels: backup.channels })");
+        expect(record).toContain("NodeBackup.save(backup, NodeBackup.SLOT_PRE_EMCOMM)");
     });
 
     it("asks rather than guesses when the radio is holding a mode's own channel", () => {
