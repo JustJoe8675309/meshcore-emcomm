@@ -217,6 +217,14 @@ done at all.
       record, ending a stalled read rather than a working one -- because none of them
       depended on the cause.
 
+- [ ] **Rewrite the contact read: persist, delta, repair by key, reconcile by count.**
+      The full analysis is in [CONTACT-READ.md](CONTACT-READ.md), written 30 Sep. The
+      one-line version: the radio streams contacts through a four-frame queue that drops
+      on full, the pushes for adverts and messages are what fill it, and the app re-streams
+      the whole list to cope. The firmware already offers `since` on `CMD_GET_CONTACTS`
+      and a by-key fetch; the app uses neither for this. A decision for the operator
+      before any code.
+
 ## Known wrong, left deliberately
 
 These came out of the 27-29 Sep audit and are judgement calls about what the app
