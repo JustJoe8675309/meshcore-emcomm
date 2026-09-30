@@ -179,7 +179,10 @@ export default {
             try {
                 const result = await ModeSwitch.apply(mode, (p) => { this.progress = p; }, { acceptIncompleteBackup });
                 this.warnings = result.warnings;
-                this.failures = result.failures.map((f) => `${f.what} was not set: ${f.reason}`);
+                // "the channels was not set": `what` is sometimes plural, so the verb
+                // cannot agree with it. Fronting the failure sidesteps it entirely,
+                // the same way the disconnect dialog does
+                this.failures = result.failures.map((f) => `Could not set ${f.what}: ${f.reason}`);
                 this.done = `This station is now in ${this.labelFor(mode)}.`;
             } catch(e) {
                 // a short backup is not a failure to report and forget: it is a

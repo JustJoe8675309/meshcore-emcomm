@@ -800,7 +800,8 @@ describe("the mode switch dialog", () => {
         await flushPromises();
         await wrapper.findAll("button").find((b) => b.text().includes("Switch to")).trigger("click");
         await flushPromises();
-        expect(wrapper.text()).toContain("transmit power was not set: the radio refused it");
+        // fronted, because `what` is sometimes plural and the verb cannot agree
+        expect(wrapper.text()).toContain("Could not set transmit power: the radio refused it");
     });
 
 });

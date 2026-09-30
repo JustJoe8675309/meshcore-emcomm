@@ -132,10 +132,6 @@ should *say*, not defects. See AUDIT.md for the evidence behind each.
       bench, once to the operator and once to Claude. The prompt's own group is
       Send / Send with message / Decline / Not now, so scoping to that group is what
       would disambiguate.
-- [ ] **Two header buttons carry no accessible name**, while the share button carries
-      both `aria-label` and `title`. A screen reader announces them as "button".
-- [ ] **The contacts filter and order menu options are plain `div`s** -- no role, no
-      tabindex, no accessible name. Mouse-only, and silent to a screen reader.
 - [ ] **A finished ping run relabels itself** when the Requests box changes: a
       completed run of 5 reads "5 of 9". Only that header is bound to the live input;
       the run's own count is already in the line beneath it.
@@ -143,8 +139,6 @@ should *say*, not defects. See AUDIT.md for the evidence behind each.
       ordinary human speed all returned "the answer came after this app had stopped
       asking". Nothing is lost and the wording is true, but the normal case reports
       itself as a near miss.
-- [ ] **`0, 0` is refused for the right reason and told the wrong one** -- the message
-      cites a range that `0, 0` is inside.
 - [ ] **The room panel says "Not logged in"** after a radio reconnect while the room is
       actively pushing posts, and the instinctive remedy is the one thing that does not
       help.
@@ -167,16 +161,17 @@ should *say*, not defects. See AUDIT.md for the evidence behind each.
       rather than overwriting, and keeping the older record wrote nothing. AUDIT.md has
       the staging, which is the fiddly part.
 
-- [ ] **"the channels was not set"** in `ModeSwitchDialog.vue`. A mode switch
-      reports its failures as `${what} was not set`, and `what` is sometimes plural.
-      The disconnect dialog fronts the failure instead -- "Could not set the
-      channels: ..." -- which reads correctly either way; the switch dialog was left
-      alone because its wording is asserted in tests that are about the switch, not
-      about grammar. Same family as the `(s)` hedging below.
-- [ ] **"1 contact(s)"** -- six warning strings hedge the plural with `(s)` while the
-      same files pluralise properly elsewhere.
 - [ ] **The repeater picker says "most recently heard first"** and pins favourites
       above that.
+
+## Worth knowing before writing a test like these
+
+**A source grep cannot tell code from the prose describing it.** Two tests written on
+29 Sep passed with the thing they guarded removed, because the file's own comment
+explained the decision and said the words -- `role="menuitem"` and `w-full text-left`.
+Both were caught by mutation, not by review. Assert against the rendered element
+(`wrapper.classes()`, `wrapper.attributes("role")`) whenever there is one; keep source
+inspection for what mounting genuinely cannot see, like a Tailwind breakpoint.
 
 ## Cannot be tested on the bench
 
