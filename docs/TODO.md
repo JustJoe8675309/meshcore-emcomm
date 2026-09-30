@@ -41,7 +41,9 @@ done at all.
       Patch versions are not shown: they are what changes when a typo is fixed, and the
       extra characters crowd the station name.
       **Bump `version` in package.json** to make the number move -- minor for a new
-      feature, major for a change that breaks a station's stored settings.
+      feature or a batch of user-visible fixes, major for a change that breaks a
+      station's stored settings. It is bumped on every deploy now, since the operator
+      is told the version rather than the commit.
       Untested on a real screen; see the header section of AUDIT.md for what to look at.
 
 - [ ] **Show whether a sent message was heard**, the way the factory MeshCore app
