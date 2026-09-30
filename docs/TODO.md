@@ -163,7 +163,13 @@ done at all.
       guarantee intact, and the reuse has to be proven on a Bluetooth link before it is
       trusted, not just in tests.
 
-- [ ] **A failed single-contact read starts a whole-list re-read, and they pile up.**
+- [x] **A failed single-contact read starts a whole-list re-read, and they pile up.**
+      **Fixed 30 Sep, v1.9**: one full read at a time, keyed to the connection; a later
+      caller joins it and a single-contact refresh waits for it rather than asking into
+      the middle of it. Seven tests with a radio that yields between frames -- a
+      synchronous fake cannot overlap anything -- and five mutations, all caught, the
+      last only after a test for an old radio's read finishing late was added.
+      The original finding follows.
       Found 30 Sep on node 3, and it affects every node.
       The connect's own contact read was still running when two more full reads began:
 

@@ -780,6 +780,15 @@ class Connection {
 
         const key = new Uint8Array(publicKey);
 
+        // A full read already under way will deliver this contact, and asking for
+        // one in the middle of it is how the wrong answer comes back: the full read's
+        // frames and this one's interleave on the same link. Wait for it instead.
+        const running = this.contactLoadInFlight;
+        if(running != null && running.connection === connection){
+            await running.promise;
+            return;
+        }
+
         let reply = null;
         try {
             reply = await this.sendAwaiting(
@@ -883,17 +892,56 @@ class Connection {
     // 141 of 198 with the radio still mid list.
     static CONTACT_READ_QUIET_MILLIS = 4000;
 
-    // onProgress, when given, hears how many different contacts have arrived so
-    // far and how many the device said it would send
-    // how many full reads are under way, to show when one starts on top of another
-    static contactLoadsRunning = 0;
+    /**
+     * The full read in flight, if there is one: the connection it belongs to and
+     * the promise callers share. Cleared when it settles.
+     *
+     * One at a time. Node 3 over Bluetooth had **three** full reads sharing one link
+     * during a single connect -- the connect's own, plus two started by single-contact
+     * reads that got somebody else's answer back and fell back to reading everything.
+     * Reads at once take turns pass by pass, so each is slower, and the interleaved
+     * frames are the likeliest reason a single-contact read got the wrong answer in
+     * the first place. Node 3 converged in three passes and still took 201 s.
+     *
+     * Keyed to the connection so a read left over from a radio that has gone is not
+     * joined by the next radio's connect.
+     */
+    static contactLoadInFlight = null;
 
+    /**
+     * Read the whole contact list, merging passes until it is complete or the link
+     * gives out. A caller arriving while one is already running joins that read
+     * rather than starting another.
+     *
+     * A joiner's onProgress is not called: it is a passenger on a read that already
+     * has a driver. The only caller that passes one is the connect, and there is
+     * never a second connect on the same radio.
+     */
     static async loadContacts(onProgress = null) {
 
         const connection = GlobalState.connection;
         if(connection == null){
             throw new Error(this.DISCONNECTED);
         }
+
+        const running = this.contactLoadInFlight;
+        if(running != null && running.connection === connection){
+            console.log("contacts: a full read is already running, joining it");
+            return running.promise;
+        }
+
+        const promise = this.readAllContacts(connection, onProgress).finally(() => {
+            if(this.contactLoadInFlight?.promise === promise){
+                this.contactLoadInFlight = null;
+            }
+        });
+        this.contactLoadInFlight = { connection, promise };
+        return promise;
+    }
+
+    // onProgress, when given, hears how many different contacts have arrived so
+    // far and how many the device said it would send
+    static async readAllContacts(connection, onProgress = null) {
 
         // The device says how many contacts it is about to send, and meshcore.js
         // discards that number, resolving with whatever turned up before the end
@@ -940,14 +988,6 @@ class Connection {
 
         const byPublicKey = new Map();
         let passes = 0;
-
-        // two full reads at once take turns pass by pass and double the wait. It
-        // looked to have happened on node 2 over Bluetooth, but the console's own
-        // timestamps were too coarse to be sure, so it is said here when it does
-        this.contactLoadsRunning++;
-        if(this.contactLoadsRunning > 1){
-            console.log(`contacts: a full read started while ${this.contactLoadsRunning - 1} other was running`);
-        }
 
         try {
 
@@ -1013,7 +1053,6 @@ class Connection {
             }
 
         } finally {
-            this.contactLoadsRunning--;
             connection.off(Constants.ResponseCodes.ContactsStart, onContactsStart);
             connection.off(Constants.ResponseCodes.Contact, onContactSeen);
         }
