@@ -5,8 +5,14 @@
         <!-- the first connection to a radio takes seconds, most of it reading the
              contact list, and until it is done the tabs show a node with nothing
              on it. Shown on every page, since connecting can start from any -->
+        <ConnectSteps
+            v-if="GlobalState.connecting?.steps"
+            :steps="GlobalState.connecting.steps"
+            @cancel="disconnect"/>
+
+        <!-- anything that sets `connecting` without the step list still gets a line -->
         <BusyOverlay
-            v-if="GlobalState.connecting"
+            v-else-if="GlobalState.connecting"
             title="Connecting to the radio"
             :step="GlobalState.connecting.step"
             :done="GlobalState.connecting.done"
@@ -25,13 +31,14 @@
 import GlobalState from "../js/GlobalState.js";
 import Connection from "../js/Connection.js";
 import BusyOverlay from "./BusyOverlay.vue";
+import ConnectSteps from "./ConnectSteps.vue";
 import PositionPrompt from "./position/PositionPrompt.vue";
 import PositionRequestDialog from "./position/PositionRequestDialog.vue";
 import GroupPositionDialog from "./position/GroupPositionDialog.vue";
 
 export default {
     name: 'App',
-    components: {
+    components: {ConnectSteps, 
         BusyOverlay,
         PositionPrompt,
         PositionRequestDialog,

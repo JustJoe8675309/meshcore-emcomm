@@ -49,9 +49,9 @@ const mountApp = () => mount(App, { global: { stubs: { RouterView: true } } });
 describe("the loading screen component", () => {
 
     it("names what is under way, with a count when there is one", () => {
-        const wrapper = mount(BusyOverlay, { props: { title: "Connecting to the radio", step: "Reading contacts...", done: 50, total: 200 } });
+        const wrapper = mount(BusyOverlay, { props: { title: "Connecting to the radio", step: "Reading contacts", done: 50, total: 200 } });
         expect(wrapper.text()).toContain("Connecting to the radio");
-        expect(wrapper.text()).toContain("Reading contacts...");
+        expect(wrapper.text()).toContain("Reading contacts");
         expect(wrapper.text()).toContain("50 of 200");
         expect(wrapper.find("[role=status]").exists()).toBe(true);
     });
@@ -113,12 +113,12 @@ describe("connecting to a radio", () => {
 
         const finished = Connection.onConnected();
         await flushPromises();
-        expect(wrapper.text()).toContain("Waiting for the radio to answer...");
+        expect(wrapper.text()).toContain("Waiting for the radio to answer");
 
         steps.selfInfo.resolve();
         radio.emit(Constants.ResponseCodes.SelfInfo, SELF_INFO);
         await flushPromises();
-        expect(wrapper.text()).toContain("Reading contacts...");
+        expect(wrapper.text()).toContain("Reading contacts");
         expect(wrapper.text()).toContain("120 of 213");
 
         steps.contacts.resolve();

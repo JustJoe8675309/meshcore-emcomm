@@ -114,8 +114,15 @@ describe("the connect steps", () => {
 
         await runConnect(async () => {});
 
-        expect(seen[0]).toEqual({ step: "Reading contacts...", done: 90, total: 183 });
-        expect(seen[1]).toEqual({ step: "Checking for dropped contacts...", done: 183, total: 183 });
+        // the two passes are their own steps now, each with its own bar: the second
+        // restarts the count, so one bar for both would appear to go backwards
+        const first = seen[0].steps.find((x) => x.key === "contacts");
+        expect(first).toMatchObject({ status: "running", done: 90, total: 183, label: "Reading contacts" });
+
+        const second = seen[1].steps.find((x) => x.key === "recheck");
+        expect(second).toMatchObject({ status: "running", done: 183, total: 183, label: "Checking for dropped contacts" });
+        // and the pass before it is finished, not left hanging
+        expect(seen[1].steps.find((x) => x.key === "contacts").status).toBe("done");
     });
 
     it("gives the channels a count and a bar like the contacts", async () => {
@@ -128,7 +135,10 @@ describe("the connect steps", () => {
 
         await runConnect(async () => {});
 
-        expect(seen[0]).toEqual({ step: "Reading channels... 9 found", done: 17, total: 40 });
+        const channels = seen[0].steps.find((x) => x.key === "channels");
+        expect(channels).toMatchObject({ status: "running", done: 17, total: 40 });
+        // the running count still shows, as its own detail rather than the step's name
+        expect(channels.detail).toBe("Reading channels, 9 found");
     });
 
 });

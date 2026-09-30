@@ -388,18 +388,89 @@ class Connection {
         // each step says what it is doing, for the loading screen. only while this
         // connection is still the one being set up: a disconnect part way clears
         // the screen, and a late step must not bring it back
-        const step = (text, done = null, total = null) => {
-            if(isCurrent() && GlobalState.connecting != null){
-                GlobalState.connecting = { step: text, done: done, total: total };
+        // Every step of the connect, in the order they run, so the operator can see
+        // the whole sequence at once rather than one line replacing another.
+        //
+        // The sequence is fixed and known before it starts, which is the point: a
+        // Bluetooth connect takes long enough that a single changing line gives no
+        // sense of how far through it is, or of what is still to come. Node 2 sat on
+        // "Checking for dropped contacts" for a long while with nothing to say whether
+        // that was most of the work or a fraction of it.
+        //
+        // "Remembering this radio's own settings" only runs for a station in normal
+        // mode, so it is marked skipped rather than done when the connect passes it.
+        const order = [
+            { key: "answer", label: "Waiting for the radio to answer" },
+            { key: "clock", label: "Setting the radio's clock" },
+            { key: "messages", label: "Opening this node's messages" },
+            { key: "contacts", label: "Reading contacts" },
+            { key: "recheck", label: "Checking for dropped contacts" },
+            { key: "channels", label: "Reading channels" },
+            { key: "normal", label: "Remembering this radio's own settings" },
+            { key: "waiting", label: "Reading waiting messages" },
+            { key: "battery", label: "Reading the battery" },
+        ];
+        const steps = order.map((s) => ({ ...s, status: "pending", done: null, total: null, detail: null }));
+        if(isCurrent() && GlobalState.connecting != null){
+            GlobalState.connecting = { steps: steps, step: null, done: null, total: null };
+        }
+
+        const step = (key, done = null, total = null, detail = null) => {
+            if(!isCurrent() || GlobalState.connecting == null){
+                return;
             }
+            const at = steps.findIndex((s) => s.key === key);
+            if(at < 0){
+                return;
+            }
+            // anything earlier is finished with: done if it ran, skipped if it never did
+            for(let i = 0; i < at; i++){
+                if(steps[i].status === "running"){
+                    steps[i].status = "done";
+                } else if(steps[i].status === "pending"){
+                    steps[i].status = "skipped";
+                }
+            }
+            steps[at].status = "running";
+            steps[at].done = done;
+            steps[at].total = total;
+            steps[at].detail = detail;
+            // the older single-line shape, still read by anything that wants just the
+            // current step
+            GlobalState.connecting = {
+                steps: steps.map((s) => ({ ...s })),
+                step: steps[at].detail ?? steps[at].label,
+                done: done,
+                total: total,
+            };
+        };
+
+        /** Everything that has run is finished; anything untouched never will be. */
+        const finishSteps = () => {
+            if(!isCurrent() || GlobalState.connecting == null){
+                return;
+            }
+            for(const s of steps){
+                if(s.status === "running"){
+                    s.status = "done";
+                } else if(s.status === "pending"){
+                    s.status = "skipped";
+                }
+            }
+            GlobalState.connecting = {
+                steps: steps.map((s) => ({ ...s })),
+                step: null,
+                done: null,
+                total: null,
+            };
         };
 
         try {
 
             // initial setup without needing database
-            step("Waiting for the radio to answer...");
+            step("answer");
             await this.loadSelfInfo();
-            step("Setting the radio's clock...");
+            step("clock");
             await this.syncDeviceTime();
 
             // started once self info is in, because the schedule is stored per node and
@@ -407,7 +478,7 @@ class Connection {
             AdvertSchedule.start(Utils.bytesToHex(GlobalState.selfInfo.publicKey));
 
             // wait for database to be ready
-            step("Opening this node's messages...");
+            step("messages");
             await databaseToBeReady;
             if(!isCurrent()){
                 return;
@@ -417,13 +488,13 @@ class Connection {
             // wait, a couple of hundred frames on a well used node, so it is counted
             // a pass after the first is making sure none were dropped, and the count
             // sits at the total while it does, so it says so rather than look stuck
-            step("Reading contacts...");
+            step("contacts");
             await this.loadContacts((received, announced, pass) => {
-                step(pass > 1 ? "Checking for dropped contacts..." : "Reading contacts...", received, announced);
+                step(pass > 1 ? "recheck" : "contacts", received, announced);
             });
-            step("Reading channels...");
+            step("channels");
             await this.loadChannels((slot, slots, found) => {
-                step(`Reading channels... ${found} found`, slot, slots);
+                step("channels", slot, slots, `Reading channels, ${found} found`);
             });
             // Connecting to a station that is in normal mode is what decides what
             // normal mode is: its settings and channels as they stand, the station
@@ -437,7 +508,7 @@ class Connection {
             // settings, and writing them down as "normal" would make coming home
             // mean nothing.
             if(ModeProfiles.current() === "normal"){
-                step("Remembering this radio's own settings...");
+                step("normal");
                 try {
                     // one verified read of every slot, used for both: the profile
                     // that says what normal mode writes, and the backup that is the
@@ -477,10 +548,11 @@ class Connection {
                 }
             }
 
-            step("Reading waiting messages...");
+            step("waiting");
             await this.syncMessages();
-            step("Reading the battery...");
+            step("battery");
             await this.updateBatteryPercentage();
+            finishSteps();
 
         } finally {
             if(isCurrent()){
