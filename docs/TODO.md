@@ -217,13 +217,24 @@ done at all.
       record, ending a stalled read rather than a working one -- because none of them
       depended on the cause.
 
-- [ ] **Rewrite the contact read: persist, delta, repair by key, reconcile by count.**
-      The full analysis is in [CONTACT-READ.md](CONTACT-READ.md), written 30 Sep. The
-      one-line version: the radio streams contacts through a four-frame queue that drops
-      on full, the pushes for adverts and messages are what fill it, and the app re-streams
-      the whole list to cope. The firmware already offers `since` on `CMD_GET_CONTACTS`
-      and a by-key fetch; the app uses neither for this. A decision for the operator
-      before any code.
+- [x] **Rewrite the contact read: persist, delta, repair by key, reconcile by count.**
+      Decided and built 30 Sep, v1.10. The analysis is in [CONTACT-READ.md](CONTACT-READ.md).
+      `ContactStore` keeps each radio's list between connects; the next connect asks
+      `CMD_GET_CONTACTS` for what changed `since` the newest lastmod it has; a full read
+      that comes up short is repaired by `CMD_GET_CONTACT_BY_KEY`, one frame per missing
+      contact, because the app now knows *which* ones it did not get. Every outcome the
+      delta cannot prove by count falls through to the full read the app has always done,
+      so the worst case is today's behaviour plus a few seconds.
+      Seventeen tests against a radio that honours `since`, answers by key, and drops
+      frames on command; sixteen mutations, all caught. Two of my own tests were worthless
+      until tightened -- `byKeyCalls > 0` where the exact count was the point -- and one
+      redundant "newest" mark was removed rather than tested, because belt-and-braces
+      code hides single mutations.
+      **Unproven on a radio.** The bench tabs are still on v1.9. What to look for on the
+      first reconnect of node 2 or 3: the log line `contacts: N of M, k changed, 1 delta
+      pass` in place of `... after n passes`, and a Contacts bar that starts near full.
+      A second connect should be seconds. If it ever reads *worse* than v1.9, that is a
+      finding, not noise.
 
 ## Known wrong, left deliberately
 

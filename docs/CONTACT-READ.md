@@ -243,12 +243,20 @@ the firmware is fixed, because deltas are cheaper than full reads on any link.
 3. **Delta size on a second connect.** Once `since` is wired up, log how many frames a
    reconnect actually needs. The expectation is single digits.
 
-## Decisions for the operator
+## Decisions taken, 30 Sep
 
-- Build the rewrite (persist, delta, repair-by-key, reconcile), or keep coping with
-  the full re-stream. The rewrite is the only path to a connect that takes seconds on
-  Bluetooth.
-- Whether to file the firmware issue upstream. It is not our code to fix, but the
-  evidence is unusually clean.
-- Node 2: it was never the hardware. Whether to find out what the reflash cleared, or
-  just note that a reflash is the remedy if it happens again.
+- **Build the rewrite: yes**, on the condition that it cannot make the app worse.
+  Built as v1.10 (`src/js/contacts/ContactStore.js`, and the delta and repair paths in
+  `Connection.js`). The condition is met by design: the delta path only counts as
+  success when the merged count equals what the radio announced, and everything else
+  falls through to the full read the app has always done. One refinement over the
+  design above, found while testing: the end-of-list frame's "most recent lastmod" is
+  *not* used for the next `since`. The radio computes it over every contact it sent,
+  including the ones the queue dropped, so it can sit above anything that arrived --
+  and a mark taken from it would skip exactly the contact that was lost. The mark is
+  the newest of what actually arrived, which cannot skip anything.
+- **The firmware issue**: not filed yet. The operator's priority is our app working
+  reliably; the report can follow once the rewrite is proven on the bench.
+- **Node 2**: no investigation of what the reflash cleared. It reads 252 of 260 now, the
+  rewrite makes the remaining loss recoverable by name, and "reflash is the remedy" is
+  noted in the bench memory.

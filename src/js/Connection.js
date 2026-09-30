@@ -1,3 +1,4 @@
+import ContactStore from "./contacts/ContactStore.js";
 import GlobalState from "./GlobalState.js";
 import { toRaw } from "vue";
 import {Constants, WebBleConnection, WebSerialConnection} from "@liamcottle/meshcore.js";
@@ -282,6 +283,8 @@ class Connection {
         // and a question about a radio that has gone is no longer a question
         GlobalState.leftInMode = null;
         GlobalState.backupShrank = null;
+        // a remembered list still waiting to be written goes now, not never
+        ContactStore.flush();
         // and so do the keep-alives that hold them open
         RoomKeepAlive.stopAll();
         // the slot count was this radio's, not the next one's
@@ -636,14 +639,19 @@ class Connection {
      * Listening without asking picks up the rest of that same iteration instead,
      * which is both faster and the only thing the radio will allow.
      */
-    static async readContactsStream(connection, { send = true } = {}) {
+    static async readContactsStream(connection, { send = true, since = null } = {}) {
 
         const contacts = new Map();
         let ended = false;
         let refused = false;
 
         const onContact = (contact) => contacts.set(Utils.bytesToHex(contact.publicKey), contact);
-        const onEnd = () => ended = true;
+        let mostRecentLastmod = null;
+        // the end frame carries the newest lastmod the radio sent, "so app can
+        // update their since" -- the firmware's own comment. It is one of the
+        // frames the queue can drop, so the caller computes it from the contacts
+        // too and takes whichever is newer
+        const onEnd = (end) => { ended = true; mostRecentLastmod = end?.mostRecentLastmod ?? null; };
         // the radio refuses a new list while its own iterator is still running,
         // which is the one case where the next pass should listen rather than ask
         const onErr = () => refused = true;
@@ -655,7 +663,9 @@ class Connection {
         try {
 
             if(send){
-                await connection.sendCommandGetContacts();
+                // `since` asks only for contacts modified after it. The library
+                // omits the field for a falsy value, which the radio reads as all
+                await connection.sendCommandGetContacts(since || undefined);
             }
 
             const hardDeadline = Date.now() + this.CONTACT_READ_MAX_MILLIS;
@@ -696,7 +706,7 @@ class Connection {
             connection.off(Constants.ResponseCodes.Err, onErr);
         }
 
-        return { contacts: [...contacts.values()], ended: ended, refused: refused };
+        return { contacts: [...contacts.values()], ended: ended, refused: refused, mostRecentLastmod: mostRecentLastmod };
 
     }
 
@@ -789,6 +799,29 @@ class Connection {
             return;
         }
 
+        const { contact, why } = await this.fetchContactByKey(connection, key);
+        if(contact == null){
+            // said, because a full read over Bluetooth is seconds of the queue, and
+            // which of these it was decides whether anything can be done about it
+            console.log(`one contact read failed (${why}), reading them all`);
+            await this.loadContacts();
+            return;
+        }
+
+        this.mergeContact(contact);
+
+    }
+
+    /**
+     * One contact by public key, in one frame. `{ contact, why }`: the contact, or
+     * null and which of the three failures it was -- no reply, not found, or a
+     * different contact's frame arriving first, which is what happens when a full
+     * read is streaming at the same time.
+     *
+     * The key check is belt and braces: the queue means no other contact frame can
+     * be in flight, but merging the wrong record over a contact would be silent.
+     */
+    static async fetchContactByKey(connection, key) {
         let reply = null;
         try {
             reply = await this.sendAwaiting(
@@ -799,25 +832,33 @@ class Connection {
         } catch(e) {
             console.log("could not fetch one contact", e);
         }
-
         const contact = reply?.code === Constants.ResponseCodes.Contact ? reply.data : null;
-
-        // the key check is belt and braces: the queue means no other contact frame
-        // can be in flight, but merging the wrong record over a contact would be
-        // silent, and the full read costs nothing but time
         if(contact == null || !Utils.isUint8ArrayEqual(new Uint8Array(contact.publicKey), key)){
-            // said, because a full read over Bluetooth is seconds of the queue, and
-            // which of these it was decides whether anything can be done about it
             const why = reply?.code == null ? "no reply"
                 : reply.code === Constants.ResponseCodes.Err ? "not found"
                 : "a different contact came back";
-            console.log(`one contact read failed (${why}), reading them all`);
-            await this.loadContacts();
-            return;
+            return { contact: null, why: why };
         }
+        return { contact: contact, why: null };
+    }
 
-        this.mergeContact(contact);
+    /** The connected radio's own key, which is what its remembered contacts are filed under. */
+    static contactNodeKeyHex() {
+        const key = GlobalState.selfInfo?.publicKey;
+        return key ? Utils.bytesToHex(key) : null;
+    }
 
+    /**
+     * Keep the remembered list current, soon. Called after every live change so the
+     * next connect's delta is as small as it can be.
+     */
+    static rememberContacts() {
+        ContactStore.saveSoon(
+            this.contactNodeKeyHex(),
+            GlobalState.contacts,
+            ContactStore.newest(GlobalState.contacts),
+            GlobalState.contactsAnnounced,
+        );
     }
 
     /** Replaces a contact in the list, or adds it if this is the first we have. */
@@ -838,6 +879,7 @@ class Connection {
         }
 
         GlobalState.contacts = contacts;
+        this.rememberContacts();
         this.updateContactsMissing();
 
     }
@@ -847,6 +889,7 @@ class Connection {
 
         const hex = Utils.bytesToHex(publicKey);
         GlobalState.contacts = GlobalState.contacts.filter((c) => Utils.bytesToHex(c.publicKey) !== hex);
+        this.rememberContacts();
 
         // the radio's total dropped whether or not we had it: it may have been one
         // of the contacts a lossy read never delivered
@@ -989,20 +1032,53 @@ class Connection {
         const byPublicKey = new Map();
         let passes = 0;
 
+        // What this app already knows about this radio's contacts. With a list to
+        // delta against, the radio is asked only for what changed -- a handful of
+        // frames through the queue that loses some of every full stream. Anything the
+        // delta cannot prove falls through to the full read below, so the worst case
+        // is the read this app has always done. See docs/CONTACT-READ.md.
+        const nodeKeyHex = this.contactNodeKeyHex();
+        const stored = ContactStore.load(nodeKeyHex);
+        let newestLastmod = stored?.newestLastmod ?? 0;
+        const note = (contact) => {
+            byPublicKey.set(Utils.bytesToHex(contact.publicKey), contact);
+            if((contact.lastMod ?? 0) > newestLastmod){
+                newestLastmod = contact.lastMod;
+            }
+        };
+        let deltaOk = false;
+        let how = null;
+
         try {
+
+            if(stored != null && stored.contacts.length > 0){
+                const delta = await this.readContactsDelta(connection, stored, () => announced, onProgress);
+                if(delta.ok){
+                    // note() carries the newest lastmod forward for this path exactly
+                    // as it does for the full read: one place, one rule
+                    for(const contact of delta.contacts){
+                        note(contact);
+                    }
+                    passes = delta.passes;
+                    deltaOk = true;
+                    how = `${delta.received} changed, ${delta.passes} delta ${delta.passes === 1 ? "pass" : "passes"}`;
+                } else {
+                    console.log(`contacts: delta not enough (${delta.reason}), reading everything`);
+                }
+            }
 
             let ask = true;
             let barren = 0;
             const startedAt = Date.now();
             const budget = startedAt + this.CONTACT_LOAD_BUDGET_MILLIS;
 
-            for(let attempt = 0; attempt < this.MAX_CONTACT_LOAD_PASSES; attempt++){
+            for(let attempt = 0; !deltaOk && attempt < this.MAX_CONTACT_LOAD_PASSES; attempt++){
 
                 pass = attempt + 1;
                 const before = byPublicKey.size;
                 const result = await this.readContactsOnce(connection, { send: ask });
                 for(const contact of result.contacts){
-                    byPublicKey.set(Utils.bytesToHex(contact.publicKey), contact);
+                    note(contact);
                 }
                 passes++;
 
@@ -1052,6 +1128,18 @@ class Connection {
 
             }
 
+            // A full read that came up short can be repaired by name, because a
+            // remembered list says *which* contacts did not arrive, not just how
+            // many. One frame each, instead of streaming the whole list again in
+            // the hope of a better roll. A contact the radio no longer holds is
+            // dropped; one that will not answer stays missing, and is counted.
+            if(!deltaOk && announced != null && byPublicKey.size < announced && stored != null){
+                const repaired = await this.repairContactsByKey(connection, stored, byPublicKey, announced, note);
+                if(repaired.fetched > 0 || repaired.dropped > 0){
+                    console.log(`contacts: repaired ${repaired.fetched} by key, ${repaired.dropped} no longer on the radio`);
+                }
+            }
+
         } finally {
             connection.off(Constants.ResponseCodes.ContactsStart, onContactsStart);
             connection.off(Constants.ResponseCodes.Contact, onContactSeen);
@@ -1063,11 +1151,95 @@ class Connection {
             ? 0
             : Math.max(0, announced - GlobalState.contacts.length);
 
-        if(passes > 1){
+        if(deltaOk){
+            console.log(`contacts: ${GlobalState.contacts.length} of ${announced}, ${how}`);
+        } else if(passes > 1){
             console.log(`contacts: ${GlobalState.contacts.length} of ${announced} after ${passes} passes`);
         }
 
+        // remembered for the next connect, short or not: a short list still says
+        // which contacts to ask for by name, and `announcedTotal` records the truth
+        ContactStore.save(nodeKeyHex, GlobalState.contacts, newestLastmod, announced);
+
     }
+
+    /**
+     * Only what changed since the remembered list, merged over it.
+     *
+     * `ok` only when the merged count equals what the radio announced. A delta a
+     * frame short is tried once more -- it is a handful of frames, cheap to repeat
+     * -- and anything else is handed to the full read: the radio holding fewer
+     * (evicted while away, the pushes unseen), the radio holding more than a
+     * second delta can account for (its clock went backwards, so nothing is
+     * "newer than" the mark), or the radio giving no count at all.
+     *
+     * `since` is the newest lastmod less one: the firmware's filter is strict, so a
+     * contact modified in the same second as the newest one seen would otherwise
+     * never be sent again.
+     */
+    static async readContactsDelta(connection, stored, getAnnounced, onProgress = null) {
+        const merged = new Map(stored.contacts.map((c) => [Utils.bytesToHex(c.publicKey), c]));
+        const since = Math.max(0, (stored.newestLastmod ?? 0) - 1);
+        let received = 0;
+        let ask = true;
+        let passes = 0;
+
+        for(let attempt = 0; attempt < this.MAX_DELTA_PASSES; attempt++){
+            const result = await this.readContactsOnce(connection, { send: ask, since: since });
+            passes++;
+            for(const contact of result.contacts){
+                merged.set(Utils.bytesToHex(contact.publicKey), contact);
+                received++;
+            }
+            // The end frame's own "most recent lastmod" is deliberately NOT used. The
+            // radio computes it over every contact it *sent*, including the ones the
+            // queue then dropped, so it can sit above anything that arrived -- and a
+            // mark set from it would make the next delta skip exactly the contact
+            // that was lost. The newest of what actually arrived cannot skip anything:
+            // a dropped contact's lastmod is above it, so it is asked for again.
+            const announced = getAnnounced();
+            onProgress?.(Math.min(merged.size, announced ?? merged.size), announced, 1);
+
+            if(announced == null){
+                return { ok: false, reason: "the radio gave no count" };
+            }
+            if(merged.size === announced){
+                return { ok: true, contacts: [...merged.values()], received: received, passes: passes };
+            }
+            if(merged.size > announced){
+                return { ok: false, reason: `the radio holds ${announced}, this app remembers ${merged.size}` };
+            }
+            ask = !result.refused;
+        }
+        return { ok: false, reason: `still ${getAnnounced() - merged.size} short after ${passes} delta ${passes === 1 ? "pass" : "passes"}` };
+    }
+
+    /** Ask by name for the remembered contacts a full read did not deliver. */
+    static async repairContactsByKey(connection, stored, byPublicKey, announced, note) {
+        const missing = stored.contacts.filter((c) => !byPublicKey.has(Utils.bytesToHex(c.publicKey)));
+        const deadline = Date.now() + this.CONTACT_REPAIR_MAX_MILLIS;
+        let fetched = 0;
+        let dropped = 0;
+        for(const remembered of missing){
+            if(byPublicKey.size >= announced || Date.now() > deadline){
+                break;
+            }
+            const { contact, why } = await this.fetchContactByKey(connection, remembered.publicKey);
+            if(contact != null){
+                note(contact);
+                fetched++;
+            } else if(why === "not found"){
+                dropped++;
+            }
+        }
+        return { fetched: fetched, dropped: dropped };
+    }
+
+    /** A delta is a few frames; two goes is plenty before the full read takes over. */
+    static MAX_DELTA_PASSES = 2;
+
+    /** Repairing by name is one round trip per contact; bounded so a sick radio cannot hold the connect. */
+    static CONTACT_REPAIR_MAX_MILLIS = 60000;
 
     // used when the device can't tell us which channels it has configured
     static get defaultChannels() {
