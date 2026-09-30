@@ -39,16 +39,31 @@ class Version {
         return `${parts[0]}.${parts[1]}`;
     }
 
-    /** "29 Sep 2026" from the ISO stamp the build put in. */
+    /**
+     * "29 Sep 2026" from the ISO stamp the build put in.
+     *
+     * The calendar date is read straight off the front of the stamp rather than through
+     * a Date. The stamp is the commit's own date and carries the author's offset, so
+     * `2026-09-29T20:38:19-06:00` is the evening of the 29th in El Paso -- and rendering
+     * it through `getUTCDate` called it the 30th, which is not the day anybody worked.
+     * Reading it literally keeps the author's calendar and is still identical on every
+     * station, because the string is baked into the build and never touches the
+     * viewer's clock.
+     */
     static built(raw = BUILT_AT) {
         if(!raw){
             return null;
         }
-        const at = new Date(raw);
-        if(Number.isNaN(at.getTime())){
+        const date = String(raw).match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if(date == null){
             return null;
         }
-        return `${at.getUTCDate()} ${MONTHS[at.getUTCMonth()]} ${at.getUTCFullYear()}`;
+        const [, year, month, day] = date;
+        const name = MONTHS[Number(month) - 1];
+        if(name == null || Number(day) < 1 || Number(day) > 31){
+            return null;
+        }
+        return `${Number(day)} ${name} ${year}`;
     }
 
     /**

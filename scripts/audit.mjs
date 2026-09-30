@@ -414,6 +414,22 @@ section("Deployment");
             : `v${stamped} built ${builtAt.slice(0, 10)}`;
         record("deploy", "the built app reports its real version",
             placeholder ? FAIL : (stamped === pkgVersion && dateReads ? PASS : WARN), why);
+
+        // The stamp must come from the commit, not the clock.
+        //
+        // It was `new Date()` at first, which made the build unreproducible: identical
+        // source, different content hash, so the deployed hash could never match a
+        // local one and "live build matches local" above was permanently broken. That
+        // is a check worth keeping honest, because it is one of the two things that
+        // can tell an operator whether what is deployed is what we have.
+        const head = tryRun("git log -1 --format=%cI");
+        const commitDate = head.ok ? head.out.trim() : null;
+        if(commitDate && dateReads){
+            record("deploy", "the build is reproducible",
+                builtAt === commitDate ? PASS : WARN,
+                builtAt === commitDate ? "the stamp is the commit's own date"
+                    : `the stamp is ${builtAt} but HEAD is ${commitDate}; if it came from the clock, no two builds of the same source will match`);
+        }
     }
 
     // a fixed cache name is how the cache grew without bound before, and it fails

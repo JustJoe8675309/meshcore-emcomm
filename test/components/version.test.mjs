@@ -54,11 +54,31 @@ describe("the version a station reports", () => {
         expect(Version.number(".5")).toBe(null);
     });
 
-    // the date is formatted from UTC, so a station in the Americas does not report a
-    // build date a day earlier than the one next to it in another zone
-    it("reads the date in UTC, so two stations agree", () => {
+    // The stamp is the commit's own date and carries the author's offset. Rendering it
+    // through getUTCDate turned an evening commit in El Paso into the following day --
+    // a version stamped 30 Sep for work done on the 29th. The calendar date is read
+    // straight off the front of the string instead, which keeps the author's day and is
+    // still the same on every station, because the string is baked into the build.
+    it("keeps the date the commit was actually made on", () => {
+        expect(Version.built("2026-09-29T20:38:19-06:00")).toBe("29 Sep 2026");
+        expect(Version.built("2026-09-30T01:00:00+09:00")).toBe("30 Sep 2026");
+    });
+
+    it("reads a UTC stamp the same way", () => {
         expect(Version.built("2026-10-01T02:00:00.000Z")).toBe("1 Oct 2026");
         expect(Version.built("2026-09-30T23:30:00.000Z")).toBe("30 Sep 2026");
+    });
+
+    // the stamp has to BE a date, not merely contain one: a build that injected
+    // something descriptive should show nothing rather than a date dug out of it
+    it("refuses a string that merely contains a date", () => {
+        expect(Version.built("built on 2026-09-29")).toBe(null);
+        expect(Version.built("not a date")).toBe(null);
+    });
+
+    it("refuses a month that is not one", () => {
+        expect(Version.built("2026-13-01T00:00:00.000Z")).toBe(null);
+        expect(Version.built("2026-00-01T00:00:00.000Z")).toBe(null);
     });
 
 });
