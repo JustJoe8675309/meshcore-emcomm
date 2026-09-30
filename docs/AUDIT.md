@@ -845,17 +845,35 @@ width, and only the real device tests the touch targets.
       which is why the icon is hidden below the `sm` breakpoint.
       "Joe-NOCALL-EDC" rendered in full at 500px and 16/22/24px fonts, never truncated,
       and no sideways scroll at any of them.
-- [ ] **The charge is readable** in its badge, and turns red at 20% or less.
-      **PASSED 29 Sep on a genuinely flat radio**, which is the only way this one can
-      be done. The badge read **16% in `rgb(220, 38, 38)`** and, once charging,
-      **33% in `rgb(55, 65, 81)`** -- exactly `text-red-600` and `text-gray-700` from
-      `Header.vue`, either side of the `<= 20` threshold.
-      The exact 21/20 boundary was not sampled: the watcher only records on change and
-      the tab was backgrounded, where Chrome throttles timers to about once a minute,
-      so it jumped 100 to 16. The claim the item makes -- readable, and red at 20 or
-      less -- is demonstrated either side regardless.
-      Note the thresholds are due to change: a three-stage gauge, yellow at 25% and red
-      at 15%, is on the to-do list. When it lands this item becomes 26/25 and 16/15.
+- [ ] **The charge is readable** in its badge: grey above a quarter, amber at 25% or
+      less, red at 15% or less.
+      **REOPENED 29 Sep by the three-stage gauge.** It had passed against the old single
+      `<= 20` threshold on a genuinely flat radio, which is the only way this can be
+      done, and those readings still say something -- but they no longer say what they
+      said, so they are kept here rather than treated as a pass:
+      - **16% read `rgb(220, 38, 38)`**, which was `text-red-600` and correct then.
+        Under the new rules 16% is *amber*, so the same radio at the same charge should
+        now read `rgb(180, 83, 9)` (`text-amber-700`). If it still reads red, the
+        thresholds did not land.
+      - **33% read `rgb(55, 65, 81)`**, `text-gray-700`. Still correct: 33 is above 25.
+      What a flat radio is still needed for:
+      1. **That amber is legible on the phone**, in daylight, at 12px. This is the new
+         colour and the only one never seen on hardware. amber-600 was rejected on
+         computed contrast without ever being shown to anybody -- 3.19:1 against the
+         4.5:1 this size needs -- and amber-700's 5.02:1 is a calculation too. A number
+         that passes and a colour an operator can read in daylight are not the same
+         claim, which is what this item is for.
+      2. **The 16/15 boundary**, and 26/25. The 21/20 boundary was never sampled either:
+         the watcher records only on change, and a backgrounded tab has its timers
+         throttled to about once a minute by Chrome, so the reading jumped 100 to 16.
+         Foreground the tab if the exact boundary matters.
+      3. **The outline thickening at red.** It is the signal that survives sunlight and
+         colour blindness, and 16px is small enough that whether it reads at all is a
+         real question. Compare a flat radio against a healthy one side by side, since
+         the difference is 1.5 to 2.25 stroke units and only shows in contrast.
+      Hovering the badge gives the advice: "put a spare on charge" at amber, "this
+      station is about to go down" at red. The healthy badge deliberately says only
+      "Battery 84%".
 - [ ] **Sharing is in the menu** on a phone, since its button folds away there.
       Settings keeps its own button at every width, between the advert menu and the
       close button, and Disconnect is still one press.

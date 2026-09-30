@@ -88,12 +88,60 @@ describe("the battery badge", () => {
         expect(Number(wrapper.vm.batteryFill)).toBeGreaterThan(0);
     });
 
-    it("turns red with a fifth left, which is when to look for a cable", () => {
+    // Three stages, asked for on 29 Sep. It was a single threshold at 20%, so the
+    // gauge only ever went red -- no warning while there was still time to act.
+    //
+    // The boundaries are tested from both sides on purpose. A gauge whose thresholds
+    // are one off reads fine and is wrong all the same, and 15 belonging to flat
+    // rather than low depends on the order the two are checked in.
+    it("warns amber at a quarter left, before red", () => {
         const wrapper = mountHeader();
-        expect(wrapper.vm.batteryLow).toBe(false);
+        expect(wrapper.vm.batteryState).toBe("ok");
 
-        GlobalState.batteryPercentage = 20;
-        expect(wrapper.vm.batteryLow).toBe(true);
+        GlobalState.batteryPercentage = 26;
+        expect(wrapper.vm.batteryState).toBe("ok");
+
+        GlobalState.batteryPercentage = 25;
+        expect(wrapper.vm.batteryState).toBe("low");
+        expect(wrapper.vm.batteryColour).toBe("text-amber-700");
+    });
+
+    it("goes red at 15, and 15 is red rather than amber", () => {
+        const wrapper = mountHeader();
+
+        GlobalState.batteryPercentage = 16;
+        expect(wrapper.vm.batteryState).toBe("low");
+
+        GlobalState.batteryPercentage = 15;
+        expect(wrapper.vm.batteryState).toBe("flat");
+        expect(wrapper.vm.batteryColour).toBe("text-red-600");
+    });
+
+    it("thickens the outline when flat, so colour is not the only signal", () => {
+        GlobalState.batteryPercentage = 10;
+        expect(mountHeader().find("svg rect").attributes("stroke-width")).toBe("2.25");
+
+        GlobalState.batteryPercentage = 90;
+        expect(mountHeader().find("svg rect").attributes("stroke-width")).toBe("1.5");
+    });
+
+    it("puts the advice where there is room for it, and only when there is advice", () => {
+        GlobalState.batteryPercentage = 84;
+        expect(mountHeader().vm.batteryTitle).toBe("Battery 84%");
+
+        GlobalState.batteryPercentage = 22;
+        expect(mountHeader().vm.batteryTitle).toBe("Battery 22% — put a spare on charge");
+
+        GlobalState.batteryPercentage = 9;
+        expect(mountHeader().vm.batteryTitle).toBe("Battery 9% — this station is about to go down");
+    });
+
+    // amber-600, the first suggestion, computes to 3.19:1 on white against the 4.5:1
+    // that body-sized text needs; amber-700 is 5.02:1
+    it("uses a warning amber dark enough to read at this size", () => {
+        expect(source).toContain(":class=\"batteryColour\"");
+        expect(source).toContain("text-amber-700");
+        expect(source).not.toContain("text-amber-600");
     });
 
     it("says nothing at all when the radio has not reported a charge", () => {

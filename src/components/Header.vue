@@ -59,10 +59,14 @@
                      53 and the name gets 101. A readout is not a touch target, so
                      nothing is lost by holding it still -->
                 <div v-if="GlobalState.batteryPercentage" class="my-auto flex items-center pr-1 text-[12px] font-semibold whitespace-nowrap"
-                     :class="batteryLow ? 'text-red-600' : 'text-gray-700'"
-                     :title="`Battery ${GlobalState.batteryPercentage}%`">
+                     :class="batteryColour"
+                     :title="batteryTitle">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-[16px] h-[16px] mr-0.5 shrink-0" aria-hidden="true">
-                        <rect x="1.5" y="7" width="17" height="10" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                        <!-- the outline thickens when the station is about to go down.
+                             A shape change carries where colour does not: bright sun on
+                             a phone screen, and the one in twelve men who cannot tell
+                             this red from this grey -->
+                        <rect x="1.5" y="7" width="17" height="10" rx="2.5" fill="none" stroke="currentColor" :stroke-width="batteryState === 'flat' ? 2.25 : 1.5"/>
                         <rect x="20" y="10.25" width="2.5" height="3.5" rx="1" fill="currentColor"/>
                         <rect x="3.25" y="8.75" :width="batteryFill" height="6.5" rx="1" fill="currentColor"/>
                     </svg>
@@ -242,9 +246,64 @@ export default {
             return Version.label();
         },
 
-        /** A fifth left, which is when an operator should be looking for a cable. */
-        batteryLow() {
-            return (GlobalState.batteryPercentage ?? 100) <= 20;
+        /**
+         * Three stages, because red alone gives no warning while there is still time
+         * to do something about it. Asked for on 29 Sep; it was a single `<= 20`.
+         *
+         *   ok    more than a quarter left
+         *   low   25% or less -- put the spare on charge
+         *   flat  15% or less -- this station is about to go down
+         *
+         * The order matters: 15 is flat, not low.
+         *
+         * **Colour is not the only signal, and was not before this either.** The
+         * percentage is spelled out beside the icon and the fill is proportional, so
+         * 14% and 84% differ three ways over. That is worth knowing before anybody
+         * "improves" this by adding a word like Low: the badge is pinned to pixels
+         * because 375px of phone ran out once already, and text is the one thing here
+         * that cannot be afforded.
+         */
+        batteryState() {
+            const percent = GlobalState.batteryPercentage ?? 100;
+            if(percent <= 15){
+                return "flat";
+            }
+            if(percent <= 25){
+                return "low";
+            }
+            return "ok";
+        },
+
+        /**
+         * amber-700 rather than the amber-600 first suggested. Computed against white:
+         * amber-600 is 3.19:1, which fails the 4.5:1 a body-sized text needs, and
+         * amber-700 is 5.02:1. red-600 is 4.83:1 and gray-700 10.31:1, so all three
+         * stages pass. The dark-mode liftings in style.css pass too, 5.99 to 10.28:1
+         * against the dark page -- amber needed no new entry, it was already lifted
+         * with the other mid-tone warnings.
+         */
+        batteryColour() {
+            return {
+                flat: "text-red-600",
+                low: "text-amber-700",
+                ok: "text-gray-700",
+            }[this.batteryState];
+        },
+
+        /**
+         * Hover and long-press get the advice; the badge itself has no room for it.
+         * The healthy case stays exactly "Battery 84%" -- it is what an operator reads
+         * nine times in ten, and adding a reassurance to it would be noise.
+         */
+        batteryTitle() {
+            const percent = GlobalState.batteryPercentage;
+            if(this.batteryState === "flat"){
+                return `Battery ${percent}% — this station is about to go down`;
+            }
+            if(this.batteryState === "low"){
+                return `Battery ${percent}% — put a spare on charge`;
+            }
+            return `Battery ${percent}%`;
         },
 
         /**

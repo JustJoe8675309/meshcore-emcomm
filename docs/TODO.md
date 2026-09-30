@@ -10,28 +10,27 @@ done at all.
       default with an explicit override, applied before mount so there is no white
       flash. See the Dark mode section of AUDIT.md for what to check on a real screen.
 
-- [ ] **A three-stage battery gauge: yellow at 25%, red at 15%.** Asked for 29 Sep.
-      Today it is two-stage and the threshold is a single `<= 20`, in
-      `Header.vue:237`, painting `text-red-600` against `text-gray-700`.
-      The point of the middle stage is that red should mean *act now*, and a gauge that
-      only ever goes red gives no warning while there is still time to do something
-      about it. Yellow at 25% is "put the spare on charge"; red at 15% is "you are
-      about to lose this station".
-      **Three things to get right:**
-      1. The thresholds are `<= 25` and `<= 15`, so the order matters -- test 15 as red
-         rather than yellow, and 25 as yellow rather than grey.
-      2. Yellow on white is the classic unreadable combination. `text-yellow-400` is
-         fine on the mode banner because it is a *background* there with black on it;
-         as text it needs to be darker, around `amber-600`, and then lifted in dark
-         mode like the other warnings.
-      3. Colour must not be the only signal, since this is exactly the readout an
-         operator glances at in bad light. Consider the number itself doing some of the
-         work, or an icon change.
-      **This supersedes an in-flight test.** A radio is being drained to check the
-      current red-at-20% boundary, and AUDIT.md and the memory both record the check as
-      "21% grey against 20% red". When this lands, that item becomes 26/25 for yellow
-      and 16/15 for red, and the notes need updating with it -- otherwise the next run
-      chases a boundary that no longer exists.
+- [x] **A three-stage battery gauge: yellow at 25%, red at 15%.** Asked for 29 Sep,
+      built the same day. Grey above a quarter, `text-amber-700` at 25% or less,
+      `text-red-600` at 15% or less, in `Header.vue`.
+      **amber-600 was the wrong colour**, though it is what this entry suggested.
+      Computed rather than eyeballed: on white, amber-600 is 3.19:1 against the 4.5:1
+      body-sized text needs, and amber-700 is 5.02:1. red-600 is 4.83:1 and gray-700
+      10.31:1, so all three stages pass, and so do the dark-mode liftings at 5.99 to
+      10.28:1. amber-700 was already lifted in style.css with the other mid-tone
+      warnings, so it needed no new palette entry.
+      Colour is not the only signal, and was not before either: the percentage is
+      spelled out beside the icon and the fill is proportional. On top of that the
+      outline thickens from 1.5 to 2.25 at red, which is what carries in sunlight and
+      to the one in twelve men who cannot separate that red from that grey. No word like
+      "Low" was added -- the badge is pinned to pixels because 375px of phone ran out
+      once already, and text is the one thing here that cannot be afforded. The advice
+      lives in the hover title instead.
+      Nine mutations, all caught, including both thresholds from either side and the two
+      checks in the wrong order, which is what makes 15 red rather than amber.
+      **The old evidence was reinterpreted, not discarded.** The 29 Sep flat-radio run
+      read 16% as red; under these thresholds it should read amber, so AUDIT.md now
+      carries that as a prediction to check. Amber has never been seen on hardware.
 
 - [x] **A version number, visible at the top.** Asked for 29 Sep, built the same day.
       Shows `v1.1 · 29 Sep 2026` in small grey on the app-name line -- not the
@@ -150,7 +149,10 @@ should *say*, not defects. See AUDIT.md for the evidence behind each.
 
 ## Cannot be tested on the bench
 
-- [ ] The **charge badge turning red at 20%** needs a radio actually that flat.
+- [ ] The **charge badge's amber and red stages** need a radio actually that flat.
+      The old single threshold passed at 16% on 29 Sep; under the three stages the
+      same 16% should read amber, so that reading is now a prediction to check
+      rather than a pass. Amber has never been seen on hardware at all.
 - [ ] **A repeater that answers discovery but not ping.**
 - [ ] The **375px phone items**: Chrome will not be dragged below about 500px and
       `resize_window` does nothing, so these need the real device.
