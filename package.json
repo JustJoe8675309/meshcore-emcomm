@@ -1,6 +1,6 @@
 {
   "name": "meshcore-emcomm",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "A web based MeshCore client with emergency communications report forms, forked from meshcore-web by Liam Cottle",
   "main": "src/main.js",
   "type": "module",

@@ -163,6 +163,29 @@ done at all.
       guarantee intact, and the reuse has to be proven on a Bluetooth link before it is
       trusted, not just in tests.
 
+- [ ] **Contact drops over Bluetooth are not random, and the roster cap may be the
+      answer after all.** Measured on node 2, 30 Sep, after the duplicate read was
+      removed: **eight passes reached 191 of 260 (73%)**, and the pass cap stopped it,
+      not the clock.
+      That number is the finding. The read merges by public key and every pass drops a
+      different few, so with independent losses eight passes converge -- the comment in
+      `loadContacts` records exactly that, "complete after two or three" on a node with
+      265. Reaching 73% after eight says **the same contacts are missed every time**.
+      **The hypothesis worth testing: the loss is positional.** If the radio reliably
+      delivers roughly the first 190 and loses the tail, no number of passes will ever
+      fetch the rest, and the operator's original suggestion -- hold fewer contacts on
+      the radio than the link can deliver -- becomes the correct fix rather than a
+      workaround. It was argued against on the grounds that the loss looked
+      proportional. Eight passes at 73% is evidence against that.
+      **How to tell.** Read the list twice and compare the sets, not the counts. Random
+      drops give two different subsets with high overlap and different members missing;
+      a positional or deterministic limit gives the same subset twice. If it is the same
+      subset, find where it stops: that number is the radio's real capacity over this
+      link, and the cap goes just under it.
+      Related: the pass cap is now the binding limit, so `MAX_CONTACT_LOAD_PASSES`
+      deserves a look at the same time -- but raising it is pointless if the drops are
+      deterministic, which is why the set comparison comes first.
+
 ## Known wrong, left deliberately
 
 These came out of the 27-29 Sep audit and are judgement calls about what the app

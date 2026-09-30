@@ -319,9 +319,20 @@ class ModeProfiles {
         // A first capture is kept even when short, because a record missing some
         // contacts is worth more than no record at all -- restoring only ever adds --
         // and it carries `missing.contacts` so it says what it is.
+        // The test is "does this hold fewer than what is already recorded", not "is the
+        // stored one perfect". The first version of this only protected a complete
+        // record, so when both reads were short the worse one still won: on node 2 a
+        // read of 191 replaced a stored 214, and the shrinkage guard could not object
+        // because it discounts contacts a read is known to have missed.
+        //
+        // A short read that holds fewer is explained by the shortfall, so it is not
+        // evidence the radio lost anybody -- which is exactly why it must not be
+        // written down as the way home. A *complete* read holding fewer is a different
+        // thing and still goes to the shrinkage guard below, which asks.
         const freshShort = (backup?.missing?.contacts ?? 0) > 0;
-        const storedShort = (stored?.missing?.contacts ?? 0) > 0;
-        if(freshShort && stored != null && !storedShort){
+        const freshCount = backup?.contacts?.length ?? 0;
+        const storedCount = stored?.contacts?.length ?? 0;
+        if(freshShort && stored != null && freshCount < storedCount){
             return "kept";
         }
 

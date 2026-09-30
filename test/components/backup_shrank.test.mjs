@@ -350,12 +350,34 @@ describe("a short read against a complete record", () => {
         expect(NodeBackup.save).toHaveBeenCalledOnce();
     });
 
-    it("refreshes when the stored record was short too", async () => {
+    it("refreshes when the stored record was short and this one holds more", async () => {
         vi.spyOn(NodeBackup, "load").mockReturnValue(backup(180, 8, short(80)));
 
         const outcome = await ModeProfiles.recordNormal(backup(214, 8, short(46)), "aa".repeat(32));
 
         expect(outcome).toBe("saved");
+    });
+
+    // seen on node 2: a read of 191 replaced a stored 214 because both were short.
+    // The first version of this rule only protected a complete record, so the worse
+    // of two short reads still won
+    it("keeps the fuller record when both reads are short", async () => {
+        vi.spyOn(NodeBackup, "load").mockReturnValue(backup(214, 8, short(46)));
+
+        const outcome = await ModeProfiles.recordNormal(backup(191, 8, short(69)), "aa".repeat(32));
+
+        expect(outcome).toBe("kept");
+        expect(NodeBackup.save).not.toHaveBeenCalled();
+    });
+
+    // a complete read holding fewer is a real loss, and belongs to the guard that asks
+    it("does not silently keep when a complete read holds fewer", async () => {
+        vi.spyOn(NodeBackup, "load").mockReturnValue(backup(260, 8, clean));
+
+        const outcome = await ModeProfiles.recordNormal(backup(200, 8, clean), "aa".repeat(32));
+
+        expect(outcome).toBe("asked");
+        expect(GlobalState.backupShrank).not.toBe(null);
     });
 
     it("still writes a complete read over a complete record", async () => {
