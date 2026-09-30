@@ -15,6 +15,17 @@ class Utils {
         ]);
     }
 
+    /**
+     * "1 contact", "2 contacts", "0 contacts".
+     *
+     * The app pluralises properly in a dozen places and hedged with "(s)" in seven.
+     * "1 contact(s)" is the sort of thing that reads as unfinished, and this is a net
+     * control's screen. Zero takes the plural, as English does.
+     */
+    static count(n, singular, plural = singular + "s") {
+        return `${n} ${n === 1 ? singular : plural}`;
+    }
+
     static bytesToHex(uint8Array) {
         return Array.from(uint8Array).map(byte => byte.toString(16).padStart(2, '0')).join('');
     }

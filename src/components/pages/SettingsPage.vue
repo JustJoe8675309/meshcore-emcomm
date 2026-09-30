@@ -387,10 +387,10 @@ Settings, channels, ${entry.backup.contacts.length} contacts, and this app's adv
                     const names = (list, name) => list.slice(0, 5).map(name).join(", ") + (list.length > 5 ? ", ..." : "");
                     const parts = [];
                     if(extras.contacts.length > 0){
-                        parts.push(`${extras.contacts.length} contact(s): ${names(extras.contacts, (c) => c.advName || Utils.bytesToHex(c.publicKey).slice(0, 8))}`);
+                        parts.push(`${Utils.count(extras.contacts.length, "contact")}: ${names(extras.contacts, (c) => c.advName || Utils.bytesToHex(c.publicKey).slice(0, 8))}`);
                     }
                     if(extras.channels.length > 0){
-                        parts.push(`${extras.channels.length} channel(s): ${names(extras.channels, (c) => c.name)}`);
+                        parts.push(`${Utils.count(extras.channels.length, "channel")}: ${names(extras.channels, (c) => c.name)}`);
                     }
                     if(confirm(`These were added while in EMCOMM mode and are not in the backup:
 
@@ -433,7 +433,7 @@ OK removes them, so the node is exactly as it was before. Cancel keeps them.`)){
 
                 this.backupMessage = `Restored ${backup.contacts.length} contacts and ${backup.channels.length} channels.`;
                 if(remove){
-                    this.backupMessage += ` Removed ${remove.contacts.length} contact(s) and ${remove.channels.length} channel(s) added since.`;
+                    this.backupMessage += ` Removed ${Utils.count(remove.contacts.length, "contact")} and ${Utils.count(remove.channels.length, "channel")} added since.`;
                 }
 
                 if(result.failures.length > 0){
@@ -443,7 +443,7 @@ OK removes them, so the node is exactly as it was before. Cancel keeps them.`)){
 
                 if(result.notInBackup.length > 0){
                     this.backupWarnings.push(
-                        `${result.notInBackup.length} contact(s) on the node are not in this backup and were left alone: ${result.notInBackup.slice(0, 5).join(", ")}${result.notInBackup.length > 5 ? "..." : ""}`,
+                        `${Utils.count(result.notInBackup.length, "contact")} on the node ${result.notInBackup.length === 1 ? "is" : "are"} not in this backup and ${result.notInBackup.length === 1 ? "was" : "were"} left alone: ${result.notInBackup.slice(0, 5).join(", ")}${result.notInBackup.length > 5 ? "..." : ""}`,
                     );
                 }
 

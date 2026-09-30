@@ -373,7 +373,8 @@ describe("switching a station's mode", () => {
         // flood, which every repeater that hears it rebroadcasts
         const result = await ModeSwitch.apply("training");
         expect(EmcommMode.announce).toHaveBeenCalledWith(false);
-        expect(result.warnings.join(" ")).toContain("1 repeater(s) answered");
+        // and the pronoun agrees too: one repeater is "it", not "them"
+        expect(result.warnings.join(" ")).toContain("1 repeater answered. Add it from");
     });
 
     it("says the station is in the mode only after the radio was read back", async () => {

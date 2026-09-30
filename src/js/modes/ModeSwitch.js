@@ -541,7 +541,7 @@ class ModeSwitch {
                         failures.push(failure);
                     }
                     if(result.notInBackup.length > 0){
-                        warnings.push(`${result.notInBackup.length} contact(s) met since are not in the backup and were left alone: ${result.notInBackup.slice(0, 5).join(", ")}${result.notInBackup.length > 5 ? "..." : ""}`);
+                        warnings.push(`${Utils.count(result.notInBackup.length, "contact")} met since ${result.notInBackup.length === 1 ? "is" : "are"} not in the backup and ${result.notInBackup.length === 1 ? "was" : "were"} left alone: ${result.notInBackup.slice(0, 5).join(", ")}${result.notInBackup.length > 5 ? "..." : ""}`);
                     }
 
                     // after the backup has taken the slots it recorded, put back
@@ -629,7 +629,7 @@ class ModeSwitch {
         } else if(profile.trimContacts){
             const plan = EmcommMode.planTrim(GlobalState.contacts);
             const result = await EmcommMode.trim(plan, (p) => onProgress({ what: `removing ${p.what}`, done: p.done, total: p.total }));
-            warnings.push(`${result.removed} contact(s) removed, ${GlobalState.contacts.length} left.`);
+            warnings.push(`${Utils.count(result.removed, "contact")} removed, ${GlobalState.contacts.length} left.`);
             if(result.notRemoved.length > 0){
                 warnings.push(`${result.notRemoved.length} could not be removed: ${result.notRemoved.slice(0, 5).join(", ")}${result.notRemoved.length > 5 ? "..." : ""}`);
             }
@@ -658,7 +658,7 @@ class ModeSwitch {
                 const found = await Connection.discoverRepeaters();
                 warnings.push(found.length === 0
                     ? "No repeater answered the search. That is a normal result, not an error."
-                    : `${found.length} repeater(s) answered. Add them from the Repeater Search tab.`);
+                    : `${Utils.count(found.length, "repeater")} answered. Add ${found.length === 1 ? "it" : "them"} from the Repeater Search tab.`);
             } catch(e) {
                 warnings.push(`The repeater search did not run: ${e?.message ?? e}`);
             }

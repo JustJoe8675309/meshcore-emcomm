@@ -120,7 +120,8 @@ describe("leaving EMCOMM mode", () => {
         // part of a mode, so the restore must not write the backup's position over
         // one entered by hand during the incident
         expect(restore.mock.calls[0][2]).toEqual({ remove: extras, keepPosition: true });
-        expect(wrapper.text()).toContain("Removed 1 contact(s) and 1 channel(s) added since");
+        // singular, because there is one of each: the message used to hedge with "(s)"
+        expect(wrapper.text()).toContain("Removed 1 contact and 1 channel added since");
     });
 
     it("keeps what was added when the operator says so, and still leaves the mode", async () => {
