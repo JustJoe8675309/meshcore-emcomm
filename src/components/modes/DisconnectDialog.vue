@@ -52,7 +52,26 @@
             </div>
 
             <!-- the switch takes 40 to 90 seconds, so the disconnect waits for it -->
-            <div v-if="busy" class="p-3 space-y-2 text-sm text-gray-700">
+            <!-- the wait after the switch, which is not the switch -->
+            <div v-if="busy && settling > 0" class="p-3 space-y-2 text-sm text-gray-700">
+                <p>
+                    <span class="font-semibold">It is home.</span> Holding the link open for
+                    {{ settling }}s while the radio saves, then disconnecting.
+                </p>
+                <p class="text-xs text-gray-600">
+                    Contacts written just before the link closes can be lost: closing the port resets the radio,
+                    and what it has not saved yet goes with it. This is the wait that stops that.
+                </p>
+                <button @click="disconnectNow" type="button"
+                        class="w-full text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 font-medium rounded-lg text-sm px-4 py-2">
+                    Disconnect now instead
+                </button>
+                <p class="text-xs text-amber-800">
+                    Disconnecting now risks losing contacts that were just put back. Right if you have to go.
+                </p>
+            </div>
+
+            <div v-else-if="busy" class="p-3 space-y-2 text-sm text-gray-700">
                 <p>Taking the station home, then disconnecting. This takes up to a minute and a half.</p>
                 <!-- onProgress gives { what, done, total }, the same shape the mode
                      switch dialog renders -->
@@ -107,8 +126,16 @@ import Connection from "../../js/Connection.js";
 import ModeProfiles from "../../js/modes/ModeProfiles.js";
 import ModeSwitch from "../../js/modes/ModeSwitch.js";
 
+/**
+ * How long the link is held open after the switch, before it is closed. See settle().
+ * 0 s loses contact writes and ~70 s keeps them; the threshold between was never
+ * measured, so this sits on the safe side of the only two data points there are.
+ */
+const SETTLE_SECONDS = 60;
+
 export default {
     name: "DisconnectDialog",
+    SETTLE_SECONDS,
     props: {
         open: Boolean,
     },
@@ -121,6 +148,11 @@ export default {
             busy: false,
             progress: null,
             failures: [],
+            // seconds still to wait before closing the link; see settle()
+            settling: 0,
+            skipSettle: false,
+            settleTimer: null,
+            endWait: null,
         };
     },
     watch: {
@@ -130,6 +162,8 @@ export default {
                 this.failures = [];
                 this.describeFailed = false;
                 this.progress = null;
+                this.settling = 0;
+                this.skipSettle = false;
                 this.describe();
             }
         },
@@ -184,13 +218,63 @@ export default {
                     this.failures = result.failures.map((f) => `Could not set ${f.what}: ${f.reason}`);
                     return;
                 }
+                await this.settle();
                 await this.finish();
             } catch(e) {
                 this.failures = [`Not switched: ${e?.message ?? e}`];
             } finally {
                 this.busy = false;
                 this.progress = null;
+                this.settling = 0;
             }
+        },
+
+        /**
+         * Hold the link open after the switch, before closing it.
+         *
+         * **Contact writes do not survive a serial close that follows them
+         * immediately.** Proven on node 1 on 29 Sep, as a paired test: one contact
+         * deleted, then put back by a restore of the same backup, twice.
+         *
+         *     gap before the close    the contact, on a fresh read
+         *     ~70 s                   present, 211 contacts
+         *     0 s                     gone, 210 contacts
+         *
+         * The radio acknowledged every write in both runs. That is how 42 contacts
+         * went missing from this operator's node earlier the same evening: the trip
+         * home restored them, the link closed in the same second, and a fresh connect
+         * found them gone. Closing a Web Serial port toggles DTR/RTS, which resets
+         * these boards, and the firmware had not flushed.
+         *
+         * 60 s because it is the only length anything is known about: 0 loses and ~70
+         * keeps. The threshold in between was not measured, so this is the safe side
+         * of the only two data points there are, not a tuned value. If it is ever
+         * measured, this can come down.
+         *
+         * The operator can cut it short. The warning is honest about what that risks,
+         * and someone handing a radio on mid incident has to be allowed to go.
+         */
+        async settle() {
+            this.settling = SETTLE_SECONDS;
+            while(this.settling > 0 && !this.skipSettle){
+                // the resolver is kept so disconnectNow can end the wait at once.
+                // Clearing the timeout alone left this promise unresolved and hung
+                // the dialog for good -- the escape hatch never escaped
+                await new Promise((resolve) => {
+                    this.endWait = resolve;
+                    this.settleTimer = setTimeout(resolve, 1000);
+                });
+                this.settling -= 1;
+            }
+            this.settling = 0;
+            this.endWait = null;
+        },
+
+        /** Stop waiting and close the link now, with the risk already stated. */
+        disconnectNow() {
+            this.skipSettle = true;
+            clearTimeout(this.settleTimer);
+            this.endWait?.();
         },
 
         async justDisconnect() {

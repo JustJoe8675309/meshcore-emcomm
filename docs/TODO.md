@@ -94,7 +94,13 @@ done at all.
       states. That is what found "the channels was not set" -- `what` is sometimes
       plural, so the verb cannot agree with it, and the phrasing now fronts the
       failure instead. **ModeSwitchDialog still has the original wording.**
-      Untested on a radio: the 40-90 s switch, and whether the progress line moves.
+      **Proven on node 1, 29 Sep**, and it found a defect of its own. The dialog, the
+      three answers, the held link and the progress line all worked -- the trip home
+      took 26 s and the link was held throughout. But disconnecting the instant the
+      switch finished **lost the contacts it had just restored**: the radio acks every
+      write, and closing the port resets it before the firmware has flushed. The link
+      is now held 60 s afterwards, with a countdown and a way out. See the contact
+      item in AUDIT.md for the paired test that proved it.
 
 - [ ] **Sweep the whole repo for anything else personal.** Deferred 29 Sep. The
       callsign and the position are done and the built bundle is clean, but that was
@@ -144,6 +150,20 @@ should *say*, not defects. See AUDIT.md for the evidence behind each.
       help.
 - [ ] **There is no way to leave a room.** `RoomLoginBar.vue` only logs in, and the
       login is in-memory only, so an operator who wants out has nothing to press.
+- [ ] **A connect can overwrite the way home with a worse copy.** Found 29 Sep on
+      node 1, and it is the open half of the contact-loss finding.
+      `Connection.js:443` takes a fresh `pre-emcomm` backup on every normal-mode
+      connect. That is deliberate and worth keeping -- it is how a channel added with
+      another app becomes part of the way home, and node 3 lost a channel to a record
+      three days old. But it has no guard, so a connect that follows a bad round trip
+      writes the diminished radio over the good record: 253 contacts became 211, then
+      210, and the evidence of the loss went with it.
+      A fix has to keep the refresh and stop the silent shrink. Something like: if the
+      new capture holds materially fewer contacts or channels than the stored one, keep
+      both and ask, the way the "Is this station in a mode?" question already does
+      rather than guessing. Do not simply stop refreshing -- that is the bug it was
+      changed to fix.
+
 - [ ] **"the channels was not set"** in `ModeSwitchDialog.vue`. A mode switch
       reports its failures as `${what} was not set`, and `what` is sometimes plural.
       The disconnect dialog fronts the failure instead -- "Could not set the

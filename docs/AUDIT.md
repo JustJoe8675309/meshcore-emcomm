@@ -946,6 +946,33 @@ width, and only the real device tests the touch targets.
       CSS, so layout and legibility are not what this item is for -- timing and the
       radio's own behaviour are.
 
+- [ ] **Contacts survive coming home and disconnecting.** Added 29 Sep after this went
+      wrong on node 1. **Run this after any change to the trip home.**
+      The paired test that found it, which is the shape to repeat:
+      1. Note a contact that will not re-advert during the test -- one heard weeks ago,
+         not a repeater in range. Check it is in the `pre-emcomm` backup.
+      2. Forget it. The radio now has one fewer.
+      3. Put it back by restoring that backup, then close the link **after the wait**.
+         Reconnect: it should be there.
+      4. Forget it again, switch to a mode, and come home through Disconnect.
+         Reconnect: it should be there.
+      Step 4 is the one that failed. With the link closed in the same second as the
+      switch finished, a fresh read found 210 contacts and no target; with ~70 s first,
+      211 and the target. **The radio acknowledged every write in both runs**, so
+      nothing in the app reported a problem either time.
+      Note the trap in the obvious version of this test: a mode switch only drops
+      contacts unheard for 90 days, so a second round trip drops **0** and restores 0.
+      Without deleting a contact by hand there is no signal, and the test passes while
+      proving nothing.
+- [ ] **The way home is not overwritten by a bad round trip.** `Connection.js` takes a
+      fresh `pre-emcomm` backup on every normal-mode connect -- deliberately, so a
+      channel added elsewhere becomes part of the way home. It has no guard. On 29 Sep
+      a reconnect wrote 211 contacts over the 253 that were the way home, and a later
+      one wrote 210 over that, so the record of what was lost was lost too.
+      Check that a connect which would shrink the stored backup says so rather than
+      doing it quietly. Nothing implements this yet -- it is the open half of the
+      finding above.
+
 ### Contacts, on a big roster
 
 - [ ] **The whole roster arrives.** Connect the node with the most contacts and

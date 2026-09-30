@@ -137,19 +137,27 @@ describe("the dialog's three answers", () => {
     // the order is the point: a disconnect that raced the switch would drop the link
     // part way through writing channels, which is worse than either answer offered
     it("takes it home first, and only then disconnects", async () => {
-        const order = [];
-        ModeSwitch.apply.mockImplementation(async () => {
-            order.push("switch");
-            return { failures: [], warnings: [] };
-        });
-        Connection.disconnect.mockImplementation(async () => { order.push("disconnect"); });
-        const wrapper = await open();
+        vi.useFakeTimers();
+        try {
+            const order = [];
+            ModeSwitch.apply.mockImplementation(async () => {
+                order.push("switch");
+                return { failures: [], warnings: [] };
+            });
+            Connection.disconnect.mockImplementation(async () => { order.push("disconnect"); });
+            const wrapper = mount(DisconnectDialog, { props: { open: false } });
+            await wrapper.setProps({ open: true });
+            await wrapper.vm.$nextTick();
 
-        await press(wrapper, "Put it back to normal mode");
-        await new Promise((r) => setTimeout(r, 0));
+            const button = wrapper.findAll("button").find((b) => b.text().startsWith("Put it back"));
+            await button.trigger("click");
+            await vi.advanceTimersByTimeAsync(120000);
 
-        expect(ModeSwitch.apply).toHaveBeenCalledWith("normal", expect.any(Function));
-        expect(order).toEqual(["switch", "disconnect"]);
+            expect(ModeSwitch.apply).toHaveBeenCalledWith("normal", expect.any(Function));
+            expect(order).toEqual(["switch", "disconnect"]);
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     it("stays connected when that is the answer chosen", async () => {
@@ -279,6 +287,91 @@ describe("while it is working", () => {
         // the object shape, not "[object Object]", which is what {{ progress }} gave
         expect(wrapper.text()).toContain("restoring the channels");
         expect(wrapper.text()).toContain("(3 of 12)");
+    });
+
+});
+
+// The link is held open after the switch, before it is closed.
+//
+// Proven on node 1 on 29 Sep as a paired test: one contact deleted, then put back by
+// a restore of the same backup, twice. With ~70 s before the close the contact was
+// there on a fresh read (211 contacts); with 0 s it was gone (210). The radio
+// acknowledged every write in both runs.
+//
+// That is how 42 contacts went missing from this operator's node earlier the same
+// evening -- the trip home restored them and the link closed in the same second.
+// Closing a Web Serial port toggles DTR/RTS, which resets these boards, and the
+// firmware had not flushed.
+describe("the wait before the link closes", () => {
+
+    beforeEach(() => {
+        ModeProfiles.setCurrent("live");
+        vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    const openAndGoHome = async () => {
+        const wrapper = mount(DisconnectDialog, { props: { open: false } });
+        await wrapper.setProps({ open: true });
+        await wrapper.vm.$nextTick();
+        await wrapper.findAll("button").find((b) => b.text().startsWith("Put it back")).trigger("click");
+        await vi.advanceTimersByTimeAsync(0);
+        return wrapper;
+    };
+
+    it("does not close the link the moment the switch finishes", async () => {
+        const wrapper = await openAndGoHome();
+
+        await vi.advanceTimersByTimeAsync(5000);
+
+        expect(Connection.disconnect).not.toHaveBeenCalled();
+        expect(wrapper.text()).toContain("It is home.");
+    });
+
+    it("closes it once the wait is over", async () => {
+        await openAndGoHome();
+
+        await vi.advanceTimersByTimeAsync(59000);
+        expect(Connection.disconnect).not.toHaveBeenCalled();
+
+        await vi.advanceTimersByTimeAsync(2000);
+        expect(Connection.disconnect).toHaveBeenCalledOnce();
+    });
+
+    it("counts down, so the wait does not look like a hang", async () => {
+        const wrapper = await openAndGoHome();
+
+        await vi.advanceTimersByTimeAsync(0);
+        expect(wrapper.text()).toContain("60s");
+
+        await vi.advanceTimersByTimeAsync(3000);
+        expect(wrapper.text()).toContain("57s");
+    });
+
+    it("says why it is waiting, in terms of what would be lost", async () => {
+        const wrapper = await openAndGoHome();
+        expect(wrapper.text()).toContain("closing the port resets the radio");
+    });
+
+    // someone handing a radio on mid incident has to be allowed to go
+    it("lets the operator cut it short, having said what that risks", async () => {
+        const wrapper = await openAndGoHome();
+        await vi.advanceTimersByTimeAsync(2000);
+
+        expect(wrapper.text()).toContain("risks losing contacts");
+        await wrapper.findAll("button").find((b) => b.text().startsWith("Disconnect now")).trigger("click");
+        await vi.advanceTimersByTimeAsync(1100);
+
+        expect(Connection.disconnect).toHaveBeenCalledOnce();
+    });
+
+    // the failing case was zero; this is the guard against it drifting back
+    it("waits long enough to matter", async () => {
+        const wrapper = await openAndGoHome();
+        expect(wrapper.vm.settling).toBeGreaterThanOrEqual(30);
     });
 
 });
