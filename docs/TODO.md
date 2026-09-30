@@ -104,25 +104,32 @@ done at all.
       is now held 60 s afterwards, with a countdown and a way out. See the contact
       item in AUDIT.md for the paired test that proved it.
 
-- [ ] **Sweep the whole repo for anything else personal.** Deferred 29 Sep. The
-      callsign and the position are done and the built bundle is clean, but that was
-      two targeted passes rather than a survey.
-      **The one that needs deciding first: git history.** Scrubbing the working tree
-      does not remove anything from past commits. The old callsign, the home
-      coordinates and the MGRS are all still recoverable with `git log -p`, and some
-      commit messages quote them too. If the repo is public that history is public.
-      Rewriting it means a force push and breaks every existing clone, so it is a
-      decision rather than a chore -- and worth making before the repo gets more
-      attention rather than after.
-      Places a survey should cover beyond the source:
-      - `package.json` author and repository fields, and the licence
-      - `manifest.json` and the service worker: app name, description, any author field
-      - anything under a public path that is not code -- icons, screenshots, sample files
-      - commit messages and branch names, not just file contents
-      - the audit and mode docs, which quote real bench sessions
-      - `.claude/` settings and any launch config, which can carry local paths
-      Check `dist/` as well as `src/` every time: comments are stripped by the build, so
-      the source and the shipped app answer this question differently.
+- [ ] **Sweep the whole repo for anything else personal.** **Survey done 29 Sep; one
+      decision and one chore left.**
+      What was checked and is clean: the shipped bundle, the whole working tree, the
+      manifest, the privacy policy, the icon, the branch names. No callsign, no real
+      coordinates, no MGRS, no email address anywhere in `dist/`. `.claude/` is
+      gitignored, so local paths never leave this machine. `package.json` names Liam
+      Cottle as author, which is upstream attribution rather than operator data.
+      The only "Joe" in the shipped app is inside the repository URL in an `og:url`
+      meta -- the operator's own public GitHub handle, and deliberate.
+
+      **The decision: the example station is still `Joe-NOCALL-HTv3`**, in the README,
+      this file, and about 25 test files. The callsign is scrubbed; the first name is
+      not. It is arguably already public, since the GitHub account is `JustJoe8675309`,
+      which is why this was not changed unilaterally -- renaming it touches 28 files and
+      a pile of test assertions, and is only worth doing if the operator wants it.
+      "El Paso" survives in three comments explaining a timezone and a magnetic
+      declination. City level, not shipped (comments are stripped), and the app's own
+      placeholder position is a public landmark in that city anyway.
+
+      **The chore: git history.** Scrubbing the working tree removed nothing from past
+      commits. Of 450 commits, **72 add or remove the callsign, 11 the real latitude,
+      13 the real longitude and 4 the MGRS**, and some commit messages quote them.
+      If the repo is public, that history is public. The rewrite is prepared and
+      verified but has to be run by the operator -- it means a force push and it breaks
+      every existing clone, so it is a decision rather than a chore. Worth doing before
+      the repo gets more attention rather than after.
 
 ## Known wrong, left deliberately
 
