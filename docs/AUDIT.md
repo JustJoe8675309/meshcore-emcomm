@@ -845,33 +845,35 @@ width, and only the real device tests the touch targets.
       which is why the icon is hidden below the `sm` breakpoint.
       "Joe-NOCALL-EDC" rendered in full at 500px and 16/22/24px fonts, never truncated,
       and no sideways scroll at any of them.
-- [ ] **The charge is readable** in its badge: grey above a quarter, amber at 25% or
+- [ ] **The charge is readable** in its badge: grey above a quarter, yellow at 25% or
       less, red at 15% or less.
-      **REOPENED 29 Sep by the three-stage gauge.** It had passed against the old single
-      `<= 20` threshold on a genuinely flat radio, which is the only way this can be
-      done, and those readings still say something -- but they no longer say what they
-      said, so they are kept here rather than treated as a pass:
-      - **16% read `rgb(220, 38, 38)`**, which was `text-red-600` and correct then.
-        Under the new rules 16% is *amber*, so the same radio at the same charge should
-        now read `rgb(180, 83, 9)` (`text-amber-700`). If it still reads red, the
-        thresholds did not land.
-      - **33% read `rgb(55, 65, 81)`**, `text-gray-700`. Still correct: 33 is above 25.
-      What a flat radio is still needed for:
-      1. **That amber is legible on the phone**, in daylight, at 12px. This is the new
-         colour and the only one never seen on hardware. amber-600 was rejected on
-         computed contrast without ever being shown to anybody -- 3.19:1 against the
-         4.5:1 this size needs -- and amber-700's 5.02:1 is a calculation too. A number
-         that passes and a colour an operator can read in daylight are not the same
-         claim, which is what this item is for.
-      2. **The 16/15 boundary**, and 26/25. The 21/20 boundary was never sampled either:
-         the watcher records only on change, and a backgrounded tab has its timers
-         throttled to about once a minute by Chrome, so the reading jumped 100 to 16.
-         Foreground the tab if the exact boundary matters.
-      3. **The outline thickening at red.** It is the signal that survives sunlight and
-         colour blindness, and 16px is small enough that whether it reads at all is a
-         real question. Compare a flat radio against a healthy one side by side, since
-         the difference is 1.5 to 2.25 stroke units and only shows in contrast.
-      Hovering the badge gives the advice: "put a spare on charge" at amber, "this
+      **The stages are PROVEN on hardware, 30 Sep, on node 2 drained over Bluetooth
+      from 96% to 7% with a watcher logging the badge's computed colour on every
+      change (154 samples):**
+      - **26% -> 24% at 15:48**: grey `rgb(55, 65, 81)` -> the low colour, outline 1.5.
+        The radio's reading then bounced 24/26 five times in four minutes and the
+        colour followed it each time -- the boundary is the radio's noise, not the app.
+      - **16% at 18:08 read the low colour**, which was the open prediction from the
+        29 Sep run (the old single threshold had read that same 16% as red).
+      - **13% at 18:09**: red `rgb(220, 38, 38)` and the outline 1.5 -> 2.25, title
+        "this station is about to go down". 15% itself was never sampled (the radio
+        stepped 16 -> 13), so the exact boundary rests on the unit tests.
+      - In dark mode the same red computed to `rgb(248, 113, 113)`: the lifted shade,
+        not a defect.
+      **The low colour changed the same evening**, at the operator's word, from the
+      amber the first build shipped (`text-amber-700`, `rgb(180, 83, 9)`, which is what
+      the proof above saw) to **yellow** (`text-yellow-700`, `rgb(161, 98, 7)`; dark
+      mode lifts it to `#facc15`). Thresholds and outline are unchanged and the unit
+      tests cover the swap, so what is still owed is only the shade itself:
+      1. **That the yellow is legible on the phone**, in daylight, at 12px. yellow-600
+         was rejected on computed contrast -- 2.94:1 against the 4.5:1 this size needs
+         -- and yellow-700's 4.92:1 is a calculation too. A number that passes and a
+         colour an operator can read in daylight are not the same claim. It needs a
+         radio between 16% and 25%; node 2 was already at 7% when the colour changed.
+      2. **The outline thickening at red** against a healthy badge side by side, in
+         sunlight. The logs prove the stroke-width attribute changed; whether 1.5 to
+         2.25 reads at 16px is still a question for an eye.
+      Hovering the badge gives the advice: "put a spare on charge" at yellow, "this
       station is about to go down" at red. The healthy badge deliberately says only
       "Battery 84%".
 - [ ] **Sharing is in the menu** on a phone, since its button folds away there.

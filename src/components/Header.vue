@@ -335,17 +335,18 @@ export default {
         },
 
         /**
-         * amber-700 rather than the amber-600 first suggested. Computed against white:
-         * amber-600 is 3.19:1, which fails the 4.5:1 a body-sized text needs, and
-         * amber-700 is 5.02:1. red-600 is 4.83:1 and gray-700 10.31:1, so all three
-         * stages pass. The dark-mode liftings in style.css pass too, 5.99 to 10.28:1
-         * against the dark page -- amber needed no new entry, it was already lifted
-         * with the other mid-tone warnings.
+         * Yellow, red and grey -- the operator's words, after the first build shipped
+         * the low stage as amber. yellow-700 rather than a brighter yellow: computed
+         * against white, yellow-600 is 2.94:1, which fails the 4.5:1 a body-sized
+         * text needs, and yellow-700 is 4.92:1. red-600 is 4.83:1 and gray-700
+         * 10.31:1, so all three stages pass. style.css lifts yellow-700 to yellow-400
+         * in dark mode, 10.81:1 against the header, in the same way as the other
+         * mid-tone warnings.
          */
         batteryColour() {
             return {
                 flat: "text-red-600",
-                low: "text-amber-700",
+                low: "text-yellow-700",
                 ok: "text-gray-700",
             }[this.batteryState];
         },

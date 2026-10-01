@@ -94,7 +94,7 @@ describe("the battery badge", () => {
     // The boundaries are tested from both sides on purpose. A gauge whose thresholds
     // are one off reads fine and is wrong all the same, and 15 belonging to flat
     // rather than low depends on the order the two are checked in.
-    it("warns amber at a quarter left, before red", () => {
+    it("warns yellow at a quarter left, before red", () => {
         const wrapper = mountHeader();
         expect(wrapper.vm.batteryState).toBe("ok");
 
@@ -103,10 +103,10 @@ describe("the battery badge", () => {
 
         GlobalState.batteryPercentage = 25;
         expect(wrapper.vm.batteryState).toBe("low");
-        expect(wrapper.vm.batteryColour).toBe("text-amber-700");
+        expect(wrapper.vm.batteryColour).toBe("text-yellow-700");
     });
 
-    it("goes red at 15, and 15 is red rather than amber", () => {
+    it("goes red at 15, and 15 is red rather than yellow", () => {
         const wrapper = mountHeader();
 
         GlobalState.batteryPercentage = 16;
@@ -136,12 +136,17 @@ describe("the battery badge", () => {
         expect(mountHeader().vm.batteryTitle).toBe("Battery 9% — this station is about to go down");
     });
 
-    // amber-600, the first suggestion, computes to 3.19:1 on white against the 4.5:1
-    // that body-sized text needs; amber-700 is 5.02:1
-    it("uses a warning amber dark enough to read at this size", () => {
+    // Yellow, at the operator's word -- the first build used amber. yellow-600
+    // computes to 2.94:1 on white against the 4.5:1 that body-sized text needs;
+    // yellow-700 is 4.92:1. And the dark theme has to lift it, or the yellow that
+    // reads on white goes to mud on slate: style.css carries that entry.
+    it("uses a warning yellow dark enough to read at this size, lifted for dark mode", () => {
         expect(source).toContain(":class=\"batteryColour\"");
-        expect(source).toContain("text-amber-700");
-        expect(source).not.toContain("text-amber-600");
+        expect(source).toContain("text-yellow-700");
+        expect(source).not.toContain("text-yellow-600");
+        expect(source).not.toContain("text-amber");
+        const css = readFileSync(resolve("src/style.css"), "utf8");
+        expect(css).toMatch(/\.dark \.text-yellow-700 \{ color: #facc15; \}/);
     });
 
     it("says nothing at all when the radio has not reported a charge", () => {

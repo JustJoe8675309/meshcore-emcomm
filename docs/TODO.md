@@ -18,14 +18,15 @@ done at all.
       buttons wanted 237px of a 375px row and the station name is what loses.
 
 - [x] **A three-stage battery gauge: yellow at 25%, red at 15%.** Asked for 29 Sep,
-      built the same day. Grey above a quarter, `text-amber-700` at 25% or less,
+      built the same day. Grey above a quarter, `text-yellow-700` at 25% or less,
       `text-red-600` at 15% or less, in `Header.vue`.
-      **amber-600 was the wrong colour**, though it is what this entry suggested.
-      Computed rather than eyeballed: on white, amber-600 is 3.19:1 against the 4.5:1
-      body-sized text needs, and amber-700 is 5.02:1. red-600 is 4.83:1 and gray-700
-      10.31:1, so all three stages pass, and so do the dark-mode liftings at 5.99 to
-      10.28:1. amber-700 was already lifted in style.css with the other mid-tone
-      warnings, so it needed no new palette entry.
+      **The first build shipped the low stage as amber**, not the yellow this entry
+      asked for; the operator caught it on 30 Sep ("use yellow and red not amber")
+      and it is yellow from v1.12. Computed rather than eyeballed: on white,
+      yellow-600 is 2.94:1 against the 4.5:1 body-sized text needs, and yellow-700 is
+      4.92:1. red-600 is 4.83:1 and gray-700 10.31:1, so all three stages pass.
+      style.css lifts yellow-700 to `#facc15` in dark mode (10.81:1 against the
+      header), a new entry alongside the other mid-tone warnings.
       Colour is not the only signal, and was not before either: the percentage is
       spelled out beside the icon and the fill is proportional. On top of that the
       outline thickens from 1.5 to 2.25 at red, which is what carries in sunlight and
@@ -34,10 +35,12 @@ done at all.
       once already, and text is the one thing here that cannot be afforded. The advice
       lives in the hover title instead.
       Nine mutations, all caught, including both thresholds from either side and the two
-      checks in the wrong order, which is what makes 15 red rather than amber.
-      **The old evidence was reinterpreted, not discarded.** The 29 Sep flat-radio run
-      read 16% as red; under these thresholds it should read amber, so AUDIT.md now
-      carries that as a prediction to check. Amber has never been seen on hardware.
+      checks in the wrong order, which is what makes 15 red rather than yellow; three
+      more for the colour swap (back to amber, a brighter yellow, the dark lift gone).
+      **PROVEN on hardware 30 Sep** on node 2, drained 96% to 7% over Bluetooth: the
+      low colour at 24%, 16% low (the prediction from the 29 Sep run, confirmed), red
+      with the 2.25 outline at 13%. The proof saw the amber shade; only the yellow
+      shade itself is still unseen on a radio. AUDIT.md has the trail.
 
 - [x] **A version number, visible at the top.** Asked for 29 Sep, built the same day.
       Shows `v1.1 · 29 Sep 2026` in small grey on the app-name line -- not the
@@ -284,10 +287,10 @@ inspection for what mounting genuinely cannot see, like a Tailwind breakpoint.
 
 ## Cannot be tested on the bench
 
-- [ ] The **charge badge's amber and red stages** need a radio actually that flat.
-      The old single threshold passed at 16% on 29 Sep; under the three stages the
-      same 16% should read amber, so that reading is now a prediction to check
-      rather than a pass. Amber has never been seen on hardware at all.
+- [ ] The **charge badge's yellow shade** needs a radio between 16% and 25%. The
+      three stages and the red outline were proven on node 2 on 30 Sep (see AUDIT.md),
+      but with the amber shade that build carried; the yellow that replaced it the
+      same evening is a contrast calculation (4.92:1) until an eye sees it.
 - [ ] **A repeater that answers discovery but not ping.**
 - [ ] The **375px phone items**: Chrome will not be dragged below about 500px and
       `resize_window` does nothing, so these need the real device.
