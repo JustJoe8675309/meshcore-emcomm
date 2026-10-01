@@ -12,12 +12,17 @@
  *   - the reading bounces up to 2 points (16 mV) between consecutive samples,
  *     in both directions, at every level (24/26, 22/24, 11/13, 7/9 on node 2);
  *   - a charger lifts the terminal voltage at once: node 2 went 5% to 24% between
- *     one reading and the next the moment it was plugged in.
- * So a rise of 30 mV or more across the last five minutes is a charger, with a
- * margin over the bounce, and nothing a drain can do. Once seen it is held, since
- * a cell near full stops rising, and let go when the voltage drops 24 mV below
- * the highest seen -- the lift leaving as the plug comes out, which again the
- * bounce alone cannot reach.
+ *     one reading and the next the moment it was plugged in -- but the climb after
+ *     that slows as the cell fills: a point a minute through the twenties, then
+ *     2% in four minutes in the thirties, and less again above.
+ * So a rise of 30 mV or more across the last half hour is a charger, with a margin
+ * over the bounce, and nothing a drain can do: thirty minutes of drain is a fall of
+ * 15 mV. The window was five minutes at first, and a reconnect in the middle of a
+ * slow charge never latched -- 16 mV in five minutes is a charger and a bounce
+ * both. A plug-in while connected still shows at once, from the jump. Once seen
+ * it is held, since a cell near full stops rising, and let go when the voltage
+ * drops 24 mV below the highest seen -- the lift leaving as the plug comes out,
+ * which again the bounce alone cannot reach.
  */
 export default class Battery {
 
@@ -27,8 +32,8 @@ export default class Battery {
     /** how far below the peak the reading must fall before the charger is gone */
     static FALL_MILLIVOLTS = 24;
 
-    /** readings compared across; one a minute, so five minutes */
-    static WINDOW = 6;
+    /** readings compared across; one a minute, so half an hour */
+    static WINDOW = 31;
 
     static readings = [];
     static charging = false;
