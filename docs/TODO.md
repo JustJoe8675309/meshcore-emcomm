@@ -80,7 +80,10 @@ done at all.
       so `Battery.js` infers it from the trend: a rise of **20 mV** or more across the
       last half hour of readings is a charger -- the operator's choice in v1.16, down
       from 30 for a faster latch on a reconnect mid-charge (two to four minutes),
-      still above the 16 mV bounce (a drain falls under 1 mV a minute
+      still above the 16 mV bounce -- which turned out to be one ~17 mV quantum of
+      the radio's reading: fifteen minute-readings in a row were 3825 exactly, then
+      3842, so the figure moves in steps and a charge signal is two of them (a drain
+      falls under 1 mV a minute
       and the reading bounces at most 16 mV; a charger lifted node 2 from 5% to 24%
       between one minute and the next, then 1 point a minute through the twenties
       and 2 points in four minutes by 35% -- the five-minute window v1.13 shipped

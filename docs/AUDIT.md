@@ -886,7 +886,13 @@ width, and only the real device tests the touch targets.
       watch the voltage climb from the connect -- 20 mV since v1.16 (30 before), so
       two to four minutes at a few mV a minute, longer on the plateau. The bounce on
       node 2 is 16 mV; a bolt on a radio that is only draining would mean a bounce
-      of three points, never yet seen -- log it with the millivolts if it happens. **30 Sep,
+      of three points, never yet seen -- log it with the millivolts if it happens.
+      **Measured 30 Sep 21:02-21:17: the radio's figure is quantised at ~17 mV.**
+      Fifteen minute-readings in a row were 3825 exactly, then 3842; every step all
+      evening was 17-18 mV, and a planted marker proved the app was asking each
+      minute. So one quantum is the noise and two quanta (34 mV) is the signal; the
+      20 mV bar sits between them, and a reconnect into a slow charge needs two
+      steps, 15-35 minutes at this stage of charge. A plug-in is still one reading. **30 Sep,
       v1.13 on node 2 at 33%: no bolt after five minutes** (33 -> 35% in the first
       minute, then flat) -- the five-minute window that build compared across could
       not see a climb that slow; v1.14 compares across half an hour instead.
