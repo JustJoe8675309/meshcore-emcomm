@@ -411,7 +411,7 @@ describe("entering the current position when only a last known one is held", () 
         wrapper.vm.entryLongitude = "-106.4801";
         await flushPromises();
         expect(wrapper.text()).toContain("13R CR");
-        await button(wrapper, "Save to radio and send").trigger("click");
+        await button(wrapper, "Save to radio and send my position").trigger("click");
         await flushPromises();
 
         expect(written).toEqual([[31727000, -106480100]]);
@@ -434,11 +434,11 @@ describe("entering the current position when only a last known one is held", () 
         wrapper.vm.entryLongitude = "-106.4";
         await flushPromises();
         expect(wrapper.text()).toContain("Not a position");
-        expect(button(wrapper, "Save to radio and send").attributes("disabled")).toBeDefined();
+        expect(button(wrapper, "Save to radio and send my position").attributes("disabled")).toBeDefined();
         wrapper.vm.entryLatitude = "0";
         wrapper.vm.entryLongitude = "0";
         await flushPromises();
-        expect(button(wrapper, "Save to radio and send").attributes("disabled")).toBeDefined();
+        expect(button(wrapper, "Save to radio and send my position").attributes("disabled")).toBeDefined();
         expect(written).toEqual([]);
     });
 
@@ -448,7 +448,7 @@ describe("entering the current position when only a last known one is held", () 
         await flushPromises();
         await button(wrapper, "Enter current position").trigger("click");
         await wrapper.findAll("button").find((b) => b.text() === "Send the last known position instead").trigger("click");
-        await button(wrapper, "Send").trigger("click");
+        await button(wrapper, "Send my position").trigger("click");
         await flushPromises();
         expect(written).toEqual([]);
         expect(datagrams[0].lastKnown).toBe(true);
@@ -463,7 +463,7 @@ describe("entering the current position when only a last known one is held", () 
         await button(wrapper, "Enter current position").trigger("click");
         expect(wrapper.text()).not.toContain("Send the last known position instead");
         await button(wrapper, "Send without a position").trigger("click");
-        await button(wrapper, "Send").trigger("click");
+        await button(wrapper, "Send my position").trigger("click");
         await flushPromises();
         expect(written).toEqual([]);
         expect(datagrams[0].hasPosition).toBe(false);
@@ -627,7 +627,7 @@ describe("entering the current position as MGRS", () => {
         const wrapper = await openEntry();
         wrapper.vm.entryMgrsText = "13R CR 59775 11131";
         await flushPromises();
-        await button(wrapper, "Save to radio and send").trigger("click");
+        await button(wrapper, "Save to radio and send my position").trigger("click");
         await flushPromises();
         expect(written).toHaveLength(1);
         const [lat, lon] = written[0];
@@ -647,10 +647,10 @@ describe("entering the current position as MGRS", () => {
         wrapper.vm.entryMgrsText = "13R CR 5977 111";
         await flushPromises();
         expect(wrapper.text()).toContain("Not an MGRS reference");
-        expect(button(wrapper, "Save to radio and send").attributes("disabled")).toBeDefined();
+        expect(button(wrapper, "Save to radio and send my position").attributes("disabled")).toBeDefined();
         wrapper.vm.entryMgrsText = "";
         await flushPromises();
-        expect(button(wrapper, "Save to radio and send").attributes("disabled")).toBeDefined();
+        expect(button(wrapper, "Save to radio and send my position").attributes("disabled")).toBeDefined();
         expect(written).toEqual([]);
     });
 
@@ -698,8 +698,8 @@ describe("the prompt", () => {
         expect(wrapper.text()).toContain("On Emcomm Testing");
         expect(wrapper.text()).toContain("31.7587° N, 106.4869° W");
         expect(wrapper.text()).toContain("13R");
-        expect(button(wrapper, "Send")).toBeTruthy();
-        expect(button(wrapper, "Send with message")).toBeTruthy();
+        expect(button(wrapper, "Send my position")).toBeTruthy();
+        expect(button(wrapper, "Send my position with a message")).toBeTruthy();
         expect(button(wrapper, "Decline")).toBeTruthy();
     });
 
@@ -707,7 +707,7 @@ describe("the prompt", () => {
         const wrapper = mountPrompt();
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: incomingRequest() });
         await flushPromises();
-        await button(wrapper, "Send with message").trigger("click");
+        await button(wrapper, "Send my position with a message").trigger("click");
         await flushPromises();
         expect(pushed).toEqual([{ name: "channel.messages", params: { channelIdx: "7" } }]);
     });
@@ -716,7 +716,7 @@ describe("the prompt", () => {
         const wrapper = mountPrompt();
         PositionService.onDirectText(THEM_CONTACT, Protocol.toDirectText({ kind: Protocol.KIND.REQUEST, tag: 3, to: ME, from: THEM, name: "" }, "x"));
         await flushPromises();
-        await button(wrapper, "Send with message").trigger("click");
+        await button(wrapper, "Send my position with a message").trigger("click");
         await flushPromises();
         expect(pushed).toEqual([{ name: "contact.messages", params: { publicKey: THEM_HEX } }]);
     });
@@ -725,7 +725,7 @@ describe("the prompt", () => {
         const wrapper = mountPrompt();
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: incomingRequest() });
         await flushPromises();
-        await button(wrapper, "Send").trigger("click");
+        await button(wrapper, "Send my position").trigger("click");
         await flushPromises();
         expect(pushed).toEqual([]);
         expect(wrapper.text()).not.toContain("asks for your position");
@@ -736,7 +736,7 @@ describe("the prompt", () => {
         const wrapper = mountPrompt();
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: incomingRequest() });
         await flushPromises();
-        await button(wrapper, "Send").trigger("click");
+        await button(wrapper, "Send my position").trigger("click");
         await flushPromises();
         expect(wrapper.text()).toContain("Not sent: the radio refused it");
         expect(wrapper.text()).toContain("asks for your position");

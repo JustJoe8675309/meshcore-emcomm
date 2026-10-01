@@ -26,6 +26,13 @@ const globalState = reactive({
     // rooms logged in to this session, by public key hex. in memory only: the
     // session belongs to the radio, so reconnecting means logging in again
     roomLogins: {},
+    // rooms still pushing posts to this station with no login made on this
+    // connection, by public key hex -> when the last one came. The room is holding
+    // a session from before a reconnect; the app lost its record of it
+    roomsStillPushing: {},
+    // rooms the operator logged out of on this connection: a late post from one
+    // must not quietly restart its keep-alive
+    roomsLeft: {},
     channels: [],
     // whether the device is serving a live GPS fix: "unknown" before a device is
     // connected, "checking" while the probe runs, then "live" or "unconfirmed"

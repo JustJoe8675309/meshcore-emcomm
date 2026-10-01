@@ -1,6 +1,10 @@
 <template>
     <div class="w-full">
-        <RouterView/>
+        <!-- inert while a station waits on a position answer: the conversation behind
+             has its own Send, and twice on the bench that was the one pressed -->
+        <div :inert="positionPromptOpen || undefined">
+            <RouterView/>
+        </div>
 
         <!-- the first connection to a radio takes seconds, most of it reading the
              contact list, and until it is done the tabs show a node with nothing
@@ -35,6 +39,7 @@ import ConnectSteps from "./ConnectSteps.vue";
 import PositionPrompt from "./position/PositionPrompt.vue";
 import PositionRequestDialog from "./position/PositionRequestDialog.vue";
 import GroupPositionDialog from "./position/GroupPositionDialog.vue";
+import PositionService from "../js/position/PositionService.js";
 
 export default {
     name: 'App',
@@ -48,6 +53,11 @@ export default {
         return {
             GlobalState,
         };
+    },
+    computed: {
+        positionPromptOpen() {
+            return PositionService.state.prompt != null;
+        },
     },
     methods: {
         async disconnect() {

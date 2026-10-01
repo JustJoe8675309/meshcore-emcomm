@@ -3,12 +3,22 @@
 
         <div class="flex items-center justify-between">
             <div class="text-sm font-medium text-gray-900">Room server</div>
-            <div class="text-xs" :class="[ loggedIn ? 'text-green-700' : 'text-gray-500' ]">
-                {{ loggedIn ? roleLabel : "Not logged in" }}
+            <div class="text-xs" :class="[ loggedIn || stillPushing ? 'text-green-700' : 'text-gray-500' ]" data-room-status>
+                {{ loggedIn ? roleLabel : (stillPushing ? "Receiving, login not confirmed" : "Not logged in") }}
             </div>
         </div>
 
-        <div v-if="!loggedIn" class="text-xs text-gray-500">
+        <!-- the room is pushing to this station with no login made on this connection:
+             it is holding the session from before a reconnect. Saying "Not logged in"
+             here sent the operator to log in while posts arrived -->
+        <div v-if="!loggedIn && stillPushing" role="status" class="text-xs text-gray-700" data-still-pushing>
+            Posts from this room are still arriving, so it is holding your session from before the
+            radio reconnected. This app keeps that session alive by itself, so nothing needs doing to
+            keep receiving. To post, log in again: the app lost its record of what the room allows
+            you when the radio reconnected.
+        </div>
+
+        <div v-if="!loggedIn && !stillPushing" class="text-xs text-gray-500">
             A room holds its posts until you log in. The password is sent straight to the radio
             and kept nowhere, so it is typed each time. A room does not reply to a wrong password,
             so a failed login looks the same as one that never arrived.
@@ -159,6 +169,13 @@ export default {
                 delete GlobalState.roomLogins[key];
             }
             RoomKeepAlive.stop(this.contact.publicKey);
+            if(key != null){
+                // a post or two may still come; they must not start the keep-alive again
+                GlobalState.roomsLeft = { ...(GlobalState.roomsLeft ?? {}), [key]: true };
+                const pushing = { ...(GlobalState.roomsStillPushing ?? {}) };
+                delete pushing[key];
+                GlobalState.roomsStillPushing = pushing;
+            }
             this.loggedIn = false;
             this.isAdmin = false;
             this.canPost = false;
@@ -197,6 +214,10 @@ export default {
                     canPost: this.canPost,
                     clockOffsetSeconds: response?.clockOffsetSeconds ?? null,
                 };
+                // a fresh login supersedes both: it is a login now, and not left
+                const left = { ...(GlobalState.roomsLeft ?? {}) };
+                delete left[this.contactKey];
+                GlobalState.roomsLeft = left;
                 // a room stops pushing posts to a client after three failed
                 // pushes, and only a request from the client clears that. Logging
                 // in again does not, so this has to run for the whole session
@@ -253,6 +274,10 @@ export default {
         },
         contactKey() {
             return this.contact?.publicKey ? Utils.bytesToHex(this.contact.publicKey) : null;
+        },
+        /** The room is pushing to this station though no login was made on this connection. */
+        stillPushing() {
+            return this.contactKey != null && GlobalState.roomsStillPushing?.[this.contactKey] != null;
         },
         passwordFieldId() {
             return `room-password-${this.contactKey ?? "none"}`;

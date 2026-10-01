@@ -285,6 +285,8 @@ class Connection {
         this.abandonConnect = null;
         // room sessions live on the radio, so they do not survive it going away
         GlobalState.roomLogins = {};
+        GlobalState.roomsStillPushing = {};
+        GlobalState.roomsLeft = {};
         // and a question about a radio that has gone is no longer a question
         GlobalState.leftInMode = null;
         GlobalState.backupShrank = null;
@@ -564,7 +566,9 @@ class Connection {
                     // passes as the link allowed; reading them again here doubled the
                     // most expensive part of a Bluetooth connect and, on node 2, came
                     // back with fewer than the pass that preceded it
-                    const backup = await NodeBackup.capture({ reread: false });
+                    // and the channels likewise: read a few lines above, slot by
+                    // slot, and checked the same way the capture checks its own
+                    const backup = await NodeBackup.capture({ reread: false, channelRead: this.lastChannelRead });
 
                     // A radio holding an emcomm mode's own channel was probably
                     // left in that mode, on another computer, where the record of
@@ -1319,6 +1323,7 @@ class Connection {
         // so this is guarded by a timeout and falls back to the public channel.
         try {
 
+            this.lastChannelRead = null;
             const slots = onProgress ? await this.channelSlotCount() : null;
             GlobalState.channelsMissing = 0;
             GlobalState.channelsReadFailed = false;
@@ -1342,10 +1347,12 @@ class Connection {
             // finish inside ten seconds over Bluetooth, and when the budget ran
             // out the read threw and the list fell back to an assumed public
             // channel: exactly the silent failure the retries were added to stop.
-            const { channels, missing } = await (async () => {
+            const { channels, missing, lastAnswered, cutShort } = await (async () => {
                 const read = [];
                 const missing = [];
                 let found = 0;
+                let lastAnswered = -1;
+                let cutShort = false;
                 // a slot that will not answer costs three attempts, so a sick
                 // radio with forty slots could hold the connect for minutes. The
                 // rest are counted as missing, which the list already warns about
@@ -1353,6 +1360,7 @@ class Connection {
                 for(let idx = 0; slots == null || idx < slots; idx++){
 
                     if(Date.now() > deadline){
+                        cutShort = true;
                         for(let rest = idx; slots != null && rest < slots; rest++){
                             missing.push(rest);
                         }
@@ -1390,17 +1398,32 @@ class Connection {
                     }
 
                     read.push(channel);
+                    lastAnswered = idx;
                     if(channel?.name != null && channel.name.trim() !== ""){
                         found++;
                     }
 
                 }
                 onProgress?.(slots ?? read.length, slots ?? read.length, found);
-                return { channels: read, missing: missing };
+                return { channels: read, missing, lastAnswered, cutShort };
             })();
 
             GlobalState.channelsMissing = missing.length;
             GlobalState.channelSlots = slots;
+
+            // kept for the capture that follows on a connect, which used to read
+            // every slot again straight after this one. Only a read that knew how
+            // many slots there were and got to the end of them is offered: one that
+            // ran out of time, or found the end of the list by an error, cannot say
+            // a slot it never reached was empty. See NodeBackup.capture
+            this.lastChannelRead = {
+                connection: GlobalState.connection,
+                slots,
+                complete: slots != null && !cutShort,
+                entries: channels,
+                failed: missing,
+                lastAnswered,
+            };
 
             // unused channel slots come back with an empty name, so skip those.
             // the rest of the app identifies a channel by "idx", so normalise "channelIdx" here.
@@ -1704,6 +1727,9 @@ class Connection {
 
     /** How long the whole channel read may take before the rest are called missing. */
     static CHANNEL_READ_DEADLINE_MILLIS = 60000;
+
+    // the connect's own read of every channel slot, for the capture to reuse
+    static lastChannelRead = null;
 
     static async getChannel(channelIdx) {
 
@@ -2815,6 +2841,29 @@ class Connection {
         }
     }
 
+    /**
+     * A post from a room this connection has not logged in to.
+     *
+     * It happens after a reconnect: the room still holds the session from before,
+     * and pushes, while the app has lost its record of the login. The panel used to
+     * say "Not logged in" and tell the operator to log in -- while posts arrived --
+     * and logging in again is the one remedy that does nothing for a room that has
+     * stopped pushing: only a client request resets the room's failure count, and a
+     * login on the ACL path skips that. So the panel says what is true instead, and
+     * the keep-alive that keeps the pushes coming is started, unless the operator
+     * logged out of this room on this connection.
+     */
+    static noteRoomStillPushing(publicKey) {
+        const key = Utils.bytesToHex(publicKey);
+        if(GlobalState.roomLogins?.[key] != null || GlobalState.roomsLeft?.[key]){
+            return;
+        }
+        GlobalState.roomsStillPushing = { ...(GlobalState.roomsStillPushing ?? {}), [key]: Date.now() };
+        if(!RoomKeepAlive.isRunning(publicKey)){
+            RoomKeepAlive.start(publicKey);
+        }
+    }
+
     static async reboot() {
         const connection = GlobalState.connection;
         await this.exclusive(() => connection.reboot());
@@ -2908,6 +2957,7 @@ class Connection {
         // session that recovers asks only for what it actually missed
         if(contact.type === Constants.AdvType.Room){
             RoomKeepAlive.notePost(contact.publicKey, message.senderTimestamp);
+            this.noteRoomStillPushing(contact.publicKey);
         }
 
         if(contact.type === Constants.AdvType.Room

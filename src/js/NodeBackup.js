@@ -53,8 +53,12 @@ class NodeBackup {
      * @param {object} [options]
      * @param {boolean} [options.reread] Read the contacts again first. A caller that
      *   has only just read them should pass false and save the radio the work.
+     * @param {object} [options.channelRead] A read of every channel slot just made on
+     *   this connection (`Connection.lastChannelRead`). Used instead of reading them
+     *   all again only when it is from this connection, reached the end, and covered
+     *   the slot count the capture would read; otherwise ignored.
      */
-    static async capture({ reread = true } = {}) {
+    static async capture({ reread = true, channelRead = null } = {}) {
 
         const connection = GlobalState.connection;
         if(connection == null){
@@ -90,7 +94,16 @@ class NodeBackup {
             warnings.push(`${GlobalState.contactsMissing} of ${GlobalState.contactsAnnounced} contacts could not be read.`);
         }
 
-        const read = await this.captureChannels(connection, warnings);
+        // The channels are the way home, and a channel's key cannot be heard again,
+        // which is why this read every slot for itself: a short read must never pass
+        // for an empty slot -- that is how node 3 lost a channel. The connect had just
+        // read every slot the same way, one at a time and checked, so it is reused when
+        // it can carry that guarantee: same connection, read to the end, same slot
+        // count. Either way the result is judged by the one summary below, so a gap in
+        // a reused read is a gap exactly as it would be in a fresh one.
+        const read = await this.channelReadUsable(channelRead, connection)
+            ? this.summariseChannelRead(channelRead.entries, channelRead.failed, channelRead.lastAnswered, warnings)
+            : await this.captureChannels(connection, warnings);
         const channels = read.channels;
 
         return {
@@ -215,40 +228,67 @@ class NodeBackup {
      */
     static async captureChannels(connection, warnings) {
 
-        const channels = [];
+        const entries = [];
         const failed = [];
-        let unreadable = 0;
         let lastAnswered = -1;
 
         const slots = await Slots.count();
 
         for(let idx = 0; idx < slots; idx++){
-
-            let channel = null;
             try {
                 // through Connection, which checks the answer belongs to the slot
                 // asked for: the library resolves a read with whatever channel
                 // info arrives next, so a late reply lands on the following slot
-                channel = await Connection.getChannel(idx);
+                entries.push(await Connection.getChannel(idx));
                 lastAnswered = idx;
             } catch(e) {
                 // an empty slot and an unreadable one look the same from here, so
                 // keep going rather than assuming the list has ended
-                unreadable++;
                 failed.push(idx);
-                continue;
             }
+        }
 
+        return this.summariseChannelRead(entries, failed, lastAnswered, warnings);
+
+    }
+
+    /**
+     * Whether a channel read made elsewhere can stand in for the capture's own.
+     * Every condition is one the capture's own read would meet: the radio the
+     * backup is of, every slot reached, and the same number of slots.
+     */
+    static async channelReadUsable(channelRead, connection) {
+        if(channelRead == null || channelRead.connection !== connection){
+            return false;
+        }
+        if(channelRead.complete !== true || channelRead.slots == null){
+            return false;
+        }
+        if(channelRead.slots !== await Slots.count()){
+            return false;
+        }
+        console.log(`capture: the connect's read of ${channelRead.slots} channel slots is reused, not read again`);
+        return true;
+    }
+
+    /**
+     * What a read of every slot amounts to, from either source: the configured
+     * channels, the holes, and how many slots would not read.
+     */
+    static summariseChannelRead(entries, failed, lastAnswered, warnings) {
+
+        const channels = [];
+        const unreadable = failed.length;
+
+        for(const channel of entries){
             if(channel?.name == null || channel.name.trim() === ""){
                 continue;
             }
-
             channels.push({
                 idx: channel.channelIdx,
                 name: channel.name,
                 secret: Utils.bytesToHex(channel.secret),
             });
-
         }
 
         // every slot failing means the device does not answer this command at all,

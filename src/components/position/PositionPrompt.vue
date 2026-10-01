@@ -2,7 +2,9 @@
     <!-- a station has asked for this one's position. Asked in front of whatever is
          on screen, since the asker is waiting and may repeat -->
     <div v-if="prompt" class="fixed inset-0 z-40 flex items-center justify-center bg-gray-900/40 p-4">
-        <div role="alertdialog" aria-labelledby="position-prompt-heading" class="w-full max-w-sm bg-white rounded-lg shadow-lg p-4 space-y-3">
+        <!-- takes the focus when it opens, so a keystroke meant for the message box
+             underneath cannot land there while the asker waits -->
+        <div ref="dialog" tabindex="-1" role="alertdialog" aria-labelledby="position-prompt-heading" class="w-full max-w-sm bg-white rounded-lg shadow-lg p-4 space-y-3 outline-none">
 
             <div id="position-prompt-heading" class="text-sm font-semibold text-gray-900">
                 <template v-if="prompt.rollCall">{{ prompt.name }} asks everyone for their position</template>
@@ -80,20 +82,26 @@
 
             <div v-if="error" role="status" class="text-xs text-red-600">{{ error }}</div>
 
+            <!-- Named for what they send. They were "Send" and "Send with message", and
+                 a conversation's own button is "Send" too: on 27 and 28 Sep the wrong
+                 one was pressed, nothing went out, and the prompt sat there looking
+                 ignored -- once by the operator answering a roll call in a room -->
             <div class="grid grid-cols-1 gap-2">
                 <button
+                    data-answer="send"
                     @click="send(false)"
                     :disabled="busy || entryBlocks"
                     type="button"
                     class="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-medium rounded-lg px-5 py-2.5">
-                    {{ entering ? "Save to radio and send" : "Send" }}
+                    {{ entering ? "Save to radio and send my position" : "Send my position" }}
                 </button>
                 <button
+                    data-answer="send-with-message"
                     @click="send(true)"
                     :disabled="busy || entryBlocks"
                     type="button"
                     class="w-full bg-white hover:bg-gray-50 disabled:opacity-60 border border-blue-600 text-blue-700 text-sm font-medium rounded-lg px-5 py-2.5">
-                    {{ entering ? "Save to radio and send with message" : "Send with message" }}
+                    {{ entering ? "Save to radio, then add a message" : "Send my position with a message" }}
                 </button>
                 <button
                     @click="decline"
@@ -152,6 +160,7 @@ export default {
                 this.check = null;
                 if(key != null){
                     this.runCheck();
+                    this.$nextTick(() => this.$refs.dialog?.focus());
                 }
             },
             immediate: true,

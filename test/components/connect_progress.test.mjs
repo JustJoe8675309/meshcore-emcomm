@@ -12,6 +12,8 @@ import Connection from "../../src/js/Connection.js";
 import GlobalState from "../../src/js/GlobalState.js";
 import Database from "../../src/js/Database.js";
 import Airtime from "../../src/js/reports/Airtime.js";
+import NodeBackup from "../../src/js/NodeBackup.js";
+import ModeProfiles from "../../src/js/modes/ModeProfiles.js";
 
 const KEY = new Uint8Array(32).fill(0x39);
 const SELF_INFO = { name: "KJ5ZZZ-EMCOMM", publicKey: KEY, radioSf: 7, radioBw: 62500, radioCr: 5 };
@@ -101,6 +103,24 @@ describe("the connect steps", () => {
         await onStep();
         return done;
     }
+
+    // The capture used to read every channel slot again straight after the connect
+    // had read them all. Checked by what the capture is handed, not by the words
+    // in the source: a source check cannot tell a call from a comment about one.
+    it("hands the capture the channel read it has just made", async () => {
+        const sentinel = { complete: true, marker: "the connect's own read" };
+        vi.spyOn(Connection, "loadChannels").mockImplementation(async () => { Connection.lastChannelRead = sentinel; });
+        vi.spyOn(Connection, "loadContacts").mockResolvedValue(undefined);
+        vi.spyOn(ModeProfiles, "current").mockReturnValue("normal");
+        vi.spyOn(ModeProfiles, "normalConfirmed").mockReturnValue(true);
+        vi.spyOn(ModeProfiles, "recordNormal").mockResolvedValue(undefined);
+        const capture = vi.spyOn(NodeBackup, "capture").mockResolvedValue({ channels: [], contacts: [], missing: {} });
+
+        await runConnect(async () => {});
+
+        expect(capture).toHaveBeenCalledTimes(1);
+        expect(capture.mock.calls[0][0]).toEqual({ reread: false, channelRead: sentinel });
+    });
 
     // Fastest first, slowest last, at the operator's request -- and the screen shows
     // the steps in the order they run, so the two are checked against each other.

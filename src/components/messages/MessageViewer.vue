@@ -110,7 +110,12 @@
         <!-- message composer -->
         <div class="flex bg-gray-100 p-2 border-t space-x-2">
 
-            <div v-if="needsRoomLogin" role="status" class="w-full text-xs text-red-600 pb-1">
+            <div v-if="needsRoomLogin && roomStillPushing" role="status" class="w-full text-xs text-gray-700 pb-1" data-room-gate>
+                Posts are still arriving from this room, but log in again before posting: the app lost
+                its record of what the room allows you when the radio reconnected.
+            </div>
+
+            <div v-else-if="needsRoomLogin" role="status" class="w-full text-xs text-red-600 pb-1" data-room-gate>
                 Log in to this room before posting. A room ignores a post from a client that has
                 not logged in, and says nothing, so it would look sent and never arrive.
             </div>
@@ -440,6 +445,13 @@ export default {
                 return false;
             }
             return GlobalState.roomLogins[Utils.bytesToHex(this.contact.publicKey)] == null;
+        },
+        /** A room pushing to this station from a session the app lost track of at a reconnect. */
+        roomStillPushing() {
+            if(this.type !== 'contact' || this.contact == null){
+                return false;
+            }
+            return GlobalState.roomsStillPushing?.[Utils.bytesToHex(this.contact.publicKey)] != null;
         },
         // logged in, but with a role the room will not accept posts from. it drops
         // them rather than refusing, so the send would time out and read as a

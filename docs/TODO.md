@@ -189,8 +189,23 @@ done at all.
       every existing clone, so it is a decision rather than a chore. Worth doing before
       the repo gets more attention rather than after.
 
-- [ ] **The connect-time capture re-reads every channel slot.** What is left of a
+- [x] **The connect-time capture re-reads every channel slot.** What is left of a
       bigger finding, most of which is now fixed.
+      **FIXED 30 Sep, v1.18**, to the design below. `loadChannels` keeps its read as
+      `Connection.lastChannelRead` (entries, failed slots, last slot answered, slot
+      count, and whether it reached the end), and the connect hands it to
+      `NodeBackup.capture({ reread: false, channelRead })`. The capture takes it only
+      when it is from **this** connection, reached the end of a **known** slot count
+      (a read cut off by its deadline, or one that found the end by an error, is not
+      offered), and that count equals `Slots.count()`; otherwise it reads for itself as
+      before. Both paths go through one `summariseChannelRead`, so a gap or an
+      unreadable slot in a reused read is judged exactly as in a fresh one and
+      `captureIsDegraded` is unchanged -- a test runs the same radio both ways and
+      compares the backups. Mode switches and the manual backup still read fresh.
+      14 mutations caught, two only after the tests they were missing (the connect's
+      hand-over is checked by what the capture receives, not by source text).
+      **Unproven on Bluetooth**: the console says "capture: the connect's read of N
+      channel slots is reused" when it is taken; the Remembering step should shrink.
       **The original entry blamed the channel read for the slow "Remembering this
       radio's own settings" step. That was wrong.** Measuring it on 29 Sep showed the
       capture was also calling `Connection.loadContacts()` a second time, so a Bluetooth
@@ -298,14 +313,29 @@ done at all.
 These came out of the 27-29 Sep audit and are judgement calls about what the app
 should *say*, not defects. See AUDIT.md for the evidence behind each.
 
-- [ ] **Two buttons called Send on screen at once.** The position prompt's Send and a
+- [x] **Two buttons called Send on screen at once.** The position prompt's Send and a
       conversation's own Send. The wrong one gets pressed -- it happened twice on the
       bench, once to the operator and once to Claude. The prompt's own group is
       Send / Send with message / Decline / Not now, so scoping to that group is what
       would disambiguate.
-- [ ] **The room panel says "Not logged in"** after a radio reconnect while the room is
+      **FIXED 30 Sep, v1.18**, three ways: the prompt's buttons say what they send
+      ("Send my position", "Send my position with a message", and "Save to radio and
+      send my position" / "Save to radio, then add a message" while typing one in);
+      the page behind is `inert` while the prompt is up, so the conversation's Send
+      cannot be reached by mouse or keyboard; and the prompt takes the focus when it
+      opens, so a keystroke meant for the message box cannot land there. 4 tests, 6
+      mutations caught.
+- [x] **The room panel says "Not logged in"** after a radio reconnect while the room is
       actively pushing posts, and the instinctive remedy is the one thing that does not
       help.
+      **FIXED 30 Sep, v1.18.** A post from a room with no login on this connection
+      marks it in `GlobalState.roomsStillPushing` and restarts the two-minute
+      keep-alive -- the one thing that keeps a room pushing -- unless the operator
+      logged out of that room on this connection (`roomsLeft`). The panel then reads
+      "Receiving, login not confirmed" and says posts are still arriving, the app keeps
+      the session alive by itself, and logging in again is needed only to post; the
+      composer says the same instead of "Log in to this room before posting". Both
+      marks clear with the radio. 8 tests, 10 mutations caught. Unproven on a radio.
 - [x] **A connect can overwrite the way home with a worse copy.** Found 29 Sep on
       node 1, fixed the same night. The refresh is kept -- it is how a channel added
       with another app becomes part of the way home, and node 3 lost a channel to a

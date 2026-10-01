@@ -145,6 +145,13 @@ test while painting the two Connect buttons black on near-black.
 
 ### Sending
 
+- [ ] **The connect reuses its channel read for the way home.** *(v1.18.)* On a
+      Bluetooth connect in normal mode, the console should log "capture: the connect's
+      read of 40 channel slots is reused, not read again" during "Remembering this
+      radio's own settings", and that step should take seconds rather than another
+      full slot read. The way home must be unchanged: the pre-EMCOMM backup's channels
+      match the radio's. A read that ran out of time must not be reused -- the capture
+      reads for itself then, and says nothing about reuse.
 - [x] **Heard by N on a sent message.** Send a short DRILL message on Emcomm Testing
       from a radio that can reach a repeater. Within a few seconds the bubble should
       gain "Heard by N" in green beside its time, N the number of distinct copies the
@@ -591,7 +598,11 @@ other station's configuration, which is the wrong place to look during a net.
       over by itself and reads as a fresh answer that never arrived.
 - [ ] **Send My Position** from node 1's channel menu: node 2 lists it as "Sent to
       everyone on Emcomm Testing, unasked".
-- [ ] **Only one button called Send is reachable at a time.** When the position
+- [ ] **Only one button called Send is reachable at a time.** *(Changed in v1.18: the
+      prompt's buttons read "Send my position" and "Send my position with a message",
+      the conversation behind is inert while the prompt is up, and the prompt takes the
+      focus. Check by answering a roll call in a room: the conversation's box and Send
+      should not respond until the prompt is answered or put off.)* When the position
       prompt opens over a conversation -- a channel or a room -- the prompt's Send and
       the conversation's own Send are both on screen, both labelled exactly "Send".
       On 27 Sep the wrong one was pressed on the bench, which did nothing and left
@@ -820,7 +831,11 @@ being a variable.
       in the background or disconnect it briefly, post from node 1, bring node 2
       back. The keep-alive carries the newest post it actually received, so the room
       re-pushes what was missed rather than only what comes next.
-- [ ] **What the room panel claims after a reconnect.** Log in, disconnect the
+- [ ] **What the room panel claims after a reconnect.** *(Changed in v1.18: it should now
+      read "Receiving, login not confirmed" once a post arrives, explain that posts are
+      still arriving and the app keeps the session alive, and ask for a login only to
+      post. Check the keep-alive restarts: posts should keep coming for longer than the
+      room's three failed pushes would allow without it.)* Log in, disconnect the
       radio, post from the other node, reconnect. The missed post arrives without
       anyone logging in again -- proven 27 Sep -- but the panel then read
       **"Not logged in"** and showed "Log in to this room before posting" while the

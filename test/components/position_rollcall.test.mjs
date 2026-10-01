@@ -630,7 +630,7 @@ describe("the prompt, for a roll call in a room", () => {
             { kind: Protocol.KIND.ROLL_CALL, tag: 12, to: Protocol.EVERYONE, from: ALPHA, name: "NCS", heard: [] }, "x", Protocol.MAX_ROOM_BYTES,
         ), Math.floor(Date.now() / 1000));
         await flushPromises();
-        await wrapper.findAll("button").find((b) => b.text() === "Send with message").trigger("click");
+        await wrapper.findAll("button").find((b) => b.text() === "Send my position with a message").trigger("click");
         await flushPromises();
         expect(push).toHaveBeenCalledWith({ name: "contact.messages", params: { publicKey: ROOM_HEX } });
     });
