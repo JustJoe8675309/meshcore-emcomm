@@ -83,7 +83,7 @@ test while painting the two Connect buttons black on near-black.
       with black text on the saturated block. These carry meaning and must **not** be
       dimmed or inverted: an operator reads the banner to know whether their station is
       in a real incident. Same for the mode tabs in settings.
-- [ ] **Warnings still read as warnings.** The flood advert caution, the amber "last
+- [ ] **Warnings still read as warnings.** The flood advert caution, the yellow "last
       known position" notes and the red connection errors must all stand out, not go
       muddy. They are lifted up the colour scale in dark rather than inverted.
 - [ ] **Every button is legible**, especially `bg-white text-black` ones. The two
@@ -493,7 +493,7 @@ other station's configuration, which is the wrong place to look during a net.
 - [ ] **Decline** stops node 1's repeats and shows "Declined by" and node 2's callsign.
 - [ ] **Current or last known.** Answered from a radio with a live GPS fix, the answer
       is a current fix with its time. From a radio without GPS, it reads "Last known
-      position, not a current fix" in amber, and a direct answer's text starts "Last
+      position, not a current fix" in yellow, and a direct answer's text starts "Last
       known position of".
 - [ ] **`0, 0` is refused for the right reason.** Entering `0, 0` is correctly
       rejected -- it is the unset position, not a place anyone is -- but the message
@@ -539,7 +539,7 @@ other station's configuration, which is the wrong place to look during a net.
       side read "same location" instead of a distance, which is correct.
 - [ ] **Roll call asked again.** Choose "up to N times, every M minutes, for stations
       not yet heard". It offers **3 times every 15 minutes** by default; 5 minutes is
-      the shortest allowed and anything under 15 is warned about in amber, so set 2
+      the shortest allowed and anything under 15 is warned about in yellow, so set 2
       and 5 to keep the test short. Node 2 answers the first and stays silent on the
       second, because the second carries a heard list with node 2's key prefix in it
       and a station that finds itself there returns without answering.
@@ -874,7 +874,17 @@ width, and only the real device tests the touch targets.
          sunlight. The logs prove the stroke-width attribute changed; whether 1.5 to
          2.25 reads at 16px is still a question for an eye.
       Hovering the badge gives the advice: "put a spare on charge" at yellow, "this
-      station is about to go down" at red. The healthy badge deliberately says only
+      station is about to go down" at red.
+- [ ] **On a charger the badge shows a bolt, and no warning.** Built 30 Sep, v1.13;
+      inferred from the voltage trend (`Battery.js`), since the radio does not say.
+      Plug a connected radio in: within a minute the fill should give way to a bolt,
+      the colour go grey whatever the level, and the title read "Battery N% —
+      charging". Unplug it: the bolt should go within a minute or two (the reading
+      has to fall 24 mV, three points, below its peak) and the stages come back.
+      What would be a fault: a bolt on a radio that is only draining (the bench
+      drains bounce two points; three would be new), or a bolt that stays after the
+      plug is out once the reading has fallen three points. Not yet seen on
+      hardware: node 2 was plugged in on 30 Sep on a tab running v1.11. The healthy badge deliberately says only
       "Battery 84%".
 - [ ] **Sharing is in the menu** on a phone, since its button folds away there.
       Settings keeps its own button at every width, between the advert menu and the
@@ -987,17 +997,17 @@ width, and only the real device tests the touch targets.
 ### Contacts, on a big roster
 
 - [ ] **The whole roster arrives.** Connect the node with the most contacts and
-      compare the count with what the radio announces: the amber line above the
+      compare the count with what the radio announces: the yellow line above the
       list says when any are missing. Node 2 at 198 contacts came up 57 short,
       twice, because the read gave up on a quiet gap while the radio was still
       mid list and every later pass was refused with `ERR_CODE_BAD_STATE`.
       Passed 28 Sep on a fresh serial connect of node 1: 218 contacts and channels,
-      no amber line. Passed again the same day on node 3, which has the biggest roster
-      of the three: 289 contacts and channels, no amber line.
+      no yellow line. Passed again the same day on node 3, which has the biggest roster
+      of the three: 289 contacts and channels, no yellow line.
 - [ ] **A big read does not block the connect for ever.** It should finish within
       a minute or so; the read has a 90 second cap and ends four seconds after the
       frames stop.
-      **PASSED 28 Sep: 4.0 s**, on node 3's 290 contacts and channels, with no amber
+      **PASSED 28 Sep: 4.0 s**, on node 3's 290 contacts and channels, with no yellow
       line. The read ends four seconds after the frames stop, so almost all of that
       4.0 s is the quiet-gap timer and the roster itself arrived nearly at once.
       It took three attempts to measure, every failure the instrument rather than the
@@ -1022,7 +1032,7 @@ width, and only the real device tests the touch targets.
       came late was handed to the following slot, and everything after it was one
       out. Nothing warned, and the Normal profile captured from that read was short
       the Emcomm Testing channel it would never have written back.
-- [ ] **A short read says so.** If a slot will not answer, an amber line above the
+- [ ] **A short read says so.** If a slot will not answer, a yellow line above the
       list says how many slots would not read. Reconnecting is the remedy.
 - [ ] **Switching mode with an incomplete backup is refused.** The switch stops
       before writing anything and offers "Switch anyway", because the pre-EMCOMM
@@ -1431,7 +1441,7 @@ width, and only the real device tests the touch targets.
       about a minute after locking; that is Android suspending the page, measured and
       documented rather than a fault. On unlocking, the app should still be connected,
       send one advert at once, and carry on without being touched. The status line
-      should show the gap: amber and overdue if you look before the catch-up send, and
+      should show the gap: yellow and overdue if you look before the catch-up send, and
       the fresh last-sent time after it. Saying "running" with no overdue warning after
       ten silent minutes is the fault.
 - [ ] **Reconnect, and the saved schedule starts again** without being re-entered.

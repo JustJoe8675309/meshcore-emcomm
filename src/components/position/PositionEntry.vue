@@ -8,9 +8,9 @@
              map or a SAR team gives -->
         <div class="flex rounded border border-gray-300 overflow-hidden text-xs" role="group" aria-label="Enter as">
             <button type="button" @click="$emit('mode', 'degrees')" :aria-pressed="mode === 'degrees'"
-                class="w-full px-2 py-1" :class="mode === 'degrees' ? 'bg-amber-100 font-semibold text-amber-900' : 'bg-white text-gray-600'">Degrees</button>
+                class="w-full px-2 py-1" :class="mode === 'degrees' ? 'bg-yellow-100 font-semibold text-yellow-900' : 'bg-white text-gray-600'">Degrees</button>
             <button type="button" @click="$emit('mode', 'mgrs')" :aria-pressed="mode === 'mgrs'"
-                class="w-full px-2 py-1 border-l border-gray-300" :class="mode === 'mgrs' ? 'bg-amber-100 font-semibold text-amber-900' : 'bg-white text-gray-600'">MGRS</button>
+                class="w-full px-2 py-1 border-l border-gray-300" :class="mode === 'mgrs' ? 'bg-yellow-100 font-semibold text-yellow-900' : 'bg-white text-gray-600'">MGRS</button>
         </div>
 
         <template v-if="mode === 'degrees'">

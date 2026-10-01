@@ -8,11 +8,11 @@
 
         <!-- what has actually gone out, not only what is set: a locked phone
              stopped sending and the running label alone went on saying running -->
-        <div v-for="line of advertProgress" :key="line.kind" class="text-xs" :class="[ line.overdue ? 'text-amber-700' : 'text-gray-500' ]" :role="line.overdue ? 'status' : null">
+        <div v-for="line of advertProgress" :key="line.kind" class="text-xs" :class="[ line.overdue ? 'text-yellow-700' : 'text-gray-500' ]" :role="line.overdue ? 'status' : null">
             {{ line.text }}
         </div>
 
-        <div v-if="wakeLockNote" class="text-xs" :class="[ wakeLockNote.warn ? 'text-amber-700' : 'text-gray-500' ]">
+        <div v-if="wakeLockNote" class="text-xs" :class="[ wakeLockNote.warn ? 'text-yellow-700' : 'text-gray-500' ]">
             {{ wakeLockNote.text }}
         </div>
 

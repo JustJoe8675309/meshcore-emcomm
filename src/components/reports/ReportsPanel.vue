@@ -181,7 +181,7 @@
 
                 <!-- a long report can hold the channel for minutes, so it takes a second
                      deliberate press. cancel returns to the form with everything intact. -->
-                <div v-if="isConfirming && prepared && prepared.parts" role="alertdialog" aria-labelledby="report-confirm-heading" class="bg-amber-50 border border-amber-300 rounded-lg p-3 space-y-2">
+                <div v-if="isConfirming && prepared && prepared.parts" role="alertdialog" aria-labelledby="report-confirm-heading" class="bg-yellow-50 border border-yellow-300 rounded-lg p-3 space-y-2">
 
                     <div id="report-confirm-heading" class="text-sm font-semibold text-gray-900">Confirm transmission</div>
 
@@ -193,7 +193,7 @@
                         </div>
                     </div>
 
-                    <div v-if="isLongTransmission" class="text-xs text-amber-900">
+                    <div v-if="isLongTransmission" class="text-xs text-yellow-900">
                         This will occupy the channel for a while. On a busy net, consider shortening the
                         report or sending it to a single station instead.
                     </div>

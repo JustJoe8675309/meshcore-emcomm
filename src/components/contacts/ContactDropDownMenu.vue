@@ -17,7 +17,7 @@
                 <div class="text-sm text-gray-500">
                     <!-- hops away -->
                     <span class="flex my-auto text-sm text-gray-500">
-                        <span :class="{ 'text-amber-700': pathIsUnknown }">{{ pathDescription }}</span>
+                        <span :class="{ 'text-yellow-700': pathIsUnknown }">{{ pathDescription }}</span>
                     </span>
                 </div>
             </div>

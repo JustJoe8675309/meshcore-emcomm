@@ -71,7 +71,7 @@
                 Asking for less time than the gap between requests would send one and stop, so
                 give it at least {{ interval }} minutes.
             </div>
-            <div v-else-if="intervalCaution" role="status" class="text-xs text-amber-800">
+            <div v-else-if="intervalCaution" role="status" class="text-xs text-yellow-800">
                 <span v-if="floods">Every request floods the whole mesh, like a flood advert.</span>
                 <span v-else>Every request goes out to that station and comes back.</span>
                 Under {{ cautionInterval }} minutes is a lot of traffic on a busy net.

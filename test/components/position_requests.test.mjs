@@ -320,7 +320,7 @@ describe("current fix or last known position", () => {
         expect(sent.lastKnown).toBe(true);
     });
 
-    it("says so, in amber, where the answer is shown", async () => {
+    it("says so, in yellow, where the answer is shown", async () => {
         PositionService.onChannelData({ channelIdx: 7, dataType: Protocol.DATA_TYPE, data: Protocol.encode({
             kind: Protocol.KIND.POSITION, tag: 1, to: ME, from: THEM, name: "KJ5ZZZ",
             latitude: 31.788, longitude: -106.497, fixTime: 0, flags: Protocol.FLAG.LAST_KNOWN,

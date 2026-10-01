@@ -17,6 +17,7 @@ import Airtime from "./reports/Airtime.js";
 import PositionService from "./position/PositionService.js";
 import ModeProfiles from "./modes/ModeProfiles.js";
 import NodeBackup from "./NodeBackup.js";
+import Battery from "./Battery.js";
 
 // before any connection exists: the serial read loop starts in its constructor
 installResilientSerialReads();
@@ -132,6 +133,9 @@ class Connection {
         GlobalState.contacts = [];
         GlobalState.channels = [];
         GlobalState.batteryPercentage = null;
+        GlobalState.batteryMilliVolts = null;
+        GlobalState.batteryCharging = false;
+        Battery.reset();
         GlobalState.connecting = { step: "Opening the link..." };
 
         // update connection and listen for events
@@ -299,6 +303,9 @@ class Connection {
         // clear previous connection timers
         clearInterval(GlobalState.batteryPercentageInterval);
         GlobalState.batteryPercentageInterval = null;
+        // the voltage trend belonged to this link; the next connect starts clean
+        GlobalState.batteryCharging = false;
+        Battery.reset();
         this.clearConnectionWatchdog();
         GlobalState.connectionTransport = null;
 
@@ -1437,7 +1444,11 @@ class Connection {
         if(GlobalState.connection){
             try {
                 const response = await this.exclusive(() => GlobalState.connection.getBatteryVoltage(), this.READ_TIMEOUT_MILLIS);
+                GlobalState.batteryMilliVolts = response.batteryMilliVolts;
                 GlobalState.batteryPercentage = Utils.getBatteryPercentage(response.batteryMilliVolts);
+                // the radio reports only the voltage; whether a charger is on it
+                // is read from the trend, see Battery.js
+                GlobalState.batteryCharging = Battery.observe(response.batteryMilliVolts);
             } catch(e) {
                 // ignore error
             }

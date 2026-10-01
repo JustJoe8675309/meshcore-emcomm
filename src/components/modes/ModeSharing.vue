@@ -68,7 +68,7 @@
                             <input v-model="includePrivateKeys" type="checkbox" class="mt-0.5">
                             <span>Include the keys of private channels</span>
                         </label>
-                        <div v-if="privateKeys > 0 && includePrivateKeys" role="status" class="text-xs text-amber-800">
+                        <div v-if="privateKeys > 0 && includePrivateKeys" role="status" class="text-xs text-yellow-800">
                             This code carries the key to {{ privateKeys }} private channel{{ privateKeys === 1 ? "" : "s" }}.
                             Anyone who photographs it can read that channel's traffic afterwards.
                         </div>
@@ -114,13 +114,13 @@
                     <div class="text-sm font-medium text-gray-900">
                         {{ labelFor(incoming.mode) }}<span v-if="incoming.from" class="font-normal text-gray-600"> from {{ incoming.from }}</span>
                     </div>
-                    <div v-if="incoming.stale" role="status" class="text-xs text-amber-800">
+                    <div v-if="incoming.stale" role="status" class="text-xs text-yellow-800">
                         This code was made {{ ageInDays }}. Check it is this incident's, not the last one's.
                     </div>
                     <ul class="list-disc pl-5 text-xs text-gray-700 space-y-0.5">
                         <li v-for="(line, i) of describe" :key="i">{{ line }}</li>
                     </ul>
-                    <div v-if="incoming.missingKeys.length > 0" role="status" class="text-xs text-amber-800">
+                    <div v-if="incoming.missingKeys.length > 0" role="status" class="text-xs text-yellow-800">
                         Shared without {{ incoming.missingKeys.length === 1 ? "the key" : "keys" }} for
                         {{ incoming.missingKeys.join(", ") }}. Add {{ incoming.missingKeys.length === 1 ? "it" : "them" }}
                         in Settings, or ask for a code that includes {{ incoming.missingKeys.length === 1 ? "it" : "them" }}.

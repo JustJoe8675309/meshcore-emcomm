@@ -45,7 +45,7 @@
                     </ul>
                 </div>
 
-                <p v-else-if="describeFailed" class="text-xs text-amber-800">
+                <p v-else-if="describeFailed" class="text-xs text-yellow-800">
                     The radio could not be read, so what coming home would change is not known. Taking it home
                     will still try.
                 </p>
@@ -66,7 +66,7 @@
                         class="w-full text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 font-medium rounded-lg text-sm px-4 py-2">
                     Disconnect now instead
                 </button>
-                <p class="text-xs text-amber-800">
+                <p class="text-xs text-yellow-800">
                     Disconnecting now risks losing contacts that were just put back. Right if you have to go.
                 </p>
             </div>

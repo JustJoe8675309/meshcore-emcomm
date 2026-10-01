@@ -6,6 +6,9 @@ const globalState = reactive({
     isDatabaseReady: false,
     selfInfo: null,
     batteryPercentage: null,
+    batteryMilliVolts: null,
+    // inferred from the voltage trend by Battery.js; the radio has no flag for it
+    batteryCharging: false,
     batteryPercentageInterval: null,
     connectionWatchdog: null,
     connectionTransport: null,

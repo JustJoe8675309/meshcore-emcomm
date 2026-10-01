@@ -225,7 +225,7 @@ describe("what folds away on a narrow screen", () => {
 describe("the badge holds still while the text grows", () => {
 
     it("is sized in pixels rather than rem", () => {
-        const badge = source.match(/v-if="GlobalState\.batteryPercentage"[\s\S]{0,1200}?<\/div>/)?.[0] ?? "";
+        const badge = source.match(/v-if="GlobalState\.batteryPercentage != null"[\s\S]{0,1600}?<\/div>/)?.[0] ?? "";
         expect(badge).toMatch(/text-\[12px\]/);
         expect(badge).toMatch(/w-\[16px\] h-\[16px\]/);
         // text-sm and size-5 are rem, and grow with the phone's font setting

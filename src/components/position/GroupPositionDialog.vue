@@ -27,11 +27,11 @@
                         <div v-if="ownMgrs">{{ ownMgrs }}</div>
                         <div v-if="checking" class="text-gray-500">Checking whether the GPS fix is current...</div>
                         <div v-else-if="check && check.live" class="text-gray-500">Current GPS fix. Checked again when you send.</div>
-                        <div v-else class="text-amber-800">
+                        <div v-else class="text-yellow-800">
                             This would go as a <span class="font-semibold">last known position, not a current fix</span>.
                         </div>
                     </template>
-                    <div v-else class="text-amber-800">
+                    <div v-else class="text-yellow-800">
                         Your radio has no position set, so there is nothing to send. Set one in Settings.
                     </div>
                 </div>
@@ -69,7 +69,7 @@
                 <div v-if="intervalTooShort" role="status" class="text-xs text-red-600">
                     The shortest interval for a roll call is {{ minInterval }} minutes.
                 </div>
-                <div v-else-if="intervalCaution" role="status" class="text-xs text-amber-800">
+                <div v-else-if="intervalCaution" role="status" class="text-xs text-yellow-800">
                     Every roll call brings an answer from every station, and each floods the mesh. Under
                     {{ cautionInterval }} minutes is a lot of traffic on a busy net.
                 </div>

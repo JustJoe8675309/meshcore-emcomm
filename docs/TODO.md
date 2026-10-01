@@ -74,6 +74,24 @@ done at all.
 
 - [ ] **Battery indicator: how often it updates, and whether it is charging.**
       Asked for 29 Sep, alongside the three-stage gauge above.
+      **The charging half is BUILT, 30 Sep, v1.13** ("can you tell when it is charging
+      and represent that state with a lightning bolt in the battery icon"). The radio
+      cannot tell -- the protocol carries millivolts and nothing about the charger --
+      so `Battery.js` infers it from the trend: a rise of 30 mV or more across the
+      last five readings is a charger (a drain falls under 1 mV a minute and the
+      reading bounces at most 16 mV; a charger lifted node 2 from 5% to 24% between
+      one minute and the next, then 1 point a minute after that), held once seen
+      because a cell near full stops rising, and let go when the reading drops 24 mV
+      below its peak -- the lift leaving with the plug. While charging the badge
+      draws a bolt in place of the fill, stays grey whatever the level (a rising 20%
+      is not a warning), and the title says "charging". Sixteen mutations, all
+      caught. **Unproven on a radio**: node 2 was on the v1.11 tab when it was
+      plugged in; the first reconnect on v1.13 while it is still charging is the
+      proof, and the first unplug the proof that the bolt goes away.
+      Also found and fixed on the way: `v-if="GlobalState.batteryPercentage"` hid
+      the badge entirely at 0%, the one reading an operator most needs.
+      **The cadence half is still open:** once a minute, and whether a stale reading
+      can sit for hours (the 28 Sep evidence) is not yet explained.
       There is evidence for both halves from the 28-29 Sep drain. The watcher logged
       **100% at 16:27 on the 28th, then 16% at 13:54 the next day, then 33% two minutes
       after that.** Two things fall out of it:

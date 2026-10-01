@@ -34,12 +34,12 @@
                     <div v-if="ownMgrs"><MapLink :latitude="own.latitude" :longitude="own.longitude" :text="ownMgrs" label="Your position"/></div>
                     <div v-if="checking" class="text-gray-500">Checking whether the GPS fix is current...</div>
                     <div v-else-if="check && check.live" class="text-gray-500">Current GPS fix. Checked again when you send.</div>
-                    <div v-else class="text-amber-800">
+                    <div v-else class="text-yellow-800">
                         This would go as a <span class="font-semibold">last known position, not a current fix</span>:
                         {{ own.live ? "the GPS position has stopped changing." : "it is set on the radio, with no live GPS." }}
                     </div>
                 </template>
-                <div v-else class="text-amber-800">
+                <div v-else class="text-yellow-800">
                     Your radio has no position set. Sending says so.
                 </div>
             </div>
@@ -53,10 +53,10 @@
                     @click="startEntry"
                     :disabled="busy"
                     type="button"
-                    class="w-full bg-white hover:bg-gray-50 disabled:opacity-60 border border-amber-600 text-amber-800 text-sm font-medium rounded-lg px-5 py-2">
+                    class="w-full bg-white hover:bg-gray-50 disabled:opacity-60 border border-yellow-600 text-yellow-800 text-sm font-medium rounded-lg px-5 py-2">
                     Enter current position
                 </button>
-                <div v-else class="border border-amber-300 rounded p-2 space-y-2">
+                <div v-else class="border border-yellow-300 rounded p-2 space-y-2">
                     <div class="text-xs text-gray-700">
                         Where you are now. Saved to the radio as its position, and sent marked as entered by hand.
                     </div>

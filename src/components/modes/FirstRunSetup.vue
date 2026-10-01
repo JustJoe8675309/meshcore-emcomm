@@ -21,7 +21,7 @@
                     <li><span class="font-semibold">Emcomm-Training</span> is for drills. Everything it sends is marked DRILL.</li>
                     <li><span class="font-semibold">Emcomm-Live</span> is for a real incident.</li>
                 </ul>
-                <p class="text-xs text-amber-800">
+                <p class="text-xs text-yellow-800">
                     Nothing here is written to the radio. A mode is written when you enter it, from
                     the banner at the top of the app, which says what it will change before it does.
                 </p>

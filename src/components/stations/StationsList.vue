@@ -85,21 +85,21 @@
         </div>
 
         <!-- the device said it would send more than arrived, so somebody is missing -->
-        <div v-if="GlobalState.contactsMissing > 0" role="status" class="bg-amber-50 border-b border-amber-300 px-3 py-2 text-xs text-amber-800">
+        <div v-if="GlobalState.contactsMissing > 0" role="status" class="bg-yellow-50 border-b border-yellow-300 px-3 py-2 text-xs text-yellow-800">
             The radio listed {{ GlobalState.contactsAnnounced }} contacts but only {{ GlobalState.contacts.length }} arrived, so
             {{ GlobalState.contactsMissing }} {{ GlobalState.contactsMissing === 1 ? 'is' : 'are' }} missing from this list.
             Reconnect to load them again.
         </div>
 
         <!-- the read produced nothing at all, so anything listed was not read here -->
-        <div v-if="GlobalState.channelsReadFailed" role="status" class="bg-amber-50 border-b border-amber-300 px-3 py-2 text-xs text-amber-800">
+        <div v-if="GlobalState.channelsReadFailed" role="status" class="bg-yellow-50 border-b border-yellow-300 px-3 py-2 text-xs text-yellow-800">
             The radio's channels could not be read, so any channel listed here was assumed rather
             than read from it. Reconnect the radio before relying on this list or switching mode.
         </div>
 
         <!-- a slot that would not answer is a channel the operator cannot see, and
              a channel a captured mode would not write back -->
-        <div v-if="GlobalState.channelsMissing > 0" role="status" class="bg-amber-50 border-b border-amber-300 px-3 py-2 text-xs text-amber-800">
+        <div v-if="GlobalState.channelsMissing > 0" role="status" class="bg-yellow-50 border-b border-yellow-300 px-3 py-2 text-xs text-yellow-800">
             {{ GlobalState.channelsMissing }} of the radio's
             {{ GlobalState.channelSlots ?? (GlobalState.channelsMissing + listedChannelCount) }} channel slots
             would not read, so a channel may be missing from this list. Reconnect to read them again.

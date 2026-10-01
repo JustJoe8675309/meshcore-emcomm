@@ -99,7 +99,7 @@
                                 @click="restorePreEmcomm"
                                 :disabled="isBackingUp || isRestoring || notConnected"
                                 type="button"
-                                class="w-full text-white bg-amber-700 hover:bg-amber-800 disabled:bg-gray-400 font-medium rounded-lg text-sm px-5 py-2.5">
+                                class="w-full text-white bg-yellow-700 hover:bg-yellow-800 disabled:bg-gray-400 font-medium rounded-lg text-sm px-5 py-2.5">
                                 <div>{{ isRestoring ? "Restoring..." : "Put the radio back as it was" }}</div>
                                 <div class="text-xs font-normal">Writes the backup from before this station left normal mode, {{ preEmcommLabel }}</div>
                             </button>
@@ -141,7 +141,7 @@
                             <div v-if="backupError" role="status" class="text-xs text-red-600">{{ backupError }}</div>
                             <div v-if="backupMessage" role="status" class="text-xs text-green-700">{{ backupMessage }}</div>
 
-                            <div v-for="warning of backupWarnings" :key="warning" role="status" class="text-xs text-amber-700">{{ warning }}</div>
+                            <div v-for="warning of backupWarnings" :key="warning" role="status" class="text-xs text-yellow-700">{{ warning }}</div>
 
                             <div class="text-xs text-gray-500">
                                 Holds contacts, channels and their secrets, and the radio settings. Restoring

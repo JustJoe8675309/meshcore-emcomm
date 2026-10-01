@@ -10,7 +10,7 @@
                     <div v-if="formatMgrs(own.latitude, own.longitude)" class="text-xs text-gray-800"><MapLink :latitude="own.latitude" :longitude="own.longitude" :text="formatMgrs(own.latitude, own.longitude)" label="This station"/></div>
                     <div class="text-xs text-gray-500">{{ own.live ? "Live GPS fix" : "Position set on the radio, not a live fix" }}</div>
                 </template>
-                <div v-else class="text-xs text-amber-800">
+                <div v-else class="text-xs text-yellow-800">
                     Your radio has no position set, so distances and bearings cannot be worked out.
                 </div>
                 <div v-if="!modelCurrent" class="text-xs text-red-700">
@@ -29,7 +29,7 @@
                     {{ busy ? "Checking the GPS..." : "Update position" }}
                 </button>
 
-                <div v-else class="border border-amber-300 rounded p-2 space-y-2">
+                <div v-else class="border border-yellow-300 rounded p-2 space-y-2">
                     <div class="text-xs text-gray-700">
                         <span class="font-semibold">{{ gpsNote }}</span>
                         Where you are now, saved to the radio as its position and used until it changes.
@@ -135,7 +135,7 @@
                         <div class="text-xs text-gray-500">{{ time(report.receivedAt) }}</div>
                     </div>
 
-                    <div v-if="report.source === 'declined'" class="text-sm text-amber-800">
+                    <div v-if="report.source === 'declined'" class="text-sm text-yellow-800">
                         Declined by {{ report.name }}
                     </div>
 
@@ -153,10 +153,10 @@
                             </template>
                         </template>
                         <div v-else class="text-xs text-gray-500">No distance or bearing: this station has no position.</div>
-                        <div class="text-xs" :class="report.lastKnown ? 'font-semibold text-amber-800' : 'text-gray-500'">{{ fixLabel(report) }}</div>
+                        <div class="text-xs" :class="report.lastKnown ? 'font-semibold text-yellow-800' : 'text-gray-500'">{{ fixLabel(report) }}</div>
                     </template>
 
-                    <div v-else class="text-xs text-amber-800">Answered, but has no position set.</div>
+                    <div v-else class="text-xs text-yellow-800">Answered, but has no position set.</div>
 
                     <!-- the newest word was a decline or no position: keep where it last reported being -->
                     <div v-if="previous(report)" class="border-l-2 border-gray-200 pl-2 space-y-0.5">
@@ -401,7 +401,7 @@ export default {
                 done: "text-green-700",
                 running: "text-blue-700",
                 answered: "text-green-700",
-                declined: "text-amber-800",
+                declined: "text-yellow-800",
                 "gave up": "text-red-700",
                 stopped: "text-gray-500",
             }[request.status] ?? "text-gray-500";

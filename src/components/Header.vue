@@ -58,7 +58,7 @@
                      alone took 81px and left the station name 72. Pinned, it takes
                      53 and the name gets 101. A readout is not a touch target, so
                      nothing is lost by holding it still -->
-                <div v-if="GlobalState.batteryPercentage" class="my-auto flex items-center pr-1 text-[12px] font-semibold whitespace-nowrap"
+                <div v-if="GlobalState.batteryPercentage != null" class="my-auto flex items-center pr-1 text-[12px] font-semibold whitespace-nowrap"
                      :class="batteryColour"
                      :title="batteryTitle">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-[16px] h-[16px] mr-0.5 shrink-0" aria-hidden="true">
@@ -68,7 +68,11 @@
                              this red from this grey -->
                         <rect x="1.5" y="7" width="17" height="10" rx="2.5" fill="none" stroke="currentColor" :stroke-width="batteryState === 'flat' ? 2.25 : 1.5"/>
                         <rect x="20" y="10.25" width="2.5" height="3.5" rx="1" fill="currentColor"/>
-                        <rect x="3.25" y="8.75" :width="batteryFill" height="6.5" rx="1" fill="currentColor"/>
+                        <!-- on a charger the fill gives way to a bolt: the level is in
+                             the number beside it, and the bolt is the one thing the
+                             fill cannot say. Inferred from the voltage, see Battery.js -->
+                        <path v-if="GlobalState.batteryCharging" data-charging d="M11.75 7.5 L6.75 12.75 H10.25 L9 16.5 L14 11.25 H10.5 Z" fill="currentColor"/>
+                        <rect v-else data-fill x="3.25" y="8.75" :width="batteryFill" height="6.5" rx="1" fill="currentColor"/>
                     </svg>
                     {{ GlobalState.batteryPercentage }}%
                 </div>
@@ -324,6 +328,11 @@ export default {
          * that cannot be afforded.
          */
         batteryState() {
+            // a rising 25% is not a falling one: on a charger there is nothing to
+            // warn about, and the bolt says why the colour is ordinary
+            if(GlobalState.batteryCharging){
+                return "charging";
+            }
             const percent = GlobalState.batteryPercentage ?? 100;
             if(percent <= 15){
                 return "flat";
@@ -348,6 +357,7 @@ export default {
                 flat: "text-red-600",
                 low: "text-yellow-700",
                 ok: "text-gray-700",
+                charging: "text-gray-700",
             }[this.batteryState];
         },
 
@@ -358,6 +368,9 @@ export default {
          */
         batteryTitle() {
             const percent = GlobalState.batteryPercentage;
+            if(this.batteryState === "charging"){
+                return `Battery ${percent}% — charging`;
+            }
             if(this.batteryState === "flat"){
                 return `Battery ${percent}% — this station is about to go down`;
             }

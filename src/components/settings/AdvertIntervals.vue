@@ -23,7 +23,7 @@
              its tests survived; only the screen that showed it went. Found on the
              bench on 27 Sep by setting a flood interval of 30 minutes and getting
              nothing back. -->
-        <div v-if="floodTooFast" role="status" class="text-xs text-amber-700">
+        <div v-if="floodTooFast" role="status" class="text-xs text-yellow-700">
             Every repeater that hears a flood advert rebroadcasts it, so this one is paid for by
             the whole mesh. Under {{ cautionMinutes }} minutes is worth a second thought.
         </div>

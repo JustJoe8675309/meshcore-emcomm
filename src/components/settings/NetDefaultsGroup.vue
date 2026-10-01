@@ -89,7 +89,7 @@
                         other. A name beginning with # works its own key out, so a whole net joins by name.
                     </div>
 
-                    <div v-if="draft.channels.length === 0" class="text-xs text-amber-700">
+                    <div v-if="draft.channels.length === 0" class="text-xs text-yellow-700">
                         No channels: a station loading this would have every channel cleared.
                     </div>
 

@@ -37,7 +37,7 @@
             </div>
 
             <div v-if="warnings.length > 0" class="p-3 space-y-1">
-                <div v-for="(warning, i) of warnings" :key="i" class="text-xs text-amber-800">{{ warning }}</div>
+                <div v-for="(warning, i) of warnings" :key="i" class="text-xs text-yellow-800">{{ warning }}</div>
             </div>
 
             <div v-if="failures.length > 0" class="p-3 space-y-1">
@@ -46,18 +46,18 @@
 
             <!-- the backup that would be the way home is short, so nothing has
                  been written and the operator decides -->
-            <div v-if="shortfall" class="mx-3 mb-3 rounded-lg bg-amber-50 border border-amber-300 p-3 space-y-2">
-                <div class="text-xs text-amber-900">
+            <div v-if="shortfall" class="mx-3 mb-3 rounded-lg bg-yellow-50 border border-yellow-300 p-3 space-y-2">
+                <div class="text-xs text-yellow-900">
                     Nothing has been changed. The backup this station would come home by is incomplete:
                     {{ shortfall }}. It is taken once and never again until this station is back in
                     {{ labelFor("normal") }}, so anything missing from it stays missing for the whole incident.
                 </div>
-                <div class="text-xs text-amber-900">
+                <div class="text-xs text-yellow-900">
                     Reconnecting the radio and switching again is usually enough. Going ahead means those
                     contacts and channels are not written back when you leave this mode.
                 </div>
                 <button @click="switchAnyway" :disabled="busy" type="button"
-                        class="w-full text-white bg-amber-700 hover:bg-amber-800 disabled:bg-gray-400 font-medium rounded-lg text-sm px-4 py-2">
+                        class="w-full text-white bg-yellow-700 hover:bg-yellow-800 disabled:bg-gray-400 font-medium rounded-lg text-sm px-4 py-2">
                     Switch anyway, without a complete way home
                 </button>
             </div>
@@ -75,7 +75,7 @@
                     @click="switchMode()"
                     :disabled="busy || chosen === current"
                     type="button"
-                    class="w-full text-white bg-amber-700 hover:bg-amber-800 disabled:bg-gray-400 font-medium rounded-lg text-sm px-5 py-2.5">
+                    class="w-full text-white bg-yellow-700 hover:bg-yellow-800 disabled:bg-gray-400 font-medium rounded-lg text-sm px-5 py-2.5">
                     {{ busy ? "Switching..." : `Switch to ${labelFor(chosen)}` }}
                 </button>
             </div>

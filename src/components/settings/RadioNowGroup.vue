@@ -49,7 +49,7 @@
                 <template v-else>
                     <div class="flex items-center justify-between">
                         <div class="text-xs font-medium text-gray-900">Device clock</div>
-                        <div class="text-xs" :class="[ driftSeconds != null && driftSeconds > 60 ? 'text-amber-700' : 'text-gray-500' ]">
+                        <div class="text-xs" :class="[ driftSeconds != null && driftSeconds > 60 ? 'text-yellow-700' : 'text-gray-500' ]">
                             {{ driftLabel }}
                         </div>
                     </div>

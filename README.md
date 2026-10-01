@@ -539,7 +539,10 @@ the line needed against what it had, at a 22px root font:
 
 So the charge moved out of the line into its own badge beside the buttons, where a long station
 name cannot squeeze it out, sized in pixels rather than rem so it holds still while the text
-grows — a readout is not a touch target. The sharing and settings buttons fold into the menu
+grows — a readout is not a touch target. The badge is grey above a quarter, yellow at 25% or
+less, red at 15% or less with a thicker outline, and on a charger it shows a bolt in place of
+the fill and no warning at all: the radio only reports a voltage, so a charger is inferred from
+a rise a draining battery cannot make. The sharing and settings buttons fold into the menu
 that already held the advert commands below the `sm` breakpoint, and the app icon is hidden
 there too: it is decoration, and on a phone it was decoration that cost 74px of the station
 name. The buttons themselves were left scaling on purpose, because an operator who turned the
@@ -682,7 +685,7 @@ stayed on. Node 1 heard six adverts out of six, 58 to 62 seconds apart, where th
 fallen silent within a minute.
 
 **The status line says what actually went out.** Each kind shows when it last went out, or when
-the first is due, and turns amber once one is more than thirty seconds late, saying that a locked
+the first is due, and turns yellow once one is more than thirty seconds late, saying that a locked
 screen or a backgrounded app is the usual reason. Sends are recorded only once the radio has taken
 them, and the times belong to the radio they went through, so connecting another radio starts
 them afresh.
@@ -1401,7 +1404,7 @@ the tab says so.
   means the fix is current, and it goes as a current fix with the time.
 - No change means it goes flagged as a **last known position, not a current fix**. So does
   every position from a radio without a confirmed GPS, and every answer where the re-read fails.
-- The receiving app shows that in amber. The readable line a station without the app sees starts
+- The receiving app shows that in yellow. The readable line a station without the app sees starts
   "Last known position of", followed by the name and "(not a current fix)".
 - A position from a radio's telemetry is marked as not saying how current it is, because the
   firmware does not.
@@ -1446,7 +1449,7 @@ acknowledged, which is what the repeat modes are for.
 
 The other way round, node 1 was given a position by hand, with no GPS, and node 2 asked for it.
 Node 1's prompt warned before sending that it would go as a last known position. Node 2 showed
-the answer in amber as "Last known position, not a current fix".
+the answer in yellow as "Last known position, not a current fix".
 
 **Magnetic bearing.** A bearing an operator walks has to be magnetic, because that is what a
 hand compass reads. The declination comes from the **World Magnetic Model 2025**, worked out on

@@ -110,7 +110,7 @@
                         by name.
                     </div>
 
-                    <div v-if="profile.channels.length === 0" class="text-xs text-amber-700">
+                    <div v-if="profile.channels.length === 0" class="text-xs text-yellow-700">
                         No channels: this mode would clear every channel from the radio.
                     </div>
 
@@ -137,7 +137,7 @@
                                 <button @click="editingChannel = null" type="button"
                                         class="bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 text-xs font-medium rounded-lg px-3 py-2">Cancel</button>
                             </div>
-                            <div class="text-xs text-amber-700">
+                            <div class="text-xs text-yellow-700">
                                 Messages are filed under a channel's key, so changing the key starts a new
                                 history. The old one is kept, and comes back if the key does.
                             </div>
@@ -293,7 +293,7 @@
                     Start {{ labelFor(tab) }} again from the app's defaults
                 </button>
 
-                <div v-if="unsaved" role="status" class="text-xs text-amber-800">
+                <div v-if="unsaved" role="status" class="text-xs text-yellow-800">
                     Not saved yet. This tab keeps what you typed while the app is open, including if you look
                     at another mode, but a reload starts again from what is written down.
                 </div>

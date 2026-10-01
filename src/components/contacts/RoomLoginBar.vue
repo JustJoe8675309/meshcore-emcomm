@@ -57,7 +57,7 @@
 
         <div v-if="errorMessage" role="status" class="text-xs text-red-600">{{ errorMessage }}</div>
 
-        <div v-if="loggedIn && !canPost" role="status" class="text-xs text-amber-700">
+        <div v-if="loggedIn && !canPost" role="status" class="text-xs text-yellow-700">
             This room granted read access only, so posts will not be accepted. Log in again with a
             password that has posting rights.
         </div>

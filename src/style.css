@@ -106,9 +106,11 @@
  *    lifted, because the surface under it is no longer white: the first attempt at
  *    this left `text-black` alone entirely and painted the two Connect buttons black
  *    on near-black, which is the first thing an operator has to press.
- *  - **Mid-tone warnings are lifted, not inverted.** amber-700 and red-600 are chosen
+ *  - **Mid-tone warnings are lifted, not inverted.** yellow-700 and red-600 are chosen
  *    to be legible on white; on a dark surface they go muddy and stop reading as a
- *    warning at all. They are moved up the scale rather than reversed.
+ *    warning at all. They are moved up the scale rather than reversed. (Warnings are
+ *    yellow, at the operator's word -- they were amber until 30 Sep. Only the
+ *    favourite stars keep amber.)
  *
  * The background is a dark slate rather than pure black: black with light text makes
  * text halo at night, and there is no contrast left to show a raised surface with.
@@ -154,13 +156,14 @@
 .dark .text-red-500 { color: #fca5a5; }
 .dark .text-red-700 { color: #f87171; }
 .dark .text-red-900 { color: #fecaca; }
-.dark .text-amber-900 { color: #fde68a; }
-.dark .text-amber-800 { color: #fcd34d; }
-.dark .text-amber-700 { color: #fbbf24; }
-.dark .text-amber-500 { color: #fbbf24; }
-.dark .text-yellow-700 { color: #facc15; }   /* the battery's low stage */
-.dark .bg-amber-50 { background-color: #2a2213; }
-.dark .border-amber-300 { border-color: #6b5426; }
+.dark .text-yellow-900 { color: #fef08a; }
+.dark .text-yellow-800 { color: #fde047; }
+.dark .text-yellow-700 { color: #facc15; }
+.dark .text-amber-500 { color: #fbbf24; }   /* the favourite stars */
+.dark .bg-yellow-50 { background-color: #2a2613; }
+.dark .bg-yellow-100 { background-color: #3a3418; }
+.dark .border-yellow-300 { border-color: #6b5e26; }
+.dark .border-yellow-600 { border-color: #a16207; }
 .dark .text-green-700 { color: #4ade80; }
 
 /* links and primary actions. The blues stay blue: they are already legible on a dark

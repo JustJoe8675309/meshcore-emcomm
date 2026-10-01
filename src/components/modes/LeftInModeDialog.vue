@@ -12,7 +12,7 @@
                     channel {{ modeLabel }} writes. It was probably left in that mode — on another computer, where
                     the record of it stayed.
                 </p>
-                <p class="text-xs text-amber-800">
+                <p class="text-xs text-yellow-800">
                     Recording it as normal mode would make a drill setup this station's home, and coming back from a
                     future drill would take it there. Nothing has been recorded yet.
                 </p>
