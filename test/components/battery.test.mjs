@@ -38,21 +38,23 @@ describe("telling a charger from a drain", () => {
 
     it("sees a slow charge build over the window, not just a jump", () => {
         // 10 mV a minute: under the mark against the previous reading, over it
-        // against the start of the window
-        expect(feed(3700, 3710, 3720, 3730)).toEqual([false, false, false, true]);
+        // against the start of the window two readings on
+        expect(feed(3700, 3710, 3720, 3730)).toEqual([false, false, true, true]);
     });
 
     it("catches the slow climb of a reconnect in the middle of a charge", () => {
         // node 2 at 33-35% on 30 Sep: two points in the first minute, then
         // nothing for four. A five-minute window never saw a charger here.
-        // At 2 mV a minute it is 30 mV after fifteen readings, inside the half hour
-        const seen = feed(...Array.from({ length: 16 }, (_, i) => 3664 + 2 * i));
-        expect(seen.slice(0, 15).every((x) => x === false)).toBe(true);
-        expect(seen[15]).toBe(true);
+        // At 2 mV a minute it is 20 mV after ten readings
+        const seen = feed(...Array.from({ length: 11 }, (_, i) => 3664 + 2 * i));
+        expect(seen.slice(0, 10).every((x) => x === false)).toBe(true);
+        expect(seen[10]).toBe(true);
     });
 
-    it("does not let a bounce three points up count", () => {
-        expect(feed(3600, 3624)).toEqual([false, false]);
+    it("does not let the two-point bounce count, and counts twenty exactly", () => {
+        expect(feed(3600, 3616)).toEqual([false, false]);
+        expect(Battery.observe(3619)).toBe(false);
+        expect(Battery.observe(3620)).toBe(true);
     });
 
     it("holds while a nearly full cell stops rising", () => {
@@ -79,15 +81,15 @@ describe("telling a charger from a drain", () => {
     });
 
     it("only compares across the last half hour", () => {
-        // a creep of 1 mV a minute is 30 mV over the thirty-one readings the
-        // window holds, so the thirty-first counts
-        const creep = feed(...Array.from({ length: 31 }, (_, i) => 3700 + i));
+        // a creep of 2 mV every three minutes is 20 mV over the thirty-one
+        // readings the window holds, so the thirty-first counts
+        const creep = feed(...Array.from({ length: 31 }, (_, i) => 3700 + 2 * Math.floor(i / 3)));
         expect(creep.slice(0, 30).every((x) => x === false)).toBe(true);
         expect(creep[30]).toBe(true);
         Battery.reset();
-        // the window drops the oldest: at 0.9 mV a minute, no 31 consecutive
-        // readings ever span 30, however long it goes on
-        const slower = feed(...Array.from({ length: 80 }, (_, i) => 3700 + Math.floor(i * 0.9)));
+        // the window drops the oldest: at 0.6 mV a minute, no 31 consecutive
+        // readings ever span 20, however long it goes on
+        const slower = feed(...Array.from({ length: 120 }, (_, i) => 3700 + Math.floor(i * 0.6)));
         expect(slower.every((x) => x === false)).toBe(true);
         expect(Battery.readings.length).toBe(31);
     });

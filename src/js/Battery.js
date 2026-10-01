@@ -15,19 +15,22 @@
  *     one reading and the next the moment it was plugged in -- but the climb after
  *     that slows as the cell fills: a point a minute through the twenties, then
  *     2% in four minutes in the thirties, and less again above.
- * So a rise of 30 mV or more across the last half hour is a charger, with a margin
- * over the bounce, and nothing a drain can do: thirty minutes of drain is a fall of
- * 15 mV. The window was five minutes at first, and a reconnect in the middle of a
- * slow charge never latched -- 16 mV in five minutes is a charger and a bounce
- * both. A plug-in while connected still shows at once, from the jump. Once seen
- * it is held, since a cell near full stops rising, and let go when the voltage
- * drops 24 mV below the highest seen -- the lift leaving as the plug comes out,
- * which again the bounce alone cannot reach.
+ * So a rise of 20 mV or more across the last half hour is a charger: above the
+ * 16 mV bounce, and nothing a drain can do, since thirty minutes of drain is a fall
+ * of 15 mV. It shipped at 30, which took four to six minutes to latch on a
+ * reconnect into a slow charge; 20 is the operator's choice, two to four minutes,
+ * and the first bounce that is three points rather than two would be a false bolt
+ * -- none seen in a day of logs. The window was five minutes at first, and a
+ * reconnect in the middle of a slow charge never latched -- 16 mV in five minutes
+ * is a charger and a bounce both. A plug-in while connected shows at once, from the
+ * jump. Once seen it is held, since a cell near full stops rising, and let go when
+ * the voltage drops 24 mV below the highest seen -- the lift leaving as the plug
+ * comes out, which the bounce alone cannot reach.
  */
 export default class Battery {
 
-    /** the smallest rise over the window that is read as a charger */
-    static RISE_MILLIVOLTS = 30;
+    /** the smallest rise over the window that is read as a charger: above the 16 mV bounce */
+    static RISE_MILLIVOLTS = 20;
 
     /** how far below the peak the reading must fall before the charger is gone */
     static FALL_MILLIVOLTS = 24;

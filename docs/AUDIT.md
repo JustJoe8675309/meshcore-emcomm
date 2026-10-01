@@ -883,8 +883,10 @@ width, and only the real device tests the touch targets.
       charging". Unplug it: the bolt should go within a minute or two (the reading
       has to fall 24 mV, three points, below its peak) and the stages come back.
       A *reconnect* to a radio already on a charger is the slow case: the app has to
-      watch the voltage climb 30 mV from the connect, and a cell past a third full
-      climbs only a few mV a minute, so allow up to a quarter of an hour. **30 Sep,
+      watch the voltage climb from the connect -- 20 mV since v1.16 (30 before), so
+      two to four minutes at a few mV a minute, longer on the plateau. The bounce on
+      node 2 is 16 mV; a bolt on a radio that is only draining would mean a bounce
+      of three points, never yet seen -- log it with the millivolts if it happens. **30 Sep,
       v1.13 on node 2 at 33%: no bolt after five minutes** (33 -> 35% in the first
       minute, then flat) -- the five-minute window that build compared across could
       not see a climb that slow; v1.14 compares across half an hour instead.
