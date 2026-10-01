@@ -145,6 +145,16 @@ test while painting the two Connect buttons black on near-black.
 
 ### Sending
 
+- [ ] **Heard by N on a sent message.** Send a short DRILL message on Emcomm Testing
+      from a radio that can reach a repeater. Within a few seconds the bubble should
+      gain "Heard by N" in green beside its time, N the number of distinct copies the
+      radio heard come back; tapping it lists each copy's route (repeater names where
+      the one-byte hash is unique, hex otherwise) under the line "Heard is not
+      delivered". A direct message gains the same after Delivered/Sending. What would
+      be a fault: a count on somebody else's message, or on a message nobody could
+      have repeated (a radio with no repeater in range should show nothing). The
+      raw fact it rests on was measured on node 2, 30 Sep: five copies of one message.
+
 - [ ] **Multi-part report to a channel.** Every part arrives on the other node, in
       order, with `[1/2]` style markers. This is the path most likely to regress,
       because the send loop is where the reliability work happened.

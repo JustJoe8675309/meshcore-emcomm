@@ -54,8 +54,9 @@
                             <span @click="showReceivedMessageInfo(message)" class="cursor-pointer">{{ formatMessageTimestamp(message.timestamp) }}</span>
                         </div>
 
-                        <!-- outbound timestamp -->
+                        <!-- outbound timestamp, and whether a repeater was heard passing it on -->
                         <div v-if="isMessageOutbound(message) && type === 'channel'" class="ml-auto text-xs text-gray-500">
+                            <span v-if="heardCount(message) > 0" data-heard @click="showHeard(message)" class="cursor-pointer text-green-700 font-semibold">Heard by {{ heardCount(message) }} · </span>
                             <span @click="showDeliveredMessageInfo(message)" class="cursor-pointer">{{ formatMessageTimestamp(message.timestamp) }}</span>
                         </div>
 
@@ -71,6 +72,7 @@
                                     </span>
                                     <span v-else-if="isMessageDelivered(message)" @click="showDeliveredMessageInfo(message)" class="cursor-pointer">Delivered</span>
                                     <span v-else>Sending</span>
+                                    <span v-if="heardCount(message) > 0" data-heard @click="showHeard(message)" class="cursor-pointer text-green-700 font-semibold"> · Heard by {{ heardCount(message) }}</span>
                                 </div>
 
                                 <!-- delivered icon -->
@@ -145,6 +147,7 @@ import ChannelKeys from "../../js/channels/ChannelKeys.js";
 import GlobalState from "../../js/GlobalState.js";
 import Connection from "../../js/Connection.js";
 import MessageUtils from "../../js/MessageUtils.js";
+import Heard from "../../js/messages/Heard.js";
 import DeviceUtils from "../../js/DeviceUtils.js";
 import TimeUtils from "../../js/TimeUtils.js";
 import Utils from "../../js/Utils.js";
@@ -300,6 +303,11 @@ export default {
         isMessageOutbound: (message) => MessageUtils.isMessageOutbound(message),
         isMessageDelivered: (message) => MessageUtils.isMessageDelivered(message),
         isMessageFailed: (message) => MessageUtils.isMessageFailed(message),
+        // reactive: a copy heard after the bubble is drawn updates it
+        heardCount: (message) => Heard.count(message.id),
+        showHeard(message) {
+            alert(Heard.describe(message.id, GlobalState.contacts ?? []));
+        },
         onMessagesUpdated(messages) {
 
             // update messages in ui

@@ -18,6 +18,7 @@ import PositionService from "./position/PositionService.js";
 import ModeProfiles from "./modes/ModeProfiles.js";
 import NodeBackup from "./NodeBackup.js";
 import Battery from "./Battery.js";
+import Heard from "./messages/Heard.js";
 
 // before any connection exists: the serial read loop starts in its constructor
 installResilientSerialReads();
@@ -385,6 +386,12 @@ class Connection {
         // carries its author in four bytes that do not survive being run through a
         // UTF-8 decoder along with the text
         GlobalState.connection.on("rx", (frame) => SignedPosts.observe(frame));
+
+        // every packet the radio hears comes here raw, which is how a repeater's
+        // rebroadcast of our own message is caught. See messages/Heard.js
+        GlobalState.connection.on(Constants.PushCodes.LogRxData, (data) => {
+            Heard.onRawPacket(data.raw, data.lastSnr);
+        });
 
         GlobalState.connection.on(Constants.PushCodes.SendConfirmed, async (event) => {
             console.log("SendConfirmed", event);
@@ -2534,6 +2541,13 @@ class Connection {
             error: null,
         });
 
+        // listen for a repeater passing it on
+        Heard.expectDirect({
+            id: databaseMessage.id,
+            selfKey: GlobalState.selfInfo.publicKey,
+            contactKey: publicKey,
+        });
+
         // mark message as failed after estimated timeout
         setTimeout(async () => {
             await Database.Message.setMessageFailedById(databaseMessage.id, "timeout");
@@ -2748,13 +2762,23 @@ class Connection {
         await this.exclusive(() => GlobalState.connection.sendChannelTextMessage(channelIdx, text));
 
         // save to database
-        await Database.ChannelMessage.insert({
+        const saved = await Database.ChannelMessage.insert({
             channel_idx: channelIdx,
             from: GlobalState.selfInfo.publicKey,
             path_len: null,
             txt_type: Constants.TxtTypes.Plain,
             sender_timestamp: Date.now(),
             text: text,
+        });
+
+        // listen for a repeater passing it on. The firmware puts this node's name
+        // in front of the text, and the channel's key is what proves a copy is ours
+        const channel = (GlobalState.channels ?? []).find((c) => c.idx === channelIdx);
+        Heard.expectChannel({
+            id: saved?.id,
+            secret: channel?.secret,
+            name: GlobalState.selfInfo?.name,
+            text,
         });
 
     }

@@ -58,6 +58,22 @@ done at all.
 
 - [ ] **Show whether a sent message was heard**, the way the factory MeshCore app
       shows repeats. Asked for 29 Sep.
+      **BUILT 30 Sep, v1.17** ("the goal is to get a heard by # if your message hits a
+      repeater and you hear the repeat"). `src/js/messages/Heard.js`. The radio pushes
+      every packet it hears raw (0x88), a repeater's rebroadcast of ours among them --
+      **measured first on node 2**: one Emcomm Testing message came back five times in
+      three seconds (two repeaters direct at SNR 12, three more after 2-3 hops), and
+      decrypting the copies in the browser gave a good MAC and the exact
+      "name: text" sent. So a channel copy is matched **exactly** -- decrypted with the
+      channel key (AES-128 ECB via WebCrypto, one CBC block at a time), MAC checked,
+      name, text and the packet's own send time compared. A direct copy cannot be
+      decrypted without the radio's private key, so it is matched on its source and
+      destination hashes within five minutes of the send: close, not certain. Each
+      route counts once; the count survives a reload (localStorage, newest 300).
+      The bubble reads "Heard by N" in green; tapping it lists each copy's route,
+      naming a repeater only where the one-byte hash picks out a single contact, and
+      says plainly that heard is not delivered. 24 tests, 19 mutations all caught.
+      **Not yet seen on screen**: needs a reload onto v1.17 and one message.
       This matters most for **channel traffic, which gets no feedback at all today**.
       Channel datagrams are unacknowledged -- one of four Send My Position broadcasts
       arrived at zero range on the bench -- so an operator sending to a channel has no
@@ -72,7 +88,9 @@ done at all.
       repeater discovery push (`0x8E`) is one the library does not handle at all, so
       the relevant frames may need handling directly.
 
-- [ ] **Battery indicator: how often it updates, and whether it is charging.**
+- [x] **Battery indicator: how often it updates, and whether it is charging.**
+      **Closed 30 Sep by the operator** ("number 2 is done") after the gauge worked
+      end to end on node 2. The stale-reading question below is left as history.
       Asked for 29 Sep, alongside the three-stage gauge above.
       **The charging half is BUILT, 30 Sep, v1.13** ("can you tell when it is charging
       and represent that state with a lightning bolt in the battery icon"). The radio

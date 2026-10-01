@@ -464,6 +464,18 @@ from one packet to two, in the SITREP case spending a whole second transmission 
 Paying a packet on the common forms to improve two uncommon ones is the wrong trade on shared air.
 Both were sent on the air and compared on a stock client before deciding.
 
+### Heard by N
+
+**A sent message says when a repeater was heard passing it on.** A channel message is never
+acknowledged, so until this there was no telling a message that reached the mesh from one that
+went nowhere. The radio hands the app every packet it hears, and a repeater's rebroadcast of your
+own message is one of them, so the bubble gains "Heard by 3" -- three copies came back by three
+routes -- and tapping it lists the routes, naming the repeaters where it can. **Heard is not
+delivered**: it proves the message left your station, not that anybody read it, and the app says
+so. A channel copy is matched exactly, decrypted with the channel's key and compared word for word
+with what you sent; a direct message can only be matched on who it is from and to, since its key
+lives in the radio.
+
 ### Contacts & Channels tab
 
 **One list for both.** Contacts and channels were two tabs, which meant knowing which kind of
