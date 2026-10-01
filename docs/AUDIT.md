@@ -887,6 +887,14 @@ width, and only the real device tests the touch targets.
       v1.13 on node 2 at 33%: no bolt after five minutes** (33 -> 35% in the first
       minute, then flat) -- the five-minute window that build compared across could
       not see a climb that slow; v1.14 compares across half an hour instead.
+      **The bolt is PROVEN, 30 Sep 20:11, node 2 on v1.14.** Reconnected at 40%
+      (3720 mV) on the charger the reading sat at 3720 for six minutes, then 3737;
+      unplugged, the next minute read 3598 (-139 mV: the charger's lift on this radio
+      is ~140 mV, 17 points, so every charging reading is inflated by that much);
+      replugged, the next minute read 3737 again and the badge went to the bolt, no
+      fill, grey, title "Battery 42% -- charging". The lift is what the bar catches;
+      the slow climb is a quarter-hour case. **Still owed: the bolt going away** -- the
+      one unplug so far happened while the flag was off.
       What would be a fault: a bolt on a radio that is only draining (the bench
       drains bounce two points; three would be new), or a bolt that stays after the
       plug is out once the reading has fallen three points. Not yet seen on

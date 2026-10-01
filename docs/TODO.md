@@ -88,9 +88,10 @@ done at all.
       below its peak -- the lift leaving with the plug. While charging the badge
       draws a bolt in place of the fill, stays grey whatever the level (a rising 20%
       is not a warning), and the title says "charging". Sixteen mutations, all
-      caught. **Unproven on a radio**: node 2 was on the v1.11 tab when it was
-      plugged in; the first reconnect on v1.13 while it is still charging is the
-      proof, and the first unplug the proof that the bolt goes away.
+      caught. **The bolt is PROVEN on node 2, 30 Sep 20:11 (v1.14)**: a replug
+      jumped the reading 3598 -> 3737 mV and the badge went to the bolt. The
+      charger's lift on this radio is ~140 mV, so a charging percentage reads 17
+      points high. The bolt going away is still owed (see AUDIT.md).
       Also found and fixed on the way: `v-if="GlobalState.batteryPercentage"` hid
       the badge entirely at 0%, the one reading an operator most needs.
       **The cadence half is still open:** once a minute, and whether a stale reading
