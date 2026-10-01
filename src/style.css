@@ -166,6 +166,14 @@
 .dark .border-yellow-600 { border-color: #a16207; }
 .dark .text-green-700 { color: #4ade80; }
 
+/* A received message's bubble. Its light grey is written into the class rather than
+   taken from the palette, so nothing above reached it, while its text was lifted to
+   near white with everything else -- white on near white in the dark theme, which the
+   operator caught on 30 Sep. Grey with white text, 10.3:1; a room post's author, in
+   lifted blue, came to 4.44:1 on this grey, so it goes one shade lighter (5.72:1). */
+.dark .bubble-in { background-color: #374151; color: #ffffff; }
+.dark .bubble-in .text-blue-700 { color: #93c5fd; }
+
 /* links and primary actions. The blues stay blue: they are already legible on a dark
    surface, and a button that moves colour between themes stops being recognisable */
 .dark .text-blue-700 { color: #7dabf8; }

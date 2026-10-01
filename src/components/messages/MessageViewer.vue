@@ -12,7 +12,7 @@
 
                         <!-- message content -->
                         <div class="flex">
-                            <div class="border border-gray-300 rounded-xl shadow overflow-hidden" :class="[ isMessageFailed(message) ? 'bg-red-500 text-white' : isMessageOutbound(message) ? 'bg-[#3b82f6] text-white' : 'bg-[#efefef]' ]">
+                            <div class="border border-gray-300 rounded-xl shadow overflow-hidden" :class="[ isMessageFailed(message) ? 'bg-red-500 text-white' : isMessageOutbound(message) ? 'bg-[#3b82f6] text-white' : 'bg-[#efefef] bubble-in' ]" :data-bubble="isMessageOutbound(message) ? 'out' : 'in'">
 
                                 <!-- message sender name (for inbound channel messages) -->
                                 <div v-if="isMessageInbound(message) && type === 'channel'" class="px-2 pt-1 text-xs text-gray-700 font-semibold">
