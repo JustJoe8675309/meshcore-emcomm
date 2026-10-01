@@ -145,7 +145,7 @@ test while painting the two Connect buttons black on near-black.
 
 ### Sending
 
-- [ ] **Heard by N on a sent message.** Send a short DRILL message on Emcomm Testing
+- [x] **Heard by N on a sent message.** Send a short DRILL message on Emcomm Testing
       from a radio that can reach a repeater. Within a few seconds the bubble should
       gain "Heard by N" in green beside its time, N the number of distinct copies the
       radio heard come back; tapping it lists each copy's route (repeater names where
@@ -154,6 +154,13 @@ test while painting the two Connect buttons black on near-black.
       be a fault: a count on somebody else's message, or on a message nobody could
       have repeated (a radio with no repeater in range should show nothing). The
       raw fact it rests on was measured on node 2, 30 Sep: five copies of one message.
+      **PASSED 30 Sep on node 2, v1.17, against a control.** A raw-packet listener
+      logged every copy the radio heard: 10:47:21 `87` and `ba`, 10:47:22 `87>97` and
+      `87>97>fa`, 10:47:23 `87>97>f2` -- five copies, one payload. The bubble read
+      "Heard by 5" and the stored record had the same five routes with the same SNRs.
+      A message four minutes earlier read "Heard by 2" (`ba`, `87`) with no listener
+      running; the control shows the app counts every copy, so that was two copies.
+      Direct messages are still unseen on a radio.
 
 - [ ] **Multi-part report to a channel.** Every part arrives on the other node, in
       order, with `[1/2]` style markers. This is the path most likely to regress,

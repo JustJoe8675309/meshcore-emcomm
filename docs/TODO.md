@@ -56,7 +56,7 @@ done at all.
       is told the version rather than the commit.
       Untested on a real screen; see the header section of AUDIT.md for what to look at.
 
-- [ ] **Show whether a sent message was heard**, the way the factory MeshCore app
+- [x] **Show whether a sent message was heard**, the way the factory MeshCore app
       shows repeats. Asked for 29 Sep.
       **BUILT 30 Sep, v1.17** ("the goal is to get a heard by # if your message hits a
       repeater and you hear the repeat"). `src/js/messages/Heard.js`. The radio pushes
@@ -73,7 +73,9 @@ done at all.
       The bubble reads "Heard by N" in green; tapping it lists each copy's route,
       naming a repeater only where the one-byte hash picks out a single contact, and
       says plainly that heard is not delivered. 24 tests, 19 mutations all caught.
-      **Not yet seen on screen**: needs a reload onto v1.17 and one message.
+      **PROVEN on node 2, 30 Sep 22:47, against a control:** the radio logged five
+      copies of one channel message and the bubble read "Heard by 5" with the same
+      five routes. Direct messages are built and tested but not yet seen on a radio.
       This matters most for **channel traffic, which gets no feedback at all today**.
       Channel datagrams are unacknowledged -- one of four Send My Position broadcasts
       arrived at zero range on the bench -- so an operator sending to a channel has no
