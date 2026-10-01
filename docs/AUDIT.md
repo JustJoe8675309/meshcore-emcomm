@@ -868,14 +868,15 @@ width, and only the real device tests the touch targets.
       1. **That the yellow is legible on the phone**, in daylight, at 12px. yellow-600
          was rejected on computed contrast -- 2.94:1 against the 4.5:1 this size needs
          -- and yellow-700's 4.92:1 is a calculation too. A number that passes and a
-         colour an operator can read in daylight are not the same claim. It needs a
-         radio between 16% and 25%; node 2 was already at 7% when the colour changed.
+         colour an operator can read in daylight are not the same claim. Seen on a
+         radio 30 Sep 20:14 (node 2 at 24%, dark theme, `rgb(250, 204, 21)`); the
+         light-theme shade on a phone in daylight is still an eye's call.
       2. **The outline thickening at red** against a healthy badge side by side, in
          sunlight. The logs prove the stroke-width attribute changed; whether 1.5 to
          2.25 reads at 16px is still a question for an eye.
       Hovering the badge gives the advice: "put a spare on charge" at yellow, "this
       station is about to go down" at red.
-- [ ] **On a charger the badge shows a bolt, and no warning.** Built 30 Sep, v1.13;
+- [x] **On a charger the badge shows a bolt, and no warning.** Built 30 Sep, v1.13;
       inferred from the voltage trend (`Battery.js`), since the radio does not say.
       Plug a connected radio in: within a minute the fill should give way to a bolt,
       the colour go grey whatever the level, and the title read "Battery N% —
@@ -893,8 +894,11 @@ width, and only the real device tests the touch targets.
       is ~140 mV, 17 points, so every charging reading is inflated by that much);
       replugged, the next minute read 3737 again and the badge went to the bolt, no
       fill, grey, title "Battery 42% -- charging". The lift is what the bar catches;
-      the slow climb is a quarter-hour case. **Still owed: the bolt going away** -- the
-      one unplug so far happened while the flag was off.
+      the slow climb is a quarter-hour case. **The release is PROVEN too, 20:14:**
+      unplugged with the bolt on, the next reading was 3598 (-139 mV below the peak),
+      the flag cleared on that reading, the fill came back, and the stages returned at
+      once -- 24% went yellow with "put a spare on charge". That was also the first
+      sight of the yellow shade on a radio (dark theme, `rgb(250, 204, 21)`).
       What would be a fault: a bolt on a radio that is only draining (the bench
       drains bounce two points; three would be new), or a bolt that stays after the
       plug is out once the reading has fallen three points. Not yet seen on

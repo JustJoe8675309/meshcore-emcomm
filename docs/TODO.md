@@ -91,7 +91,8 @@ done at all.
       caught. **The bolt is PROVEN on node 2, 30 Sep 20:11 (v1.14)**: a replug
       jumped the reading 3598 -> 3737 mV and the badge went to the bolt. The
       charger's lift on this radio is ~140 mV, so a charging percentage reads 17
-      points high. The bolt going away is still owed (see AUDIT.md).
+      points high. The release is proven too: unplugged at 20:14 the reading fell
+      139 mV, the bolt went and the stages came back (24%, yellow).
       Also found and fixed on the way: `v-if="GlobalState.batteryPercentage"` hid
       the badge entirely at 0%, the one reading an operator most needs.
       **The cadence half is still open:** once a minute, and whether a stale reading
