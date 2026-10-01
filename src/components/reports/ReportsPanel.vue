@@ -208,7 +208,7 @@
                         <button
                             @click="confirmSend"
                             type="button"
-                            class="w-full bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg px-5 py-2.5">
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg px-5 py-2.5">
                             Send now
                         </button>
                     </div>
@@ -223,7 +223,7 @@
                         :disabled="!canSend"
                         type="button"
                         class="w-full text-white text-sm font-medium rounded-lg px-5 py-2.5"
-                        :class="[ canSend ? 'bg-blue-500 hover:bg-blue-600 cursor-pointer' : 'bg-gray-300 cursor-not-allowed' ]">
+                        :class="[ canSend ? 'bg-blue-600 hover:bg-blue-700 cursor-pointer' : 'bg-gray-300 cursor-not-allowed' ]">
                         {{ sendButtonLabel }}
                     </button>
 

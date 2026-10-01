@@ -66,7 +66,7 @@
                 @mouseenter="highlightedIndex = index"
                 class="flex items-center justify-between space-x-2 px-3 py-2 text-sm cursor-pointer"
                 :class="[
-                    index === highlightedIndex ? 'bg-blue-500 text-white' : 'text-gray-900 hover:bg-gray-100',
+                    index === highlightedIndex ? 'bg-blue-600 text-white' : 'text-gray-900 hover:bg-gray-100',
                     option.value === modelValue ? 'font-semibold' : '',
                     index === firstNonFavouriteIndex ? 'border-t border-gray-200' : '',
                 ]">

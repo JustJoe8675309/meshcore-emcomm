@@ -124,7 +124,10 @@
 .dark .bg-gray-50 { background-color: #15181c; }
 .dark .bg-gray-100 { background-color: #22272e; }
 .dark .bg-gray-200 { background-color: #2b313a; }
-.dark .bg-gray-300 { background-color: #39414c; }
+/* bg-gray-300 is the page column behind the cards (Page.vue), so it goes darker than
+   the cards, as the light theme's grey page sits behind white ones. It was #39414c,
+   lighter than the cards, and text set straight on the column fell to 3.69:1. */
+.dark .bg-gray-300 { background-color: #12161b; }
 
 /* the page itself, so overscroll and short pages do not flash white */
 .dark body { background-color: #0f1216; }
@@ -166,6 +169,16 @@
 .dark .border-yellow-600 { border-color: #a16207; }
 .dark .text-green-700 { color: #4ade80; }
 
+/* Notices on the settings page and in reports: a pale green or pink box with dark
+   green, red or blue text. Neither half had a dark version, so in the dark the boxes
+   stayed bright with lifted text on them (2.53:1), or the text stayed dark on a box
+   that had been darkened (1.78:1). Both halves now move together. */
+.dark .bg-green-50 { background-color: #13261a; }
+.dark .bg-red-50 { background-color: #2a1517; }
+.dark .text-green-800 { color: #86efac; }
+.dark .text-red-800 { color: #fca5a5; }
+.dark .text-blue-800 { color: #aecbfa; }
+
 /* A received message's bubble. Its light grey is written into the class rather than
    taken from the palette, so nothing above reached it, while its text was lifted to
    near white with everything else -- white on near white in the dark theme, which the
@@ -180,6 +193,18 @@
 .dark .text-blue-600 { color: #7dabf8; }
 .dark .text-blue-900 { color: #aecbfa; }
 .dark .bg-blue-50 { background-color: #14243d; }
+
+/* The field notes' round "i" buttons are pale blue with blue text. The text was lifted
+   and the pale blue was not, so in the dark it read 1.9:1. A deep blue under the
+   lifted text is 4.96:1, and hover goes deeper rather than paler. */
+.dark .bg-blue-100 { background-color: #1e3a5f; }
+.dark .hover\:bg-blue-200:hover { background-color: #17304f; }
+
+/* Grey buttons that cannot be pressed (Send with nothing typed, Save while saving,
+   and every disabled:bg-gray-400). White on gray-400 is 2.54:1; a darker grey keeps
+   them plainly grey beside the blue ones and makes the label readable, 7.56:1. */
+.dark .bg-gray-400,
+.dark .disabled\:bg-gray-400:disabled { background-color: #4b5563; }
 .dark .border-blue-200 { border-color: #2b4a7a; }
 
 /* form controls, which the forms plugin paints white */

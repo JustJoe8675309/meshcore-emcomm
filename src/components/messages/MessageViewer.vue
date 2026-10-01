@@ -12,7 +12,7 @@
 
                         <!-- message content -->
                         <div class="flex">
-                            <div class="border border-gray-300 rounded-xl shadow overflow-hidden" :class="[ isMessageFailed(message) ? 'bg-red-500 text-white' : isMessageOutbound(message) ? 'bg-[#3b82f6] text-white' : 'bg-[#efefef] bubble-in' ]" :data-bubble="isMessageOutbound(message) ? 'out' : 'in'">
+                            <div class="border border-gray-300 rounded-xl shadow overflow-hidden" :class="[ isMessageFailed(message) ? 'bg-red-600 text-white' : isMessageOutbound(message) ? 'bg-[#2563eb] text-white' : 'bg-[#efefef] bubble-in' ]" :data-bubble="isMessageOutbound(message) ? 'out' : 'in'">
 
                                 <!-- message sender name (for inbound channel messages) -->
                                 <div v-if="isMessageInbound(message) && type === 'channel'" class="px-2 pt-1 text-xs text-gray-700 font-semibold">
@@ -135,7 +135,7 @@
 
             <!-- send button -->
             <div class="inline-flex rounded-md shadow-sm">
-                <button @click="sendMessage()" :disabled="!canSendMessage" type="button" class="h-full my-auto inline-flex items-center rounded-md px-2.5 py-1.5 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2" :class="[ canSendMessage ? 'bg-blue-500 hover:bg-blue-400 focus-visible:outline-blue-500' : 'bg-gray-400 focus-visible:outline-gray-500 cursor-not-allowed']">
+                <button @click="sendMessage()" :disabled="!canSendMessage" type="button" class="h-full my-auto inline-flex items-center rounded-md px-2.5 py-1.5 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2" :class="[ canSendMessage ? 'bg-blue-600 hover:bg-blue-700 focus-visible:outline-blue-600' : 'bg-gray-400 focus-visible:outline-gray-500 cursor-not-allowed']">
                     Send
                 </button>
             </div>

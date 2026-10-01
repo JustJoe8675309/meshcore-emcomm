@@ -9,7 +9,7 @@
 
         <!-- unread messages count -->
         <div v-if="unreadMessagesCount > 0" class="my-auto">
-            <div class="inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-red-500 rounded-full shadow">
+            <div class="inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-red-600 rounded-full shadow">
                 <span v-if="unreadMessagesCount >= 100">99</span>
                 <span>{{ unreadMessagesCount }}</span>
             </div>
