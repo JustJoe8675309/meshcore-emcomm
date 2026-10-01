@@ -86,7 +86,7 @@ done at all.
       saw first: "there is no bolt"; v1.14 widened it), held once seen
       because a cell near full stops rising, and let go when the reading drops 24 mV
       below its peak -- the lift leaving with the plug. While charging the badge
-      draws a bolt in place of the fill, stays grey whatever the level (a rising 20%
+      draws a bolt in place of the fill, goes green whatever the level (a rising 20%
       is not a warning), and the title says "charging". Sixteen mutations, all
       caught. **The bolt is PROVEN on node 2, 30 Sep 20:11 (v1.14)**: a replug
       jumped the reading 3598 -> 3737 mV and the badge went to the bolt. The

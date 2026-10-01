@@ -357,7 +357,9 @@ export default {
                 flat: "text-red-600",
                 low: "text-yellow-700",
                 ok: "text-gray-700",
-                charging: "text-gray-700",
+                // green on a charger, at the operator's word: green-700 is 5.02:1 on
+                // white and style.css already lifts it for dark mode
+                charging: "text-green-700",
             }[this.batteryState];
         },
 

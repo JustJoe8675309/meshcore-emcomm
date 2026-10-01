@@ -541,7 +541,7 @@ So the charge moved out of the line into its own badge beside the buttons, where
 name cannot squeeze it out, sized in pixels rather than rem so it holds still while the text
 grows — a readout is not a touch target. The badge is grey above a quarter, yellow at 25% or
 less, red at 15% or less with a thicker outline, and on a charger it shows a bolt in place of
-the fill and no warning at all: the radio only reports a voltage, so a charger is inferred from
+the fill, in green, and no warning at all: the radio only reports a voltage, so a charger is inferred from
 a rise a draining battery cannot make. The sharing and settings buttons fold into the menu
 that already held the advert commands below the `sm` breakpoint, and the app icon is hidden
 there too: it is decoration, and on a phone it was decoration that cost 74px of the station

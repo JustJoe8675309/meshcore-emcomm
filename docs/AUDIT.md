@@ -879,7 +879,7 @@ width, and only the real device tests the touch targets.
 - [x] **On a charger the badge shows a bolt, and no warning.** Built 30 Sep, v1.13;
       inferred from the voltage trend (`Battery.js`), since the radio does not say.
       Plug a connected radio in: within a minute the fill should give way to a bolt,
-      the colour go grey whatever the level, and the title read "Battery N% —
+      the colour go green whatever the level (v1.15; grey before), and the title read "Battery N% —
       charging". Unplug it: the bolt should go within a minute or two (the reading
       has to fall 24 mV, three points, below its peak) and the stages come back.
       A *reconnect* to a radio already on a charger is the slow case: the app has to

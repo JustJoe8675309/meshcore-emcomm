@@ -68,12 +68,12 @@ describe("the battery badge on a charger", () => {
         expect(badge(mountHeader()).text()).toBe("24%");
     });
 
-    it("does not warn about a battery that is filling", () => {
+    it("goes green, not a warning colour, while the battery is filling", () => {
         GlobalState.batteryCharging = true;
         GlobalState.batteryPercentage = 9;
         const wrapper = mountHeader();
         expect(wrapper.vm.batteryState).toBe("charging");
-        expect(wrapper.vm.batteryColour).toBe("text-gray-700");
+        expect(wrapper.vm.batteryColour).toBe("text-green-700");
         expect(wrapper.find("svg rect").attributes("stroke-width")).toBe("1.5");
     });
 
