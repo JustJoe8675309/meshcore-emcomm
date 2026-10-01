@@ -892,7 +892,11 @@ width, and only the real device tests the touch targets.
       evening was 17-18 mV, and a planted marker proved the app was asking each
       minute. So one quantum is the noise and two quanta (34 mV) is the signal; the
       20 mV bar sits between them, and a reconnect into a slow charge needs two
-      steps, 15-35 minutes at this stage of charge. A plug-in is still one reading. **30 Sep,
+      steps, 15-35 minutes at this stage of charge. A plug-in is still one reading.
+      **Confirmed on v1.16:** reconnected mid-charge at 3825 mV, the bolt and green
+      latched at 21:24 on 3860 (two quanta) and held through every one-quantum flip
+      down; a one-reading 122 mV dropout at 22:20 cleared it and the next reading
+      re-latched it. Operator: "the battery gauge works well."  **30 Sep,
       v1.13 on node 2 at 33%: no bolt after five minutes** (33 -> 35% in the first
       minute, then flat) -- the five-minute window that build compared across could
       not see a climb that slow; v1.14 compares across half an hour instead.
